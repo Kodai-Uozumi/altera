@@ -1,0 +1,573 @@
+<?xml version="1.0"?>
+<ROOT>
+	<INCLUDE FILE="mfam_family_macros.xml" />
+	<MACROS>
+		<MACRO NAME="m_clock0_port_used" DEFINITION="is_used(clock0) ? 1 : 0" />
+		<MACRO NAME="m_clock1_port_used" DEFINITION="is_used(clock1) ? 1 : 0" />
+		<MACRO NAME="m_clock2_port_used" DEFINITION="is_used(clock2) ? 1 : 0" />
+		<MACRO NAME="m_clock3_port_used" DEFINITION="is_used(clock3) ? 1 : 0" />
+		<MACRO NAME="m_clock_count" DEFINITION="m_clock0_port_used + m_clock1_port_used + m_clock2_port_used + m_clock3_port_used" />
+		<MACRO NAME="m_cycloneii_dsp_block"  DEFINITION="(dedicated_multiplier_circuitry == yes || dedicated_multiplier_circuitry == auto || USE_WIZARD == ON) and (mfam_family_cycloneii || mfam_family_cycloneiii)" />
+		<MACRO NAME="m_titan_dsp_block"  DEFINITION="(dedicated_multiplier_circuitry == yes || dedicated_multiplier_circuitry == auto) and mfam_family_stratixiii" />
+		<MACRO NAME="m_stratix_mac_only" >
+			<DEFINITION>
+				(width_a lt 19) and (width_b lt 19) and (width_result lt 52) and (mfam_family_base_stratixii || mfam_family_base_stratix)
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_base_stratixii_features" >
+			<DEFINITION>
+				is_used(mult_round) || is_used(mult_saturation) ||
+				is_used(accum_round) || is_used(accum_saturation) ||
+				multiplier_rounding == "YES" || multiplier_saturation == "YES" ||
+				accumulator_rounding == "YES" || accumulator_saturation == "YES"
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_stratixii_features" >
+			<DEFINITION>
+				m_base_stratixii_features || is_used(accum_sload_upper_data)	
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_asud_max_width_1" >
+			<DEFINITION>
+				(width_a + width_b + 16) gt 36 ? 36 : (width_a + width_b + 16)
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_asud_max_width" >
+			<DEFINITION>
+				(width_result) lt (width_a + width_b + 16) ? (m_asud_max_width_1 - ((width_a + width_b + 16) - width_result)) : m_asud_max_width_1
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_use_full_mac" >
+			<DEFINITION>
+				is_used(mult_saturation) ||
+				is_used(accum_saturation) ||
+				multiplier_saturation == "YES" ||
+				accumulator_saturation == "YES"
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_clock0_used" >
+			<DEFINITION>
+					(input_reg_a == "clock0") || (input_reg_b == "clock0") || (multiplier_reg == "clock0") || output_reg == "clock0" ||
+					sign_reg_a == "clock0" || sign_pipeline_reg_a == "clock0" ||
+					sign_reg_b == "clock0" || sign_pipeline_reg_b == "clock0" ||
+					addnsub_reg == "clock0" || addnsub_pipeline_reg == "clock0" ||
+					accum_sload_reg == "clock0" || accum_sload_pipeline_reg == "clock0" ||
+					accum_sload_upper_data_reg == "clock0" || accum_sload_upper_data_pipeline_reg == "clock0" ||
+					mult_round_reg == "clock0" ||
+					mult_saturation_reg == "clock0" ||
+					accum_round_reg == "clock0" || accum_round_pipeline_reg == "clock0" ||
+					accum_saturation_reg == "clock0" || accum_saturation_pipeline_reg == "clock0"		
+
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_clock1_used" >
+			<DEFINITION>
+					input_reg_a == "clock1" || input_reg_b == "clock1" || multiplier_reg == "clock1" || output_reg == "clock1" ||
+					sign_reg_a == "clock1" || sign_pipeline_reg_a == "clock1" ||
+					sign_reg_b == "clock1" || sign_pipeline_reg_b == "clock1" ||
+					addnsub_reg == "clock1" || addnsub_pipeline_reg == "clock1" ||
+					accum_sload_reg == "clock1" || accum_sload_pipeline_reg == "clock1" ||
+					accum_sload_upper_data_reg == "clock1" || accum_sload_upper_data_pipeline_reg == "clock1" ||
+					mult_round_reg == "clock1" ||
+					mult_saturation_reg == "clock1" ||
+					accum_round_reg == "clock1" || accum_round_pipeline_reg == "clock1" ||
+					accum_saturation_reg == "clock1" || accum_saturation_pipeline_reg == "clock1"		
+
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_clock2_used" >
+			<DEFINITION>
+					input_reg_a == "clock2" || input_reg_b == "clock2" || multiplier_reg == "clock2" || output_reg == "clock2" ||
+					sign_reg_a == "clock2" || sign_pipeline_reg_a == "clock2" ||
+					sign_reg_b == "clock2" || sign_pipeline_reg_b == "clock2" ||
+					addnsub_reg == "clock2" || addnsub_pipeline_reg == "clock2" ||
+					accum_sload_reg == "clock2" || accum_sload_pipeline_reg == "clock2" ||
+					accum_sload_upper_data_reg == "clock2" || accum_sload_upper_data_pipeline_reg == "clock2" ||
+					mult_round_reg == "clock2" ||
+					mult_saturation_reg == "clock2" ||
+					accum_round_reg == "clock2" || accum_round_pipeline_reg == "clock2" ||
+					accum_saturation_reg == "clock2" || accum_saturation_pipeline_reg == "clock2"		
+
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_clock3_used" >
+			<DEFINITION>
+					input_reg_a == "clock3" || input_reg_b == "clock3" || multiplier_reg == "clock3" || output_reg == "clock3" ||
+					sign_reg_a == "clock3" || sign_pipeline_reg_a == "clock3" ||
+					sign_reg_b == "clock3" || sign_pipeline_reg_b == "clock3" ||
+					addnsub_reg == "clock3" || addnsub_pipeline_reg == "clock3" ||
+					accum_sload_reg == "clock3" || accum_sload_pipeline_reg == "clock3" ||
+					accum_sload_upper_data_reg == "clock3" || accum_sload_upper_data_pipeline_reg == "clock3" ||
+					mult_round_reg == "clock3" ||
+					mult_saturation_reg == "clock3" ||
+					accum_round_reg == "clock3" || accum_round_pipeline_reg == "clock3" ||
+					accum_saturation_reg == "clock3" || accum_saturation_pipeline_reg == "clock3"		
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_aclr0_used" >
+			<DEFINITION>
+					input_aclr_a == "aclr0" || input_aclr_b == "aclr0" || multiplier_aclr == "aclr0" || output_aclr == "aclr0" ||
+					sign_aclr_a == "aclr0" || sign_pipeline_aclr_a == "aclr0" ||
+					sign_aclr_b == "aclr0" || sign_pipeline_aclr_b == "aclr0" ||
+					addnsub_aclr == "aclr0" || addnsub_pipeline_aclr == "aclr0" ||
+					accum_sload_aclr == "aclr0" || accum_sload_pipeline_aclr == "aclr0" ||
+					accum_sload_upper_data_aclr == "aclr0" || accum_sload_upper_data_pipeline_aclr == "aclr0" ||
+					mult_round_aclr == "aclr0" ||
+					mult_saturation_aclr == "aclr0" ||
+					accum_round_aclr == "aclr0" || accum_round_pipeline_aclr == "aclr0" ||
+					accum_saturation_aclr == "aclr0" || accum_saturation_pipeline_aclr == "aclr0"		
+
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_aclr1_used" >
+			<DEFINITION>
+					input_aclr_a == "aclr1" || input_aclr_b == "aclr1" || multiplier_aclr == "aclr1" || output_aclr == "aclr1" ||
+					sign_aclr_a == "aclr1" || sign_pipeline_aclr_a == "aclr1" ||
+					sign_aclr_b == "aclr1" || sign_pipeline_aclr_b == "aclr1" ||
+					addnsub_aclr == "aclr1" || addnsub_pipeline_aclr == "aclr1" ||
+					accum_sload_aclr == "aclr1" || accum_sload_pipeline_aclr == "aclr1" ||
+					accum_sload_upper_data_aclr == "aclr1" || accum_sload_upper_data_pipeline_aclr == "aclr1" ||
+					mult_round_aclr == "aclr1" ||
+					mult_saturation_aclr == "aclr1" ||
+					accum_round_aclr == "aclr1" || accum_round_pipeline_aclr == "aclr1" ||
+					accum_saturation_aclr == "aclr1" || accum_saturation_pipeline_aclr == "aclr1"		
+
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_aclr2_used" >
+			<DEFINITION>
+					input_aclr_a == "aclr2" || input_aclr_b == "aclr2" || multiplier_aclr == "aclr2" || output_aclr == "aclr2" ||
+					sign_aclr_a == "aclr2" || sign_pipeline_aclr_a == "aclr2" ||
+					sign_aclr_b == "aclr2" || sign_pipeline_aclr_b == "aclr2" ||
+					addnsub_aclr == "aclr2" || addnsub_pipeline_aclr == "aclr2" ||
+					accum_sload_aclr == "aclr2" || accum_sload_pipeline_aclr == "aclr2" ||
+					accum_sload_upper_data_aclr == "aclr2" || accum_sload_upper_data_pipeline_aclr == "aclr2" ||
+					mult_round_aclr == "aclr2" ||
+					mult_saturation_aclr == "aclr2" ||
+					accum_round_aclr == "aclr2" || accum_round_pipeline_aclr == "aclr2" ||
+					accum_saturation_aclr == "aclr2" || accum_saturation_pipeline_aclr == "aclr2"		
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_aclr3_used" >
+			<DEFINITION>
+					input_aclr_a == "aclr3" || input_aclr_b == "aclr3" || multiplier_aclr == "aclr3" || output_aclr == "aclr3" ||
+					sign_aclr_a == "aclr3" || sign_pipeline_aclr_a == "aclr3" ||
+					sign_aclr_b == "aclr3" || sign_pipeline_aclr_b == "aclr3" ||
+					addnsub_aclr == "aclr3" || addnsub_pipeline_aclr == "aclr3" ||
+					accum_sload_aclr == "aclr3" || accum_sload_pipeline_aclr == "aclr3" ||
+					accum_sload_upper_data_aclr == "aclr3" || accum_sload_upper_data_pipeline_aclr == "aclr3" ||
+					mult_round_aclr == "aclr3" ||
+					mult_saturation_aclr == "aclr3" ||
+					accum_round_aclr == "aclr3" || accum_round_pipeline_aclr == "aclr3" ||
+					accum_saturation_aclr == "aclr3" || accum_saturation_pipeline_aclr == "aclr3"		
+
+			</DEFINITION>
+		</MACRO>
+
+	</MACROS>
+	<PARAMETER_RULES>
+		<PARAMETER NAME="WIDTH_A" DEFAULT_VALUE="16" >
+			<FORCE_RANGE MAX="16" MIN="4" WHEN="m_base_stratixii_features" />
+			<FORCE_VALUE TO="16" WHEN="(USE_WIZARD == ON) and m_base_stratixii_features" />
+			<FORCE_VALUE TO="16" WHEN="m_titan_dsp_block and m_base_stratixii_features" />
+		</PARAMETER>
+
+		<PARAMETER NAME="WIDTH_B" DEFAULT_VALUE="16" >
+			<FORCE_RANGE MAX="16" MIN="4" WHEN="m_stratixii_features" />
+			<FORCE_VALUE TO="16" WHEN="m_titan_dsp_block and m_base_stratixii_features" />
+			<FORCE_VALUE TO="16" WHEN="(USE_WIZARD == ON) and m_base_stratixii_features" />
+			<VALUE_RULE> ( ( (WIDTH_A + WIDTH_B) gt 17) and m_base_stratixii_features) || !m_base_stratixii_features </VALUE_RULE>
+		</PARAMETER>
+		<PARAMETER NAME="WIDTH_RESULT" DEFAULT_VALUE="48" >
+			<FORCE_RANGE MAX="WIDTH_A + WIDTH_B +16" MIN="WIDTH_A + WIDTH_B - 5" />
+			<FORCE_RANGE TO="31|32|48" WHEN="(USE_WIZARD == ON) and m_base_stratixii_features" />
+			<FORCE_VALUE TO="48" WHEN="m_titan_dsp_block and m_base_stratixii_features" />
+			<FORCE_VALUE TO="WIDTH_A + WIDTH_B + 8" WHEN="m_titan_dsp_block" />
+			<FORCE_VALUE TO="WIDTH_A + WIDTH_B + 16" WHEN="(USE_WIZARD == OFF) and m_base_stratixii_features" />
+			<FORCE_VALUE TO="WIDTH_A + WIDTH_B + 16" WHEN="!m_base_stratixii_features and is_used(accum_sload_upper_data) and mfam_family_stratixii" />
+		</PARAMETER>
+		<PARAMETER NAME="extra_multiplier_latency" >
+			<FORCE_VALUE TO="0" WHEN="(MULTIPLIER_REG == unregistered) || m_stratixii_features" />
+		</PARAMETER>
+		<PARAMETER NAME="extra_accumulator_latency" >
+			<FORCE_VALUE TO="0" WHEN="m_stratixii_features" />
+		</PARAMETER>
+
+	
+		<PARAMETER NAME="addnsub_reg" >
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(addnsub)" />
+			<VALUE_RULE> is_used(addnsub) and addnsub_reg != "UNUSED" || !is_used(addnsub) </VALUE_RULE>
+		</PARAMETER>
+		<PARAMETER NAME="addnsub_aclr" >
+			<FORCE_RANGE TO="UNUSED|str(ACLR0)" WHEN="m_cycloneii_dsp_block" />
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(addnsub) || addnsub_reg == unregistered" />
+		</PARAMETER>
+		<PARAMETER NAME="addnsub_pipeline_reg" >
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block" />
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(addnsub)" />
+			<VALUE_RULE> is_used(addnsub) and addnsub_pipeline_reg != "UNUSED" || !is_used(addnsub) </VALUE_RULE>			
+		</PARAMETER>
+		<PARAMETER NAME="addnsub_pipeline_aclr" >
+			<FORCE_RANGE TO="UNUSED|str(ACLR0)" WHEN="m_cycloneii_dsp_block" />
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(addnsub) || addnsub_pipeline_reg == unregistered" />
+		</PARAMETER>
+		<PARAMETER NAME="accum_direction" >
+			<FORCE_VALUE TO="UNUSED" WHEN="is_used(addnsub)" />
+			<FORCE_RANGE TO="ADD|SUB" WHEN="m_titan_dsp_block" />
+			<FORCE_VALUE TO="ADD" WHEN="m_titan_dsp_block and representation_a == UNSIGNED and representation_b == UNSIGNED" />
+		</PARAMETER>
+
+		<PARAMETER NAME="accum_sload_reg" >
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block" />
+			<FORCE_RANGE TO="UNREGISTERED|input_reg_a|input_reg_b" WHEN="m_titan_dsp_block" />
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(accum_sload)" />
+			<VALUE_RULE> is_used(accum_sload) and accum_sload_reg != "UNUSED" || !is_used(accum_sload) </VALUE_RULE>						
+		</PARAMETER>
+		<PARAMETER NAME="accum_sload_aclr" >
+			<FORCE_RANGE TO="UNUSED|str(ACLR0)" WHEN="m_cycloneii_dsp_block" />
+			<FORCE_VALUE TO="input_aclr_a" WHEN="m_titan_dsp_block and is_used(accum_sload) and accum_sload_reg != unregistered" />
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(accum_sload) || accum_sload_reg == unregistered" />
+		</PARAMETER>
+		<PARAMETER NAME="accum_sload_pipeline_reg" >
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block" />
+			<FORCE_RANGE TO="UNREGISTERED|multiplier_reg" WHEN="m_titan_dsp_block" />
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(accum_sload)" />
+			<VALUE_RULE> is_used(accum_sload) and accum_sload_pipeline_reg != "UNUSED" || !is_used(accum_sload) </VALUE_RULE>						
+		</PARAMETER>
+		<PARAMETER NAME="accum_sload_pipeline_aclr" >
+			<FORCE_RANGE TO="UNUSED|str(ACLR0)" WHEN="m_cycloneii_dsp_block" />
+			<FORCE_VALUE TO="multiplier_aclr" WHEN="m_titan_dsp_block and is_used(accum_sload) and accum_sload_pipeline_reg != unregistered" />
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(accum_sload) || accum_sload_pipeline_reg == unregistered" />
+		</PARAMETER>
+		
+		<PARAMETER NAME="representation_a" >
+			<FORCE_VALUE TO="SIGNED" WHEN="m_base_stratixii_features and (USE_WIZARD == ON)" />
+			<FORCE_VALUE To="UNUSED" WHEN="is_used(signa)" />
+		</PARAMETER>
+		<PARAMETER NAME="representation_b" >
+			<FORCE_VALUE TO="SIGNED" WHEN="m_base_stratixii_features and (USE_WIZARD == ON)" />
+			<FORCE_VALUE To="UNUSED" WHEN="is_used(signb)" />
+		</PARAMETER>
+
+		<PARAMETER NAME="sign_reg_a" >
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block" />
+			<FORCE_RANGE TO="UNREGISTERED|input_reg_a|input_reg_b" WHEN="m_titan_dsp_block " />
+			<FORCE_VALUE TO="accum_sload_upper_data_reg" WHEN="mfam_family_stratixii and is_used(signa) and is_used(accum_sload_upper_data) and (width_result lt (width_a + width_b + 16))" /> 
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(signa)" />
+			<VALUE_RULE> is_used(signa) and sign_reg_a != "UNUSED" || !is_used(signa) </VALUE_RULE>									
+		</PARAMETER>
+		<PARAMETER NAME="sign_aclr_a" >
+			<FORCE_VALUE TO="input_aclr_a" WHEN="m_cycloneii_dsp_block" />
+			<FORCE_VALUE TO="input_aclr_a" WHEN="m_titan_dsp_block and is_used(signa) and sign_reg_a != unregistered" />
+			<FORCE_VALUE TO="accum_sload_upper_data_aclr" WHEN="mfam_family_stratixii and is_used(signa) and is_used(accum_sload_upper_data) and (width_result lt (width_a + width_b + 16))" /> 
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(signa) || sign_reg_a == unregistered" />
+		</PARAMETER>
+		<PARAMETER NAME="sign_pipeline_reg_a" >
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block" />
+			<FORCE_RANGE TO="multiplier_reg" WHEN="m_titan_dsp_block" />
+			<FORCE_VALUE TO="accum_sload_upper_data_pipeline_reg" WHEN="mfam_family_stratixii and is_used(signa) and is_used(accum_sload_upper_data) and (width_result lt (width_a + width_b + 16))" /> 
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(signa)" />
+			<VALUE_RULE> is_used(signa) and sign_pipeline_reg_a != "UNUSED" || !is_used(signa) </VALUE_RULE>												
+		</PARAMETER>
+		<PARAMETER NAME="sign_pipeline_aclr_a" >
+			<FORCE_VALUE TO="input_aclr_a" WHEN="m_cycloneii_dsp_block" />
+			<FORCE_VALUE TO="multiplier_aclr" WHEN="m_titan_dsp_block and is_used(signa) and sign_pipeline_reg_a != unregistered" />
+			<FORCE_VALUE TO="accum_sload_upper_data_pipeline_aclr" WHEN="mfam_family_stratixii and is_used(signa) and is_used(accum_sload_upper_data) and (width_result lt (width_a + width_b + 16))" /> 
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(signa) || sign_pipeline_reg_a == unregistered" />
+		</PARAMETER>
+
+		<PARAMETER NAME="sign_reg_b" >
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block" />
+			<FORCE_RANGE TO="UNREGISTERED|input_reg_a|input_reg_b" WHEN="m_titan_dsp_block" />
+			<FORCE_VALUE TO="accum_sload_upper_data_reg" WHEN="mfam_family_stratixii and is_used(signb) and is_used(accum_sload_upper_data) and (width_result lt (width_a + width_b + 16))" /> 
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(signb)" />
+			<VALUE_RULE> is_used(signb) and sign_reg_b != "UNUSED" || !is_used(signb) </VALUE_RULE>												
+		</PARAMETER>
+		<PARAMETER NAME="sign_aclr_b" >
+			<FORCE_VALUE TO="input_aclr_a" WHEN="m_cycloneii_dsp_block" />
+			<FORCE_VALUE TO="input_aclr_a" WHEN="m_titan_dsp_block and is_used(signb) and sign_reg_b != unregistered" />
+			<FORCE_VALUE TO="accum_sload_upper_data_aclr" WHEN="mfam_family_stratixii and is_used(signb) and is_used(accum_sload_upper_data) and (width_result lt (width_a + width_b + 16))" /> 
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(signb) || sign_reg_b == unregistered" />
+		</PARAMETER>
+		<PARAMETER NAME="sign_pipeline_reg_b" >
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block" />
+			<FORCE_RANGE TO="multiplier_reg" WHEN="m_titan_dsp_block" /> 
+			<FORCE_VALUE TO="accum_sload_upper_data_pipeline_reg" WHEN="mfam_family_stratixii and is_used(signb) and is_used(accum_sload_upper_data) and (width_result lt (width_a + width_b + 16))" /> 
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(signb)" />
+			<VALUE_RULE> is_used(signb) and sign_pipeline_reg_b != "UNUSED" || !is_used(signb) </VALUE_RULE>												
+		</PARAMETER>
+		<PARAMETER NAME="sign_pipeline_aclr_b" >
+			<FORCE_RANGE TO="input_aclr_a" WHEN="m_cycloneii_dsp_block" />
+			<FORCE_VALUE TO="multiplier_aclr" WHEN="m_titan_dsp_block and is_used(signb) and sign_pipeline_reg_b != unregistered" /> 
+			<FORCE_VALUE TO="accum_sload_upper_data_pipeline_aclr" WHEN="mfam_family_stratixii and is_used(signb) and is_used(accum_sload_upper_data) and (width_result lt (width_a + width_b + 16))" /> 
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(signb) || sign_pipeline_reg_b == unregistered" />
+		</PARAMETER>
+
+		<PARAMETER NAME="output_reg" VALUE="CLOCK0|CLOCK1|CLOCK2|CLOCK3" >
+			<FORCE_VALUE TO="str(CLOCK0)" WHEN="m_cycloneii_dsp_block" />
+		</PARAMETER>
+		<PARAMETER NAME="output_aclr" >
+			<FORCE_RANGE TO="input_aclr_a" WHEN="m_cycloneii_dsp_block" />
+		</PARAMETER>
+
+		<PARAMETER NAME="multiplier_reg" >
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block" />
+		</PARAMETER>
+		<PARAMETER NAME="multiplier_aclr" >
+			<FORCE_VALUE TO="input_aclr_a" WHEN="mfam_family_cycloneii" />
+			<FORCE_VALUE TO="UNUSED" WHEN="multiplier_reg == unregistered" />
+		</PARAMETER>
+
+		<PARAMETER NAME="input_reg_a" >
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block" />
+			<FORCE_RANGE TO="str(CLOCK0)|str(CLOCK1)" WHEN="m_titan_dsp_block and (is_used(scanouta) || is_used(scanoutb))" />
+		</PARAMETER>
+		<PARAMETER NAME="input_aclr_a" >
+			<FORCE_RANGE TO="UNUSED|str(ACLR0)" WHEN="mfam_family_cycloneii" />
+			<FORCE_VALUE TO="UNUSED" WHEN="input_reg_a == unregistered" />
+		</PARAMETER>
+
+		<PARAMETER NAME="input_reg_b" >
+			<FORCE_RANGE TO="input_reg_a" WHEN="m_titan_dsp_block and is_used(scanoutb)" />
+			<FORCE_RANGE TO="UNREGISTERED|input_reg_a" WHEN="m_titan_dsp_block" />
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block" />
+		</PARAMETER>
+		<PARAMETER NAME="input_aclr_b" >
+			<FORCE_VALUE TO="input_aclr_a" WHEN="mfam_family_cycloneii" />
+			<FORCE_VALUE TO="input_aclr_a" WHEN="m_titan_dsp_block and input_reg_b !=UNREGISTERED" />
+			<FORCE_VALUE TO="UNUSED" WHEN="input_reg_b == unregistered" />
+		</PARAMETER>
+		
+		<PARAMETER NAME="multiplier_rounding" DEFAULT_VALUE="UNUSED" >
+			<FORCE_VALUE TO="VARIABLE" WHEN="is_used(mult_round)" />
+			<FORCE_VALUE TO="UNUSED" WHEN="!mfam_family_stratixii || m_titan_dsp_block" />
+			<VALUE_RULE>
+				((multiplier_rounding == "VARIABLE") and is_used(mult_round)) || (multiplier_rounding != "VARIABLE")
+			</VALUE_RULE>
+			<VALUE_RULE>
+				((multiplier_rounding == "VARIABLE") and is_used(mult_round)) || (!is_used(mult_round))
+			</VALUE_RULE>
+		</PARAMETER>
+		<PARAMETER NAME="accumulator_rounding" DEFAULT_VALUE="UNUSED" >
+			<FORCE_VALUE TO="VARIABLE" WHEN="is_used(accum_round)" />
+			<FORCE_VALUE TO="UNUSED" WHEN="!mfam_family_stratixii || m_titan_dsp_block" />
+		</PARAMETER>
+		<PARAMETER NAME="multiplier_saturation" DEFAULT_VALUE="UNUSED" >
+			<FORCE_VALUE TO="VARIABLE" WHEN="is_used(mult_saturation)" />
+			<FORCE_VALUE TO="UNUSED" WHEN="!mfam_family_stratixii || m_titan_dsp_block" />
+			<VALUE_RULE>
+				((multiplier_saturation == "VARIABLE") and is_used(mult_saturation)) || (multiplier_saturation != "VARIABLE")
+			</VALUE_RULE>
+			<VALUE_RULE>
+				((multiplier_saturation == "VARIABLE") and is_used(mult_saturation)) || (!is_used(mult_saturation))
+			</VALUE_RULE>
+		</PARAMETER>
+		<PARAMETER NAME="accumulator_saturation" DEFAULT_VALUE="UNUSED" >
+			<FORCE_VALUE TO="VARIABLE" WHEN="is_used(accum_saturation)" />
+			<FORCE_VALUE TO="UNUSED" WHEN="!mfam_family_stratixii || m_titan_dsp_block" />
+		</PARAMETER>
+		<PARAMETER NAME="port_mult_is_saturated" >
+			<FORCE_VALUE TO="USED" WHEN="is_used(mult_is_saturated)" ELSE="UNUSED" />
+		</PARAMETER>
+		<PARAMETER NAME="port_accum_is_saturated" >
+			<FORCE_VALUE TO="USED" WHEN="is_used(accum_is_saturated)" ELSE="UNUSED" />
+		</PARAMETER>
+
+
+		<PARAMETER NAME="mult_round_reg" DEFAULT_VALUE="UNUSED" >
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(mult_round)" />
+		</PARAMETER>
+		<PARAMETER NAME="mult_round_aclr" >
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(mult_round) || mult_round_reg == unregistered" />
+		</PARAMETER>
+		<PARAMETER NAME="mult_saturation_reg" >
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(mult_saturation)" />
+		</PARAMETER>
+		<PARAMETER NAME="mult_saturation_aclr" >
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(mult_saturation) || mult_saturation_reg == unregistered" />
+		</PARAMETER>
+
+		<PARAMETER NAME="accum_round_reg" >
+			<FORCE_RANGE TO="UNREGISTERED|input_reg_a|input_reg_b" WHEN="m_titan_dsp_block" />
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(accum_round)" />
+		</PARAMETER>
+		<PARAMETER NAME="accum_round_aclr" >
+			<FORCE_VALUE TO="input_aclr_a" WHEN="m_titan_dsp_block and is_used(accum_round) and accum_round_reg != unregistered" />
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(accum_round) || accum_round_reg == unregistered" />
+		</PARAMETER>
+		<PARAMETER NAME="accum_round_pipeline_reg" >
+			<FORCE_RANGE TO="UNREGISTERED|multiplier_reg" WHEN="m_titan_dsp_block" />
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(accum_round)" />
+		</PARAMETER>
+		<PARAMETER NAME="accum_round_pipeline_aclr" >
+			<FORCE_VALUE TO="multiplier_aclr" WHEN="m_titan_dsp_block and is_used(accum_round) and accum_round_pipeline_reg != unregistered" />
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(accum_round) || accum_round_pipeline_reg == unregistered" />
+		</PARAMETER>
+		<PARAMETER NAME="accum_saturation_reg" >
+			<FORCE_RANGE TO="UNREGISTERED|input_reg_a|input_reg_b" WHEN="m_titan_dsp_block" />
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(accum_saturation)" />
+		</PARAMETER>
+		<PARAMETER NAME="accum_saturation_aclr" >
+			<FORCE_VALUE TO="input_aclr_a" WHEN="m_titan_dsp_block and is_used(accum_saturation) and accum_saturation_reg != unregistered" />
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(accum_saturation) || accum_saturation_reg == unregistered" />
+		</PARAMETER>
+		<PARAMETER NAME="accum_saturation_pipeline_reg" >
+			<FORCE_RANGE TO="UNREGISTERED|multiplier_reg" WHEN="m_titan_dsp_block" />
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(accum_saturation)" />
+		</PARAMETER>
+		<PARAMETER NAME="accum_saturation_pipeline_aclr" >
+			<FORCE_RANGE TO="multiplier_aclr" WHEN="m_titan_dsp_block and is_used(accum_saturation) and accum_saturation_pipeline_reg != unregistered" />
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(accum_saturation) || accum_saturation_pipeline_reg == unregistered" />
+		</PARAMETER>
+
+		<PARAMETER NAME="accum_sload_upper_data_reg" >
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block" />
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(accum_sload_upper_data) || m_titan_dsp_block" />
+		</PARAMETER>
+		<PARAMETER NAME="accum_sload_upper_data_aclr" >
+			<FORCE_VALUE TO="input_aclr_a" WHEN="mfam_family_cycloneii" />
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(accum_sload_upper_data) || accum_sload_upper_data_reg == unregistered" />
+		</PARAMETER>
+		<PARAMETER NAME="accum_sload_upper_data_pipeline_reg" >
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block" />
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(accum_sload_upper_data)" />
+		</PARAMETER>
+		<PARAMETER NAME="accum_sload_upper_data_pipeline_aclr" >
+			<FORCE_VALUE TO="input_aclr_a" WHEN="mfam_family_cycloneii " />
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(accum_sload_upper_data) || accum_sload_upper_data_pipeline_reg == unregistered" />
+		</PARAMETER>
+
+		<PARAMETER NAME="width_upper_data" >
+			<FORCE_RANGE MAX="m_asud_max_width" MIN="1" WHEN="is_used(accum_sload_upper_data) and mfam_family_stratixii" />
+			<FORCE_RANGE MAX="width_result" MIN="1" WHEN="is_used(accum_sload_upper_data) and mfam_family_cycloneii" />
+		</PARAMETER>	
+
+	
+		<PARAMETER NAME="PORT_SIGNA" TYPE="STRING" >
+			<FORCE_VALUE TO="PORT_USED" WHEN="is_used(signa)"/>
+			<FORCE_VALUE TO="PORT_UNUSED" WHEN="!is_used(signa)"/>
+		</PARAMETER>
+
+		<PARAMETER NAME="PORT_SIGNB" TYPE="STRING" >
+			<FORCE_VALUE TO="PORT_USED" WHEN="is_used(signb)"/>
+			<FORCE_VALUE TO="PORT_UNUSED" WHEN="!is_used(signb)"/>
+		</PARAMETER>
+		<PARAMETER NAME="PORT_ADDNSUB" TYPE="STRING" >
+			<FORCE_VALUE TO="PORT_USED" WHEN="is_used(addnsub)" ELSE="PORT_UNUSED" />
+		</PARAMETER>
+
+	</PARAMETER_RULES>
+	<PORT_RULES>
+		<PORT NAME="dataa" USAGE="USED"/>
+		<PORT NAME="datab" USAGE="USED"/>
+		<PORT NAME="result" USAGE="USED"/>
+		<PORT NAME="scanina" USAGE="VARIABLE" />          
+		<PORT NAME="scaninb" USAGE="VARIABLE" />          
+		<PORT NAME="scanouta" USAGE="VARIABLE" />          
+		<PORT NAME="scanoutb" USAGE="VARIABLE" />          
+		<PORT NAME="sourcea" USAGE="VARIABLE" />          
+		<PORT NAME="sourceb" USAGE="VARIABLE" />          
+		<PORT NAME="overflow" USAGE="VARIABLE">          
+			<STATE TO="UNUSED" >
+				<WHEN> (is_used(signa) || is_used(signb)) and (m_clock_count gt 1) and (!m_stratix_mac_only) </WHEN>
+			</STATE>
+			<STATE TO="UNUSED" >
+				<WHEN> (USE_WIZARD == "ON") and (m_base_stratixii_features) </WHEN>
+			</STATE> 
+			<STATE TO="UNUSED" >
+				<WHEN> (WIDTH_RESULT lt (WIDTH_A + WIDTH_B + 1)) </WHEN>
+			</STATE> 
+		</PORT>
+		<PORT NAME="clock0" USAGE="VARIABLE">          
+			<STATE TO="USED" WHEN="m_clock0_used" />
+			<STATE TO="UNUSED" WHEN="!m_clock0_used" />
+		</PORT>
+		<PORT NAME="clock1" USAGE="VARIABLE">          
+			<STATE TO="USED" WHEN="m_clock1_used" />
+			<STATE TO="UNUSED" WHEN="!m_clock1_used" />
+		</PORT>
+		<PORT NAME="clock2" USAGE="VARIABLE">          
+			<STATE TO="USED" WHEN="m_clock2_used" />
+			<STATE TO="UNUSED" WHEN="!m_clock2_used" />
+		</PORT>
+		<PORT NAME="clock3" USAGE="VARIABLE">          
+			<STATE TO="USED" WHEN="m_clock3_used" />
+			<STATE TO="UNUSED" WHEN="!m_clock3_used" />
+		</PORT>
+
+		<PORT NAME="ena0" USAGE="VARIABLE">          
+			<STATE TO="UNUSED" WHEN="!is_used(clock0)" />
+		</PORT>
+		<PORT NAME="ena1" USAGE="VARIABLE">          
+			<STATE TO="UNUSED" WHEN="!is_used(clock1)" />
+			<STATE TO="USED" WHEN="(USE_WIZARD == ON) and is_used(clock1) and is_used(ena0)" />
+			<STATE TO="UNUSED" WHEN="(USE_WIZARD == ON) and is_used(clock1) and !is_used(ena0) and is_used(clock0)" />
+		</PORT>
+		<PORT NAME="ena2" USAGE="VARIABLE">          
+			<STATE TO="UNUSED" WHEN="!is_used(clock2)" />
+			<STATE TO="USED" WHEN="(USE_WIZARD == ON) and is_used(clock2) and (is_used(ena0) || is_used(ena1))" />
+			<STATE TO="UNUSED" WHEN="(USE_WIZARD == ON) and is_used(clock2) and ((!is_used(ena0) and is_used(clock0)) || (!is_used(ena1) and is_used(clock1)))" />
+		</PORT>
+		<PORT NAME="ena3" USAGE="VARIABLE">          
+			<STATE TO="UNUSED" WHEN="!is_used(clock3)" />
+			<STATE TO="USED" WHEN="(USE_WIZARD == ON) and is_used(clock3) and (is_used(ena0) || is_used(ena1) || is_used(ena2))" />
+			<STATE TO="UNUSED" WHEN="(USE_WIZARD == ON) and is_used(clock3) and ((!is_used(ena0) and is_used(clock0)) || (!is_used(ena1) and is_used(clock1)) || (!is_used(ena2) and is_used(clock2)))" />
+		</PORT>
+
+		<PORT NAME="aclr1" USAGE="VARIABLE">          
+			<STATE TO="USED" WHEN="m_aclr1_used" />
+			<STATE TO="UNUSED" WHEN="!m_aclr1_used" />
+		</PORT>
+		<PORT NAME="aclr2" USAGE="VARIABLE">          
+			<STATE TO="USED" WHEN="m_aclr2_used" />
+			<STATE TO="UNUSED" WHEN="!m_aclr2_used" />
+		</PORT>
+		<PORT NAME="aclr3" USAGE="VARIABLE">          
+			<STATE TO="USED" WHEN="m_aclr3_used" />
+			<STATE TO="UNUSED" WHEN="!m_aclr3_used" />
+		</PORT>
+		<PORT NAME="aclr0" USAGE="VARIABLE">          
+			<STATE TO="USED" WHEN="m_aclr0_used" />
+			<STATE TO="UNUSED" WHEN="!m_aclr0_used" />
+		</PORT>
+		<PORT NAME="signa" USAGE="VARIABLE">          
+			<STATE TO="UNUSED" WHEN="m_base_stratixii_features and (USE_WIZARD == ON)" />
+		</PORT>
+		<PORT NAME="signb" USAGE="VARIABLE">          
+			<STATE TO="UNUSED" WHEN="m_base_stratixii_features and (USE_WIZARD == ON)" />
+		</PORT>
+	
+		<PORT NAME="accum_sload" USAGE="VARIABLE" />          
+		
+		<PORT NAME="accum_sload_upper_data" USAGE="VARIABLE">          
+			<STATE TO="UNUSED" WHEN="(!mfam_family_stratixii and !mfam_family_cycloneii ) || !is_used(accum_sload)" />
+			<STATE TO="UNUSED" WHEN="is_used(scanouta) || is_used(scanoutb) || is_used(scanina) || is_used(scaninb) || accumulator == NO"/>
+		</PORT>
+		<PORT NAME="mult_round" USAGE="VARIABLE">          
+			<STATE TO="UNUSED" WHEN="!mfam_family_stratixii" />
+		</PORT>
+		<PORT NAME="mult_saturation" USAGE="VARIABLE">          
+			<STATE TO="UNUSED" WHEN="!mfam_family_stratixii" />
+		</PORT>
+		<PORT NAME="accum_round" USAGE="VARIABLE">          
+			<STATE TO="UNUSED" WHEN="!mfam_family_stratixii"  />
+			<STATE TO="UNUSED" WHEN="mfam_family_stratixiii and dedicated_multiplier_circuitry == yes"  />
+		</PORT>
+		<PORT NAME="accum_saturation" USAGE="VARIABLE">          
+			<STATE TO="UNUSED" WHEN="!mfam_family_stratixii"  />
+		</PORT>
+
+		<PORT NAME="mult_is_saturated" USAGE="VARIABLE">          
+			<STATE TO="UNUSED" WHEN="!mfam_family_stratixii || (!is_used(mult_saturation) and (multiplier_saturation != YES) and (multiplier_saturation != VARIABLE )) " />
+		</PORT>
+
+		<PORT NAME="accum_is_saturated" USAGE="VARIABLE">          
+			<STATE TO="UNUSED" WHEN="!mfam_family_stratixii || (!is_used(accum_saturation) and (accumulator_saturation != YES) and (accumulator_saturation != VARIABLE))" />
+		</PORT>
+		
+		<PORT NAME="addnsub" USAGE="VARIABLE"/>          
+		
+
+	</PORT_RULES>
+</ROOT>

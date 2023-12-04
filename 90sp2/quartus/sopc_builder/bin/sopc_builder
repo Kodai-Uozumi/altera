@@ -1,0 +1,19 @@
+#!/bin/sh
+perl "${0}_classic.pl" "-this=`dirname \"$0\"`" "$@"
+exit $?
+
+###################################################
+# Above this line is used by the command line flow
+#
+# Below this line is used by the Quartus GUI
+# The Quartus GUI looks for "#!perl" and then 
+# executes from there
+###################################################
+
+#!perl
+my $perl_file = "$ENV{QUARTUS_ROOTDIR}/sopc_builder/bin/sopc_builder_classic.pl";
+open PERL, $perl_file;
+my $code = join("", <PERL>);
+close PERL;
+
+eval($code);

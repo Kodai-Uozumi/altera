@@ -1,0 +1,95 @@
+------------------------------------------------------------------
+-- altmult_complex parameterized megafunction
+-- Generated with 'clearbox' loader - do not edit
+------------------------------------------------------------------
+
+
+-- Copyright (C) 1991-2009 Altera Corporation
+--  Your use of Altera Corporation's design tools, logic functions 
+--  and other software and tools, and its AMPP partner logic 
+--  functions, and any output files from any of the foregoing 
+--  (including device programming or simulation files), and any 
+--  associated documentation or information are expressly subject 
+--  to the terms and conditions of the Altera Program License 
+--  Subscription Agreement, Altera MegaCore Function License 
+--  Agreement, or other applicable license agreement, including, 
+--  without limitation, that your use is for the sole purpose of 
+--  programming logic devices manufactured by Altera and sold by 
+--  Altera or its authorized distributors.  Please refer to the 
+--  applicable agreement for further details.
+
+--  Version 9.0 Build 235 06/17/2009
+
+OPTIONS NAME_SUBSTITUTION = ON;
+
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+
+PARAMETERS
+(
+	IMPLEMENTATION_STYLE = "AUTO",
+	PIPELINE = 4,
+	REPRESENTATION_A = "UNSIGNED",
+	REPRESENTATION_B = "UNSIGNED",
+	WIDTH_A,
+	WIDTH_B,
+	WIDTH_RESULT,
+	CBXI_PARAMETER = "NOTHING"
+);
+FUNCTION @CBXI_PARAMETER (aclr, clock, dataa_imag[WIDTH_A-1..0], dataa_real[WIDTH_A-1..0], datab_imag[WIDTH_B-1..0], datab_real[WIDTH_B-1..0], ena)
+RETURNS (result_imag[WIDTH_RESULT-1..0], result_real[WIDTH_RESULT-1..0]);
+
+
+SUBDESIGN altmult_complex
+(
+	aclr		:	INPUT = GND;
+	clock		:	INPUT = GND;
+	dataa_imag[WIDTH_A-1..0]		:	INPUT;
+	dataa_real[WIDTH_A-1..0]		:	INPUT;
+	datab_imag[WIDTH_B-1..0]		:	INPUT;
+	datab_real[WIDTH_B-1..0]		:	INPUT;
+	ena		:	INPUT = VCC;
+	result_imag[WIDTH_RESULT-1..0]		:	OUTPUT;
+	result_real[WIDTH_RESULT-1..0]		:	OUTPUT;
+)
+VARIABLE
+	IF CBXI_PARAMETER != "NOTHING" GENERATE
+		auto_generated : @CBXI_PARAMETER WITH ( CBXI_PARAMETER = "NOTHING" );
+	END GENERATE;
+BEGIN
+	ASSERT (CBXI_PARAMETER != "NOTHING")
+	REPORT "Valid clear box generator not found or Errors encountered during clear box generation"
+	SEVERITY ERROR;
+	IF (CBXI_PARAMETER != "NOTHING") GENERATE
+		IF USED(aclr) GENERATE
+			auto_generated.aclr = aclr;
+		END GENERATE;
+		IF USED(clock) GENERATE
+			auto_generated.clock = clock;
+		END GENERATE;
+		IF USED(dataa_imag) GENERATE
+			auto_generated.dataa_imag[] = dataa_imag[];
+		END GENERATE;
+		IF USED(dataa_real) GENERATE
+			auto_generated.dataa_real[] = dataa_real[];
+		END GENERATE;
+		IF USED(datab_imag) GENERATE
+			auto_generated.datab_imag[] = datab_imag[];
+		END GENERATE;
+		IF USED(datab_real) GENERATE
+			auto_generated.datab_real[] = datab_real[];
+		END GENERATE;
+		IF USED(ena) GENERATE
+			auto_generated.ena = ena;
+		END GENERATE;
+		IF USED(result_imag) GENERATE
+			result_imag[] = auto_generated.result_imag[];
+		ELSE GENERATE
+			result_imag[] = GND;
+		END GENERATE;
+		IF USED(result_real) GENERATE
+			result_real[] = auto_generated.result_real[];
+		ELSE GENERATE
+			result_real[] = GND;
+		END GENERATE;
+	END GENERATE;
+END;

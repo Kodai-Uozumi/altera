@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+<ROOT>
+	
+	<!-- macros -->
+	<MACROS>
+		<MACRO NAME="is_non_aeb_port_used"  DEFINITION="!is_used(agb) and !is_used(ageb) and !is_used(alb) and !is_used(aleb) and !is_used(aneb) and !is_used(unordered)" />
+	</MACROS>
+	
+	<PARAMETERS>
+		<PARAMETER NAME="PIPELINE" VALUE="1-3" DEFAULT_VALUE="3" />
+		<PARAMETER NAME="WIDTH_EXP" DEFAULT_VALUE="8" >
+			<FORCE_RANGE MIN="8" MAX="31" />
+			<VALUE_RULE> 
+				(WIDTH_EXP != 9) and (WIDTH_EXP != 10)
+			</VALUE_RULE>
+		</PARAMETER>
+		<PARAMETER NAME="WIDTH_MAN" DEFAULT_VALUE="23" >
+			<FORCE_VALUE TO="23" WHEN="(WIDTH_EXP == 8)" />
+			<FORCE_RANGE MAX="52" MIN="31" WHEN="(WIDTH_EXP gt 10)" />
+			<VALUE_RULE> 
+				((WIDTH_EXP + WIDTH_MAN) lt 64)
+			</VALUE_RULE>
+			<VALUE_RULE> 
+				(WIDTH_EXP lt WIDTH_MAN)
+			</VALUE_RULE>
+		</PARAMETER>
+	</PARAMETERS>
+	
+	<PORTS>	
+		<!-- output ports -->
+		<PORT NAME="aeb" TYPE="OUTPUT" USAGE="VARIABLE" >
+			<STATE V="USED" WHEN="is_non_aeb_port_used" />
+		</PORT>
+		<PORT NAME="agb" TYPE="OUTPUT" USAGE="VARIABLE" />
+		<PORT NAME="ageb" TYPE="OUTPUT" USAGE="VARIABLE" />
+		<PORT NAME="alb" TYPE="OUTPUT" USAGE="VARIABLE" />
+		<PORT NAME="aleb" TYPE="OUTPUT" USAGE="VARIABLE" />
+		<PORT NAME="aneb" TYPE="OUTPUT" USAGE="VARIABLE" />
+		<PORT NAME="unordered" TYPE="OUTPUT" USAGE="VARIABLE" />
+
+		<!-- pipeline port -->
+		<PORT NAME="aclr" TYPE="INPUT" USAGE="VARIABLE" DEFAULT_VALUE="0" />
+		<PORT NAME="clk_en" TYPE="INPUT" USAGE="VARIABLE" DEFAULT_VALUE="1" />
+	</PORTS>
+</ROOT>

@@ -1,0 +1,157 @@
+<?xml version="1.0"?>
+<ROOT>
+	<INCLUDE FILE="mfam_family_macros.xml" />
+	<MACROS>
+		<MACRO NAME="m_ext_fb_mode">
+			<DEFINITION> 
+				( OPERATION_MODE == "EXTERNAL_FEEDBACK" )
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_normal_mode">
+			<DEFINITION> 
+				( OPERATION_MODE == "NORMAL" )
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_clock_ext_used">
+			<DEFINITION> 
+				is_used(CLOCK_EXT)
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_clock0_used">
+			<DEFINITION> 
+				is_used(CLOCK0)
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_clock1_used">
+			<DEFINITION> 
+				is_used(CLOCK1)
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_clock2_used">
+			<DEFINITION> 
+				is_used(CLOCK2)
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_c1boost_1">
+			<DEFINITION> 
+				( CLOCK1_BOOST == 1)
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_c1boost_2">
+			<DEFINITION> 
+				( CLOCK1_BOOST == 2)
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_c0_mdivd">
+			<DEFINITION> 
+				( CLOCK0_BOOST/CLOCK0_DIVIDE )
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_c1_mdivd">
+			<DEFINITION> 
+				( CLOCK1_BOOST/CLOCK1_DIVIDE )
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_pre_stx">
+			<DEFINITION> 
+				( mfam_family_apexii or mfam_family_acex1k or mfam_family_apex20kc_strict or mfam_family_apex20ke or mfam_family_flex10ke )
+			</DEFINITION>
+		</MACRO>
+	</MACROS>
+	<PARAMETER_RULES>
+		<PARAMETER NAME="CLOCK_EXT_BOOST">
+			<FORCE_VALUE TO="1|2" WHEN="(!m_pre_stx) and m_clock_ext_used"/>
+		</PARAMETER>
+		<PARAMETER NAME="CLOCK_EXT_DIVIDE">
+			<FORCE_RANGE MIN="1" MAX="CLOCK_EXT_BOOST" WHEN="(!m_pre_stx) and m_clock_ext_used" />
+		</PARAMETER>
+		<PARAMETER NAME="CLOCK_EXT_TIME_DELAY" />
+		<PARAMETER NAME="CLOCK_EXT_SETTINGS" />
+
+		<PARAMETER NAME="CLOCK0_BOOST">
+			<FORCE_VALUE TO="1" WHEN="mfam_family_flex10ke and m_clock0_used"/>
+			<FORCE_RANGE TO="1|2|4" WHEN="mfam_family_apex20k and m_clock0_used"/>
+		</PARAMETER>
+		<PARAMETER NAME="CLOCK0_DIVIDE">
+			<FORCE_VALUE TO="1" WHEN="mfam_family_flex10ke and m_clock0_used"/>
+			<FORCE_VALUE TO="1" WHEN="mfam_family_apex20k and m_clock0_used"/>
+			<FORCE_RANGE MIN="1" MAX="CLOCK0_BOOST" WHEN="(!mfam_family_apex20k and !mfam_family_flex10ke) and m_clock0_used"/>
+		</PARAMETER>
+		
+		<PARAMETER NAME="CLOCK0_TIME_DELAY" />
+		<PARAMETER NAME="CLOCK0_SETTINGS" />
+
+		<PARAMETER NAME="CLOCK1_BOOST" TYPE="INTEGER" DEFAULT_VALUE="1">
+			<FORCE_VALUE TO="2" WHEN="mfam_family_flex10ke and m_clock1_used"/>
+			<FORCE_RANGE TO="1|2" WHEN="mfam_family_flex10ke and m_clock1_used"/>
+			<FORCE_RANGE TO="1|2|4" WHEN="mfam_family_apex20k and m_clock1_used"/>
+		</PARAMETER>
+		<PARAMETER NAME="CLOCK1_DIVIDE">
+			<FORCE_VALUE TO="1" WHEN="mfam_family_flex10ke"/>
+			<FORCE_VALUE TO="1" WHEN="mfam_family_apex20k and m_clock1_used"/>
+			<FORCE_RANGE MIN="1" MAX="CLOCK1_BOOST" WHEN="(!mfam_family_apex20k and !mfam_family_flex10ke) and m_clock1_used"/>
+		</PARAMETER>
+
+		<PARAMETER NAME="CLOCK1_TIME_DELAY"/>
+		<PARAMETER NAME="CLOCK1_SETTINGS" />
+
+		<PARAMETER NAME="CLOCK2_BOOST" TYPE="INTEGER" DEFAULT_VALUE="1" />
+		<PARAMETER NAME="CLOCK2_DIVIDE" TYPE="INTEGER" DEFAULT_VALUE="1">
+			<FORCE_RANGE MIN="1" MAX="CLOCK2_BOOST" WHEN="(!m_pre_stx) and m_clock2_used"/>
+		</PARAMETER>
+		<PARAMETER NAME="CLOCK2_TIME_DELAY"/>
+		<PARAMETER NAME="CLOCK2_SETTINGS" />
+
+		<PARAMETER NAME="OUTCLOCK_PHASE_SHIFT">
+			<FORCE_VALUE TO="0" WHEN="(!m_normal_mode) and (!mfam_family_apex20k and !mfam_family_flex10ke)" />
+		</PARAMETER>
+		<PARAMETER NAME="INVALID_LOCK_CYCLES" />
+		<PARAMETER NAME="INVALID_LOCK_MULTIPLIER" />
+		<PARAMETER NAME="INCLOCK_PERIOD">
+			<FORCE_RANGE MIN="5555" MAX="40000" WHEN="m_c1boost_1 and mfam_family_flex10ke" />
+			<FORCE_RANGE MIN="11111" MAX="62500" WHEN="m_c1boost_2 and mfam_family_flex10ke" />
+			<FORCE_RANGE MIN="2000" MAX="80000" WHEN="(!mfam_family_flex10ke and !mfam_family_apex20k)" />
+			<FORCE_RANGE MIN="(2000/m_c0_mdivd)" MAX="(80000/m_c0_mdivd)" WHEN="(!mfam_family_flex10ke and !mfam_family_apex20k) and m_clock0_used" />
+			<FORCE_RANGE MIN="(2000/m_c1_mdivd)" MAX="(80000/m_c1_mdivd)" WHEN="(!mfam_family_flex10ke and !mfam_family_apex20k) and m_clock1_used" />
+		</PARAMETER>
+		<PARAMETER NAME="INCLOCK_SETTINGS" />
+
+		<PARAMETER NAME="VALID_LOCK_MULTIPLIER" />
+		<PARAMETER NAME="VALID_LOCK_CYCLES" />
+		<PARAMETER NAME="OPERATION_MODE">
+			<FORCE_VALUE TO="NORMAL|ZERO_DELAY_BUFFER|EXTERNAL_FEEDBACK|LVDS" WHEN="!mfam_family_apex20k and !mfam_family_flex10ke" />
+		</PARAMETER>
+		<PARAMETER NAME="INTENDED_DEVICE_FAMILY" />
+		<PARAMETER NAME="LPM_HINT" />
+		<PARAMETER NAME="LPM_TYPE" />
+	</PARAMETER_RULES>
+	<PORT_RULES>
+		<PORT NAME="inclocken" USAGE="VARIABLE"/>
+		<PORT NAME="inclock" IS_CLOCK_PORT="TRUE" USAGE="USED" />
+		<PORT NAME="fbin">
+			<STATE TO="USED" WHEN="m_ext_fb_mode and (!mfam_family_apex20k and !mfam_family_flex10ke)" ELSE="UNUSED" />
+		</PORT>
+
+		<PORT NAME="locked" USAGE="VARIABLE">
+			<STATE TO="USED" WHEN="m_pre_stx" />
+		</PORT>
+		<PORT NAME="clock0" USAGE="VARIABLE">
+			<STATE TO="VARIABLE" WHEN="mfam_family_flex10ke or mfam_family_apex20ke or mfam_family_apexii" />
+			<STATE TO="USED" WHEN="!m_normal_mode and (!mfam_family_flex10ke and !mfam_family_apex20k)" />
+			<STATE TO="UNUSED" WHEN="m_normal_mode and (!mfam_family_flex10ke and !mfam_family_apex20k)" />
+		</PORT>
+		<PORT NAME="clock1" USAGE="VARIABLE">
+			<STATE TO="USED" WHEN="mfam_family_flex10ke" />
+			<STATE TO="USED" WHEN="(mfam_family_apex20k or mfam_family_apex20ke or mfam_family_apexii) and !m_clock0_used" />
+		</PORT>
+		<PORT NAME="clock2" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="mfam_family_flex10ke or mfam_family_apex20k" />
+		</PORT>
+		<PORT NAME="clock_ext" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="mfam_family_flex10ke or mfam_family_apex20k" />
+			<STATE TO="USED" WHEN="!m_pre_stx and !m_normal_mode" />
+			<STATE TO="USED" WHEN="!m_pre_stx and !m_clock0_used and !m_clock1_used and !m_clock2_used" />
+	
+		</PORT>
+	</PORT_RULES>
+</ROOT>

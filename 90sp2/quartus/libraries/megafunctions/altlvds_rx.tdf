@@ -1,0 +1,1171 @@
+--------------------------------------------------------------------
+--
+--	ALTLVDS_RX Parameterized Megafunction
+--
+--
+--	Version 2.0
+--
+--------------------------------------------------------------------
+INCLUDE "apex20ke_lvds_receiver.inc";
+INCLUDE "apex20ke_pll.inc";
+INCLUDE "mercury_hssi_receiver.inc";
+INCLUDE "mercury_hssi_pll.inc";
+INCLUDE "apexii_hsdi_receiver.inc";
+INCLUDE "apexii_pll.inc";
+INCLUDE "aglobal90.inc";
+INCLUDE "stratix_lvds_receiver.inc";
+INCLUDE "stratix_pll.inc";
+INCLUDE "stratixgx_lvds_receiver.inc";
+INCLUDE "stratixgx_pll.inc";
+INCLUDE "stratixii_lvds_receiver.inc";
+INCLUDE "stratixii_clkctrl.inc";
+INCLUDE "altddio_in.inc";
+
+OPTIONS ALTERA_INTERNAL_OPTION = "REMOVE_DUPLICATE_REGISTERS=OFF";
+OPTIONS ALTERA_INTERNAL_OPTION = "SUPPRESS_DA_RULE_INTERNAL=C106";
+OPTIONS NAME_SUBSTITUTION = ON;
+
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+PARAMETERS
+(
+	NUMBER_OF_CHANNELS,
+	DESERIALIZATION_FACTOR,
+	REGISTERED_OUTPUT = "ON",
+	INCLOCK_PERIOD = 0,				-- required parameter, e.g. "50MHz" or "50000000"
+	INCLOCK_BOOST = DESERIALIZATION_FACTOR,			-- Used only for MERCURY
+	CDS_MODE = "UNUSED",
+--	CLOCK_SETTING = "UNUSED",	-- optional clock assignment name
+	INTENDED_DEVICE_FAMILY = "APEX20KE",
+	DEVICE_FAMILY,
+	PORT_RX_DATA_ALIGN = "PORT_CONNECTIVITY", -- parameter to set the port connectivity of rx_data_align
+	--STRATIX parameters
+	INPUT_DATA_RATE = 0,
+	-- input clock phase specifier are choices are DATA_EDGE_ALIGNED or DATA_CENTER_ALIGNED
+	INCLOCK_DATA_ALIGNMENT = "EDGE_ALIGNED",
+	INCLOCK_PHASE_SHIFT = 0,
+	REGISTERED_DATA_ALIGN_INPUT = "ON",
+	COMMON_RX_TX_PLL = "ON", 
+	-- STRATIXGX specific mode 
+	ENABLE_DPA_MODE = "OFF", -- Dynamic phase alignment mode is off by default
+	ENABLE_DPA_FIFO = "ON",
+	USE_DPLL_RAWPERROR = "OFF",
+	USE_CORECLOCK_INPUT = "OFF", 
+	DPLL_LOCK_COUNT = 0,
+	DPLL_LOCK_WINDOW = 0,
+	OUTCLOCK_RESOURCE = "AUTO",
+	RX_ALIGN_DATA_REG = "RISING_EDGE", 
+	DATA_ALIGN_ROLLOVER = DESERIALIZATION_FACTOR, -- Stratixii only, any integer between 1 and 11
+	LOSE_LOCK_ON_ONE_CHANGE = "OFF", -- Stratixii only, choices are "ON" and "OFF"
+	RESET_FIFO_AT_FIRST_LOCK = "ON", -- Stratixii only, choices are "ON" and "OFF"
+	USE_EXTERNAL_PLL = "OFF",	-- Stratixii only, Choices are "ON" and "OFF"
+	IMPLEMENT_IN_LES = "OFF", 	-- Stratix and StratixII only, choices are "ON" and "OFF"
+	-- clearbox only parameters
+	BUFFER_IMPLEMENTATION = "RAM",
+	DPA_INITIAL_PHASE_VALUE = 0,
+	ENABLE_DPA_ALIGN_TO_RISING_EDGE_ONLY = "OFF",
+	ENABLE_DPA_INITIAL_PHASE_SELECTION = "OFF",
+	ENABLE_SOFT_CDR_MODE = "OFF",
+	PLL_OPERATION_MODE = "NORMAL",
+	SIM_DPA_IS_NEGATIVE_PPM_DRIFT = "OFF",
+	SIM_DPA_NET_PPM_VARIATION = 0,
+	SIM_DPA_OUTPUT_CLOCK_PHASE_SHIFT = 0,
+	USE_NO_PHASE_SHIFT = "ON",
+	PORT_RX_CHANNEL_DATA_ALIGN = "PORT_CONNECTIVITY",
+	PLL_SELF_RESET_ON_LOSS_LOCK = "OFF",
+	X_ON_BITSLIP = "ON",
+	ENABLE_DPA_PLL_CALIBRATION = "OFF",
+	CBXI_PARAMETER = "NOTHING"
+);
+
+FUNCTION @CBXI_PARAMETER (pll_areset, rx_cda_reset[NUMBER_OF_CHANNELS-1..0], rx_channel_data_align[NUMBER_OF_CHANNELS-1..0], rx_coreclk[NUMBER_OF_CHANNELS-1..0], rx_data_align, rx_deskew, rx_dpll_enable[NUMBER_OF_CHANNELS-1..0], rx_dpll_hold[NUMBER_OF_CHANNELS-1..0], rx_dpll_reset[NUMBER_OF_CHANNELS-1..0], rx_enable, rx_fifo_reset[NUMBER_OF_CHANNELS-1..0], rx_in[NUMBER_OF_CHANNELS-1..0], rx_inclock, rx_pll_enable, rx_syncclock, rx_readclock, rx_reset[NUMBER_OF_CHANNELS-1..0], rx_data_align_reset, rx_dpa_lock_reset[NUMBER_OF_CHANNELS-1..0], dpa_pll_recal, pll_phasedone)
+RETURNS (rx_cda_max[NUMBER_OF_CHANNELS-1..0], rx_dpa_locked[NUMBER_OF_CHANNELS-1..0], rx_locked, rx_out[DESERIALIZATION_FACTOR*NUMBER_OF_CHANNELS-1..0], rx_outclock, rx_divfwdclk[NUMBER_OF_CHANNELS-1..0], dpa_pll_cal_busy, pll_phasestep, pll_phaseupdown, pll_phasecounterselect, pll_scanclk);
+
+FUNCTION stratixii_lvds_pll(inclk[1..0], ena, areset)
+	WITH(PLL_TYPE, VCO_MULTIPLY_BY, VCO_DIVIDE_BY, IN_PHASE_SHIFT, CLK0_MULTIPLY_BY, CLK0_DIVIDE_BY, OUT_PHASE_SHIFT, CLK1_MULTIPLY_BY, CLK1_DIVIDE_BY, INCLK0_INPUT_FREQUENCY, COMPENSATE_CLOCK, OPERATION_MODE, COMMON_RX_TX, RX_OUTCLOCK_RESOURCE)
+    RETURNS(clk[5..0], locked, sclkout[5..0], enable[1..0]);
+
+
+CONSTANT INT_DEVICE_FAMILY = USED(INTENDED_DEVICE_FAMILY) ? INTENDED_DEVICE_FAMILY :
+															DEVICE_FAMILY;
+DEFINE SIMILAR_DEVICE_FAMILY()	=	family_is_same() # 
+								(((family_base_stratix_member(INT_DEVICE_FAMILY) == 1) & (family_base_stratix_member(DEVICE_FAMILY) == 1)) ? 1 : 0) #
+								(((family_base_stratixii_member(INT_DEVICE_FAMILY) == 1) & (family_base_stratixii_member(DEVICE_FAMILY) == 1)) ? 1 : 0) #
+								(((family_base_stratixiii_member(INT_DEVICE_FAMILY) == 1) & (family_base_stratixiii_member(DEVICE_FAMILY) == 1)) ? 1 : 0) #
+								(((family_base_cyclone_member(INT_DEVICE_FAMILY) == 1) & (family_base_cyclone_member(DEVICE_FAMILY) == 1)) ? 1 : 0) #
+								(((family_base_cycloneii_member(INT_DEVICE_FAMILY) == 1) & (family_base_cycloneii_member(DEVICE_FAMILY) == 1)) ? 1 : 0) #
+								(((family_base_cycloneiii_member(INT_DEVICE_FAMILY) == 1) & (family_base_cycloneiii_member(DEVICE_FAMILY) == 1)) ? 1 : 0);
+
+DEFINE BOOL2INT(x) = (x) ? 1 : 0;
+DEFINE APEX20KE_RX_STYLE() = FAMILY_APEX20KE();	-- A APEX20KE type of LVDS?
+DEFINE MERCURY_RX_STYLE() = FAMILY_MERCURY();	-- A Mercury type of LVDS?
+DEFINE APEXII_RX_STYLE() = FAMILY_APEXII();		-- A APEXII type of LVDS?
+DEFINE VALID_RX_FAMILY() =  BOOL2INT(FAMILY_MERCURY() == 1 # 
+									 FAMILY_APEX20KE() == 1 # FAMILY_APEXII() == 1);
+
+CONSTANT OPERATION_MODE = (MERCURY_RX_STYLE() == 1) ? "ENHANCED_LVDS" : "LVDS";
+CONSTANT INT_INCLOCK_BOOST = (APEX20KE_RX_STYLE() == 1) ? DESERIALIZATION_FACTOR : 
+								(INCLOCK_BOOST == 0 ? DESERIALIZATION_FACTOR : INCLOCK_BOOST);
+DEFINE INT_CDS_MODE() = (CDS_MODE == "UNUSED" # !USED(CDS_MODE)) ? "SINGLE_BIT" : CDS_MODE;
+DEFINE WYSIWYG_CDS_MODE() = (INT_CDS_MODE() == "SINGLE_BIT") ? "single_bit" : "multiple_bit";
+
+--------------------------------------------------
+-- Parameters specific to the APEX20KE LVDS Rx	--
+--------------------------------------------------
+DEFINE APEX20KE_RX_DESER_VALID() = BOOL2INT(DESERIALIZATION_FACTOR == 4 #
+								 			DESERIALIZATION_FACTOR == 7 # 
+								 			DESERIALIZATION_FACTOR == 8 # DESERIALIZATION_FACTOR == 1);
+
+DEFINE APEX20KE_RX_NEED_HOLDREG() = BOOL2INT(DESERIALIZATION_FACTOR == 4);
+
+--------------------------------------------------
+-- Parameters specific to the APEXII LVDS Rx	--
+--------------------------------------------------
+DEFINE APEXII_RX_DESER_VALID() = BOOL2INT(DESERIALIZATION_FACTOR >= 4 &
+								   		  DESERIALIZATION_FACTOR <= 10 # DESERIALIZATION_FACTOR == 1 # DESERIALIZATION_FACTOR == 2);
+
+DEFINE APEXII_RX_INCLOCKBOOST_VALID() = BOOL2INT(INT_INCLOCK_BOOST == 1 #
+												 INT_INCLOCK_BOOST == 2 #
+												 (INT_INCLOCK_BOOST >= 4 &
+								   		  		  INT_INCLOCK_BOOST <= 10));
+
+DEFINE APEXII_RX_NEED_HOLDREG() = BOOL2INT(DESERIALIZATION_FACTOR == 4);
+
+--------------------------------------------------
+-- Parameters specific to the Mercury LVDS Rx	--
+--------------------------------------------------
+DEFINE MERCURY_RX_OPERATION_MODE() = (OPERATION_MODE == "LVDS") ? "lvds" :
+									 	(OPERATION_MODE == "ENHANCED_LVDS") ? 
+											"enhanced_lvds" : 
+											(OPERATION_MODE == "CDR") ? "cdr" : 
+																		"invalid";
+									
+DEFINE MERCURY_RX_RUN_LENGTH() = "unused"; 		-- Later, a value for CDR mode
+
+DEFINE MERCURY_RX_LVDS_DESER_VALID() = BOOL2INT(DESERIALIZATION_FACTOR == 4 #
+								 	 			DESERIALIZATION_FACTOR == 7 # 
+								 	 			DESERIALIZATION_FACTOR == 8);
+
+DEFINE MERCURY_RX_ENHLVDS_DESER_VALID() = BOOL2INT(DESERIALIZATION_FACTOR == 1 #
+												DESERIALIZATION_FACTOR == 2 #
+												DESERIALIZATION_FACTOR == 4 #
+												(DESERIALIZATION_FACTOR >= 7 &
+									   			DESERIALIZATION_FACTOR <= 12) #
+									    		DESERIALIZATION_FACTOR == 14  # 
+									    		DESERIALIZATION_FACTOR == 16  #
+								    			DESERIALIZATION_FACTOR == 18  # 
+								    			DESERIALIZATION_FACTOR == 20);
+
+DEFINE MERCURY_RX_CDR_DESER_VALID() = BOOL2INT((DESERIALIZATION_FACTOR >= 3 &
+									   			DESERIALIZATION_FACTOR <= 12) #
+									    		DESERIALIZATION_FACTOR == 14  # 
+									    		DESERIALIZATION_FACTOR == 16  #
+								    			DESERIALIZATION_FACTOR == 18  # 
+								    			DESERIALIZATION_FACTOR == 20);
+
+DEFINE MERCURY_RX_NEED_HOLDREG() = BOOL2INT(DESERIALIZATION_FACTOR == 3 #
+							 	 			DESERIALIZATION_FACTOR == 4 # 
+								 	 		DESERIALIZATION_FACTOR == 5 #
+											DESERIALIZATION_FACTOR == 6);
+
+DEFINE RX_OUTCLOCK_RESOURCE_VALUE() = OUTCLOCK_RESOURCE == "Global Clock" ? "GCLK" : (OUTCLOCK_RESOURCE == "Regional Clock" ? "LCLK" : "AUTO");
+-- some alignment constants
+CONSTANT ALIGNMENT_0 = "EDGE_ALIGNED";
+CONSTANT ALIGNMENT_45 = "45_DEGREES";
+CONSTANT ALIGNMENT_90 = "90_DEGREES";
+CONSTANT ALIGNMENT_135 = "135_DEGREES";
+CONSTANT ALIGNMENT_180 = "180_DEGREES";
+CONSTANT ALIGNMENT_225 = "225_DEGREES";
+CONSTANT ALIGNMENT_270 = "270_DEGREES";
+CONSTANT ALIGNMENT_315 = "315_DEGREES";
+CONSTANT ALIGNMENT_CENTER = "CENTER_ALIGNED";
+
+DEFINE CBX_IMPL()	= FAMILY_HAS_FLEXIBLE_LVDS() # FAMILY_STRATIXII() # ((FAMILY_STRATIX() # FAMILY_STRATIXGX()) & (IMPLEMENT_IN_LES == "ON" # USED(INCLOCK_PHASE_SHIFT)));
+
+DEFINE CBX_X2_IMPL()	= (FAMILY_CYCLONEIII() == 1);
+
+DEFINE STRATIX_M_VALUE_ACT()	=	FLOOR((((INPUT_DATA_RATE * INCLOCK_PERIOD)+ 5 *100000 )/ 1000000));
+DEFINE STRATIX_DESER_VALID()	=	BOOL2INT(DESERIALIZATION_FACTOR >= 4 & DESERIALIZATION_FACTOR <= 10  # DESERIALIZATION_FACTOR == 1 # DESERIALIZATION_FACTOR == 2);
+DEFINE STRATIXII_DESER_VALID() 	=	STRATIX_DESER_VALID() # BOOL2INT(DESERIALIZATION_FACTOR == 3);
+DEFINE STRATIX_M_VALUE()		=	USED(INPUT_DATA_RATE) ? STRATIX_M_VALUE_ACT() : (USED(INCLOCK_BOOST) ? INCLOCK_BOOST : DESERIALIZATION_FACTOR);
+DEFINE PHASE_CALC_45(i) 	=	CEIL((i * INCLOCK_PERIOD) / 8); -- The 8 is from 360 / 8 = 45
+DEFINE IN_PHASE_SHIFT() 	=	CEIL(PHASE_SHIFT()/ STRATIX_M_VALUE());
+DEFINE PHASE_SHIFT()		=	(INCLOCK_DATA_ALIGNMENT == ALIGNMENT_0)		? PHASE_CALC_45(0) :
+								(INCLOCK_DATA_ALIGNMENT == ALIGNMENT_45)	? PHASE_CALC_45(1) :
+								(INCLOCK_DATA_ALIGNMENT == ALIGNMENT_90)	? PHASE_CALC_45(2) :
+								(INCLOCK_DATA_ALIGNMENT == ALIGNMENT_135)	? PHASE_CALC_45(3) :
+								(INCLOCK_DATA_ALIGNMENT == ALIGNMENT_180)	? PHASE_CALC_45(4) :
+								(INCLOCK_DATA_ALIGNMENT == ALIGNMENT_CENTER) ? PHASE_CALC_45(4) :
+								(INCLOCK_DATA_ALIGNMENT == ALIGNMENT_225)	? PHASE_CALC_45(5) :
+								(INCLOCK_DATA_ALIGNMENT == ALIGNMENT_270)	? PHASE_CALC_45(6) :
+								%(INCLOCK_DATA_ALIGNMENT == ALIGNMENT_315)	% PHASE_CALC_45(7);
+
+DEFINE STRATIXGX_DPLL_LOCK_COUNT() = USE_DPLL_RAWPERROR == "ON" ? 0 : (USED(DPLL_LOCK_COUNT) ? DPLL_LOCK_COUNT : 0);
+DEFINE STRATIXGX_DPLL_LOCK_WINDOW() = USED(DPLL_LOCK_WINDOW) ? DPLL_LOCK_WINDOW : ( INPUT_DATA_RATE < 155 ? 800 : (INPUT_DATA_RATE <= 311 ? 400 : (INPUT_DATA_RATE <= 622 ? 200 : 100 )));
+
+DEFINE VALID_DDIO_FAMILY() = BOOL2INT(FAMILY_MERCURY() == 1 # FAMILY_APEXII() == 1 # FAMILY_STRATIX() == 1);
+
+
+DEFINE RX_DATA_ALIGN_IS_USED() = (PORT_RX_DATA_ALIGN == "PORT_USED") ? 1 : ((PORT_RX_DATA_ALIGN == "PORT_UNUSED") ? 0 : (USED(rx_data_align) ? 1 : 0));
+
+SUBDESIGN altlvds_rx
+(
+	rx_in[NUMBER_OF_CHANNELS-1..0]					: INPUT;
+	rx_inclock										: INPUT;
+	rx_syncclock										: INPUT = GND;
+	rx_readclock										: INPUT = GND;
+	rx_enable										: INPUT = VCC;
+	rx_deskew										: INPUT = GND;
+	rx_pll_enable									: INPUT = VCC;
+	rx_data_align									: INPUT = GND;
+	rx_data_align_reset								: INPUT = GND;
+	rx_reset[NUMBER_OF_CHANNELS-1..0]				: INPUT = GND;
+	rx_dpll_reset[NUMBER_OF_CHANNELS-1..0]			: INPUT = GND;	
+	rx_dpll_hold[NUMBER_OF_CHANNELS-1..0]			: INPUT = GND;	
+	rx_dpll_enable[NUMBER_OF_CHANNELS-1..0]			: INPUT = VCC;
+	rx_fifo_reset[NUMBER_OF_CHANNELS-1..0]			: INPUT = GND;					
+	rx_channel_data_align[NUMBER_OF_CHANNELS-1..0]	: INPUT = GND;
+	rx_cda_reset[NUMBER_OF_CHANNELS-1..0]	: INPUT = GND;	
+	rx_coreclk[NUMBER_OF_CHANNELS-1..0]				: INPUT = VCC;
+	pll_areset										: INPUT = GND;
+	pll_phasedone									: INPUT = VCC;
+	rx_dpa_lock_reset[NUMBER_OF_CHANNELS-1..0]		: INPUT = GND;
+	dpa_pll_recal									: INPUT = GND;
+	
+	rx_out[DESERIALIZATION_FACTOR*NUMBER_OF_CHANNELS-1..0]	: OUTPUT;
+	rx_outclock												: OUTPUT;
+	rx_locked												: OUTPUT;
+	rx_dpa_locked[NUMBER_OF_CHANNELS-1..0]					: OUTPUT;
+	rx_cda_max[NUMBER_OF_CHANNELS-1..0]		: OUTPUT;
+	rx_divfwdclk[NUMBER_OF_CHANNELS-1..0]					: OUTPUT;
+	dpa_pll_cal_busy										: OUTPUT;
+	pll_phaseupdown											: OUTPUT;
+	pll_phasestep											: OUTPUT;
+	pll_phasecounterselect[3..0]							: OUTPUT;
+	pll_scanclk												: OUTPUT;
+)
+
+
+VARIABLE
+	IF (DESERIALIZATION_FACTOR == 1) & (FAMILY_HAS_SERDES_BLOCK() # FAMILY_HAS_FLEXIBLE_LVDS()) GENERATE
+		IF (REGISTERED_OUTPUT == "ON") GENERATE
+			rxreg[NUMBER_OF_CHANNELS-1..0] : DFF;
+		END GENERATE;
+	ELSE GENERATE
+	IF (DESERIALIZATION_FACTOR == 2) & (FAMILY_HAS_DDIO()) & (CBX_X2_IMPL() == 0) GENERATE
+		rx_deser_2 : altddio_in WITH (
+									WIDTH = NUMBER_OF_CHANNELS,
+									INTENDED_DEVICE_FAMILY = INTENDED_DEVICE_FAMILY	 );		
+		ddio_in_node[2*NUMBER_OF_CHANNELS-1..0] : NODE;
+		IF (REGISTERED_OUTPUT == "ON") GENERATE
+			rxreg[2*NUMBER_OF_CHANNELS-1..0] : DFF;
+		END GENERATE;
+	ELSE GENERATE
+		IF (CBX_IMPL()) & (CBXI_PARAMETER != "NOTHING") GENERATE
+			auto_generated : @CBXI_PARAMETER WITH ( CBXI_PARAMETER = "NOTHING" );		
+		-- regular LVDS megafunction
+		ELSE GENERATE
+		IF (VALID_RX_FAMILY()) GENERATE
+			-- This function becomes just a wire if DESERIALIZATION_FACTOR is 1
+			IF (DESERIALIZATION_FACTOR > 1) GENERATE	
+				outclock_node : GLOBAL;
+				outclock : WIRE;
+				locked : WIRE;
+
+				-- Instatiate LVDS receiver channels
+				IF (APEX20KE_RX_STYLE() == 1) GENERATE
+					-- APEX20Ke receiver/PLL
+					rx[NUMBER_OF_CHANNELS-1..0]	: apex20ke_lvds_receiver WITH 
+												(CHANNEL_WIDTH = DESERIALIZATION_FACTOR);
+				
+					pll	: apex20ke_pll WITH (clk0_multiply_by = DESERIALIZATION_FACTOR, 
+											 clk1_multiply_by = 1, 
+											 input_frequency = INCLOCK_PERIOD,
+											 operation_mode = "lvds");
+				
+				ELSE GENERATE
+					IF (APEXII_RX_STYLE() == 1) GENERATE
+						-- APEXII receiver/PLL
+						rx[NUMBER_OF_CHANNELS-1..0]	: apexii_hsdi_receiver WITH 
+													(CHANNEL_WIDTH = DESERIALIZATION_FACTOR,
+													CDS_MODE = WYSIWYG_CDS_MODE());
+					
+						pll	: apexii_pll WITH (clk0_multiply_by = INT_INCLOCK_BOOST, 
+											   clk1_multiply_by = 1,
+											   clk2_multiply_by = INT_INCLOCK_BOOST,
+											   clk2_divide_by = DESERIALIZATION_FACTOR,
+											   input_frequency = INCLOCK_PERIOD,
+											   operation_mode = "lvds");
+										
+					ELSE GENERATE
+						IF (MERCURY_RX_STYLE() == 1) GENERATE
+							-- Mercury receiver/PLL
+							rx[NUMBER_OF_CHANNELS-1..0]	: mercury_hssi_receiver WITH 
+														(channel_width = DESERIALIZATION_FACTOR,
+														 operation_mode = MERCURY_RX_OPERATION_MODE(),
+														 run_length = MERCURY_RX_RUN_LENGTH());		
+																
+							pll	: mercury_hssi_pll WITH (clk0_multiply_by = INT_INCLOCK_BOOST, 
+														 input_frequency = INCLOCK_PERIOD);
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+				
+				-- Need to register the outputs?
+				IF (REGISTERED_OUTPUT == "ON") GENERATE
+					rxreg[DESERIALIZATION_FACTOR*NUMBER_OF_CHANNELS-1..0] : DFF;
+				ELSE GENERATE
+					rxreg[DESERIALIZATION_FACTOR*NUMBER_OF_CHANNELS-1..0] : NODE;
+				END GENERATE;
+			
+				-- Need hold time registers?
+				IF ((APEX20KE_RX_STYLE() == 1 & APEX20KE_RX_NEED_HOLDREG() == 1) #
+					(APEXII_RX_STYLE() == 1 & APEXII_RX_NEED_HOLDREG() == 1) #
+					(MERCURY_RX_STYLE() == 1 & MERCURY_RX_NEED_HOLDREG() == 1)) GENERATE
+					holdreg[DESERIALIZATION_FACTOR*NUMBER_OF_CHANNELS-1..0] : DFF;
+				ELSE GENERATE
+					holdreg[DESERIALIZATION_FACTOR*NUMBER_OF_CHANNELS-1..0] : NODE;
+				END GENERATE;
+			END GENERATE;
+		ELSE GENERATE
+			IF FAMILY_STRATIXII() == 1 GENERATE
+				IF (ENABLE_DPA_MODE == "ON") GENERATE
+					rx[NUMBER_OF_CHANNELS-1..0] : stratixii_lvds_receiver WITH
+														(
+															CHANNEL_WIDTH = DESERIALIZATION_FACTOR,
+															ENABLE_DPA = "ON",
+															DATA_ALIGN_ROLLOVER = DATA_ALIGN_ROLLOVER,
+															LOSE_LOCK_ON_ONE_CHANGE = LOSE_LOCK_ON_ONE_CHANGE,
+															RESET_FIFO_AT_FIRST_LOCK = RESET_FIFO_AT_FIRST_LOCK		
+														);													
+				ELSE GENERATE
+					rx[NUMBER_OF_CHANNELS-1..0] : stratixii_lvds_receiver WITH
+														(
+															CHANNEL_WIDTH = DESERIALIZATION_FACTOR,
+															ENABLE_DPA = "OFF",
+															DATA_ALIGN_ROLLOVER = DATA_ALIGN_ROLLOVER
+														);													
+
+				END GENERATE;														
+				IF (USE_EXTERNAL_PLL == "OFF") GENERATE
+					IF (ENABLE_DPA_MODE == "ON") GENERATE			
+						pll : stratixii_lvds_pll WITH 
+									(	
+										PLL_TYPE = "FAST",	
+										VCO_MULTIPLY_BY = STRATIX_M_VALUE(),
+										VCO_DIVIDE_BY = 1,
+										CLK0_MULTIPLY_BY = STRATIX_M_VALUE(),
+										CLK0_DIVIDE_BY = DESERIALIZATION_FACTOR,
+										INCLK0_INPUT_FREQUENCY = INCLOCK_PERIOD,
+										COMPENSATE_CLOCK = "LVDSCLK",
+										OPERATION_MODE="NORMAL",
+										COMMON_RX_TX = COMMON_RX_TX_PLL,
+										IN_PHASE_SHIFT = IN_PHASE_SHIFT(),
+										RX_OUTCLOCK_RESOURCE = RX_OUTCLOCK_RESOURCE_VALUE()
+										);
+					ELSE GENERATE
+						pll : stratixii_lvds_pll WITH 
+										(	
+										PLL_TYPE = "FAST",	
+										VCO_MULTIPLY_BY = STRATIX_M_VALUE(),
+										VCO_DIVIDE_BY = 1,
+										IN_PHASE_SHIFT = IN_PHASE_SHIFT(),
+										CLK0_MULTIPLY_BY = STRATIX_M_VALUE(),
+										CLK0_DIVIDE_BY = DESERIALIZATION_FACTOR,
+										INCLK0_INPUT_FREQUENCY = INCLOCK_PERIOD,
+										COMPENSATE_CLOCK = "LVDSCLK",
+										OPERATION_MODE="NORMAL",
+										COMMON_RX_TX = COMMON_RX_TX_PLL,
+										RX_OUTCLOCK_RESOURCE = RX_OUTCLOCK_RESOURCE_VALUE()									
+										);
+					END GENERATE;
+					rx_outclock_buf : stratixii_clkctrl WITH
+										( clock_type = RX_OUTCLOCK_RESOURCE_VALUE());
+				END GENERATE;
+				IF REGISTERED_OUTPUT == "ON" GENERATE
+					rxreg[DESERIALIZATION_FACTOR * NUMBER_OF_CHANNELS -1..0] : DFF;				
+				END GENERATE;									
+				IF ((RX_DATA_ALIGN_IS_USED() == 1) & !USED(rx_channel_data_align)) GENERATE
+						IF REGISTERED_DATA_ALIGN_INPUT == "ON" & USE_EXTERNAL_PLL == "OFF" GENERATE
+							rx_data_align_reg[NUMBER_OF_CHANNELS-1..0] 	: DFF;
+						END GENERATE;
+				END GENERATE;
+			ELSE GENERATE
+			IF FAMILY_STRATIXGX() == 1 & ENABLE_DPA_MODE == "ON" GENERATE
+				rx[NUMBER_OF_CHANNELS-1..0] : stratixgx_lvds_receiver WITH
+														(
+															CHANNEL_WIDTH = DESERIALIZATION_FACTOR,
+															USE_ENABLE1 = "FALSE",
+															ENABLE_DPA = "ON",
+															ENABLE_FIFO = ENABLE_DPA_FIFO,
+															DPLL_RAWPERROR = USE_DPLL_RAWPERROR,
+															DPLL_LOCKWIN = STRATIXGX_DPLL_LOCK_WINDOW(),
+															DPLL_LOCKCNT = STRATIXGX_DPLL_LOCK_COUNT()
+														);													
+				pll : stratixgx_pll WITH 
+									(	
+										PLL_TYPE = "FAST",	
+										CLK0_MULTIPLY_BY = STRATIX_M_VALUE(),
+										CLK0_DIVIDE_BY = 1,
+										CLK2_MULTIPLY_BY = STRATIX_M_VALUE(),
+										CLK2_DIVIDE_BY = DESERIALIZATION_FACTOR,
+										INCLK0_INPUT_FREQUENCY = INCLOCK_PERIOD,
+										COMPENSATE_CLOCK = "LVDSCLK",
+										OPERATION_MODE="NORMAL",
+										COMMON_RX_TX = COMMON_RX_TX_PLL,
+										RX_OUTCLOCK_RESOURCE = RX_OUTCLOCK_RESOURCE_VALUE()
+										);
+				IF REGISTERED_OUTPUT == "ON" GENERATE
+					rxreg[DESERIALIZATION_FACTOR * NUMBER_OF_CHANNELS -1..0] : DFF;				
+				END GENERATE;									
+				
+			ELSE GENERATE
+				IF FAMILY_STRATIX() GENERATE -- Stratix and Stratix GX Non DPA mode
+					IF FAMILY_STRATIXGX() == 1 GENERATE
+						rx[NUMBER_OF_CHANNELS-1..0] : stratixgx_lvds_receiver WITH 
+															(
+																CHANNEL_WIDTH = DESERIALIZATION_FACTOR,
+																USE_ENABLE1 = ((RX_DATA_ALIGN_IS_USED() == 1) ? "TRUE" : "FALSE"),
+																ENABLE_DPA = "OFF"
+															);
+					ELSE GENERATE
+						rx[NUMBER_OF_CHANNELS-1..0] : stratix_lvds_receiver WITH 
+															(
+																CHANNEL_WIDTH = DESERIALIZATION_FACTOR,
+																USE_ENABLE1 = ((RX_DATA_ALIGN_IS_USED() == 1) ? "TRUE" : "FALSE")
+															);
+					END GENERATE;
+					IF FAMILY_STRATIXGX() == 1 GENERATE				
+						pll : stratixgx_pll WITH 
+										(	
+										PLL_TYPE = "FAST",	
+										CLK0_MULTIPLY_BY = STRATIX_M_VALUE(),
+										CLK0_DIVIDE_BY = 1,
+										CLK0_PHASE_SHIFT = IN_PHASE_SHIFT(),
+										CLK1_MULTIPLY_BY = STRATIX_M_VALUE(),
+										CLK1_DIVIDE_BY = 1,
+										CLK1_PHASE_SHIFT = IN_PHASE_SHIFT(),
+										CLK2_MULTIPLY_BY = STRATIX_M_VALUE(),
+										CLK2_DIVIDE_BY = DESERIALIZATION_FACTOR,
+										CLK2_PHASE_SHIFT = IN_PHASE_SHIFT(),
+										INCLK0_INPUT_FREQUENCY = INCLOCK_PERIOD,
+										COMPENSATE_CLOCK = "LVDSCLK",
+										OPERATION_MODE="NORMAL",
+										COMMON_RX_TX = COMMON_RX_TX_PLL,
+										RX_OUTCLOCK_RESOURCE = RX_OUTCLOCK_RESOURCE_VALUE()									
+										);
+					ELSE GENERATE
+						pll : stratix_pll WITH 
+										(	
+										PLL_TYPE = "FAST",	
+										CLK0_MULTIPLY_BY = STRATIX_M_VALUE(),
+										CLK0_DIVIDE_BY = 1,
+										CLK0_PHASE_SHIFT = IN_PHASE_SHIFT(),
+										CLK1_MULTIPLY_BY = STRATIX_M_VALUE(),
+										CLK1_DIVIDE_BY = 1,
+										CLK1_PHASE_SHIFT = IN_PHASE_SHIFT(),
+										CLK2_MULTIPLY_BY = STRATIX_M_VALUE(),
+										CLK2_DIVIDE_BY = DESERIALIZATION_FACTOR,
+										CLK2_PHASE_SHIFT = IN_PHASE_SHIFT(),
+										INCLK0_INPUT_FREQUENCY = INCLOCK_PERIOD,
+										COMPENSATE_CLOCK = "LVDSCLK",
+										OPERATION_MODE="NORMAL",
+										COMMON_RX_TX = COMMON_RX_TX_PLL,
+										RX_OUTCLOCK_RESOURCE = RX_OUTCLOCK_RESOURCE_VALUE()									
+										);
+					END GENERATE;								
+					IF REGISTERED_OUTPUT == "ON" GENERATE
+						rxreg[DESERIALIZATION_FACTOR * NUMBER_OF_CHANNELS -1..0] : DFF;				
+					END GENERATE;									
+					IF (RX_DATA_ALIGN_IS_USED() == 1) GENERATE
+						IF REGISTERED_DATA_ALIGN_INPUT == "ON" GENERATE
+							rx_data_align_reg 	: DFF;
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+			END GENERATE; -- StratixII
+		END GENERATE;
+		END GENERATE; -- CBXI
+	END GENERATE;
+	END GENERATE;
+BEGIN
+	ASSERT	(INCLOCK_DATA_ALIGNMENT == ALIGNMENT_0) # (INCLOCK_DATA_ALIGNMENT == ALIGNMENT_45) #
+			(INCLOCK_DATA_ALIGNMENT == ALIGNMENT_90) # (INCLOCK_DATA_ALIGNMENT == ALIGNMENT_135) #
+			(INCLOCK_DATA_ALIGNMENT == ALIGNMENT_180) # (INCLOCK_DATA_ALIGNMENT == ALIGNMENT_225) #
+			(INCLOCK_DATA_ALIGNMENT == ALIGNMENT_270) # (INCLOCK_DATA_ALIGNMENT == ALIGNMENT_315) # (INCLOCK_DATA_ALIGNMENT == ALIGNMENT_CENTER)
+		REPORT "INCLOCK_DATA_ALIGNMENT(%) is set to an illegal value." INCLOCK_DATA_ALIGNMENT
+		SEVERITY ERROR
+		HELP_ID ALTLVDS_ILLEGAL_ALIGNMENT;
+
+	-- Cause: The user has assigned zero or a negative value to this parameter 
+	-- Action: Choose a positive integer for this parameter
+	ASSERT (NUMBER_OF_CHANNELS > 0)
+			REPORT "Value of NUMBER_OF_CHANNELS parameter must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID ALTLVDS_RX_CHANNEL_NUM;
+
+	-- Cause: The only legal values for APEX20KE DESERIALIZATION_FACTOR are 4, 7, 8
+	-- Action: Chose one of these values
+	ASSERT (!((APEX20KE_RX_STYLE() == 1 & APEX20KE_RX_DESER_VALID() == 0)))
+		REPORT "Illegal value for DESERIALIZATION_FACTOR parameter (%) -- value must be 4, 7, or 8"
+			DESERIALIZATION_FACTOR
+		SEVERITY ERROR
+		HELP_ID ALTLVDS_RX_DESERIALIZATION_FACTOR;
+
+	-- Cause: The only legal values for APEX II DESERIALIZATION_FACTOR are 4-10
+	-- Action: Chose one of these values
+	ASSERT (!((APEXII_RX_STYLE() == 1 & APEXII_RX_DESER_VALID() == 0)))
+		REPORT "Illegal value for DESERIALIZATION_FACTOR parameter (%) -- value must be in the range 4 to 10, inclusive"
+			DESERIALIZATION_FACTOR
+		SEVERITY ERROR
+		HELP_ID ALTLVDS_RX_APEXII_DESERIALIZATION_FACTOR;
+
+	-- Cause: The only legal values for INCLOCK_BOOST in APEX II are 1, 2, 4-10
+	-- Action: Chose one of these values
+	ASSERT (!(APEXII_RX_STYLE() == 1 & APEXII_RX_INCLOCKBOOST_VALID() == 0))
+		REPORT "Illegal value for INCLOCK_BOOST parameter (%) -- value must be 1, 2, or in the range 4 to 10, inclusive"
+			INCLOCK_BOOST
+		SEVERITY ERROR
+		HELP_ID ALTLVDS_RX_APEXII_LVDS_INCLOCK_BOOST_FACTOR;
+
+	-- Cause: Use of CDS_MODE parameter is not supported in a non-APEX II logic family device
+	-- Action: Do not use this parameter for non-APEX II logic families. Otherwise, it will be ignored
+	ASSERT (!(APEXII_RX_STYLE() != 1 & USED(CDS_MODE)))
+    	    REPORT "CDS_MODE parameter is supported only in APEX II logic device family. The parameter is ignored"
+        	SEVERITY WARNING
+        	HELP_ID ALTLVDS_RX_CDS_MODE_USED;
+
+	-- Cause: The user has assigned an invalid value to the CDS_MODE parameter 
+	-- Action: Choose "SINGLE_BIT", "MULTIPLE_BIT", or "UNUSED"			
+	ASSERT (!(APEXII_RX_STYLE() == 1 & !(CDS_MODE == "UNUSED" # CDS_MODE == "SINGLE_BIT" # CDS_MODE == "MULTIPLE_BIT")))
+			REPORT "Illegal value for CDS_MODE parameter (%) -- value must be SINGLE_BIT (the default), MULTIPLE_BIT, or UNUSED"
+				CDS_MODE
+			SEVERITY ERROR
+			HELP_ID ALTLVDS_RX_CDS_MODE;
+
+	-- Cause: The only legal values for DESERIALIZATION_FACTOR in Mercury
+	-- in LVDS mode are 4, 7, 8
+	-- Action: Chose one of these values
+	ASSERT (!(MERCURY_RX_STYLE() == 1 & MERCURY_RX_OPERATION_MODE() == "lvds" &
+			  MERCURY_RX_LVDS_DESER_VALID() == 0))
+		REPORT "Illegal value for DESERIALIZATION_FACTOR parameter (%) -- value must be 4, 7, or 8"
+			DESERIALIZATION_FACTOR
+		SEVERITY ERROR
+		HELP_ID ALTLVDS_RX_MERCURY_LVDS_DESERIALIZATION_FACTOR;
+
+	-- Cause: The only legal values for DESERIALIZATION_FACTOR are 4, 7-12, 14, 16, 18, and 20
+	-- Action: Chose one of these values
+	ASSERT (!(MERCURY_RX_STYLE() == 1 & MERCURY_RX_OPERATION_MODE() == "enhanced_lvds" &
+			  MERCURY_RX_ENHLVDS_DESER_VALID() == 0))
+		REPORT "Illegal value for DESERIALIZATION_FACTOR parameter (%) -- value must be in the range 7 to 12, inclusive, or must be one of 4, 14, 16, 18, or 20"
+			DESERIALIZATION_FACTOR
+		SEVERITY ERROR
+		HELP_ID ALTLVDS_RX_MERCURY_ENHLVDS_DESERIALIZATION_FACTOR;
+
+	-- Cause: The only legal values for DESERIALIZATION_FACTOR are 1-12, 14, 16, 18, 20
+	-- Action: Chose one of these values
+	ASSERT (!(MERCURY_RX_STYLE() == 1 & MERCURY_RX_OPERATION_MODE() == "cdr" &
+			  MERCURY_RX_CDR_DESER_VALID() == 0))
+		REPORT "Illegal value for DESERIALIZATION_FACTOR parameter (%) -- value must be in the range 1 to 12, inclusive, or must be one of 14, 16, 18, or 20"
+			DESERIALIZATION_FACTOR
+		SEVERITY ERROR
+		HELP_ID ALTLVDS_RX_MERCURY_CDR_DESERIALIZATION_FACTOR;
+
+	-- Cause: The user has specified the APEX20KE device logic family but has assigned a value to the INCLOCK_BOOST parameter.
+	-- Action: Do not assign any value to this parameter
+	ASSERT (!(APEX20KE_RX_STYLE() == 1 & USED(INCLOCK_BOOST) & INCLOCK_BOOST != 0))
+		REPORT "The INCLOCK_BOOST parameter is not supported in APEX20KE device logic family and should be left unused"
+		SEVERITY ERROR
+		HELP_ID ALTLVDS_RX_MERCURY_INCLOCK_BOOST;
+
+	-- Cause: The rx_deskew input port may not be used in the Mercury logic family
+	-- Action: Disconnect the rx_deskew input port and leave unconnected
+	ASSERT (!(MERCURY_RX_STYLE() == 1 & USED(rx_deskew)))
+		REPORT "rx_deskew input port is not supported in Mercury logic family"
+		SEVERITY ERROR
+		HELP_ID ALTLVDS_RX_MERCURY_DESKEW_USED;
+
+	-- Cause: The user has assigned an invalid mode of LVDS Rx operation. 
+	-- Action: Choose "LVDS", "ENHANCED_LVDS", or "CDR"
+	ASSERT (!(MERCURY_RX_STYLE() == 1 & MERCURY_RX_OPERATION_MODE() == "invalid"))
+			REPORT "Illegal value for OPERATION_MODE parameter (%) -- value must be LVDS (the default), ENHANCED_LVDS, or CDR"
+				OPERATION_MODE
+			SEVERITY ERROR
+			HELP_ID ALTLVDS_RX_OPERATION_MODE;
+
+	-- Cause: The user has assigned an invalid value to the REGISTERED_OUTPUT parameter 
+	-- Action: Choose "ON" (for registered outputs) or "OFF" (for unregistered outputs)			
+	ASSERT (REGISTERED_OUTPUT == "ON" # REGISTERED_OUTPUT == "OFF")
+			REPORT "Illegal value for REGISTERED_OUTPUT parameter (%) -- value must be ON (the default) or OFF"
+				REGISTERED_OUTPUT
+			SEVERITY ERROR
+			HELP_ID ALTLVDS_RX_REGISTERED_OUTPUT;
+
+	-- Cause: The user has specified a non- APEX20KE, Mercury, or Stratix logic family for this megafunction.
+	--		  ALTLVDS_RX is currently supported only in APEX20KE, APEXII, Mercury, and Stratix logic families.
+	-- Action: Change the logic family setting to APEX20KE or Mercury
+	ASSERT (FAMILY_HAS_SERDES_BLOCK() # FAMILY_HAS_FLEXIBLE_LVDS())
+			REPORT "Megafunction altlvds_rx is not supported in %" DEVICE_FAMILY
+			SEVERITY ERROR
+			HELP_ID ALTLVDS_RX_INVALID_FAMILY;
+	ASSERT (USED(pll_areset) & FAMILY_STRATIX() == 1 # !USED(pll_areset))
+		REPORT "pll_areset port is valid only for Stratix device families"
+		SEVERITY ERROR
+		HELP_ID ALTLVDS_PLL_ARESET_USE;
+
+	-- Cause: The user has specified a logic family for this megafunction different
+	--		  from the intended one.
+	-- Action: Change the logic family setting to the intended logic family
+	ASSERT (INT_DEVICE_FAMILY == DEVICE_FAMILY # SIMILAR_DEVICE_FAMILY() == 1)
+			REPORT "Megafunction altlvds_rx is expecting device logic family % but is being compiled for %"
+				INTENDED_DEVICE_FAMILY, DEVICE_FAMILY
+			SEVERITY WARNING
+			HELP_ID ALTLVDS_RX_INTENDED_FAMILY;
+
+
+	IF (FAMILY_STRATIXGX() == 1) GENERATE
+	-- Cause : The user has chosen to use a port which can be used only in DPA mode for Stratix GX
+	-- Action : Disconnect the port or change the family
+	ASSERT (((FAMILY_STRATIXGX() != 1 # (FAMILY_STRATIXGX() == 1 & ENABLE_DPA_MODE == "OFF")) & !USED(rx_channel_data_align)) # FAMILY_STRATIXGX() == 1 & ENABLE_DPA_MODE == "ON")
+			REPORT "rx_channel_data_align port cannot be used for % device family in non DPA mode" DEVICE_FAMILY
+			SEVERITY ERROR
+			HELP_ID ALTLVDS_RX_STRATIXGX_CHNL_DATA_ALIGN;
+	
+	-- Cause : The user has chosen to use a port which can be used only in DPA mode for Stratix GX
+	-- Action : Disconnect the port or change the family
+	ASSERT (((FAMILY_STRATIXGX() != 1 # (FAMILY_STRATIXGX() == 1 & ENABLE_DPA_MODE == "OFF")) & !USED(rx_reset))  # FAMILY_STRATIXGX() == 1 & ENABLE_DPA_MODE == "ON")
+			REPORT "rx_reset port cannot be used for % device family in non DPA mode" DEVICE_FAMILY
+			SEVERITY ERROR
+			HELP_ID ALTLVDS_RX_STRATIXGX_RESET;
+
+	-- Cause : The user has chosen to use a port which can be used only in DPA mode for Stratix GX
+	-- Action : Disconnect the port or change the family
+	ASSERT (((FAMILY_STRATIXGX() != 1 # (FAMILY_STRATIXGX() == 1 & ENABLE_DPA_MODE == "OFF")) & !USED(rx_coreclk))  # FAMILY_STRATIXGX() == 1 & ENABLE_DPA_MODE == "ON")
+			REPORT "rx_coreclk port cannot be used for % device family in non DPA mode" DEVICE_FAMILY
+			SEVERITY ERROR
+			HELP_ID ALTLVDS_RX_STRATIXGX_CORECLK;
+
+	-- Cause : The user has chosen to use a port which can be used only in DPA mode for Stratix GX
+	-- Action : Disconnect the port or change the family
+	ASSERT (((FAMILY_STRATIXGX() != 1 # (FAMILY_STRATIXGX() == 1 & ENABLE_DPA_MODE == "OFF")) & !USED(rx_dpa_locked))  # FAMILY_STRATIXGX() == 1 & ENABLE_DPA_MODE == "ON")
+			REPORT "rx_dpa_locked output port cannot be used for % device family in non DPA mode" DEVICE_FAMILY
+			SEVERITY ERROR
+			HELP_ID ALTLVDS_RX_STRATIXGX_DPA_LOCKED;
+
+	ELSE GENERATE
+	-- Cause : The user has chosen to use a port which can be used only in DPA mode for Stratix GX
+	-- Action : Disconnect the port or change the family
+	ASSERT (FAMILY_STRATIXII() == 1 # ((FAMILY_STRATIXGX() != 1 # (FAMILY_STRATIXGX() == 1 & ENABLE_DPA_MODE == "OFF")) & !USED(rx_channel_data_align)) # FAMILY_STRATIXGX() == 1 & ENABLE_DPA_MODE == "ON" # (FAMILY_HAS_FLEXIBLE_LVDS() == 1 & IMPLEMENT_IN_LES == "ON"))
+			REPORT "rx_channel_data_align port cannot be used for % device family" DEVICE_FAMILY
+			SEVERITY ERROR
+			HELP_ID ALTLVDS_RX_STRATIXGX_CHNL_DATA_ALIGN;
+	
+	-- Cause : The user has chosen to use a port which can be used only in DPA mode for Stratix GX
+	-- Action : Disconnect the port or change the family
+	ASSERT (FAMILY_STRATIXII() == 1 # ((FAMILY_STRATIXGX() != 1 # (FAMILY_STRATIXGX() == 1 & ENABLE_DPA_MODE == "OFF")) & !USED(rx_reset))  # FAMILY_STRATIXGX() == 1 & ENABLE_DPA_MODE == "ON")
+			REPORT "rx_reset port cannot be used for % device family" DEVICE_FAMILY
+			SEVERITY ERROR
+			HELP_ID ALTLVDS_RX_STRATIXGX_RESET;
+
+	-- Cause : The user has chosen to use a port which can be used only in DPA mode for Stratix GX
+	-- Action : Disconnect the port or change the family
+	ASSERT (((FAMILY_STRATIXGX() != 1 # (FAMILY_STRATIXGX() == 1 & ENABLE_DPA_MODE == "OFF")) & !USED(rx_coreclk))  # FAMILY_STRATIXGX() == 1 & ENABLE_DPA_MODE == "ON")
+			REPORT "rx_coreclk port cannot be used for % device family" DEVICE_FAMILY
+			SEVERITY ERROR
+			HELP_ID ALTLVDS_RX_STRATIXGX_CORECLK;
+
+	-- Cause : The user has chosen to use a port which can be used only in DPA mode for Stratix GX
+	-- Action : Disconnect the port or change the family
+	ASSERT (FAMILY_STRATIXII() == 1 # ((FAMILY_STRATIXGX() != 1 # (FAMILY_STRATIXGX() == 1 & ENABLE_DPA_MODE == "OFF")) & !USED(rx_dpa_locked))  # FAMILY_STRATIXGX() == 1 & ENABLE_DPA_MODE == "ON")
+			REPORT "rx_dpa_locked output port cannot be used for % device family" DEVICE_FAMILY
+			SEVERITY ERROR
+			HELP_ID ALTLVDS_RX_STRATIXGX_DPA_LOCKED;
+	
+	END GENERATE;
+	IF FAMILY_STRATIXII() == 1 GENERATE
+		ASSERT (FAMILY_STRATIXII() != 1 # (FAMILY_STRATIXII() == 1 & !USED(rx_coreclk)))
+			REPORT "rx_coreclk port cannot be used for % device family" DEVICE_FAMILY
+			SEVERITY ERROR
+			HELP_ID ALTLVDS_RX_ARM_CORECLK;
+
+		ASSERT (FAMILY_STRATIXII() != 1 # (FAMILY_STRATIXII() == 1 & !USED(rx_deskew)))
+			REPORT "rx_deskew port cannot be used for % device family" DEVICE_FAMILY
+			SEVERITY ERROR
+			HELP_ID ALTLVDS_RX_ARM_DESKEW;
+
+		ASSERT (FAMILY_STRATIXII() != 1 # (FAMILY_STRATIXII() == 1 & !USED(rx_dpll_reset)))
+			REPORT "rx_dpll_reset port cannot be used for % device family" DEVICE_FAMILY
+			SEVERITY ERROR
+			HELP_ID ALTLVDS_RX_ARM_DPLL_RESET;
+
+		IF (!USED(rx_channel_data_align)) GENERATE
+			ASSERT (FAMILY_STRATIXII() != 1 # (FAMILY_STRATIXII() == 1 & (RX_DATA_ALIGN_IS_USED() != 1)))
+				REPORT "rx_data_align port cannot be used for % device family, the port is being connected to rx_channel_data_align port" DEVICE_FAMILY
+				SEVERITY INFO
+				HELP_ID ALTLVDS_RX_ARM_DATA_ALIGN;
+		END GENERATE;
+		
+		IF (((RX_DATA_ALIGN_IS_USED() == 1) # USED(rx_channel_data_align)) &
+			(FAMILY_STRATIX_MEMBER(INT_DEVICE_FAMILY) & !FAMILY_STRATIXII_MEMBER(INT_DEVICE_FAMILY)) &
+			(FAMILY_STRATIXII() == 1)) GENERATE
+			ASSERT (0)
+			REPORT "Data alignment on % devices introduces one bit of latency for each assertion of the data alignment signal.  In comparison, % devices remove one bit of latency for each assertion." DEVICE_FAMILY, INTENDED_DEVICE_FAMILY
+			SEVERITY WARNING
+			HELP_ID ALTLVDS_RX_ARM_BITSLIP_CONVERSION;
+		END GENERATE;			
+
+		ASSERT (FAMILY_STRATIXII() != 1 # ENABLE_DPA_MODE == "OFF" # (FAMILY_STRATIXII() == 1 & ENABLE_DPA_FIFO != "OFF"))
+			REPORT "DPA FIFO cannot be turned off for % device family" DEVICE_FAMILY
+			SEVERITY ERROR
+			HELP_ID ALTLVDS_RX_ARM_DPA_FIFO;
+
+	ELSE GENERATE
+		ASSERT (FAMILY_STRATIXII() == 1 # (FAMILY_STRATIXII() != 1 & !USED(rx_dpll_hold)))
+			REPORT "rx_dpll_hold port cannot be used for % device family" DEVICE_FAMILY
+			SEVERITY ERROR
+			HELP_ID ALTLVDS_RX_ARM_DPLL_HOLD;
+
+		ASSERT (FAMILY_STRATIXII() == 1 # (FAMILY_STRATIXII() != 1 & !USED(rx_dpll_enable)))
+			REPORT "rx_dpll_enable port cannot be used for % device family" DEVICE_FAMILY
+			SEVERITY ERROR
+			HELP_ID ALTLVDS_RX_ARM_DPLL_ENA;
+
+		ASSERT (FAMILY_STRATIXII() == 1 # (FAMILY_STRATIXII() != 1 & !USED(rx_fifo_reset)))
+			REPORT "rx_fifo_reset port cannot be used for % device family" DEVICE_FAMILY
+			SEVERITY ERROR
+			HELP_ID ALTLVDS_RX_ARM_FIFO_RESET;
+
+		ASSERT (FAMILY_STRATIXII() == 1 # (FAMILY_STRATIXII() != 1 & !USED(rx_cda_reset)) # (FAMILY_HAS_FLEXIBLE_LVDS() == 1 & IMPLEMENT_IN_LES == "ON"))
+			REPORT "rx_cda_reset port cannot be used for % device family" DEVICE_FAMILY
+			SEVERITY ERROR
+			HELP_ID ALTLVDS_RX_ARM_CHL_ALIGN_RESET;
+
+		ASSERT (FAMILY_STRATIXII() == 1 # (FAMILY_STRATIXII() != 1 & !USED(rx_cda_max)))
+			REPORT "rx_cda_max port cannot be used for % device family" DEVICE_FAMILY
+			SEVERITY ERROR
+			HELP_ID ALTLVDS_RX_ARM_CHL_ALIGN_MAX;
+
+		ASSERT (FAMILY_STRATIXII() == 1 # CBX_IMPL() == 1 # (FAMILY_STRATIXII() != 1 & CBX_IMPL() != 1 & USE_EXTERNAL_PLL == "OFF"))
+			REPORT "USE_EXTERNAL_PLL parameter must be set to OFF for % family. A PLL is always generated by megafunction to drive SERDES atoms" DEVICE_FAMILY
+			SEVERITY WARNING
+			HELP_ID ALTLVDS_NO_EXTERNAL_PLL;
+
+	END GENERATE;
+
+	IF (FAMILY_STRATIX() == 1) & (CBX_IMPL() != 1) GENERATE
+		-- Cause: The only legal values for STRATIX DESERIALIZATION_FACTOR are 4 -10
+		-- Action: Chose one of these values
+		ASSERT (FAMILY_STRATIX() == 1 & STRATIX_DESER_VALID() # FAMILY_STRATIXII() == 1 & STRATIXII_DESER_VALID())
+		REPORT "Illegal value for DESERIALIZATION_FACTOR parameter (%) for % device family" DESERIALIZATION_FACTOR, DEVICE_FAMILY
+		SEVERITY ERROR
+		HELP_ID ALTLVDS_YGR_RX_INVALID_DESER;
+
+		-- Cause: Output data rate and Inclock period have to be chosen in such a way that data rate / frequency is between 1 and 30
+		-- Action: Choose one of those values
+		ASSERT (FAMILY_STRATIX() == 1 & STRATIX_M_VALUE() >= 1 & STRATIX_M_VALUE() <= 30)
+		REPORT "Illegal values for INPUT_DATA_RATE parameter and INCLOCK_PERIOD parameter for % device family. INPUT_DATA_RATE (in Mbps) * INCLOCK_PERIOD (in microseconds) must be an integer between (1 to 30)" DEVICE_FAMILY
+		SEVERITY ERROR
+		HELP_ID ALTLVDS_YGR_RX_INVALID_M_VALUE;
+	END GENERATE;
+
+	IF (DESERIALIZATION_FACTOR == 1) & (FAMILY_HAS_SERDES_BLOCK() # FAMILY_HAS_FLEXIBLE_LVDS()) GENERATE
+		-- deser factor == 1
+		IF REGISTERED_OUTPUT == "ON" GENERATE
+			rxreg[].d = rx_in[];
+			rxreg[].clk = rx_inclock;
+			rx_out[] = rxreg[].q;
+		ELSE GENERATE
+			rx_out[] = rx_in[];
+		END GENERATE;
+		rx_outclock = rx_inclock;
+		rx_locked = VCC # (rx_deskew & GND) # rx_pll_enable;
+	ELSE GENERATE
+	IF (DESERIALIZATION_FACTOR == 2) & (FAMILY_HAS_DDIO()) & (CBX_X2_IMPL() == 0) GENERATE
+		-- DDIO instance.
+		rx_deser_2.inclock = rx_inclock;
+		rx_outclock = rx_inclock;
+		rx_deser_2.datain[] = rx_in[];
+		IF REGISTERED_OUTPUT == "ON" GENERATE
+			rxreg[].d = ddio_in_node[];
+			rxreg[].clk = rx_inclock;
+			rx_out[] = rxreg[].q;
+		ELSE GENERATE
+			rx_out[] = ddio_in_node[];
+		END GENERATE;
+		FOR i IN 0 TO NUMBER_OF_CHANNELS-1 GENERATE
+			ddio_in_node[i*2] = rx_deser_2.dataout_h[i];
+			ddio_in_node[i*2+1] = rx_deser_2.dataout_l[i];
+		END GENERATE;
+		rx_locked = VCC # (rx_deskew & GND) # rx_pll_enable;					
+	ELSE GENERATE
+		IF (CBX_IMPL()) & (CBXI_PARAMETER != "NOTHING") GENERATE
+			IF USED(pll_areset) GENERATE
+				auto_generated.pll_areset = pll_areset;
+			END GENERATE;
+			IF USED(rx_cda_max) GENERATE
+				rx_cda_max[] = auto_generated.rx_cda_max[];
+			END GENERATE;
+			IF USED(rx_cda_reset) GENERATE
+				auto_generated.rx_cda_reset[] = rx_cda_reset[];
+			END GENERATE;
+			IF USED(rx_channel_data_align) GENERATE
+				auto_generated.rx_channel_data_align[] = rx_channel_data_align[];
+			END GENERATE;
+			IF USED(rx_coreclk) GENERATE
+				auto_generated.rx_coreclk[] = rx_coreclk[];
+			END GENERATE;
+			IF USED(rx_data_align) GENERATE
+				auto_generated.rx_data_align = rx_data_align;
+			END GENERATE;
+			IF USED(rx_deskew) GENERATE
+				auto_generated.rx_deskew = rx_deskew;
+			END GENERATE;
+			IF USED(rx_dpa_locked) GENERATE
+				rx_dpa_locked[] = auto_generated.rx_dpa_locked[];
+			END GENERATE;
+			IF USED(rx_dpll_enable) GENERATE
+				auto_generated.rx_dpll_enable[] = rx_dpll_enable[];
+			END GENERATE;
+			IF USED(rx_dpll_hold) GENERATE
+				auto_generated.rx_dpll_hold[] = rx_dpll_hold[];
+			END GENERATE;
+			IF USED(rx_dpll_reset) GENERATE
+				auto_generated.rx_dpll_reset[] = rx_dpll_reset[];
+			END GENERATE;
+			IF USED(rx_enable) GENERATE
+				auto_generated.rx_enable = rx_enable;
+			END GENERATE;
+			IF USED(rx_fifo_reset) GENERATE
+				auto_generated.rx_fifo_reset[] = rx_fifo_reset[];
+			END GENERATE;
+			IF USED(rx_in) GENERATE
+				auto_generated.rx_in[] = rx_in[];
+			END GENERATE;
+			IF USED(rx_inclock) GENERATE
+				auto_generated.rx_inclock = rx_inclock;
+			END GENERATE;
+			IF USED(rx_syncclock) GENERATE
+				auto_generated.rx_syncclock = rx_syncclock;
+			END GENERATE;
+			IF USED(rx_readclock) GENERATE
+				auto_generated.rx_readclock = rx_readclock;
+			END GENERATE;
+			IF USED(rx_locked) GENERATE
+				rx_locked = auto_generated.rx_locked;
+			END GENERATE;
+			IF USED(rx_out) GENERATE
+				rx_out[] = auto_generated.rx_out[];
+			END GENERATE;
+			IF USED(rx_outclock) GENERATE
+				rx_outclock = auto_generated.rx_outclock;
+			END GENERATE;
+			IF USED(rx_pll_enable) GENERATE
+				auto_generated.rx_pll_enable = rx_pll_enable;
+			END GENERATE;
+			IF USED(rx_reset) GENERATE
+				auto_generated.rx_reset[] = rx_reset[];
+			END GENERATE;
+			IF USED(rx_divfwdclk) GENERATE
+				rx_divfwdclk[] = auto_generated.rx_divfwdclk[];
+			END GENERATE;
+			IF USED(rx_data_align_reset) GENERATE
+				auto_generated.rx_data_align_reset = rx_data_align_reset;
+			END GENERATE;
+			
+			IF USED(pll_phasedone) GENERATE
+				auto_generated.pll_phasedone = pll_phasedone;
+			END GENERATE;
+			IF USED(rx_dpa_lock_reset) GENERATE
+				auto_generated.rx_dpa_lock_reset[] = rx_dpa_lock_reset[];
+			END GENERATE;
+			IF USED(dpa_pll_recal) GENERATE
+				auto_generated.dpa_pll_recal = dpa_pll_recal;
+			END GENERATE;
+			IF USED(dpa_pll_cal_busy) GENERATE
+				dpa_pll_cal_busy = auto_generated.dpa_pll_cal_busy;
+			END GENERATE;
+			IF USED(pll_phaseupdown) GENERATE
+				pll_phaseupdown = auto_generated.pll_phaseupdown;
+			END GENERATE;
+			IF USED(pll_phasestep) GENERATE
+				pll_phasestep = auto_generated.pll_phasestep;
+			END GENERATE;
+			IF USED(pll_phasecounterselect) GENERATE
+				pll_phasecounterselect[] = auto_generated.pll_phasecounterselect[];
+			END GENERATE;
+			IF USED(pll_scanclk) GENERATE
+				pll_scanclk = auto_generated.pll_scanclk;
+			END GENERATE;
+		
+		ELSE GENERATE
+		IF (VALID_RX_FAMILY()) GENERATE
+			IF (DESERIALIZATION_FACTOR > 1) GENERATE
+				-- Connect LVDS PLL block
+				pll.clk = rx_inclock;
+
+				-- Drive LVDS channels from synchronization registers
+				rx[].datain = rx_in[];
+
+				-- Connect output data to synchronization registers if requested
+				rxreg[] = holdreg[];
+				IF (REGISTERED_OUTPUT == "ON") GENERATE
+					rxreg[].clk = outclock_node;
+				END GENERATE;
+
+				-- Connect possibly synchronized input data to hold registers if needed
+				holdreg[] = rx[].dataout[];
+
+				IF (MERCURY_RX_STYLE() == 1) GENERATE
+					outclock_node = rx[0].clkout;
+					pll.areset = !rx_pll_enable;
+
+					IF (MERCURY_RX_NEED_HOLDREG() == 1) GENERATE
+						holdreg[].clk = !outclock_node;
+					END GENERATE;
+
+					rx[].clk = pll.clk0;
+					
+				ELSE GENERATE
+					IF (APEXII_RX_STYLE() == 1) GENERATE
+					 	IF (APEXII_RX_NEED_HOLDREG() == 1) GENERATE
+							holdreg[].clk = !outclock_node;
+						END GENERATE;
+
+						pll.ena = rx_pll_enable;
+						outclock_node = pll.clk2;
+						rx[].clk0 = pll.clk0;
+						rx[].clk1 = pll.clk2;
+
+						-- Using receiver deskew input?
+						IF (USED(rx_deskew)) GENERATE
+							rx[].deskewin = rx_deskew;
+						END GENERATE;
+
+					ELSE GENERATE
+					 	IF (APEX20KE_RX_NEED_HOLDREG() == 1) GENERATE
+							holdreg[].clk = !outclock_node;
+						END GENERATE;
+
+						pll.ena = rx_pll_enable;
+						outclock_node = pll.clk1;
+						rx[].clk0 = pll.clk0;
+						rx[].clk1 = outclock_node;
+
+						-- Using receiver deskew input?
+						IF (USED(rx_deskew)) GENERATE
+							rx[].deskewin = rx_deskew;
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+		
+				-- To LVDS output pins
+				outclock = outclock_node;
+				rx_outclock = outclock;	-- x1 output clock
+				rx_out[] = rxreg[];
+				-- rename with a wire primitive
+				locked = pll.locked;
+				rx_locked = locked # rx_deskew & GND;
+			END GENERATE;
+		ELSE GENERATE
+			IF FAMILY_STRATIXII() == 1 GENERATE
+				IF (ENABLE_DPA_MODE == "ON") GENERATE				
+					IF USED(rx_reset) GENERATE
+						rx[].dpareset = rx_reset[];
+					END GENERATE;
+	--				IF USED(rx_dpll_reset) GENERATE
+	--					rx[].dpareset = rx_dpll_reset[];
+	--				END GENERATE;
+					IF USED(rx_dpll_hold) GENERATE
+						rx[].dpahold = rx_dpll_hold[];
+					END GENERATE;
+					IF USED(rx_dpll_enable) GENERATE
+						rx[].dpaswitch = rx_dpll_enable[];
+					END GENERATE;
+					IF USED(rx_fifo_reset) GENERATE
+						rx[].fiforeset = rx_fifo_reset[];
+					END GENERATE;
+					IF USED(rx_dpa_locked) GENERATE
+						rx_dpa_locked[] = rx[].dpalock;
+					END GENERATE;
+				END GENERATE;
+			
+				IF USED(rx_channel_data_align) GENERATE
+					rx[].bitslip = rx_channel_data_align[];
+				ELSE GENERATE
+					IF (RX_DATA_ALIGN_IS_USED() == 1) GENERATE
+						IF REGISTERED_DATA_ALIGN_INPUT == "ON" & USE_EXTERNAL_PLL == "OFF" GENERATE
+							rx_data_align_reg[].d = rx_data_align;
+							rx_data_align_reg[].clk = rx_outclock_buf.outclk;
+							rx[].bitslip = rx_data_align_reg[].q;
+						ELSE GENERATE
+							rx[].bitslip = rx_data_align;
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+				IF USED(rx_cda_reset) GENERATE
+					rx[].bitslipreset = rx_cda_reset[];
+				END GENERATE;
+				IF USED(rx_cda_max) GENERATE
+					rx_cda_max[] = rx[].bitslipmax;
+				END GENERATE;
+			
+	--			IF USE_CORECLOCK_INPUT == "ON" & USED(rx_coreclk) GENERATE
+--					rx[].coreclk = rx_coreclk[];
+--				ELSE GENERATE
+--					rx[].coreclk = pll.clk[2];
+--				END GENERATE;
+
+				-- Drive LVDS channels from synchronization registers
+				rx[].datain = rx_in[];
+				IF (USE_EXTERNAL_PLL == "ON") GENERATE
+					rx[].clk0 = rx_inclock;
+					rx[].enable0 = rx_enable;
+					IF REGISTERED_OUTPUT == "ON" GENERATE
+						rxreg[].d = rx[].dataout[];
+						rx_out[] = rxreg[].q;
+						rxreg[].clk = rx_inclock;
+					ELSE GENERATE
+						rx_out[] = rx[].dataout[];
+					END GENERATE;
+				ELSE GENERATE
+					IF REGISTERED_OUTPUT == "ON" GENERATE
+						rxreg[].d = rx[].dataout[];
+						rx_out[] = rxreg[].q;
+						rxreg[].clk = rx_outclock_buf.outclk;
+					ELSE GENERATE
+						rx_out[] = rx[].dataout[];
+					END GENERATE;
+					pll.inclk0 = rx_inclock;
+					rx[].clk0 = pll.sclkout[0];
+					rx[].enable0 = pll.enable0;
+					pll.ena = rx_pll_enable;
+					IF USED(rx_locked) GENERATE
+						rx_locked = pll.locked;
+					END GENERATE;
+					rx_outclock = rx_outclock_buf.outclk;
+					rx_outclock_buf.ena = VCC;
+					rx_outclock_buf.clkselect[] = GND;
+					rx_outclock_buf.inclk[0] = pll.clk[0];
+					IF USED(pll_areset) GENERATE
+						pll.areset = pll_areset;
+					END GENERATE;
+				END GENERATE;
+			ELSE GENERATE
+
+			IF FAMILY_STRATIXGX() == 1 & ENABLE_DPA_MODE == "ON" GENERATE
+				IF USED(rx_pll_enable) GENERATE
+					pll.ena = rx_pll_enable;
+				END GENERATE;
+				rx[].dpareset = rx_reset[];
+				rx[].dpllreset = rx_dpll_reset[];
+				IF USED(rx_channel_data_align) GENERATE
+					rx[].bitslip = rx_channel_data_align[];
+				END GENERATE;
+				IF USED(rx_dpa_locked) GENERATE
+					rx_dpa_locked[] = rx[].dpalock;
+				END GENERATE;
+				IF USE_CORECLOCK_INPUT == "ON" & USED(rx_coreclk) GENERATE
+					rx[].coreclk = rx_coreclk[];
+				ELSE GENERATE
+					rx[].coreclk = pll.clk[2];
+				END GENERATE;
+				pll.inclk0 = rx_inclock;
+				-- Drive LVDS channels from synchronization registers
+				rx[].datain = rx_in[];
+				IF REGISTERED_OUTPUT == "ON" GENERATE
+					rxreg[] = rx[].dataout[];
+					rx_out[] = rxreg[];
+					IF (USE_CORECLOCK_INPUT == "ON" & USED(rx_coreclk)) GENERATE
+						rxreg[].clk = rx_coreclk[];
+					ELSE GENERATE
+						rxreg[].clk = pll.clk[2];
+					END GENERATE;
+				ELSE GENERATE
+					rx_out[] = rx[].dataout[];
+				END GENERATE;
+				rx[].clk0 = pll.clk[0];
+				IF USED(rx_locked) GENERATE
+					rx_locked = !pll.locked;
+				END GENERATE;
+				rx_outclock = pll.clk[2];
+				IF USED(pll_areset) GENERATE
+					pll.areset = pll_areset;
+				END GENERATE;
+			ELSE GENERATE
+				-- Stratix And STRATIXGX non DPA mode
+				IF FAMILY_STRATIX() GENERATE
+					IF USED(rx_pll_enable) GENERATE
+						pll.ena = rx_pll_enable;
+					END GENERATE;
+					IF USED(pll_areset) GENERATE
+						pll.areset = pll_areset;
+					END GENERATE;
+					pll.inclk0 = rx_inclock;
+					IF (RX_DATA_ALIGN_IS_USED() == 1) GENERATE
+						IF REGISTERED_DATA_ALIGN_INPUT == "ON" GENERATE
+							rx_data_align_reg.d = rx_data_align;
+							rx_data_align_reg.clk = pll.clk[2];
+							pll.comparator = rx_data_align_reg.q;
+						ELSE GENERATE
+							pll.comparator = rx_data_align;
+						END GENERATE;
+						rx[].enable1 = pll.enable1;				
+					END GENERATE;
+						-- Drive LVDS channels from synchronization registers
+					rx[].datain = rx_in[];
+					
+					IF REGISTERED_OUTPUT == "ON" GENERATE
+						rxreg[] = rx[].dataout[];
+						rx_out[] = rxreg[];
+						rxreg[].clk = pll.clk[2];
+					ELSE GENERATE
+						rx_out[] = rx[].dataout[];
+					END GENERATE;
+					rx[].clk0 = pll.clk[0];
+					IF USED(rx_locked) GENERATE
+						rx_locked = !pll.locked;
+					END GENERATE;
+					rx_outclock = pll.clk[2];
+					rx[].enable0 = pll.enable0;
+				END GENERATE;
+			END GENERATE; -- Stratix
+			END GENERATE; -- StratixII
+		END GENERATE;
+		END GENERATE; -- CBXI
+	END GENERATE;	
+	END GENERATE;
+	IF !USED(pll_phasestep) GENERATE
+		pll_phasestep = GND;
+	END GENERATE;
+	IF !USED(pll_phaseupdown) GENERATE
+		pll_phaseupdown = GND;
+	END GENERATE;
+	IF !USED(rx_cda_max) GENERATE
+		rx_cda_max[] = GND;
+	END GENERATE;
+	IF !USED(rx_outclock) GENERATE
+		rx_outclock = GND;
+	END GENERATE;
+	IF !USED(rx_divfwdclk) GENERATE
+		rx_divfwdclk[] = GND;
+	END GENERATE;
+	IF !USED(rx_out) GENERATE
+		rx_out[] = GND;
+	END GENERATE;
+	IF !USED(rx_dpa_locked) GENERATE
+		rx_dpa_locked[] = GND;
+	END GENERATE;
+	IF !USED(pll_scanclk) GENERATE
+		pll_scanclk = GND;
+	END GENERATE;
+	IF !USED(pll_phasecounterselect) GENERATE
+		pll_phasecounterselect[] = GND;
+	END GENERATE;
+	IF !USED(dpa_pll_cal_busy) GENERATE
+		dpa_pll_cal_busy = GND;
+	END GENERATE;
+	IF !USED(rx_locked) GENERATE
+		rx_locked = GND;
+	END GENERATE;
+END;
+

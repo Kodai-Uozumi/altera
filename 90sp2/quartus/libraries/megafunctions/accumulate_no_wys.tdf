@@ -1,0 +1,1388 @@
+-- ACCUMULATE_NO_WYS PARAMETRIZED MEGA FUNCTION
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+
+
+
+
+PARAMETERS
+(
+	USE_WYS = "ON",
+	WIDTH_IN,
+	WIDTH_OUT,
+	CARRY_CHAIN = "MANUAL",
+	CARRY_CHAIN_LENGTH = 32,
+	LPM_REPRESENTATION = "UNSIGNED",
+	EXTRA_LATENCY = 0
+);
+-- carry chain break point
+DEFINE BREAKPOINT(i) = (i mod CARRY_CHAIN_LENGTH == 0);
+-- number of breaks in the full carry chain (non pipelined case)	
+DEFINE EXTRA_CELL() = FLOOR (WIDTH_OUT / CARRY_CHAIN_LENGTH);
+-- number of breaks inside a pipeline segment
+DEFINE EXTRA_CELL_PIPELINE_1() = FLOOR (LENGTH_PER_SEGMENT() / CARRY_CHAIN_LENGTH);
+DEFINE EXTRA_CELL_PIPELINE() = EXTRA_CELL_PIPELINE_1() * CARRY_CHAIN_LENGTH == LENGTH_PER_SEGMENT() ? EXTRA_CELL_PIPELINE_1()-1 : EXTRA_CELL_PIPELINE_1();
+
+-- normalized position inside a pipeline segment
+DEFINE NORMALIZE(i) = i - PIPELINE_SEGMENT(i) * LENGTH_PER_SEGMENT();
+-- id of the break
+DEFINE POSITION(i)	= i / CARRY_CHAIN_LENGTH - 1;
+-- length per pipeline segment
+DEFINE LENGTH_PER_SEGMENT() = CEIL(WIDTH_OUT / (EXTRA_LATENCY + 1));
+-- the segment to which a cell belongs to
+DEFINE PIPELINE_SEGMENT(i) = FLOOR (i / LENGTH_PER_SEGMENT());
+-- first element of the pipeline segment
+DEFINE FIRST_ELEMENT(i) = (i MOD LENGTH_PER_SEGMENT()) == 0;
+-- last element of the segment
+DEFINE LAST_ELEMENT(i) = ((i+1) MOD LENGTH_PER_SEGMENT()) == 0;
+
+DEFINE EXTRA_OVERFLOW_BUFFER() = EXTRA_LATENCY-PIPELINE_SEGMENT(WIDTH_OUT-1)-1 > 1 ? EXTRA_LATENCY - PIPELINE_SEGMENT(WIDTH_OUT-1)-1 : 1;
+DEFINE EXTRA_COUT_BUFFER() = EXTRA_OVERFLOW_BUFFER();
+
+
+SUBDESIGN accumulate_no_wys
+(
+	data[WIDTH_IN-1..0]			:	 INPUT;
+	clock 						:	 INPUT;
+	cin							:	 INPUT;
+	clken 						:	 INPUT = VCC;
+	sload 						:	 INPUT = GND;
+	aclr 						: 	 INPUT = GND;
+	add_sub 					: 	 INPUT = VCC;
+	sign_data					:	 INPUT = GND;
+	result[WIDTH_OUT-1..0]		: 	 OUTPUT;
+	cout						:	 OUTPUT;
+	overflow					:	 OUTPUT;
+)
+
+VARIABLE
+	-- base add_sub cell  carry chain buffer and regr
+	acc_cell[WIDTH_OUT-1..0]		:	carry_sum;
+	acc_cell_regr[WIDTH_OUT-1..0]	:	DFFE;
+	cin_node						:	SOFT;
+	-- extra buffers and sload regr used to add break the chain
+	IF EXTRA_LATENCY > 0 GENERATE
+		extra_buffers[EXTRA_LATENCY..0][WIDTH_OUT-1..0]	: 	DFFE;
+		IF WIDTH_OUT > EXTRA_LATENCY GENERATE
+			sload_regr[EXTRA_LATENCY-1..0]						:	DFFE;
+			cout_out_cell[EXTRA_LATENCY-1..0]					:	DFFE;
+			IF USED(add_sub) GENERATE
+				add_sub_regr[EXTRA_LATENCY-1..0]				:	DFFE;		
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;															
+	
+	-- cout buffers
+	IF USED(cout) GENERATE
+		tmp_cout : SOFT;
+		IF EXTRA_LATENCY > 0 & WIDTH_OUT <= EXTRA_LATENCY GENERATE
+			cout_regr[EXTRA_LATENCY-1..0]	:	DFFE;
+		END GENERATE;
+		IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY & ( EXTRA_LATENCY * LENGTH_PER_SEGMENT() >= WIDTH_OUT) GENERATE
+			cout_buffer[EXTRA_COUT_BUFFER()..0]		:	DFFE;
+		END GENERATE;
+	END GENERATE;
+		
+	
+	-- overflow buffers
+	IF USED(overflow) GENERATE
+		tmp_overflow					:	SOFT;
+		IF USED(sign_data) # LPM_REPRESENTATION == "SIGNED" GENERATE
+			data_a_regr						:	DFFE;
+			res_regr						:	DFFE;
+		END GENERATE;
+		IF EXTRA_LATENCY > 0 & WIDTH_OUT <= EXTRA_LATENCY GENERATE
+			ovrflw_regr[EXTRA_LATENCY-1..0]		:	DFFE;
+		END GENERATE;
+		IF (LPM_REPRESENTATION != "SIGNED" # USED(sign_data)) GENERATE
+			cout_node					:	SOFT;
+		END GENERATE;
+		IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY & ( EXTRA_LATENCY * LENGTH_PER_SEGMENT() >= WIDTH_OUT) GENERATE
+			overflow_buffer[EXTRA_OVERFLOW_BUFFER()..0]		:	DFFE;
+		END GENERATE;
+		IF USED(sign_data) GENERATE
+			tmp_sign_overflow					:	SOFT;
+			tmp_unsign_overflow					:	SOFT;
+			sign_data_regr[EXTRA_LATENCY..0]	:	DFFE;
+		END GENERATE;
+		IF LPM_REPRESENTATION != "SIGNED" GENERATE
+			unsign_ovrflw_regr		:	DFFE;
+		END GENERATE;
+END GENERATE;		
+	
+	-- cells used to break the carry chain
+	IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY GENERATE
+		-- pipelined carry chain break
+		IF (LENGTH_PER_SEGMENT() > CARRY_CHAIN_LENGTH) GENERATE
+			break_cin_cell[EXTRA_LATENCY..0][EXTRA_CELL_PIPELINE()-1..0] 	:	carry_sum;
+			break_cout_cell[EXTRA_LATENCY..0][EXTRA_CELL_PIPELINE()-1..0]	:	carry_sum;			
+		END GENERATE;
+	ELSE GENERATE
+		-- carry chain break
+		IF (WIDTH_OUT > CARRY_CHAIN_LENGTH) GENERATE
+			cin_sum_cell[EXTRA_CELL()-1..0]		:	carry_sum;
+			sum_cout_cell[EXTRA_CELL()-1..0]	:	carry_sum;
+		END GENERATE;
+	END GENERATE;
+	
+
+BEGIN
+
+	IF USED(cin) GENERATE	
+		cin_node = cin;
+	ELSE GENERATE
+		IF USED(add_sub) GENERATE
+			cin_node = !add_sub & !sload;
+		ELSE GENERATE
+			cin_node = GND;
+		END GENERATE;
+	END GENERATE;
+
+	-- width of inputis less than width of output then sign extend or pad zeros
+	IF WIDTH_IN < WIDTH_OUT GENERATE
+		FOR i IN 0 TO WIDTH_IN-1 GENERATE
+			-- for the first pipeline segment feed data directly, else feed into the buffer cells
+			IF PIPELINE_SEGMENT(i) == 0 # EXTRA_LATENCY > 0 & WIDTH_OUT <= EXTRA_LATENCY GENERATE
+				IF USED(add_sub) GENERATE
+					IF i == 0 GENERATE
+						acc_cell_regr[i].d = ((data[i] $ !add_sub) $ (acc_cell[i].sout) $ cin_node) & !sload # data[i] & sload ;				
+						acc_cell[i].cin = cin_node & (data[i] $ !add_sub) # (data[i] $ !add_sub) & (acc_cell[i].sout) # cin_node & (acc_cell[i].sout);						
+						-- if length is one feed cout to regr
+						IF LENGTH_PER_SEGMENT() == 1 GENERATE
+							IF LAST_ELEMENT(i) & WIDTH_OUT > EXTRA_LATENCY & EXTRA_LATENCY > 0 GENERATE
+								cout_out_cell[PIPELINE_SEGMENT(i)].d = acc_cell[i].cout;
+							END GENERATE;
+						END GENERATE;						
+					ELSE GENERATE
+						-- if last element feed cout to regr
+						IF EXTRA_LATENCY > 0 & LAST_ELEMENT(i) GENERATE
+							IF WIDTH_OUT > EXTRA_LATENCY GENERATE
+								cout_out_cell[PIPELINE_SEGMENT(i)].d = acc_cell[i].cout;
+							END GENERATE;								
+							acc_cell[i].cin = acc_cell[i-1].cout & (data[i] $ !add_sub) # (data[i] $ !add_sub) & (acc_cell[i].sout)# acc_cell[i-1].cout & (acc_cell[i].sout);
+							acc_cell_regr[i].d = ((data[i] $ !add_sub) $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload # data[i] &sload;								
+						ELSE GENERATE
+							-- break carry chain if needed or connect carry chain
+							IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY GENERATE
+								IF BREAKPOINT(NORMALIZE(i)) GENERATE
+									break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = acc_cell[i-1].cout;
+									break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sout;
+									break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = GND;
+									break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = GND;
+									acc_cell[i].cin = break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & (data[i] $ !add_sub) # (data[i] $ !add_sub) & (acc_cell[i].sout)# break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & (acc_cell[i].sout);
+									acc_cell_regr[i].d = ((data[i] $ !add_sub) $ (acc_cell[i].sout) $ break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout) & !sload # data[i] &sload;								
+								ELSE GENERATE
+									acc_cell[i].cin = acc_cell[i-1].cout & (data[i] $ !add_sub) # (data[i] $ !add_sub) & (acc_cell[i].sout)# acc_cell[i-1].cout & (acc_cell[i].sout);
+									acc_cell_regr[i].d = ((data[i] $ !add_sub) $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload # data[i] &sload;								
+								END GENERATE;	
+							ELSE GENERATE
+								-- non pipelined case
+								IF BREAKPOINT(i) GENERATE
+									cin_sum_cell[POSITION(i)].sin = acc_cell[i-1].cout;
+									cin_sum_cell[POSITION(i)].cin = GND;
+									sum_cout_cell[POSITION(i)].cin = cin_sum_cell[POSITION(i)].sout;
+									sum_cout_cell[POSITION(i)].sin = GND;									
+									acc_cell[i].cin = sum_cout_cell[POSITION(i)].cout & (data[i]$ !add_sub) # (data[i] $ !add_sub) & (acc_cell[i].sout)# sum_cout_cell[POSITION(i)].cout & (acc_cell[i].sout);								
+									acc_cell_regr[i].d = ((data[i] $ !add_sub) $ (acc_cell[i].sout) $ sum_cout_cell[POSITION(i)].cout) & !sload # data[i] &sload;								
+								ELSE GENERATE
+									acc_cell[i].cin = acc_cell[i-1].cout & (data[i] $ !add_sub) # (data[i] $ !add_sub) & (acc_cell[i].sout)# acc_cell[i-1].cout & (acc_cell[i].sout);															
+									acc_cell_regr[i].d = ((data[i]$ !add_sub) $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload # data[i] &sload;								
+								END GENERATE;								
+							END GENERATE;
+						END GENERATE;
+					END GENERATE; 
+				ELSE GENERATE --! used(add_sub)
+					IF i == 0 GENERATE
+						acc_cell_regr[i].d = (data[i] $ acc_cell[i].sout $ cin_node) & !sload # data[i] & sload ;				
+						acc_cell[i].cin = cin_node & data[i] # data[i] & acc_cell[i].sout # cin_node & acc_cell[i].sout;
+						IF LENGTH_PER_SEGMENT() == 1 GENERATE
+							IF LAST_ELEMENT(i) & WIDTH_OUT > EXTRA_LATENCY & EXTRA_LATENCY > 0 GENERATE
+								cout_out_cell[PIPELINE_SEGMENT(i)].d = acc_cell[i].cout;
+							END GENERATE;
+						END GENERATE;						
+					ELSE GENERATE
+						IF EXTRA_LATENCY > 0 & LAST_ELEMENT(i) GENERATE
+							IF WIDTH_OUT > EXTRA_LATENCY GENERATE
+								cout_out_cell[PIPELINE_SEGMENT(i)].d = acc_cell[i].cout;
+							END GENERATE;								
+							acc_cell[i].cin = acc_cell[i-1].cout & data[i] # data[i] & (acc_cell[i].sout)# acc_cell[i-1].cout & (acc_cell[i].sout);
+							acc_cell_regr[i].d = (data[i] $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload # data[i] &sload;								
+						ELSE GENERATE
+							IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY GENERATE
+								IF BREAKPOINT(NORMALIZE(i)) GENERATE
+									break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = acc_cell[i-1].cout;
+									break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sout;
+									break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = GND;
+									break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = GND;
+									acc_cell[i].cin = break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & data[i] # data[i] & acc_cell[i].sout # break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & acc_cell[i].sout;
+									acc_cell_regr[i].d = (data[i] $ acc_cell[i].sout $ break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout) & !sload # data[i] &sload;								
+								ELSE GENERATE
+									acc_cell[i].cin = acc_cell[i-1].cout & data[i] # data[i] & (acc_cell[i].sout)# acc_cell[i-1].cout & (acc_cell[i].sout);
+									acc_cell_regr[i].d = (data[i] $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload # data[i] &sload;								
+								END GENERATE;	
+							ELSE GENERATE
+								IF BREAKPOINT(i) GENERATE
+									cin_sum_cell[POSITION(i)].sin = acc_cell[i-1].cout;
+									cin_sum_cell[POSITION(i)].cin = GND;
+									sum_cout_cell[POSITION(i)].cin = cin_sum_cell[POSITION(i)].sout;
+									sum_cout_cell[POSITION(i)].sin = GND;
+									acc_cell[i].cin = sum_cout_cell[POSITION(i)].cout & data[i] # data[i] & (acc_cell[i].sout)# sum_cout_cell[POSITION(i)].cout & (acc_cell[i].sout);								
+									acc_cell_regr[i].d = (data[i] $ (acc_cell[i].sout) $ sum_cout_cell[POSITION(i)].cout) & !sload # data[i] &sload;								
+								ELSE GENERATE
+									acc_cell[i].cin = acc_cell[i-1].cout & data[i] # data[i] & (acc_cell[i].sout)# acc_cell[i-1].cout & (acc_cell[i].sout);															
+									acc_cell_regr[i].d = (data[i] $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload # data[i] &sload;								
+								END GENERATE;								
+							END GENERATE;
+						END GENERATE;
+					END GENERATE;					
+				END GENERATE;
+			ELSE GENERATE -- pipeline segment > 1
+				extra_buffers[0][i].d = data[i];
+				-- first element get cin and put cout to regr if length of segment == 1
+				IF EXTRA_LATENCY > 0 & FIRST_ELEMENT(i) GENERATE
+					IF USED(add_sub) GENERATE
+						acc_cell_regr[i].d = ((extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q)$ (acc_cell[i].sout) $ cout_out_cell[PIPELINE_SEGMENT(i)-1].q) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+						acc_cell[i].cin = cout_out_cell[PIPELINE_SEGMENT(i)-1].q & (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) # (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) & (acc_cell[i].sout) # cout_out_cell[PIPELINE_SEGMENT(i)-1].q & (acc_cell[i].sout);														
+					ELSE GENERATE
+						acc_cell_regr[i].d = (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ acc_cell[i].sout $ cout_out_cell[PIPELINE_SEGMENT(i)-1].q) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+						acc_cell[i].cin = cout_out_cell[PIPELINE_SEGMENT(i)-1].q & extra_buffers[PIPELINE_SEGMENT(i)-1][i].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q & acc_cell[i].sout # cout_out_cell[PIPELINE_SEGMENT(i)-1].q & acc_cell[i].sout;									
+					END GENERATE;
+					IF LENGTH_PER_SEGMENT() == 1 GENERATE
+						IF EXTRA_LATENCY > 0 & LAST_ELEMENT(i) & WIDTH_OUT > EXTRA_LATENCY & i != WIDTH_OUT-1 GENERATE
+							cout_out_cell[PIPELINE_SEGMENT(i)].d = acc_cell[i].cout;						
+						END GENERATE;
+					END GENERATE;
+				ELSE GENERATE
+					-- last element feed cout to regr
+					IF EXTRA_LATENCY > 0 & LAST_ELEMENT(i) GENERATE
+						IF WIDTH_OUT > EXTRA_LATENCY GENERATE
+							cout_out_cell[PIPELINE_SEGMENT(i)].d = acc_cell[i].cout;
+						END GENERATE;								
+						IF USED(add_sub) GENERATE
+							acc_cell_regr[i].d = ((extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+							acc_cell[i].cin = acc_cell[i-1].cout & (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) # (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q  $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) & ( acc_cell[i].sout) # acc_cell[i-1].cout & ( acc_cell[i].sout );					
+						ELSE GENERATE
+							acc_cell_regr[i].d = (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ acc_cell[i].sout $ acc_cell[i-1].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+							acc_cell[i].cin = acc_cell[i-1].cout & extra_buffers[PIPELINE_SEGMENT(i)-1][i].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q & acc_cell[i].sout # acc_cell[i-1].cout & acc_cell[i].sout;
+						END GENERATE;
+					ELSE GENERATE
+						-- break carry chain
+						IF USED(add_sub) GENERATE
+							IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY GENERATE
+								IF BREAKPOINT(NORMALIZE(i)) GENERATE
+									break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = acc_cell[i-1].cout;
+									break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sout;
+									break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = GND;
+									break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = GND;
+									acc_cell_regr[i].d = ((extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) $ (acc_cell[i].sout) $ break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+									acc_cell[i].cin = break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) # (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) & ( acc_cell[i].sout ) # break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & ( acc_cell[i].sout );					
+								ELSE GENERATE
+									acc_cell_regr[i].d = ((extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+									acc_cell[i].cin = acc_cell[i-1].cout & (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) # (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) & ( acc_cell[i].sout ) # acc_cell[i-1].cout & ( acc_cell[i].sout );					
+								END GENERATE;
+							ELSE GENERATE
+								IF BREAKPOINT(i) GENERATE
+									cin_sum_cell[POSITION(i)].sin = acc_cell[i-1].cout;
+									cin_sum_cell[POSITION(i)].cin = GND;
+									sum_cout_cell[POSITION(i)].cin = cin_sum_cell[POSITION(i)].sout;
+									sum_cout_cell[POSITION(i)].sin = GND;
+									acc_cell_regr[i].d = ((extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q)$ (acc_cell[i].sout) $ sum_cout_cell[POSITION(i)].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+									acc_cell[i].cin = sum_cout_cell[POSITION(i)].cout & (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) # (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) & ( acc_cell[i].sout ) # sum_cout_cell[POSITION(i)].cout & ( acc_cell[i].sout );					
+								ELSE GENERATE
+									acc_cell_regr[i].d = ((extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+									acc_cell[i].cin = acc_cell[i-1].cout & (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) # (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) & ( acc_cell[i].sout ) # acc_cell[i-1].cout & ( acc_cell[i].sout );					
+								END GENERATE;
+							END GENERATE;									
+						ELSE GENERATE -- ! Used add_sub
+							IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY GENERATE
+								IF BREAKPOINT(NORMALIZE(i)) GENERATE
+									break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = acc_cell[i-1].cout;
+									break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sout;
+									break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = GND;
+									break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = GND;
+									acc_cell_regr[i].d = (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ (acc_cell[i].sout) $ break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+									acc_cell[i].cin = break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & extra_buffers[PIPELINE_SEGMENT(i)-1][i].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q & ( acc_cell[i].sout ) # break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & ( acc_cell[i].sout);					
+								ELSE GENERATE
+									acc_cell_regr[i].d = (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+									acc_cell[i].cin = acc_cell[i-1].cout & extra_buffers[PIPELINE_SEGMENT(i)-1][i].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q & ( acc_cell[i].sout) # acc_cell[i-1].cout & ( acc_cell[i].sout);					
+								END GENERATE;
+							ELSE GENERATE
+								IF BREAKPOINT(i) GENERATE
+									cin_sum_cell[POSITION(i)].sin = acc_cell[i-1].cout;
+									cin_sum_cell[POSITION(i)].cin = GND;
+									sum_cout_cell[POSITION(i)].cin = cin_sum_cell[POSITION(i)].sout;
+									sum_cout_cell[POSITION(i)].sin = GND;
+									acc_cell_regr[i].d = (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ (acc_cell[i].sout) $ sum_cout_cell[POSITION(i)].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+									acc_cell[i].cin = sum_cout_cell[POSITION(i)].cout & extra_buffers[PIPELINE_SEGMENT(i)-1][i].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q & ( acc_cell[i].sout) # sum_cout_cell[POSITION(i)].cout & ( acc_cell[i].sout );					
+								ELSE GENERATE
+									acc_cell_regr[i].d = (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+									acc_cell[i].cin = acc_cell[i-1].cout & extra_buffers[PIPELINE_SEGMENT(i)-1][i].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q & ( acc_cell[i].sout ) # acc_cell[i-1].cout & ( acc_cell[i].sout);					
+								END GENERATE;
+							END GENERATE;									
+						END GENERATE;
+					END GENERATE;				
+				END GENERATE;					
+			END GENERATE;
+		END GENERATE;
+		-- 0 to width_in -1 
+		
+		FOR i IN WIDTH_IN TO WIDTH_OUT-1 GENERATE
+			-- sign extend
+			IF USED(sign_data) GENERATE
+				IF PIPELINE_SEGMENT(i) == 0 # EXTRA_LATENCY > 0 & WIDTH_OUT <= EXTRA_LATENCY GENERATE
+					IF USED(add_sub) GENERATE
+						IF EXTRA_LATENCY > 0 & LAST_ELEMENT(i) GENERATE
+							IF WIDTH_OUT > EXTRA_LATENCY & i != WIDTH_OUT-1 GENERATE
+								cout_out_cell[PIPELINE_SEGMENT(i)].d = acc_cell[i].cout;
+							END GENERATE;								
+							acc_cell_regr[i].d = (((sign_data & data[WIDTH_IN-1]) $ !add_sub) $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload # (sign_data & data[WIDTH_IN-1]) &sload;
+							acc_cell[i].cin = acc_cell[i-1].cout & ((sign_data & data[WIDTH_IN-1]) $ !add_sub) # ((sign_data & data[WIDTH_IN-1]) $ !add_sub) & (acc_cell[i].sout) # acc_cell[i-1].cout & (acc_cell[i].sout);										
+						ELSE GENERATE
+							IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY GENERATE
+								IF BREAKPOINT(NORMALIZE(i)) GENERATE
+									break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = acc_cell[i-1].cout;
+									break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sout;
+									break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = GND;
+									break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = GND;
+									acc_cell_regr[i].d = (((sign_data & data[WIDTH_IN-1]) $ !add_sub) $ (acc_cell[i].sout) $ break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout) & !sload # (sign_data & data[WIDTH_IN-1]) &sload;
+									acc_cell[i].cin = break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & ((sign_data & data[WIDTH_IN-1]) $ !add_sub) # ((sign_data & data[WIDTH_IN-1]) $ !add_sub) & (acc_cell[i].sout) # break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & (acc_cell[i].sout);										
+								ELSE GENERATE
+									acc_cell_regr[i].d = (((sign_data & data[WIDTH_IN-1]) $ !add_sub) $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload # (sign_data & data[WIDTH_IN-1]) &sload;
+									acc_cell[i].cin = acc_cell[i-1].cout & ((sign_data & data[WIDTH_IN-1]) $ !add_sub) # ((sign_data & data[WIDTH_IN-1]) $ !add_sub) & (acc_cell[i].sout) # acc_cell[i-1].cout & (acc_cell[i].sout);										
+								END GENERATE;									
+							ELSE GENERATE
+								IF BREAKPOINT(i) GENERATE
+									cin_sum_cell[POSITION(i)].sin = acc_cell[i-1].cout;
+									sum_cout_cell[POSITION(i)].cin = cin_sum_cell[POSITION(i)].sout;
+									cin_sum_cell[POSITION(i)].cin = GND;
+									sum_cout_cell[POSITION(i)].sin = GND;
+									acc_cell_regr[i].d = (((sign_data & data[WIDTH_IN-1]) $ !add_sub) $ (acc_cell[i].sout) $ sum_cout_cell[POSITION(i)].cout) & !sload # (sign_data & data[WIDTH_IN-1]) &sload;
+									acc_cell[i].cin = sum_cout_cell[POSITION(i)].cout & ((sign_data & data[WIDTH_IN-1]) $ !add_sub) # ((sign_data & data[WIDTH_IN-1]) $ !add_sub) & (acc_cell[i].sout) # sum_cout_cell[POSITION(i)].cout & (acc_cell[i].sout);										
+								ELSE GENERATE
+									acc_cell_regr[i].d = (((sign_data & data[WIDTH_IN-1]) $ !add_sub) $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload # (sign_data & data[WIDTH_IN-1]) &sload;
+									acc_cell[i].cin = acc_cell[i-1].cout & ((sign_data & data[WIDTH_IN-1]) $ !add_sub) # ((sign_data & data[WIDTH_IN-1])$ !add_sub) & (acc_cell[i].sout) # acc_cell[i-1].cout & (acc_cell[i].sout);										
+								END GENERATE;															
+							END GENERATE;
+						END GENERATE;							
+					ELSE GENERATE -- !used(add_sub)
+						IF EXTRA_LATENCY > 0 & LAST_ELEMENT(i) GENERATE
+							IF WIDTH_OUT > EXTRA_LATENCY & i != WIDTH_OUT-1 GENERATE
+								cout_out_cell[PIPELINE_SEGMENT(i)].d = acc_cell[i].cout;
+							END GENERATE;								
+							acc_cell_regr[i].d = ((sign_data & data[WIDTH_IN-1]) $ acc_cell[i].sout $ acc_cell[i-1].cout) & !sload # (sign_data & data[WIDTH_IN-1]) & sload;
+							acc_cell[i].cin = acc_cell[i-1].cout & (sign_data & data[WIDTH_IN-1]) # (sign_data & data[WIDTH_IN-1]) & acc_cell[i].sout # acc_cell[i-1].cout & acc_cell[i].sout;					
+						ELSE GENERATE
+							IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY GENERATE
+								IF BREAKPOINT(NORMALIZE(i)) GENERATE
+									break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = acc_cell[i-1].cout;
+									break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sout;
+									break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = GND;
+									break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = GND;
+									acc_cell_regr[i].d = ((sign_data & data[WIDTH_IN-1]) $ (acc_cell[i].sout) $ break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout) & !sload # (sign_data & data[WIDTH_IN-1]) &sload;
+									acc_cell[i].cin = break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & (sign_data & data[WIDTH_IN-1]) # (sign_data & data[WIDTH_IN-1]) & (acc_cell[i].sout) # break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & (acc_cell[i].sout);										
+								ELSE GENERATE
+									acc_cell_regr[i].d = ((sign_data & data[WIDTH_IN-1]) $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload # (sign_data & data[WIDTH_IN-1]) &sload;
+									acc_cell[i].cin = acc_cell[i-1].cout & (sign_data & data[WIDTH_IN-1]) # (sign_data & data[WIDTH_IN-1]) & (acc_cell[i].sout) # acc_cell[i-1].cout & (acc_cell[i].sout);										
+								END GENERATE;									
+							ELSE GENERATE
+								IF BREAKPOINT(i) GENERATE
+									cin_sum_cell[POSITION(i)].sin = acc_cell[i-1].cout;
+									sum_cout_cell[POSITION(i)].cin = cin_sum_cell[POSITION(i)].sout;
+									sum_cout_cell[POSITION(i)].sin = GND;
+									cin_sum_cell[POSITION(i)].cin = GND;
+									acc_cell_regr[i].d = ((sign_data & data[WIDTH_IN-1]) $ (acc_cell[i].sout) $ sum_cout_cell[POSITION(i)].cout) & !sload # (sign_data & data[WIDTH_IN-1]) &sload;
+									acc_cell[i].cin = sum_cout_cell[POSITION(i)].cout & (sign_data & data[WIDTH_IN-1]) # (sign_data & data[WIDTH_IN-1]) & (acc_cell[i].sout) # sum_cout_cell[POSITION(i)].cout & (acc_cell[i].sout);										
+								ELSE GENERATE
+									acc_cell_regr[i].d = ((sign_data & data[WIDTH_IN-1]) $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload # (sign_data & data[WIDTH_IN-1]) &sload;
+									acc_cell[i].cin = acc_cell[i-1].cout & (sign_data & data[WIDTH_IN-1]) # (sign_data & data[WIDTH_IN-1]) & (acc_cell[i].sout) # acc_cell[i-1].cout & (acc_cell[i].sout);										
+								END GENERATE;															
+							END GENERATE;
+						END GENERATE;							
+					END GENERATE;
+				ELSE GENERATE -- extra_latency > 0 
+					extra_buffers[0][i].d = (sign_data & data[WIDTH_IN-1]);
+					IF EXTRA_LATENCY > 0 & FIRST_ELEMENT(i) GENERATE
+						IF USED(add_sub) GENERATE
+							acc_cell_regr[i].d = ((extra_buffers[PIPELINE_SEGMENT(i)-1][i].q  $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) $ (acc_cell[i].sout) $ cout_out_cell[PIPELINE_SEGMENT(i)-1].q) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+							acc_cell[i].cin = cout_out_cell[PIPELINE_SEGMENT(i)-1].q & (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) # (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) & ( acc_cell[i].sout) # cout_out_cell[PIPELINE_SEGMENT(i)-1].q & ( acc_cell[i].sout );															
+						ELSE GENERATE
+							acc_cell_regr[i].d = (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ acc_cell[i].sout $ cout_out_cell[PIPELINE_SEGMENT(i)-1].q) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+							acc_cell[i].cin = cout_out_cell[PIPELINE_SEGMENT(i)-1].q & extra_buffers[PIPELINE_SEGMENT(i)-1][i].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q & acc_cell[i].sout # cout_out_cell[PIPELINE_SEGMENT(i)-1].q & acc_cell[i].sout;									
+						END GENERATE;
+						IF LENGTH_PER_SEGMENT() == 1 GENERATE
+							IF EXTRA_LATENCY > 0 & LAST_ELEMENT(i) & WIDTH_OUT > EXTRA_LATENCY & i != WIDTH_OUT-1 GENERATE
+								cout_out_cell[PIPELINE_SEGMENT(i)].d = acc_cell[i].cout;						
+							END GENERATE;
+						END GENERATE;
+					ELSE GENERATE
+						IF EXTRA_LATENCY > 0 & LAST_ELEMENT(i) GENERATE
+							IF WIDTH_OUT > EXTRA_LATENCY & i != WIDTH_OUT-1 GENERATE
+								cout_out_cell[PIPELINE_SEGMENT(i)].d = acc_cell[i].cout;
+							END GENERATE;								
+							IF USED(add_sub) GENERATE
+								acc_cell_regr[i].d = ((extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+								acc_cell[i].cin = acc_cell[i-1].cout & (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) # (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) & ( acc_cell[i].sout ) # acc_cell[i-1].cout & ( acc_cell[i].sout );					
+							ELSE GENERATE
+								acc_cell_regr[i].d = (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ acc_cell[i].sout $ acc_cell[i-1].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+								acc_cell[i].cin = acc_cell[i-1].cout & extra_buffers[PIPELINE_SEGMENT(i)-1][i].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q & acc_cell[i].sout # acc_cell[i-1].cout & acc_cell[i].sout;
+							END GENERATE;
+						ELSE GENERATE
+							IF USED(add_sub) GENERATE
+								IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY GENERATE
+									IF BREAKPOINT(NORMALIZE(i)) GENERATE
+										break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = acc_cell[i-1].cout;
+										break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sout;
+										break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = GND;
+										break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = GND;
+										acc_cell_regr[i].d = ((extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) $ (acc_cell[i].sout) $ break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+										acc_cell[i].cin = break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) # (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) & ( acc_cell[i].sout ) # break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & ( acc_cell[i].sout );					
+									ELSE GENERATE
+										acc_cell_regr[i].d = ((extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+										acc_cell[i].cin = acc_cell[i-1].cout & (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) # (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) & ( acc_cell[i].sout ) # acc_cell[i-1].cout & ( acc_cell[i].sout );					
+									END GENERATE;
+								ELSE GENERATE
+									IF BREAKPOINT(i) GENERATE
+										cin_sum_cell[POSITION(i)].sin = acc_cell[i-1].cout;
+										sum_cout_cell[POSITION(i)].cin = cin_sum_cell[POSITION(i)].sout;
+										sum_cout_cell[POSITION(i)].sin = GND;
+										cin_sum_cell[POSITION(i)].cin = GND;
+										acc_cell_regr[i].d = ((extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) $ (acc_cell[i].sout) $ sum_cout_cell[POSITION(i)].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+										acc_cell[i].cin = sum_cout_cell[POSITION(i)].cout & (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) # (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) & ( acc_cell[i].sout ) # sum_cout_cell[POSITION(i)].cout & ( acc_cell[i].sout );					
+									ELSE GENERATE
+										acc_cell_regr[i].d = ((extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) $ (acc_cell[i].sout ) $ acc_cell[i-1].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+										acc_cell[i].cin = acc_cell[i-1].cout & (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) # (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) & ( acc_cell[i].sout ) # acc_cell[i-1].cout & ( acc_cell[i].sout );					
+									END GENERATE;
+								END GENERATE;									
+							ELSE GENERATE
+								IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY GENERATE
+									IF BREAKPOINT(NORMALIZE(i)) GENERATE
+										break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = acc_cell[i-1].cout;
+										break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sout;
+										break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = GND;
+										break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = GND;
+										acc_cell_regr[i].d = (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ (acc_cell[i].sout) $ break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+										acc_cell[i].cin = break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & extra_buffers[PIPELINE_SEGMENT(i)-1][i].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q & ( acc_cell[i].sout ) # break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & ( acc_cell[i].sout);					
+									ELSE GENERATE
+										acc_cell_regr[i].d = (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+										acc_cell[i].cin = acc_cell[i-1].cout & extra_buffers[PIPELINE_SEGMENT(i)-1][i].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q & ( acc_cell[i].sout) # acc_cell[i-1].cout & ( acc_cell[i].sout);					
+									END GENERATE;
+								ELSE GENERATE
+									IF BREAKPOINT(i) GENERATE
+										cin_sum_cell[POSITION(i)].sin = acc_cell[i-1].cout;
+										cin_sum_cell[POSITION(i)].cin = GND;
+										sum_cout_cell[POSITION(i)].cin = cin_sum_cell[POSITION(i)].sout;
+										sum_cout_cell[POSITION(i)].sin = GND;
+										acc_cell_regr[i].d = (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ (acc_cell[i].sout) $ sum_cout_cell[POSITION(i)].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+										acc_cell[i].cin = sum_cout_cell[POSITION(i)].cout & extra_buffers[PIPELINE_SEGMENT(i)-1][i].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q & ( acc_cell[i].sout) # sum_cout_cell[POSITION(i)].cout & ( acc_cell[i].sout );					
+									ELSE GENERATE
+										acc_cell_regr[i].d = (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+										acc_cell[i].cin = acc_cell[i-1].cout & extra_buffers[PIPELINE_SEGMENT(i)-1][i].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q & ( acc_cell[i].sout ) # acc_cell[i-1].cout & ( acc_cell[i].sout);					
+									END GENERATE;
+								END GENERATE;									
+							END GENERATE;
+						END GENERATE;
+					END GENERATE;					
+				END GENERATE;
+			ELSE GENERATE -- !used (sign_data)			
+			IF LPM_REPRESENTATION == "SIGNED" GENERATE
+				IF PIPELINE_SEGMENT(i) == 0 # EXTRA_LATENCY > 0 & WIDTH_OUT <= EXTRA_LATENCY GENERATE
+					IF USED(add_sub) GENERATE
+						IF EXTRA_LATENCY > 0 & LAST_ELEMENT(i) GENERATE
+							IF WIDTH_OUT > EXTRA_LATENCY & i != WIDTH_OUT-1 GENERATE
+								cout_out_cell[PIPELINE_SEGMENT(i)].d = acc_cell[i].cout;
+							END GENERATE;								
+							acc_cell_regr[i].d = ((data[WIDTH_IN-1] $ !add_sub) $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload # data[WIDTH_IN-1] &sload;
+							acc_cell[i].cin = acc_cell[i-1].cout & (data[WIDTH_IN-1] $ !add_sub) # (data[WIDTH_IN-1] $ !add_sub) & (acc_cell[i].sout ) # acc_cell[i-1].cout & (acc_cell[i].sout );										
+						ELSE GENERATE
+							IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY GENERATE
+								IF BREAKPOINT(NORMALIZE(i)) GENERATE
+									break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = acc_cell[i-1].cout;
+									break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sout;
+									break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = GND;
+									break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = GND;
+									acc_cell_regr[i].d = ((data[WIDTH_IN-1]$ !add_sub) $ (acc_cell[i].sout) $ break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout) & !sload # data[WIDTH_IN-1] &sload;
+									acc_cell[i].cin = break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & (data[WIDTH_IN-1] $ !cout) # (data[WIDTH_IN-1] $ !cout) & (acc_cell[i].sout) # break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & (acc_cell[i].sout);										
+								ELSE GENERATE
+									acc_cell_regr[i].d = ((data[WIDTH_IN-1] $ !add_sub) $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload # data[WIDTH_IN-1] &sload;
+									acc_cell[i].cin = acc_cell[i-1].cout & (data[WIDTH_IN-1] $ !add_sub) # (data[WIDTH_IN-1] $ !add_sub) & (acc_cell[i].sout) # acc_cell[i-1].cout & (acc_cell[i].sout);										
+								END GENERATE;									
+							ELSE GENERATE
+								IF BREAKPOINT(i) GENERATE
+									cin_sum_cell[POSITION(i)].sin = acc_cell[i-1].cout;
+									cin_sum_cell[POSITION(i)].cin = GND;									
+									sum_cout_cell[POSITION(i)].cin = cin_sum_cell[POSITION(i)].sout;
+									sum_cout_cell[POSITION(i)].sin = GND;
+									acc_cell_regr[i].d = ((data[WIDTH_IN-1]$ !add_sub) $ (acc_cell[i].sout) $ sum_cout_cell[POSITION(i)].cout) & !sload # data[WIDTH_IN-1] &sload;
+									acc_cell[i].cin = sum_cout_cell[POSITION(i)].cout & (data[WIDTH_IN-1] $ !add_sub) # (data[WIDTH_IN-1] $ !add_sub) & (acc_cell[i].sout) # sum_cout_cell[POSITION(i)].cout & (acc_cell[i].sout);										
+								ELSE GENERATE
+									acc_cell_regr[i].d = ((data[WIDTH_IN-1] $ !add_sub) $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload # data[WIDTH_IN-1] &sload;
+									acc_cell[i].cin = acc_cell[i-1].cout & (data[WIDTH_IN-1] $ !add_sub) # (data[WIDTH_IN-1] $ !add_sub) & (acc_cell[i].sout) # acc_cell[i-1].cout & (acc_cell[i].sout);										
+								END GENERATE;															
+							END GENERATE;
+						END GENERATE;							
+					ELSE GENERATE -- !used(add_sub)
+						IF EXTRA_LATENCY > 0 & LAST_ELEMENT(i) GENERATE
+							IF WIDTH_OUT > EXTRA_LATENCY & i != WIDTH_OUT-1 GENERATE
+								cout_out_cell[PIPELINE_SEGMENT(i)].d = acc_cell[i].cout;
+							END GENERATE;								
+							acc_cell_regr[i].d = (data[WIDTH_IN-1] $ acc_cell[i].sout $ acc_cell[i-1].cout) & !sload # data[WIDTH_IN-1] & sload;
+							acc_cell[i].cin = acc_cell[i-1].cout & data[WIDTH_IN-1] # data[WIDTH_IN-1] & acc_cell[i].sout # acc_cell[i-1].cout & acc_cell[i].sout;					
+						ELSE GENERATE
+							IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY GENERATE
+								IF BREAKPOINT(NORMALIZE(i)) GENERATE
+									break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = acc_cell[i-1].cout;
+									break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sout;
+									break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = GND;
+									break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = GND;
+									acc_cell_regr[i].d = (data[WIDTH_IN-1] $ (acc_cell[i].sout) $ break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout) & !sload # data[WIDTH_IN-1] &sload;
+									acc_cell[i].cin = break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & data[WIDTH_IN-1] # data[WIDTH_IN-1] & (acc_cell[i].sout) # break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & (acc_cell[i].sout);										
+								ELSE GENERATE
+									acc_cell_regr[i].d = (data[WIDTH_IN-1] $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload # data[WIDTH_IN-1] &sload;
+									acc_cell[i].cin = acc_cell[i-1].cout & data[WIDTH_IN-1] # data[WIDTH_IN-1] & (acc_cell[i].sout) # acc_cell[i-1].cout & (acc_cell[i].sout);										
+								END GENERATE;									
+							ELSE GENERATE
+								IF BREAKPOINT(i) GENERATE
+									cin_sum_cell[POSITION(i)].sin = acc_cell[i-1].cout;
+									cin_sum_cell[POSITION(i)].cin = GND;									
+									sum_cout_cell[POSITION(i)].cin = cin_sum_cell[POSITION(i)].sout;
+									sum_cout_cell[POSITION(i)].sin = GND;
+									acc_cell_regr[i].d = (data[WIDTH_IN-1] $ (acc_cell[i].sout) $ sum_cout_cell[POSITION(i)].cout) & !sload # data[WIDTH_IN-1] &sload;
+									acc_cell[i].cin = sum_cout_cell[POSITION(i)].cout & data[WIDTH_IN-1] # data[WIDTH_IN-1] & (acc_cell[i].sout) # sum_cout_cell[POSITION(i)].cout & (acc_cell[i].sout);										
+								ELSE GENERATE
+									acc_cell_regr[i].d = (data[WIDTH_IN-1] $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload # data[WIDTH_IN-1] &sload;
+									acc_cell[i].cin = acc_cell[i-1].cout & data[WIDTH_IN-1] # data[WIDTH_IN-1] & (acc_cell[i].sout) # acc_cell[i-1].cout & (acc_cell[i].sout);										
+								END GENERATE;															
+							END GENERATE;
+						END GENERATE;							
+					END GENERATE;
+				ELSE GENERATE -- extra_latency > 0 
+					extra_buffers[0][i].d = data[WIDTH_IN-1];
+					IF EXTRA_LATENCY > 0 & FIRST_ELEMENT(i) GENERATE
+						IF USED(add_sub) GENERATE
+							acc_cell_regr[i].d = ((extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) $ (acc_cell[i].sout) $ cout_out_cell[PIPELINE_SEGMENT(i)-1].q) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+							acc_cell[i].cin = cout_out_cell[PIPELINE_SEGMENT(i)-1].q & (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) # (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) & ( acc_cell[i].sout ) # cout_out_cell[PIPELINE_SEGMENT(i)-1].q & ( acc_cell[i].sout );															
+						ELSE GENERATE
+							acc_cell_regr[i].d = (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ acc_cell[i].sout $ cout_out_cell[PIPELINE_SEGMENT(i)-1].q) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+							acc_cell[i].cin = cout_out_cell[PIPELINE_SEGMENT(i)-1].q & extra_buffers[PIPELINE_SEGMENT(i)-1][i].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q & acc_cell[i].sout # cout_out_cell[PIPELINE_SEGMENT(i)-1].q & acc_cell[i].sout;									
+						END GENERATE;
+						IF LENGTH_PER_SEGMENT() == 1 GENERATE
+							IF EXTRA_LATENCY > 0 & LAST_ELEMENT(i) & WIDTH_OUT > EXTRA_LATENCY & i != WIDTH_OUT-1 GENERATE
+								cout_out_cell[PIPELINE_SEGMENT(i)].d = acc_cell[i].cout;						
+							END GENERATE;
+						END GENERATE;
+					ELSE GENERATE
+						IF EXTRA_LATENCY > 0 & LAST_ELEMENT(i) GENERATE
+							IF WIDTH_OUT > EXTRA_LATENCY & i != WIDTH_OUT-1 GENERATE
+								cout_out_cell[PIPELINE_SEGMENT(i)].d = acc_cell[i].cout;
+							END GENERATE;								
+							IF USED(add_sub) GENERATE
+								acc_cell_regr[i].d = ((extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+								acc_cell[i].cin = acc_cell[i-1].cout & (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) # (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) & ( acc_cell[i].sout ) # acc_cell[i-1].cout & ( acc_cell[i].sout );					
+							ELSE GENERATE
+								acc_cell_regr[i].d = (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ acc_cell[i].sout $ acc_cell[i-1].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+								acc_cell[i].cin = acc_cell[i-1].cout & extra_buffers[PIPELINE_SEGMENT(i)-1][i].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q & acc_cell[i].sout # acc_cell[i-1].cout & acc_cell[i].sout;
+							END GENERATE;
+						ELSE GENERATE
+							IF USED(add_sub) GENERATE
+								IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY GENERATE
+									IF BREAKPOINT(NORMALIZE(i)) GENERATE
+										break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = acc_cell[i-1].cout;
+										break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sout;
+										break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = GND;
+										break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = GND;
+										acc_cell_regr[i].d = ((extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) $ (acc_cell[i].sout) $ break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+										acc_cell[i].cin = break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) # (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) & ( acc_cell[i].sout ) # break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & ( acc_cell[i].sout );					
+									ELSE GENERATE
+										acc_cell_regr[i].d = ((extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+										acc_cell[i].cin = acc_cell[i-1].cout & (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) # (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) & ( acc_cell[i].sout ) # acc_cell[i-1].cout & ( acc_cell[i].sout );					
+									END GENERATE;
+								ELSE GENERATE
+									IF BREAKPOINT(i) GENERATE
+										cin_sum_cell[POSITION(i)].sin = acc_cell[i-1].cout;
+										cin_sum_cell[POSITION(i)].cin = GND;									
+										sum_cout_cell[POSITION(i)].cin = cin_sum_cell[POSITION(i)].sout;
+										sum_cout_cell[POSITION(i)].sin = GND;
+										acc_cell_regr[i].d = ((extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) $ (acc_cell[i].sout) $ sum_cout_cell[POSITION(i)].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+										acc_cell[i].cin = sum_cout_cell[POSITION(i)].cout & (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) # (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) & ( acc_cell[i].sout ) # sum_cout_cell[POSITION(i)].cout & ( acc_cell[i].sout );					
+									ELSE GENERATE
+										acc_cell_regr[i].d = ((extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+										acc_cell[i].cin = acc_cell[i-1].cout & (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) # (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) & ( acc_cell[i].sout ) # acc_cell[i-1].cout & ( acc_cell[i].sout );					
+									END GENERATE;
+								END GENERATE;									
+							ELSE GENERATE -- ! Used adD_sub
+								IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY GENERATE
+									IF BREAKPOINT(NORMALIZE(i)) GENERATE
+										break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = acc_cell[i-1].cout;
+										break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sout;
+										break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = GND;
+										break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = GND;
+										acc_cell_regr[i].d = (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ (acc_cell[i].sout) $ break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+										acc_cell[i].cin = break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & extra_buffers[PIPELINE_SEGMENT(i)-1][i].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q & ( acc_cell[i].sout ) # break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & ( acc_cell[i].sout);					
+									ELSE GENERATE
+										acc_cell_regr[i].d = (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+										acc_cell[i].cin = acc_cell[i-1].cout & extra_buffers[PIPELINE_SEGMENT(i)-1][i].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q & ( acc_cell[i].sout) # acc_cell[i-1].cout & ( acc_cell[i].sout);					
+									END GENERATE;
+								ELSE GENERATE
+									IF BREAKPOINT(i) GENERATE
+										cin_sum_cell[POSITION(i)].sin = acc_cell[i-1].cout;
+  										cin_sum_cell[POSITION(i)].cin = GND;									
+										sum_cout_cell[POSITION(i)].cin = cin_sum_cell[POSITION(i)].sout;
+										sum_cout_cell[POSITION(i)].sin = GND;
+										acc_cell_regr[i].d = (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ (acc_cell[i].sout) $ sum_cout_cell[POSITION(i)].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+										acc_cell[i].cin = sum_cout_cell[POSITION(i)].cout & extra_buffers[PIPELINE_SEGMENT(i)-1][i].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q & ( acc_cell[i].sout) # sum_cout_cell[POSITION(i)].cout & ( acc_cell[i].sout );					
+									ELSE GENERATE
+										acc_cell_regr[i].d = (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+										acc_cell[i].cin = acc_cell[i-1].cout & extra_buffers[PIPELINE_SEGMENT(i)-1][i].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q & ( acc_cell[i].sout ) # acc_cell[i-1].cout & ( acc_cell[i].sout);					
+									END GENERATE;
+								END GENERATE;									
+							END GENERATE;
+						END GENERATE;
+					END GENERATE;					
+				END GENERATE;
+			-- lpm_representation signed
+			ELSE GENERATE
+				-- pad zeroes
+				IF PIPELINE_SEGMENT(i) == 0 # EXTRA_LATENCY > 0 & WIDTH_OUT <= EXTRA_LATENCY GENERATE
+					IF USED(add_sub) GENERATE
+						IF EXTRA_LATENCY > 0 & LAST_ELEMENT(i) GENERATE
+							IF WIDTH_OUT > EXTRA_LATENCY & i != WIDTH_OUT-1 GENERATE
+								cout_out_cell[PIPELINE_SEGMENT(i)].d = acc_cell[i].cout;
+							END GENERATE;								
+							acc_cell_regr[i].d = ((acc_cell[i].sout) $ acc_cell[i-1].cout $ (GND $ !add_sub)) & !sload;
+							acc_cell[i].cin = acc_cell[i-1].cout & (acc_cell[i].sout) # acc_Cell[i-1].cout & (GND $ !add_sub) # acc_cell[i].sout & (GND $ !add_sub);										
+						ELSE GENERATE
+							IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY GENERATE
+								IF BREAKPOINT(NORMALIZE(i)) GENERATE
+									break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = acc_cell[i-1].cout;
+									break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sout;
+									break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = GND;
+									break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = GND;
+									acc_cell_regr[i].d = ((acc_cell[i].sout) $ (GND $ !add_sub) $ break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout) & !sload;
+									acc_cell[i].cin = break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & (acc_cell[i].sout) # acc_cell[i].sout & (GND $ !add_sub) # break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & (GND $ !add_sub);								
+								ELSE GENERATE
+									acc_cell_regr[i].d = ((acc_cell[i].sout) $ acc_cell[i-1].cout $ (GND $ !add_sub)) & !sload ;
+									acc_cell[i].cin = acc_cell[i-1].cout & (acc_cell[i].sout) # acc_Cell[i-1].cout & (GND $ !add_sub) # acc_cell[i].sout & (GND $ !add_sub);										
+								END GENERATE;									
+							ELSE GENERATE
+								IF BREAKPOINT(i) GENERATE
+									cin_sum_cell[POSITION(i)].sin = acc_cell[i-1].cout;
+									cin_sum_cell[POSITION(i)].cin = GND;									
+									sum_cout_cell[POSITION(i)].cin = cin_sum_cell[POSITION(i)].sout;
+									sum_cout_cell[POSITION(i)].sin = GND;
+									acc_cell_regr[i].d = ((acc_cell[i].sout) $ (GND $ !add_sub) $ sum_cout_cell[POSITION(i)].cout) & !sload;
+									acc_cell[i].cin = sum_cout_cell[POSITION(i)].cout & (acc_cell[i].sout) # acc_cell[i].sout & (GND $ !add_sub) # (GND $ !add_sub) & sum_cout_cell[POSITION(i)].cout;										
+								ELSE GENERATE
+									acc_cell_regr[i].d = ((acc_cell[i].sout) $ acc_cell[i-1].cout $ (GND $ !add_sub)) & !sload ;
+									acc_cell[i].cin = acc_cell[i-1].cout & (acc_cell[i].sout) # acc_Cell[i-1].cout & (GND $ !add_sub) # acc_cell[i].sout & (GND $ !add_sub);										
+								END GENERATE;															
+							END GENERATE;
+						END GENERATE;							
+					ELSE GENERATE -- !used(add_sub)
+						IF EXTRA_LATENCY > 0 & LAST_ELEMENT(i) GENERATE
+							IF WIDTH_OUT > EXTRA_LATENCY & i != WIDTH_OUT-1 GENERATE
+								cout_out_cell[PIPELINE_SEGMENT(i)].d = acc_cell[i].cout;
+							END GENERATE;								
+							acc_cell_regr[i].d = (acc_cell[i].sout $ acc_cell[i-1].cout) & !sload;
+							acc_cell[i].cin = acc_cell[i-1].cout & acc_cell[i].sout;					
+						ELSE GENERATE
+							IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY GENERATE
+								IF BREAKPOINT(NORMALIZE(i)) GENERATE
+									break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = acc_cell[i-1].cout;
+									break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sout;
+									break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = GND;
+									break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = GND;
+									acc_cell_regr[i].d = ((acc_cell[i].sout) $ break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout) & !sload;
+									acc_cell[i].cin = break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & (acc_cell[i].sout);										
+								ELSE GENERATE
+									acc_cell_regr[i].d = ((acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload;
+									acc_cell[i].cin = acc_cell[i-1].cout & (acc_cell[i].sout);										
+								END GENERATE;									
+							ELSE GENERATE
+								IF BREAKPOINT(i) GENERATE
+									cin_sum_cell[POSITION(i)].sin = acc_cell[i-1].cout;
+									cin_sum_cell[POSITION(i)].cin = GND;									
+									sum_cout_cell[POSITION(i)].cin = cin_sum_cell[POSITION(i)].sout;
+									sum_cout_cell[POSITION(i)].sin = GND;
+									acc_cell_regr[i].d = ((acc_cell[i].sout) $ sum_cout_cell[POSITION(i)].cout) & !sload;
+									acc_cell[i].cin = sum_cout_cell[POSITION(i)].cout & (acc_cell[i].sout);										
+								ELSE GENERATE
+									acc_cell_regr[i].d = ((acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload;
+									acc_cell[i].cin =  acc_cell[i-1].cout & (acc_cell[i].sout);										
+								END GENERATE;															
+							END GENERATE;
+						END GENERATE;							
+					END GENERATE;
+				ELSE GENERATE -- extra_latency > 0
+					extra_buffers[0][i].d = GND;
+					IF EXTRA_LATENCY > 0 & FIRST_ELEMENT(i) GENERATE
+						IF USED(add_sub) GENERATE
+							acc_cell_regr[i].d = ((extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) $ (acc_cell[i].sout) $ cout_out_cell[PIPELINE_SEGMENT(i)-1].q) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+							acc_cell[i].cin = cout_out_cell[PIPELINE_SEGMENT(i)-1].q & (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) # (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) & ( acc_cell[i].sout ) # cout_out_cell[PIPELINE_SEGMENT(i)-1].q & ( acc_cell[i].sout );															
+						ELSE GENERATE
+							acc_cell_regr[i].d = (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ acc_cell[i].sout $ cout_out_cell[PIPELINE_SEGMENT(i)-1].q) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+							acc_cell[i].cin = cout_out_cell[PIPELINE_SEGMENT(i)-1].q & extra_buffers[PIPELINE_SEGMENT(i)-1][i].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q & acc_cell[i].sout # cout_out_cell[PIPELINE_SEGMENT(i)-1].q & acc_cell[i].sout;									
+						END GENERATE;
+						IF LENGTH_PER_SEGMENT() == 1 GENERATE
+							IF EXTRA_LATENCY > 0 & LAST_ELEMENT(i) & WIDTH_OUT > EXTRA_LATENCY & i != WIDTH_OUT-1 GENERATE
+								cout_out_cell[PIPELINE_SEGMENT(i)].d = acc_cell[i].cout;						
+							END GENERATE;
+						END GENERATE;
+					ELSE GENERATE -- ! first element
+						IF EXTRA_LATENCY > 0 & LAST_ELEMENT(i) GENERATE
+							IF WIDTH_OUT > EXTRA_LATENCY  & i != WIDTH_OUT-1 GENERATE
+								cout_out_cell[PIPELINE_SEGMENT(i)].d = acc_cell[i].cout;
+							END GENERATE;								
+							IF USED(add_sub) GENERATE
+								acc_cell_regr[i].d = ((extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+								acc_cell[i].cin = acc_cell[i-1].cout & (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) # (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) & ( acc_cell[i].sout ) # acc_cell[i-1].cout & ( acc_cell[i].sout );					
+							ELSE GENERATE
+								acc_cell_regr[i].d = (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ acc_cell[i].sout $ acc_cell[i-1].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+								acc_cell[i].cin = acc_cell[i-1].cout & extra_buffers[PIPELINE_SEGMENT(i)-1][i].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q & acc_cell[i].sout # acc_cell[i-1].cout & acc_cell[i].sout;
+							END GENERATE;
+						ELSE GENERATE -- ! gfirst and ! last
+							IF USED(add_sub) GENERATE
+								IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY GENERATE
+									IF BREAKPOINT(NORMALIZE(i)) GENERATE
+										break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = acc_cell[i-1].cout;
+										break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sout;
+										break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = GND;
+										break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = GND;
+										acc_cell_regr[i].d = ((extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) $ (acc_cell[i].sout) $ break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+										acc_cell[i].cin = break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) # (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) & ( acc_cell[i].sout ) # break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & ( acc_cell[i].sout );					
+									ELSE GENERATE
+										acc_cell_regr[i].d = ((extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+										acc_cell[i].cin = acc_cell[i-1].cout & (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) # (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) & ( acc_cell[i].sout ) # acc_cell[i-1].cout & ( acc_cell[i].sout );					
+									END GENERATE;
+								ELSE GENERATE
+									IF BREAKPOINT(i) GENERATE
+										cin_sum_cell[POSITION(i)].sin = acc_cell[i-1].cout;
+										cin_sum_cell[POSITION(i)].cin = GND;									
+										sum_cout_cell[POSITION(i)].cin = cin_sum_cell[POSITION(i)].sout;
+										sum_cout_cell[POSITION(i)].sin = GND;
+										acc_cell_regr[i].d = ((extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) $ (acc_cell[i].sout) $ sum_cout_cell[POSITION(i)].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+										acc_cell[i].cin = sum_cout_cell[POSITION(i)].cout & (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) # (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) & ( acc_cell[i].sout ) # sum_cout_cell[POSITION(i)].cout & ( acc_cell[i].sout );					
+									ELSE GENERATE
+										acc_cell_regr[i].d = ((extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+										acc_cell[i].cin = acc_cell[i-1].cout & (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) # (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) & ( acc_cell[i].sout ) # acc_cell[i-1].cout & ( acc_cell[i].sout );					
+									END GENERATE;
+								END GENERATE;									
+							ELSE GENERATE -- !used addsub
+								IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY GENERATE
+									IF BREAKPOINT(NORMALIZE(i)) GENERATE
+										break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = acc_cell[i-1].cout;
+										break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sout;
+										break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = GND;
+										break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = GND;
+										acc_cell_regr[i].d = (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ (acc_cell[i].sout) $ break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+										acc_cell[i].cin = break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & extra_buffers[PIPELINE_SEGMENT(i)-1][i].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q & ( acc_cell[i].sout ) # break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & ( acc_cell[i].sout);					
+									ELSE GENERATE
+										acc_cell_regr[i].d = (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+										acc_cell[i].cin = acc_cell[i-1].cout & extra_buffers[PIPELINE_SEGMENT(i)-1][i].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q & ( acc_cell[i].sout) # acc_cell[i-1].cout & ( acc_cell[i].sout);					
+									END GENERATE;
+								ELSE GENERATE
+									IF BREAKPOINT(i) GENERATE
+										cin_sum_cell[POSITION(i)].sin = acc_cell[i-1].cout;
+										cin_sum_cell[POSITION(i)].cin = GND;									
+										sum_cout_cell[POSITION(i)].cin = cin_sum_cell[POSITION(i)].sout;
+										sum_cout_cell[POSITION(i)].sin = GND;
+										acc_cell_regr[i].d = (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ (acc_cell[i].sout) $ sum_cout_cell[POSITION(i)].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+										acc_cell[i].cin = sum_cout_cell[POSITION(i)].cout & extra_buffers[PIPELINE_SEGMENT(i)-1][i].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q & ( acc_cell[i].sout) # sum_cout_cell[POSITION(i)].cout & ( acc_cell[i].sout );					
+									ELSE GENERATE
+										acc_cell_regr[i].d = (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+										acc_cell[i].cin = acc_cell[i-1].cout & extra_buffers[PIPELINE_SEGMENT(i)-1][i].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q & ( acc_cell[i].sout ) # acc_cell[i-1].cout & ( acc_cell[i].sout);					
+									END GENERATE;
+								END GENERATE;									
+							END GENERATE;
+						END GENERATE;
+					END GENERATE;					
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+		END GENERATE;
+	
+	ELSE GENERATE -- input width == output width
+
+		FOR i IN 0 TO WIDTH_IN-1 GENERATE
+			IF PIPELINE_SEGMENT(i) == 0 # EXTRA_LATENCY > 0 & WIDTH_OUT <= EXTRA_LATENCY GENERATE
+				IF USED(add_sub) GENERATE
+					IF i == 0 GENERATE
+						acc_cell_regr[i].d = ((data[i] $ !add_sub) $ (acc_cell[i].sout) $ cin_node) & !sload # data[i] & sload ;				
+						acc_cell[i].cin = cin_node & (data[i] $ !add_sub) # (data[i] $ !add_sub) & (acc_cell[i].sout) # cin_node & (acc_cell[i].sout);						
+						IF LENGTH_PER_SEGMENT() == 1 GENERATE
+							IF LAST_ELEMENT(i) & WIDTH_OUT > EXTRA_LATENCY & EXTRA_LATENCY > 0 & i != WIDTH_OUT-1 GENERATE
+								cout_out_cell[PIPELINE_SEGMENT(i)].d = acc_cell[i].cout;
+							END GENERATE;
+						END GENERATE;						
+					ELSE GENERATE
+						IF EXTRA_LATENCY > 0 & LAST_ELEMENT(i) GENERATE
+							IF WIDTH_OUT > EXTRA_LATENCY & i != WIDTH_OUT-1 GENERATE
+								cout_out_cell[PIPELINE_SEGMENT(i)].d = acc_cell[i].cout;
+							END GENERATE;								
+							acc_cell[i].cin = acc_cell[i-1].cout & (data[i]$ !add_sub) # (data[i] $ !add_sub) & (acc_cell[i].sout) # acc_cell[i-1].cout & (acc_cell[i].sout);
+							acc_cell_regr[i].d = ((data[i] $ !add_sub) $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload # data[i] &sload;								
+						ELSE GENERATE
+							IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY GENERATE
+								IF BREAKPOINT(NORMALIZE(i)) GENERATE
+									break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = acc_cell[i-1].cout;
+									break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sout;
+									break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = GND;
+									break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = GND;
+									acc_cell[i].cin = break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & (data[i] $ !add_sub) # (data[i] $ !add_sub) & (acc_cell[i].sout)# break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & (acc_cell[i].sout);
+									acc_cell_regr[i].d = ((data[i] $ !add_sub) $ (acc_cell[i].sout) $ break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout) & !sload # data[i] &sload;								
+								ELSE GENERATE
+									acc_cell[i].cin = acc_cell[i-1].cout & (data[i] $ !add_sub) # (data[i] $ !add_sub) & (acc_cell[i].sout)# acc_cell[i-1].cout & (acc_cell[i].sout);
+									acc_cell_regr[i].d = ((data[i]$ !add_sub) $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload # data[i] &sload;								
+								END GENERATE;	
+							ELSE GENERATE
+								IF BREAKPOINT(i) GENERATE
+									cin_sum_cell[POSITION(i)].sin = acc_cell[i-1].cout;
+									cin_sum_cell[POSITION(i)].cin = GND;									
+									sum_cout_cell[POSITION(i)].cin = cin_sum_cell[POSITION(i)].sout;
+									sum_cout_cell[POSITION(i)].sin = GND;
+									acc_cell[i].cin = sum_cout_cell[POSITION(i)].cout & (data[i] $ !add_sub) # (data[i] $ !add_sub) & (acc_cell[i].sout)# sum_cout_cell[POSITION(i)].cout & (acc_cell[i].sout);								
+									acc_cell_regr[i].d = ((data[i] $ !add_sub) $ (acc_cell[i].sout) $ sum_cout_cell[POSITION(i)].cout) & !sload # data[i] &sload;								
+								ELSE GENERATE
+									acc_cell[i].cin = acc_cell[i-1].cout & (data[i] $ !add_sub) # (data[i]$ !add_sub) & (acc_cell[i].sout)# acc_cell[i-1].cout & (acc_cell[i].sout);															
+									acc_cell_regr[i].d = ((data[i] $ !add_sub) $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload # data[i] &sload;								
+								END GENERATE;								
+							END GENERATE;
+						END GENERATE;
+					END GENERATE;
+				ELSE GENERATE -- ! used add_sub
+					IF i == 0 GENERATE
+						acc_cell_regr[i].d = (data[i] $ acc_cell[i].sout $ cin_node) & !sload # data[i] & sload ;				
+						acc_cell[i].cin = cin_node & data[i] # data[i] & acc_cell[i].sout # cin_node & acc_cell[i].sout;
+						IF LENGTH_PER_SEGMENT() == 1 GENERATE
+							IF LAST_ELEMENT(i) & WIDTH_OUT > EXTRA_LATENCY & EXTRA_LATENCY > 0 & i != WIDTH_OUT-1 GENERATE
+								cout_out_cell[PIPELINE_SEGMENT(i)].d = acc_cell[i].cout;
+							END GENERATE;
+						END GENERATE;						
+					ELSE GENERATE
+						IF EXTRA_LATENCY > 0 & LAST_ELEMENT(i) GENERATE
+							IF WIDTH_OUT > EXTRA_LATENCY & i != WIDTH_OUT-1 GENERATE
+								cout_out_cell[PIPELINE_SEGMENT(i)].d = acc_cell[i].cout;
+							END GENERATE;								
+							acc_cell[i].cin = acc_cell[i-1].cout & data[i] # data[i] & (acc_cell[i].sout)# acc_cell[i-1].cout & (acc_cell[i].sout);
+							acc_cell_regr[i].d = (data[i] $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload # data[i] &sload;								
+						ELSE GENERATE
+							IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY GENERATE
+								IF BREAKPOINT(NORMALIZE(i)) GENERATE
+									break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = acc_cell[i-1].cout;
+									break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sout;
+									break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = GND;
+									break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = GND;
+									acc_cell[i].cin = break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & data[i] # data[i] & acc_cell[i].sout # break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & acc_cell[i].sout;
+									acc_cell_regr[i].d = (data[i] $ acc_cell[i].sout $ break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout ) & !sload # data[i] &sload;								
+								ELSE GENERATE
+									acc_cell[i].cin = acc_cell[i-1].cout & data[i] # data[i] & (acc_cell[i].sout)# acc_cell[i-1].cout & (acc_cell[i].sout);
+									acc_cell_regr[i].d = (data[i] $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload # data[i] &sload;								
+								END GENERATE;	
+							ELSE GENERATE
+								IF BREAKPOINT(i) GENERATE
+									cin_sum_cell[POSITION(i)].sin = acc_cell[i-1].cout;
+									cin_sum_cell[POSITION(i)].cin = GND;									
+									sum_cout_cell[POSITION(i)].cin = cin_sum_cell[POSITION(i)].sout;
+									sum_cout_cell[POSITION(i)].sin = GND;
+									acc_cell[i].cin = sum_cout_cell[POSITION(i)].cout & data[i] # data[i] & (acc_cell[i].sout)# sum_cout_cell[POSITION(i)].cout & (acc_cell[i].sout);								
+									acc_cell_regr[i].d = (data[i] $ (acc_cell[i].sout) $ sum_cout_cell[POSITION(i)].cout) & !sload # data[i] &sload;								
+								ELSE GENERATE
+									acc_cell[i].cin = acc_cell[i-1].cout & data[i] # data[i] & (acc_cell[i].sout)# acc_cell[i-1].cout & (acc_cell[i].sout);															
+									acc_cell_regr[i].d = (data[i] $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload # data[i] &sload;								
+								END GENERATE;								
+							END GENERATE;
+						END GENERATE;
+					END GENERATE;					
+				END GENERATE;
+--				acc_cell[i].datac = data[i];
+			ELSE GENERATE
+				extra_buffers[0][i].d = data[i];				
+				IF EXTRA_LATENCY > 0 & FIRST_ELEMENT(i) GENERATE
+					IF USED(add_sub) GENERATE
+						acc_cell_regr[i].d = ((extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) $ (acc_cell[i].sout) $ cout_out_cell[PIPELINE_SEGMENT(i)-1].q) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+						acc_cell[i].cin = cout_out_cell[PIPELINE_SEGMENT(i)-1].q & (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) # (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) & (acc_cell[i].sout) # cout_out_cell[PIPELINE_SEGMENT(i)-1].q & (acc_cell[i].sout);														
+					ELSE GENERATE
+						acc_cell_regr[i].d = (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ acc_cell[i].sout $ cout_out_cell[PIPELINE_SEGMENT(i)-1].q) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+						acc_cell[i].cin = cout_out_cell[PIPELINE_SEGMENT(i)-1].q & extra_buffers[PIPELINE_SEGMENT(i)-1][i].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q & acc_cell[i].sout # cout_out_cell[PIPELINE_SEGMENT(i)-1].q & acc_cell[i].sout;									
+					END GENERATE;
+					IF LENGTH_PER_SEGMENT() == 1 GENERATE
+						IF EXTRA_LATENCY > 0 & LAST_ELEMENT(i) & WIDTH_OUT > EXTRA_LATENCY & i != WIDTH_OUT-1 GENERATE
+							cout_out_cell[PIPELINE_SEGMENT(i)].d = acc_cell[i].cout;						
+						END GENERATE;
+					END GENERATE;
+				ELSE GENERATE
+					IF EXTRA_LATENCY > 0 & LAST_ELEMENT(i) GENERATE
+						IF WIDTH_OUT > EXTRA_LATENCY & i != WIDTH_OUT-1 GENERATE
+							cout_out_cell[PIPELINE_SEGMENT(i)].d = acc_cell[i].cout;
+						END GENERATE;								
+						IF USED(add_sub) GENERATE
+							acc_cell_regr[i].d = ((extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+							acc_cell[i].cin = acc_cell[i-1].cout & (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) # (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) & ( acc_cell[i].sout ) # acc_cell[i-1].cout & ( acc_cell[i].sout );					
+						ELSE GENERATE
+							acc_cell_regr[i].d = (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ acc_cell[i].sout $ acc_cell[i-1].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+							acc_cell[i].cin = acc_cell[i-1].cout & extra_buffers[PIPELINE_SEGMENT(i)-1][i].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q & acc_cell[i].sout # acc_cell[i-1].cout & acc_cell[i].sout;
+						END GENERATE;
+					ELSE GENERATE
+						IF USED(add_sub) GENERATE
+							IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY GENERATE
+								IF BREAKPOINT(NORMALIZE(i)) GENERATE
+									break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = acc_cell[i-1].cout;
+									break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sout;
+									break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = GND;
+									break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = GND;
+									acc_cell_regr[i].d = ((extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) $ (acc_cell[i].sout) $ break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+									acc_cell[i].cin = break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) # (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) & ( acc_cell[i].sout ) # break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & ( acc_cell[i].sout );					
+								ELSE GENERATE
+									acc_cell_regr[i].d = ((extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+									acc_cell[i].cin = acc_cell[i-1].cout & (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q)# (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) & ( acc_cell[i].sout ) # acc_cell[i-1].cout & ( acc_cell[i].sout );					
+								END GENERATE;
+							ELSE GENERATE
+								IF BREAKPOINT(i) GENERATE
+									cin_sum_cell[POSITION(i)].sin = acc_cell[i-1].cout;
+									cin_sum_cell[POSITION(i)].cin = GND;									
+									sum_cout_cell[POSITION(i)].cin = cin_sum_cell[POSITION(i)].sout;
+									sum_cout_cell[POSITION(i)].sin = GND;
+									acc_cell_regr[i].d = ((extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) $ (acc_cell[i].sout) $ sum_cout_cell[POSITION(i)].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+									acc_cell[i].cin = sum_cout_cell[POSITION(i)].cout & (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) # (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) & ( acc_cell[i].sout ) # sum_cout_cell[POSITION(i)].cout & ( acc_cell[i].sout );					
+								ELSE GENERATE
+									acc_cell_regr[i].d = ((extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+									acc_cell[i].cin = acc_cell[i-1].cout & (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) # (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ add_sub_regr[PIPELINE_SEGMENT(i)-1].q) & ( acc_cell[i].sout) # acc_cell[i-1].cout & ( acc_cell[i].sout );					
+								END GENERATE;
+							END GENERATE;									
+						ELSE GENERATE
+							IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY GENERATE
+								IF BREAKPOINT(NORMALIZE(i)) GENERATE
+									break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = acc_cell[i-1].cout;
+									break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sout;
+									break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = GND;
+									break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].sin = GND;
+									acc_cell_regr[i].d = (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ (acc_cell[i].sout) $ break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+									acc_cell[i].cin = break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & extra_buffers[PIPELINE_SEGMENT(i)-1][i].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q & ( acc_cell[i].sout ) # break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout & ( acc_cell[i].sout);					
+								ELSE GENERATE
+									acc_cell_regr[i].d = (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+									acc_cell[i].cin = acc_cell[i-1].cout & extra_buffers[PIPELINE_SEGMENT(i)-1][i].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q & ( acc_cell[i].sout) # acc_cell[i-1].cout & ( acc_cell[i].sout);					
+								END GENERATE;
+							ELSE GENERATE
+								IF BREAKPOINT(i) GENERATE
+									cin_sum_cell[POSITION(i)].sin = acc_cell[i-1].cout;
+									cin_sum_cell[POSITION(i)].cin = GND;									
+									sum_cout_cell[POSITION(i)].cin = cin_sum_cell[POSITION(i)].sout;
+									sum_cout_cell[POSITION(i)].sin = GND;
+									acc_cell_regr[i].d = (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ (acc_cell[i].sout) $ sum_cout_cell[POSITION(i)].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+									acc_cell[i].cin = sum_cout_cell[POSITION(i)].cout & extra_buffers[PIPELINE_SEGMENT(i)-1][i].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q & ( acc_cell[i].sout) # sum_cout_cell[POSITION(i)].cout & ( acc_cell[i].sout );					
+								ELSE GENERATE
+									acc_cell_regr[i].d = (extra_buffers[PIPELINE_SEGMENT(i)-1][i].q $ (acc_cell[i].sout) $ acc_cell[i-1].cout) & !sload_regr[PIPELINE_SEGMENT(i)-1].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q &sload_regr[PIPELINE_SEGMENT(i)-1].q;
+									acc_cell[i].cin = acc_cell[i-1].cout & extra_buffers[PIPELINE_SEGMENT(i)-1][i].q # extra_buffers[PIPELINE_SEGMENT(i)-1][i].q & ( acc_cell[i].sout ) # acc_cell[i-1].cout & ( acc_cell[i].sout);					
+								END GENERATE;
+							END GENERATE;									
+						END GENERATE;
+					END GENERATE;				
+				END GENERATE;					
+			END GENERATE;
+		END GENERATE;	
+	END GENERATE; 
+
+
+	acc_cell[].sin = acc_cell_regr[].q;
+	-- sload and addsub regrs
+	IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY GENERATE
+		sload_regr[0].d = sload;
+		IF USED(add_sub) GENERATE
+			add_sub_regr[0].d = !add_sub;
+		END GENERATE;
+		IF EXTRA_LATENCY > 1 GENERATE
+			FOR i IN 1 TO EXTRA_LATENCY-1 GENERATE
+				sload_regr[i].d = sload_regr[i-1].q;
+				IF USED(add_sub) GENERATE
+					add_sub_regr[i].d = add_sub_regr[i-1].q;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+
+	-- connect acc_Cell and extra buffers appropriately	
+	IF EXTRA_LATENCY == 0 GENERATE
+		result[] = acc_cell[].sout;
+	ELSE GENERATE
+		IF WIDTH_OUT > EXTRA_LATENCY GENERATE
+			FOR i IN 0 TO WIDTH_OUT-1 GENERATE
+				IF PIPELINE_SEGMENT(i) != EXTRA_LATENCY GENERATE
+					result[i] = extra_buffers[EXTRA_LATENCY-1][i].q;
+					extra_buffers[PIPELINE_SEGMENT(i)][i].d = acc_cell[i].sout;
+				ELSE GENERATE 
+					result[i] = acc_cell[i].sout;	
+				END GENERATE; 
+				IF EXTRA_LATENCY > 1 GENERATE
+					FOR j IN 1 TO EXTRA_LATENCY GENERATE
+						IF j != PIPELINE_SEGMENT(i) GENERATE
+							extra_buffers[j][i].d = extra_buffers[j-1][i].q;
+						END GENERATE;
+					END GENERATE; 
+				END GENERATE; 
+			END GENERATE;
+			IF USED(cout) GENERATE
+				IF ( EXTRA_LATENCY * LENGTH_PER_SEGMENT() >= WIDTH_OUT) GENERATE
+					cout_buffer[0].d = acc_cell[WIDTH_OUT-1].cout;
+					IF EXTRA_LATENCY - PIPELINE_SEGMENT(WIDTH_OUT-1)-1 >= 1 GENERATE
+						FOR i IN 1 TO EXTRA_COUT_BUFFER() GENERATE
+							cout_buffer[i].d = cout_buffer[i-1].q;
+						END GENERATE;
+						IF USED(add_sub) GENERATE
+							cout = cout_buffer[EXTRA_COUT_BUFFER()].q & !sload_regr[EXTRA_LATENCY-1].q # add_sub_regr[EXTRA_LATENCY-1].q & sload_regr[EXTRA_LATENCY-1].q;				
+						ELSE GENERATE
+							cout = cout_buffer[EXTRA_COUT_BUFFER()].q & !sload_regr[EXTRA_LATENCY-1].q ;
+						END GENERATE;
+					ELSE GENERATE
+						IF USED(add_sub) GENERATE
+							cout = cout_buffer[0].q & !sload_regr[EXTRA_LATENCY-1].q # add_sub_regr[EXTRA_LATENCY-1].q & sload_regr[EXTRA_LATENCY-1].q;				
+						ELSE GENERATE
+							cout = cout_buffer[0].q & !sload_regr[EXTRA_LATENCY-1].q ;
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE; 
+			-- regr overflow for special cases
+			IF USED(overflow) GENERATE
+				IF (EXTRA_LATENCY * LENGTH_PER_SEGMENT() >= WIDTH_OUT) GENERATE
+					overflow_buffer[0].d = tmp_overflow;
+					IF EXTRA_LATENCY - PIPELINE_SEGMENT(WIDTH_OUT-1)-1 >= 1 GENERATE
+						FOR i IN 1 TO EXTRA_OVERFLOW_BUFFER() GENERATE
+							overflow_buffer[i].d = overflow_buffer[i-1].q;
+						END GENERATE;
+						IF LPM_REPRESENTATION == "SIGNED" GENERATE
+							overflow = overflow_buffer[EXTRA_OVERFLOW_BUFFER()].q;
+						ELSE GENERATE
+							overflow = overflow_buffer[EXTRA_OVERFLOW_BUFFER()].q;
+						END GENERATE;
+					ELSE GENERATE
+						overflow =overflow_buffer[0].q;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+
+
+		ELSE GENERATE -- width <= latency
+			-- connect extra data regrs and overflow and cout buffers	
+			extra_buffers[0][].d = acc_cell[].sout;
+			result[] =  extra_buffers[EXTRA_LATENCY-1][].q;
+			IF USED(overflow) GENERATE
+				ovrflw_regr[0].d = tmp_overflow;
+				overflow = ovrflw_regr[EXTRA_LATENCY-1].q;				
+			END GENERATE;
+			IF USED(cout) GENERATE
+				cout_regr[0].d = tmp_cout;
+				cout = cout_regr[EXTRA_LATENCY-1].q;
+			END GENERATE;
+			IF EXTRA_LATENCY > 1 GENERATE
+				FOR i IN 1 TO EXTRA_LATENCY-1 GENERATE
+					extra_buffers[i][].d = extra_buffers[i-1][].q;
+					IF USED(overflow) GENERATE
+						ovrflw_regr[i].d = ovrflw_regr[i-1].q;
+					END GENERATE;
+					IF USED(cout) GENERATE
+						cout_regr[i].d = cout_regr[i-1].q;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+	
+	
+	
+	IF USED(aclr) GENERATE
+		acc_cell_regr[].clrn = !aclr;		
+		IF EXTRA_LATENCY > 0 GENERATE
+			extra_buffers[][].clrn = !aclr;
+			IF WIDTH_OUT > EXTRA_LATENCY GENERATE
+				sload_regr[].clrn = !aclr;
+				cout_out_cell[].clrn = !aclr;
+				IF USED(add_sub) GENERATE
+					add_sub_regr[].clrn = !aclr;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+		IF USED(overflow) GENERATE
+			IF LPM_REPRESENTATION == "SIGNED" # USED(sign_data) GENERATE
+				data_a_regr.clrn = !aclr;
+				res_regr.clrn = !aclr;
+			END GENERATE;
+			IF EXTRA_LATENCY > 0 & WIDTH_OUT <= EXTRA_LATENCY GENERATE
+				ovrflw_regr[].clrn = !aclr;
+			END GENERATE;
+			IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY & ( EXTRA_LATENCY * LENGTH_PER_SEGMENT() >= WIDTH_OUT) GENERATE
+				overflow_buffer[].clrn = !aclr;
+			END GENERATE;
+			IF USED(sign_data) GENERATE
+				sign_data_regr[].clrn = !aclr;
+			END GENERATE;
+			IF LPM_REPRESENTATION != "SIGNED" GENERATE
+				unsign_ovrflw_regr.clrn = !aclr;
+			END GENERATE;
+
+		END GENERATE;
+		IF USED(cout) GENERATE
+			IF EXTRA_LATENCY > 0 & WIDTH_OUT <= EXTRA_LATENCY GENERATE
+				cout_regr[].clrn = !aclr;
+			END GENERATE;
+			IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY & ( EXTRA_LATENCY * LENGTH_PER_SEGMENT() >= WIDTH_OUT) GENERATE
+				cout_buffer[].clrn = !aclr;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+	
+	IF USED(clock) GENERATE
+		acc_cell_regr[].clk = clock;
+		IF EXTRA_LATENCY > 0 GENERATE
+			extra_buffers[][].clk = clock;
+			IF WIDTH_OUT > EXTRA_LATENCY GENERATE
+				sload_regr[].clk = clock;
+				cout_out_cell[].clk = clock;
+				IF USED(add_sub) GENERATE
+					add_sub_regr[].clk = clock;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+		IF USED(overflow) GENERATE
+			IF LPM_REPRESENTATION == "SIGNED" # USED(sign_data) GENERATE
+				data_a_regr.clk = clock;
+				res_regr.clk = clock;
+			END GENERATE;
+			IF EXTRA_LATENCY > 0 & WIDTH_OUT <= EXTRA_LATENCY GENERATE
+				ovrflw_regr[].clk = clock;
+			END GENERATE;
+			IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY & ( EXTRA_LATENCY * LENGTH_PER_SEGMENT() >= WIDTH_OUT) GENERATE
+				overflow_buffer[].clk = clock;
+			END GENERATE;
+			IF USED(sign_data) GENERATE
+				sign_data_regr[].clk = clock;
+			END GENERATE;
+			IF LPM_REPRESENTATION != "SIGNED" GENERATE
+				unsign_ovrflw_regr.clk = clock;
+			END GENERATE;
+		END GENERATE;
+		IF USED(cout) GENERATE
+			IF EXTRA_LATENCY > 0 & WIDTH_OUT <= EXTRA_LATENCY GENERATE
+				cout_regr[].clk = clock;
+			END GENERATE;
+			IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY & ( EXTRA_LATENCY * LENGTH_PER_SEGMENT() >= WIDTH_OUT) GENERATE
+				cout_buffer[].clk = clock;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+	IF USED(clken) GENERATE
+		acc_cell_regr[].ena = clken;
+		IF EXTRA_LATENCY > 0 GENERATE
+			extra_buffers[][].ena = clken;
+			IF WIDTH_OUT > EXTRA_LATENCY GENERATE
+				sload_regr[].ena = clken;
+				cout_out_cell[].ena = clken;
+				IF USED(add_sub) GENERATE
+					add_sub_regr[].ena = clken;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+		IF USED(overflow) GENERATE
+			IF USED(sign_data) # LPM_REPRESENTATION == "SIGNED" GENERATE
+				data_a_regr.ena = clken;
+				res_regr.ena = clken;
+			END GENERATE;
+			IF EXTRA_LATENCY > 0 & WIDTH_OUT <= EXTRA_LATENCY GENERATE
+				ovrflw_regr[].ena = clken;
+			END GENERATE;
+			IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY & ( EXTRA_LATENCY * LENGTH_PER_SEGMENT() >= WIDTH_OUT) GENERATE
+				overflow_buffer[].ena = clken;
+			END GENERATE;
+			IF USED(sign_data) GENERATE
+				sign_data_regr[].ena = clken;
+			END GENERATE;
+			IF LPM_REPRESENTATION != "SIGNED" GENERATE
+				unsign_ovrflw_regr.ena = clken;
+			END GENERATE;
+		END GENERATE;
+		IF USED(cout) GENERATE
+			IF EXTRA_LATENCY > 0 & WIDTH_OUT <= EXTRA_LATENCY GENERATE
+				cout_regr[].ena = clken;
+			END GENERATE;
+			IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY & ( EXTRA_LATENCY * LENGTH_PER_SEGMENT() >= WIDTH_OUT) GENERATE
+				cout_buffer[].ena = clken;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+
+	-- overflow
+	IF USED(overflow) GENERATE
+		IF USED(sign_data) GENERATE
+			sign_data_regr[0].d = sign_data;
+			IF EXTRA_LATENCY > 0 GENERATE
+				FOR i IN 1 TO EXTRA_LATENCY GENERATE
+					sign_data_regr[i].d = sign_data_regr[i-1].q;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+		IF EXTRA_LATENCY == 0  # WIDTH_OUT <= EXTRA_LATENCY GENERATE
+			IF USED(sign_data) GENERATE
+				IF USED(add_sub) GENERATE
+					res_regr.d =  (!(data[WIDTH_IN-1] $ acc_cell[WIDTH_OUT-1].sout) $ !add_sub )& !sload;
+				ELSE GENERATE
+					res_regr.d =  (!(data[WIDTH_IN-1] $ acc_cell[WIDTH_OUT-1].sout)) & !sload;
+				END GENERATE;		
+				data_a_regr.d = acc_cell[WIDTH_OUT-1].sout;
+				tmp_sign_overflow = (res_regr.q) & (data_a_regr.q $ acc_cell[WIDTH_OUT-1].sout);				
+				cout_node = acc_cell[WIDTH_OUT-1].cout;
+				IF USED(add_sub) GENERATE
+					unsign_ovrflw_regr.d = (!add_sub $ cout_node) & !sload;			
+				ELSE GENERATE
+					unsign_ovrflw_regr.d = cout_node & !sload;
+				END GENERATE;
+				tmp_unsign_overflow = unsign_ovrflw_regr.q;
+				tmp_overflow = tmp_sign_overflow & sign_data_regr[0].q # tmp_unsign_overflow & !sign_data_regr[0].q;
+			ELSE GENERATE
+				IF LPM_REPRESENTATION == "SIGNED" GENERATE
+					-- store the output of previous stage which is also the input and the data input
+					IF USED(add_sub) GENERATE
+						res_regr.d =  (!(data[WIDTH_IN-1] $ acc_cell[WIDTH_OUT-1].sout) $ !add_sub )& !sload;
+					ELSE GENERATE
+						res_regr.d =  (!(data[WIDTH_IN-1] $ acc_cell[WIDTH_OUT-1].sout)) & !sload;
+					END GENERATE;		
+					data_a_regr.d = acc_cell[WIDTH_OUT-1].sout;
+					tmp_overflow = (res_regr.q) & (data_a_regr.q $ acc_cell[WIDTH_OUT-1].sout);
+				ELSE GENERATE
+					cout_node = acc_cell[WIDTH_OUT-1].cout;
+					IF USED(add_sub) GENERATE
+						unsign_ovrflw_regr.d = (!add_sub $ cout_node) & !sload;			
+					ELSE GENERATE
+						unsign_ovrflw_regr.d = cout_node & !sload;
+					END GENERATE;
+					tmp_overflow = unsign_ovrflw_regr.q;
+				END GENERATE;
+			END GENERATE;
+			IF EXTRA_LATENCY == 0 GENERATE
+				overflow = tmp_overflow;
+			END GENERATE;
+		ELSE GENERATE
+			IF ( EXTRA_LATENCY * LENGTH_PER_SEGMENT() >= WIDTH_OUT) GENERATE
+				IF USED(sign_data) GENERATE
+					IF USED(add_sub) GENERATE
+						res_regr.d =  (!(extra_buffers[PIPELINE_SEGMENT(WIDTH_OUT-1)-1][WIDTH_OUT-1] $ acc_cell[WIDTH_OUT-1].sout) $ add_sub_regr[PIPELINE_SEGMENT(WIDTH_OUT-1)-1].q )  & !sload_regr[PIPELINE_SEGMENT(WIDTH_OUT-1)-1].q;
+					ELSE GENERATE
+						res_regr.d =  (!(extra_buffers[PIPELINE_SEGMENT(WIDTH_OUT-1)-1][WIDTH_OUT-1] $ acc_cell[WIDTH_OUT-1].sout))  & !sload_regr[PIPELINE_SEGMENT(WIDTH_OUT-1)-1].q;
+					END GENERATE;		
+					data_a_regr.d = acc_cell[WIDTH_OUT-1].sout;
+					tmp_sign_overflow = (res_regr.q) & (data_a_regr.q $ acc_cell[WIDTH_OUT-1].sout);					
+					cout_node = acc_cell[WIDTH_OUT-1].cout;
+					IF USED(add_sub) GENERATE
+						unsign_ovrflw_regr.d = (add_sub_regr[PIPELINE_SEGMENT(WIDTH_OUT-1)-1].q $ cout_node) & !sload_regr[PIPELINE_SEGMENT(WIDTH_OUT-1)-1].q;			
+					ELSE GENERATE
+						unsign_ovrflw_regr.d = cout_node & !sload_regr[PIPELINE_SEGMENT(WIDTH_OUT-1)-1].q;
+					END GENERATE;
+					tmp_unsign_overflow = unsign_ovrflw_regr.q;
+					tmp_overflow = tmp_sign_overflow & sign_data_regr[PIPELINE_SEGMENT(WIDTH_OUT-1)].q # tmp_unsign_overflow & !sign_data_regr[PIPELINE_SEGMENT(WIDTH_OUT-1)].q;
+				ELSE GENERATE
+					IF LPM_REPRESENTATION == "SIGNED" GENERATE
+						IF USED(add_sub) GENERATE
+							res_regr.d =  (!(extra_buffers[PIPELINE_SEGMENT(WIDTH_OUT-1)-1][WIDTH_OUT-1] $ acc_cell[WIDTH_OUT-1].sout) $ add_sub_regr[PIPELINE_SEGMENT(WIDTH_OUT-1)-1].q )  & !sload_regr[PIPELINE_SEGMENT(WIDTH_OUT-1)-1].q;
+						ELSE GENERATE
+							res_regr.d =  (!(extra_buffers[PIPELINE_SEGMENT(WIDTH_OUT-1)-1][WIDTH_OUT-1] $ acc_cell[WIDTH_OUT-1].sout))  & !sload_regr[PIPELINE_SEGMENT(WIDTH_OUT-1)-1].q;
+						END GENERATE;		
+						data_a_regr.d = acc_cell[WIDTH_OUT-1].sout;
+						tmp_overflow = (res_regr.q) & (data_a_regr.q $ acc_cell[WIDTH_OUT-1].sout);
+					ELSE GENERATE
+						cout_node = acc_cell[WIDTH_OUT-1].cout;
+						IF USED(add_sub) GENERATE
+							unsign_ovrflw_regr.d = (add_sub_regr[PIPELINE_SEGMENT(WIDTH_OUT-1)-1].q $ cout_node) & !sload_regr[PIPELINE_SEGMENT(WIDTH_OUT-1)-1].q;			
+						ELSE GENERATE
+							unsign_ovrflw_regr.d = cout_node & !sload_regr[PIPELINE_SEGMENT(WIDTH_OUT-1)-1].q;
+						END GENERATE;
+						tmp_overflow = unsign_ovrflw_regr.q;
+					END GENERATE;	
+				END GENERATE;
+			ELSE GENERATE
+				IF USED(sign_data) GENERATE
+					IF USED(add_sub) GENERATE
+						res_regr.d =  (!(extra_buffers[EXTRA_LATENCY-1][WIDTH_OUT-1] $ acc_cell[WIDTH_OUT-1].sout) $ add_sub_regr[EXTRA_LATENCY-1].q ) & !sload_regr[EXTRA_LATENCY-1].q;
+					ELSE GENERATE
+						res_regr.d =  (!(extra_buffers[EXTRA_LATENCY-1][WIDTH_OUT-1] $ acc_cell[WIDTH_OUT-1].sout)) & !sload_regr[EXTRA_LATENCY-1].q;
+					END GENERATE;		
+					data_a_regr.d = acc_cell[WIDTH_OUT-1].sout;
+					tmp_sign_overflow = (res_regr.q) & (data_a_regr.q $ acc_cell[WIDTH_OUT-1].sout);
+					cout_node = acc_cell[WIDTH_OUT-1].cout;
+					IF USED(add_sub) GENERATE
+						unsign_ovrflw_regr.d = (add_sub_regr[EXTRA_LATENCY-1].q $ cout_node) & !sload_regr[EXTRA_LATENCY-1].q;			
+					ELSE GENERATE
+						unsign_ovrflw_regr.d = cout_node & !sload_regr[EXTRA_LATENCY-1].q;
+					END GENERATE;
+					tmp_unsign_overflow = unsign_ovrflw_regr.q;
+					tmp_overflow = tmp_sign_overflow & sign_data_regr[EXTRA_LATENCY].q # tmp_unsign_overflow & !sign_data_regr[EXTRA_LATENCY].q;													
+				ELSE GENERATE
+					IF LPM_REPRESENTATION == "SIGNED" GENERATE
+						IF USED(add_sub) GENERATE
+							res_regr.d =  (!(extra_buffers[EXTRA_LATENCY-1][WIDTH_OUT-1] $ acc_cell[WIDTH_OUT-1].sout) $ add_sub_regr[EXTRA_LATENCY-1].q ) & !sload_regr[EXTRA_LATENCY-1].q;
+						ELSE GENERATE
+							res_regr.d =  (!(extra_buffers[EXTRA_LATENCY-1][WIDTH_OUT-1] $ acc_cell[WIDTH_OUT-1].sout)) & !sload_regr[EXTRA_LATENCY-1].q;
+						END GENERATE;		
+						data_a_regr.d = acc_cell[WIDTH_OUT-1].sout;
+						tmp_overflow = (res_regr.q) & (data_a_regr.q $ acc_cell[WIDTH_OUT-1].sout);
+					ELSE GENERATE
+						cout_node = acc_cell[WIDTH_OUT-1].cout;
+						IF USED(add_sub) GENERATE
+							unsign_ovrflw_regr.d = (add_sub_regr[EXTRA_LATENCY-1].q $ cout_node) & !sload_regr[EXTRA_LATENCY-1].q;			
+						ELSE GENERATE
+							unsign_ovrflw_regr.d = cout_node & !sload_regr[EXTRA_LATENCY-1].q;
+						END GENERATE;
+						tmp_overflow = unsign_ovrflw_regr.q;
+					END GENERATE;	
+				END GENERATE;
+				overflow = tmp_overflow;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+
+	-- cout
+	IF USED(cout) GENERATE
+		IF EXTRA_LATENCY == 0 # EXTRA_LATENCY > 0 & WIDTH_OUT <= EXTRA_LATENCY GENERATE
+			IF USED(add_sub) GENERATE
+				tmp_cout = !sload & acc_cell[WIDTH_OUT-1].cout # !add_sub & sload;
+			ELSE GENERATE
+				tmp_cout = !sload & acc_cell[WIDTH_OUT-1].cout;
+			END GENERATE;	
+		ELSE GENERATE
+			IF USED(add_sub) GENERATE
+				tmp_cout = !sload_regr[EXTRA_LATENCY-1].q & acc_cell[WIDTH_OUT-1].cout # add_sub_regr[EXTRA_LATENCY-1].q & sload_regr[EXTRA_LATENCY-1].q;
+			ELSE GENERATE
+				tmp_cout = !sload_regr[EXTRA_LATENCY-1].q & acc_cell[WIDTH_OUT-1].cout;
+			END GENERATE;	
+		END GENERATE;
+		IF EXTRA_LATENCY == 0 # EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY GENERATE
+			IF !(EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY & ( EXTRA_LATENCY * LENGTH_PER_SEGMENT() >= WIDTH_OUT)) GENERATE
+				cout = tmp_cout;
+			END GENERATE;
+			IF EXTRA_LATENCY == 0 GENERATE
+				cout = tmp_cout;
+			END GENERATE;
+		END GENERATE;		
+	END GENERATE;
+
+	IF !USED(cout) GENERATE
+		cout = GND;
+	END GENERATE;
+	IF !USED(overflow) GENERATE
+		overflow = GND;
+	END GENERATE;
+	IF !USED(result) GENERATE
+		result[] = GND;
+	END GENERATE;
+END;
+

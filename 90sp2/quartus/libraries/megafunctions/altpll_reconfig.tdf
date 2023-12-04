@@ -1,0 +1,181 @@
+------------------------------------------------------------------
+-- altpll_reconfig parameterized megafunction
+-- Generated with 'clearbox' loader - do not edit
+------------------------------------------------------------------
+
+
+-- Copyright (C) 1991-2009 Altera Corporation
+--  Your use of Altera Corporation's design tools, logic functions 
+--  and other software and tools, and its AMPP partner logic 
+--  functions, and any output files from any of the foregoing 
+--  (including device programming or simulation files), and any 
+--  associated documentation or information are expressly subject 
+--  to the terms and conditions of the Altera Program License 
+--  Subscription Agreement, Altera MegaCore Function License 
+--  Agreement, or other applicable license agreement, including, 
+--  without limitation, that your use is for the sole purpose of 
+--  programming logic devices manufactured by Altera and sold by 
+--  Altera or its authorized distributors.  Please refer to the 
+--  applicable agreement for further details.
+
+--  Version 9.0 Build 235 06/17/2009
+
+OPTIONS NAME_SUBSTITUTION = ON;
+
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+
+PARAMETERS
+(
+	init_from_rom = "NO",
+	pll_type = "UNUSED",
+	scan_chain = "UNUSED",
+	scan_init_file = "UNUSED",
+	use_scanclk_sync_register = "NO",
+	CBXI_PARAMETER = "NOTHING"
+);
+FUNCTION @CBXI_PARAMETER (clock, counter_param[2..0], counter_type[3..0], data_in[8..0], pll_areset_in, pll_scandataout, pll_scandone, read_param, reconfig, reset, reset_rom_address, rom_data_in, write_from_rom, write_param)
+RETURNS (busy, data_out[8..0], pll_areset, pll_configupdate, pll_scanaclr, pll_scanclk, pll_scanclkena, pll_scandata, pll_scanread, pll_scanwrite, rom_address_out[7..0], write_rom_ena);
+
+
+SUBDESIGN altpll_reconfig
+(
+	busy		:	OUTPUT;
+	clock		:	INPUT;
+	counter_param[2..0]		:	INPUT = GND;
+	counter_type[3..0]		:	INPUT = GND;
+	data_in[8..0]		:	INPUT = GND;
+	data_out[8..0]		:	OUTPUT;
+	pll_areset		:	OUTPUT;
+	pll_areset_in		:	INPUT = GND;
+	pll_configupdate		:	OUTPUT;
+	pll_scanaclr		:	OUTPUT;
+	pll_scanclk		:	OUTPUT;
+	pll_scanclkena		:	OUTPUT;
+	pll_scandata		:	OUTPUT;
+	pll_scandataout		:	INPUT = GND;
+	pll_scandone		:	INPUT = GND;
+	pll_scanread		:	OUTPUT;
+	pll_scanwrite		:	OUTPUT;
+	read_param		:	INPUT = GND;
+	reconfig		:	INPUT = GND;
+	reset		:	INPUT;
+	reset_rom_address		:	INPUT = GND;
+	rom_address_out[7..0]		:	OUTPUT;
+	rom_data_in		:	INPUT = GND;
+	write_from_rom		:	INPUT = GND;
+	write_param		:	INPUT = GND;
+	write_rom_ena		:	OUTPUT;
+)
+VARIABLE
+	IF CBXI_PARAMETER != "NOTHING" GENERATE
+		auto_generated : @CBXI_PARAMETER WITH ( CBXI_PARAMETER = "NOTHING" );
+	END GENERATE;
+BEGIN
+	ASSERT (CBXI_PARAMETER != "NOTHING")
+	REPORT "Valid clear box generator not found or Errors encountered during clear box generation"
+	SEVERITY ERROR;
+	IF (CBXI_PARAMETER != "NOTHING") GENERATE
+		IF USED(busy) GENERATE
+			busy = auto_generated.busy;
+		ELSE GENERATE
+			busy = GND;
+		END GENERATE;
+		IF USED(clock) GENERATE
+			auto_generated.clock = clock;
+		END GENERATE;
+		IF USED(counter_param) GENERATE
+			auto_generated.counter_param[] = counter_param[];
+		END GENERATE;
+		IF USED(counter_type) GENERATE
+			auto_generated.counter_type[] = counter_type[];
+		END GENERATE;
+		IF USED(data_in) GENERATE
+			auto_generated.data_in[] = data_in[];
+		END GENERATE;
+		IF USED(data_out) GENERATE
+			data_out[] = auto_generated.data_out[];
+		ELSE GENERATE
+			data_out[] = GND;
+		END GENERATE;
+		IF USED(pll_areset) GENERATE
+			pll_areset = auto_generated.pll_areset;
+		ELSE GENERATE
+			pll_areset = GND;
+		END GENERATE;
+		IF USED(pll_areset_in) GENERATE
+			auto_generated.pll_areset_in = pll_areset_in;
+		END GENERATE;
+		IF USED(pll_configupdate) GENERATE
+			pll_configupdate = auto_generated.pll_configupdate;
+		ELSE GENERATE
+			pll_configupdate = GND;
+		END GENERATE;
+		IF USED(pll_scanaclr) GENERATE
+			pll_scanaclr = auto_generated.pll_scanaclr;
+		ELSE GENERATE
+			pll_scanaclr = GND;
+		END GENERATE;
+		IF USED(pll_scanclk) GENERATE
+			pll_scanclk = auto_generated.pll_scanclk;
+		ELSE GENERATE
+			pll_scanclk = GND;
+		END GENERATE;
+		IF USED(pll_scanclkena) GENERATE
+			pll_scanclkena = auto_generated.pll_scanclkena;
+		ELSE GENERATE
+			pll_scanclkena = GND;
+		END GENERATE;
+		IF USED(pll_scandata) GENERATE
+			pll_scandata = auto_generated.pll_scandata;
+		ELSE GENERATE
+			pll_scandata = GND;
+		END GENERATE;
+		IF USED(pll_scandataout) GENERATE
+			auto_generated.pll_scandataout = pll_scandataout;
+		END GENERATE;
+		IF USED(pll_scandone) GENERATE
+			auto_generated.pll_scandone = pll_scandone;
+		END GENERATE;
+		IF USED(pll_scanread) GENERATE
+			pll_scanread = auto_generated.pll_scanread;
+		ELSE GENERATE
+			pll_scanread = GND;
+		END GENERATE;
+		IF USED(pll_scanwrite) GENERATE
+			pll_scanwrite = auto_generated.pll_scanwrite;
+		ELSE GENERATE
+			pll_scanwrite = GND;
+		END GENERATE;
+		IF USED(read_param) GENERATE
+			auto_generated.read_param = read_param;
+		END GENERATE;
+		IF USED(reconfig) GENERATE
+			auto_generated.reconfig = reconfig;
+		END GENERATE;
+		IF USED(reset) GENERATE
+			auto_generated.reset = reset;
+		END GENERATE;
+		IF USED(reset_rom_address) GENERATE
+			auto_generated.reset_rom_address = reset_rom_address;
+		END GENERATE;
+		IF USED(rom_address_out) GENERATE
+			rom_address_out[] = auto_generated.rom_address_out[];
+		ELSE GENERATE
+			rom_address_out[] = GND;
+		END GENERATE;
+		IF USED(rom_data_in) GENERATE
+			auto_generated.rom_data_in = rom_data_in;
+		END GENERATE;
+		IF USED(write_from_rom) GENERATE
+			auto_generated.write_from_rom = write_from_rom;
+		END GENERATE;
+		IF USED(write_param) GENERATE
+			auto_generated.write_param = write_param;
+		END GENERATE;
+		IF USED(write_rom_ena) GENERATE
+			write_rom_ena = auto_generated.write_rom_ena;
+		ELSE GENERATE
+			write_rom_ena = GND;
+		END GENERATE;
+	END GENERATE;
+END;

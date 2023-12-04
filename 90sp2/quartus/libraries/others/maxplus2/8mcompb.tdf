@@ -1,0 +1,83 @@
+TITLE "Top-level file for the 8mcompb macrofunction.  Chooses a device-family optimized implementation."; 
+FUNCTION p8mcompb (a[7..0], b[7..0])
+    RETURNS (altb, aeqb, agtb, aeb[7..0]);
+FUNCTION f8mcompb (a[7..0], b[7..0])
+    RETURNS (altb, aeqb, agtb, aeb[7..0]);
+
+PARAMETERS
+(
+	DEVICE_FAMILY
+);
+INCLUDE "aglobal.inc";
+
+SUBDESIGN 8mcompb
+(
+	a[7..0]          : INPUT = GND;
+	b[7..0]          : INPUT = GND;
+	altb             : OUTPUT;
+	aeqb             : OUTPUT;
+	agtb             : OUTPUT;
+	aeb[7..0]        : OUTPUT;
+)
+
+VARIABLE
+	IF (FAMILY_FLEX() == 1) GENERATE
+		sub  : f8mcompb;
+	ELSE GENERATE
+		sub  : p8mcompb;
+	END GENERATE;
+
+BEGIN
+	IF (USED(a0)) GENERATE
+		sub.a0 = a0;
+	END GENERATE;
+	IF (USED(a1)) GENERATE
+		sub.a1 = a1;
+	END GENERATE;
+	IF (USED(a2)) GENERATE
+		sub.a2 = a2;
+	END GENERATE;
+	IF (USED(a3)) GENERATE
+		sub.a3 = a3;
+	END GENERATE;
+	IF (USED(a4)) GENERATE
+		sub.a4 = a4;
+	END GENERATE;
+	IF (USED(a5)) GENERATE
+		sub.a5 = a5;
+	END GENERATE;
+	IF (USED(a6)) GENERATE
+		sub.a6 = a6;
+	END GENERATE;
+	IF (USED(a7)) GENERATE
+		sub.a7 = a7;
+	END GENERATE;
+	IF (USED(b0)) GENERATE
+		sub.b0 = b0;
+	END GENERATE;
+	IF (USED(b1)) GENERATE
+		sub.b1 = b1;
+	END GENERATE;
+	IF (USED(b2)) GENERATE
+		sub.b2 = b2;
+	END GENERATE;
+	IF (USED(b3)) GENERATE
+		sub.b3 = b3;
+	END GENERATE;
+	IF (USED(b4)) GENERATE
+		sub.b4 = b4;
+	END GENERATE;
+	IF (USED(b5)) GENERATE
+		sub.b5 = b5;
+	END GENERATE;
+	IF (USED(b6)) GENERATE
+		sub.b6 = b6;
+	END GENERATE;
+	IF (USED(b7)) GENERATE
+		sub.b7 = b7;
+	END GENERATE;
+	altb = sub.altb;
+	aeqb = sub.aeqb;
+	agtb = sub.agtb;
+	aeb[7..0] = sub.aeb[7..0];
+END;

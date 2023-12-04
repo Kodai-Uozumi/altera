@@ -1,0 +1,121 @@
+------------------------------------------------------------------
+-- alt_oct_aii parameterized megafunction
+-- Generated with 'clearbox' loader - do not edit
+------------------------------------------------------------------
+
+
+-- Copyright (C) 1991-2009 Altera Corporation
+--  Your use of Altera Corporation's design tools, logic functions 
+--  and other software and tools, and its AMPP partner logic 
+--  functions, and any output files from any of the foregoing 
+--  (including device programming or simulation files), and any 
+--  associated documentation or information are expressly subject 
+--  to the terms and conditions of the Altera Program License 
+--  Subscription Agreement, Altera MegaCore Function License 
+--  Agreement, or other applicable license agreement, including, 
+--  without limitation, that your use is for the sole purpose of 
+--  programming logic devices manufactured by Altera and sold by 
+--  Altera or its authorized distributors.  Please refer to the 
+--  applicable agreement for further details.
+
+--  Version 9.0 Build 235 06/17/2009
+
+OPTIONS NAME_SUBSTITUTION = ON;
+
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+
+PARAMETERS
+(
+	divide_intosc_by = 1,
+	left_shift_termination_code = "FALSE",
+	POWER_DOWN = "TRUE",
+	pulldown_adder = 0,
+	pullup_adder = 0,
+	pullup_control_to_core = "FALSE",
+	runtime_control = "FALSE",
+	shift_vref_rdn = "TRUE",
+	shift_vref_rup = "TRUE",
+	shifted_vref_control = "TRUE",
+	TEST_MODE = "FALSE",
+	CBXI_PARAMETER = "NOTHING"
+);
+FUNCTION @CBXI_PARAMETER (calibration_request[0..0], clock, rdn[0..0], rup[0..0], scanclock, scanin, scaninmux, scanshiftmux)
+RETURNS (cal_shift_busy[0..0], comparatorprobe, scanout, termination_control[16-1..0], terminationcontrolprobe);
+
+
+SUBDESIGN alt_oct_aii
+(
+	cal_shift_busy[0..0]		:	OUTPUT;
+	calibration_request[0..0]		:	INPUT = GND;
+	clock		:	INPUT = GND;
+	comparatorprobe		:	OUTPUT;
+	rdn[0..0]		:	INPUT;
+	rup[0..0]		:	INPUT;
+	scanclock		:	INPUT = GND;
+	scanin		:	INPUT = GND;
+	scaninmux		:	INPUT = GND;
+	scanout		:	OUTPUT;
+	scanshiftmux		:	INPUT = GND;
+	termination_control[16-1..0]		:	OUTPUT;
+	terminationcontrolprobe		:	OUTPUT;
+)
+VARIABLE
+	IF CBXI_PARAMETER != "NOTHING" GENERATE
+		auto_generated : @CBXI_PARAMETER WITH ( CBXI_PARAMETER = "NOTHING" );
+	END GENERATE;
+BEGIN
+	ASSERT (CBXI_PARAMETER != "NOTHING")
+	REPORT "Valid clear box generator not found or Errors encountered during clear box generation"
+	SEVERITY ERROR;
+	IF (CBXI_PARAMETER != "NOTHING") GENERATE
+		IF USED(cal_shift_busy) GENERATE
+			cal_shift_busy[] = auto_generated.cal_shift_busy[];
+		ELSE GENERATE
+			cal_shift_busy[] = GND;
+		END GENERATE;
+		IF USED(calibration_request) GENERATE
+			auto_generated.calibration_request[] = calibration_request[];
+		END GENERATE;
+		IF USED(clock) GENERATE
+			auto_generated.clock = clock;
+		END GENERATE;
+		IF USED(comparatorprobe) GENERATE
+			comparatorprobe = auto_generated.comparatorprobe;
+		ELSE GENERATE
+			comparatorprobe = GND;
+		END GENERATE;
+		IF USED(rdn) GENERATE
+			auto_generated.rdn[] = rdn[];
+		END GENERATE;
+		IF USED(rup) GENERATE
+			auto_generated.rup[] = rup[];
+		END GENERATE;
+		IF USED(scanclock) GENERATE
+			auto_generated.scanclock = scanclock;
+		END GENERATE;
+		IF USED(scanin) GENERATE
+			auto_generated.scanin = scanin;
+		END GENERATE;
+		IF USED(scaninmux) GENERATE
+			auto_generated.scaninmux = scaninmux;
+		END GENERATE;
+		IF USED(scanout) GENERATE
+			scanout = auto_generated.scanout;
+		ELSE GENERATE
+			scanout = GND;
+		END GENERATE;
+		IF USED(scanshiftmux) GENERATE
+			auto_generated.scanshiftmux = scanshiftmux;
+		END GENERATE;
+		IF USED(termination_control) GENERATE
+			termination_control[] = auto_generated.termination_control[];
+		ELSE GENERATE
+			termination_control[] = GND;
+		END GENERATE;
+		IF USED(terminationcontrolprobe) GENERATE
+			terminationcontrolprobe = auto_generated.terminationcontrolprobe;
+		ELSE GENERATE
+			terminationcontrolprobe = GND;
+		END GENERATE;
+	END GENERATE;
+END;

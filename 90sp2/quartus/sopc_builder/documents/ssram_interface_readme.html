@@ -1,0 +1,962 @@
+<html>
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=us-ascii">
+<meta name=Generator content="Microsoft Word 10 (filtered)">
+<title>Synchronous SRAM Interface Information</title>
+
+<style>
+<!--
+ /* Font Definitions */
+ @font-face
+	{font-family:Wingdings;
+	panose-1:5 0 0 0 0 0 0 0 0 0;}
+@font-face
+	{font-family:"MS Mincho";
+	panose-1:2 2 6 9 4 2 5 8 3 4;}
+@font-face
+	{font-family:Tahoma;
+	panose-1:2 11 6 4 3 5 4 4 2 4;}
+@font-face
+	{font-family:"\@MS Mincho";
+	panose-1:2 2 6 9 4 2 5 8 3 4;}
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0in;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman";}
+h3
+	{margin-right:0in;
+	margin-left:0in;
+	font-size:13.5pt;
+	font-family:"Times New Roman";}
+p.MsoCommentText, li.MsoCommentText, div.MsoCommentText
+	{margin:0in;
+	margin-bottom:.0001pt;
+	font-size:10.0pt;
+	font-family:"Times New Roman";}
+a:link, span.MsoHyperlink
+	{color:blue;
+	text-decoration:underline;}
+a:visited, span.MsoHyperlinkFollowed
+	{color:purple;
+	text-decoration:underline;}
+p.MsoAutoSig, li.MsoAutoSig, div.MsoAutoSig
+	{margin:0in;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman";}
+p.MsoCommentSubject, li.MsoCommentSubject, div.MsoCommentSubject
+	{margin:0in;
+	margin-bottom:.0001pt;
+	font-size:10.0pt;
+	font-family:"Times New Roman";
+	font-weight:bold;}
+span.emailstyle17
+	{font-family:Arial;
+	color:windowtext;}
+ins
+	{text-decoration:none;}
+span.msoIns
+	{text-decoration:underline;}
+span.msoDel
+	{text-decoration:line-through;
+	color:red;}
+@page Section1
+	{size:8.5in 11.0in;
+	margin:1.0in 1.25in 1.0in 1.25in;}
+div.Section1
+	{page:Section1;}
+ /* List Definitions */
+ ol
+	{margin-bottom:0in;}
+ul
+	{margin-bottom:0in;}
+-->
+</style>
+
+</head>
+
+<body lang=EN-US link=blue vlink=purple>
+
+<div class=Section1>
+
+<p class=MsoNormal><b><span style='font-size:14.0pt;font-family:Arial'>Synchronous
+SRAM Interface to </span></b><b><span style='font-size:14.0pt;font-family:Arial'>Cypress</span></b><b><span
+style='font-size:14.0pt;font-family:Arial'> CY7C1380C-167</span></b></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><b><span style='font-family:Arial'>Overview</span></b></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>This
+Synchronous SRAM (SSRAM) <i>interface</i> creates a 32-bit data width tri-state
+interface to a 2MBx36-bit Cypress CY7C1380C-167 device. Other devices in the
+same family with differing address widths may also be used (1MB, 2MB, and 4MB
+devices). The SSRAM interface is merely a collection of Avalon signals that map
+to the SSRAM device. No <i>controller</i> operations are offered in this
+interface, such as burst-support. </span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>This
+document describes general interface guidelines for the CY7C1380C-167 device as
+well as guidelines specific to the Nios Development Board, Cyclone II Edition. </span></p>
+
+<p class=MsoNormal><b><span style='font-family:Arial'>&nbsp;</span></b></p>
+
+<p class=MsoNormal><b><span style='font-family:Arial'>System Requirements</span></b></p>
+
+<ul style='margin-top:0in' type=disc>
+ <li class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>An </span><span
+       style='font-size:10.0pt;font-family:Arial'>Avalon</span><span
+      style='font-size:10.0pt;font-family:Arial'> </span><span
+       style='font-size:10.0pt;font-family:Arial'>Tri-State</span><span
+      style='font-size:10.0pt;font-family:Arial'> </span><span
+       style='font-size:10.0pt;font-family:Arial'>Bridge</span><span
+     style='font-size:10.0pt;font-family:Arial'> component in <b>registered</b>
+     mode must be instantiated and must master the SSRAM interface</span></li>
+ <li class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>A
+     clock-source driving the external SSRAM device, phase-adjusted to the
+     Avalon clock depending on the desired system clock frequency (see Timing
+     Information below). </span></li>
+ <li class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>Additional
+     I/O assignments to various SSRAM control pins (see Required I/O Assignments
+     below)</span></li>
+ <li class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>Special
+     I/O assignments are necessary when targeting the Nios II Development
+     Board, Cyclone II Edition (refer to the Nios Development Board, Cyclone II
+     Edition Reference Manual for details); the standard &amp; full_featured example
+     designs targeting this development board have implemented these
+     assignments</span></li>
+</ul>
+
+<p class=MsoNormal><b><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></b></p>
+
+<p class=MsoNormal><b><span style='font-family:Arial'>Timing Information</span></b></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>The
+CY7C1380C is a pipelined SRAM device which delivers requested read-data after
+one clock cycle from when address and control are presented. Because of SSRAM
+Tco, FPGA Tsu, and read-to-write bus turnaround timing requirements, a minimum
+of two clock-cycles of read latency are used for Avalon reads. At high clock
+speeds, an additional cycle of read latency is used to allow for proper timing,
+up to the SSRAM&#8217;s maximum specified speed of 167MHz. All writes complete
+with zero latency, once pending reads are completed. This means that for
+continuous reads from SSRAM, data is available after the initial two (or three)
+cycle delay (plus latency due to the registered tri-state bridge). Thus, for
+optimal performance, reads and writes should be as continuous as possible, because
+writing to SSRAM breaks the read pipeline and causes a delay when reads are
+resumed.</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>To review,
+&#8220;read latency&#8221; in Avalon timing means additional clocks that must
+be added beyond one clock to perform a read operation, in a pipelined manner.
+For example, when an Avalon read is performed to an interface requiring one
+cycle of latency, Avalon expects the data to be ready before the <i>second</i>
+clock edge following initiation of the transfer. Similarly, with two cycles of
+latency, Avalon expects read data <i>three</i> cycles following initiation of
+the transfer. For additional details please refer to the Avalon Interface
+Specification.</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>For
+high-speed SSRAM operation, it is essential that the phase of the clock driving
+SSRAM have a precise relationship with the Avalon clock driving the SSRAM
+interface. It is recommended that this relationship be maintained using a PLL
+available in Altera FPGAs. Example designs in Nios II development kits use this
+PLL configuration. For additional details on PLL operation and what the
+guidelines below mean, please refer to the PLL chapter of the device handbook
+appropriate to the Altera FPGA family you are targeting.</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>General
+clocking guidelines based on the Nios Development Board, Cyclone II Edition
+(EP2C35F672-6 device):</span></p>
+
+<table class=MsoTableGrid border=1 cellspacing=0 cellpadding=0
+ style='border-collapse:collapse;border:none'>
+ <tr>
+  <td width=107 valign=top style='width:80.6pt;border:solid windowtext 1.0pt;
+  padding:0in 5.4pt 0in 5.4pt'>
+  <p class=MsoNormal><span style='font-weight:normal !msorm'><b><span
+  style='font-size:10.0pt;font-family:Arial'>Clock Speed</span></b></span></p>
+  </td>
+  <td width=156 valign=top style='width:117.0pt;border:solid windowtext 1.0pt;
+  border-left:none;padding:0in 5.4pt 0in 5.4pt'>
+  <p class=MsoNormal><span style='font-weight:normal !msorm'><b><span
+  style='font-size:10.0pt;font-family:Arial'>SSRAM Read Latency</span></b></span></p>
+  </td>
+  <td width=168 valign=top style='width:1.75in;border:solid windowtext 1.0pt;
+  border-left:none;padding:0in 5.4pt 0in 5.4pt'>
+  <p class=MsoNormal><span style='font-weight:normal !msorm'><b><span
+  style='font-size:10.0pt;font-family:Arial'>Desired Tco </span></b></span></p>
+  <p class=MsoNormal><span style='font-weight:normal !msorm'><b><span
+  style='font-size:10.0pt;font-family:Arial'>(Avalon to SSRAM clock)</span></b></span></p>
+  </td>
+  <td width=159 valign=top style='width:119.2pt;border:solid windowtext 1.0pt;
+  border-left:none;padding:0in 5.4pt 0in 5.4pt'>
+  <p class=MsoNormal><span style='font-weight:normal !msorm'><b><span
+  style='font-size:10.0pt;font-family:Arial'>Suggested PLL phase shift to SSRAM
+  clock (&#8220;</span></b></span><span style='font-weight:normal !msorm'><b><span
+   style='font-size:10.0pt;font-family:Arial'>Normal</span></b></span><span
+  style='font-weight:normal !msorm'><b><span style='font-size:10.0pt;
+  font-family:Arial'>&#8221; PLL mode)</span></b></span></p>
+  </td>
+ </tr>
+ <tr>
+  <td width=107 valign=top style='width:80.6pt;border:solid windowtext 1.0pt;
+  border-top:none;padding:0in 5.4pt 0in 5.4pt'>
+  <p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>Up to 130MHz</span></p>
+  </td>
+  <td width=156 valign=top style='width:117.0pt;border-top:none;border-left:
+  none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
+  padding:0in 5.4pt 0in 5.4pt'>
+  <p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>2 cycles</span></p>
+  </td>
+  <td width=168 valign=top style='width:1.75in;border-top:none;border-left:
+  none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
+  padding:0in 5.4pt 0in 5.4pt'>
+  <p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>-2.0ns</span></p>
+  </td>
+  <td width=159 valign=top style='width:119.2pt;border-top:none;border-left:
+  none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
+  padding:0in 5.4pt 0in 5.4pt'>
+  <p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>-4.8ns</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td width=107 valign=top style='width:80.6pt;border:solid windowtext 1.0pt;
+  border-top:none;padding:0in 5.4pt 0in 5.4pt'>
+  <p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>Above 130MHz</span></p>
+  </td>
+  <td width=156 valign=top style='width:117.0pt;border-top:none;border-left:
+  none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
+  padding:0in 5.4pt 0in 5.4pt'>
+  <p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>3 cycles</span></p>
+  </td>
+  <td width=168 valign=top style='width:1.75in;border-top:none;border-left:
+  none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
+  padding:0in 5.4pt 0in 5.4pt'>
+  <p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>1.5ns</span></p>
+  </td>
+  <td width=159 valign=top style='width:119.2pt;border-top:none;border-left:
+  none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
+  padding:0in 5.4pt 0in 5.4pt'>
+  <p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>-1.17ns</span></p>
+  </td>
+ </tr>
+</table>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>The above
+PLL setting guidelines are based on worst-case timing analysis, using data from
+the CY7C1380C-167 datasheet and Quartus II Timing Analyzer report for the
+Altera EP2C35F672-6 device on the Nios Development Board, Cyclone II Edition.
+If you are using a different speed SSRAM device, different Altera device, or if
+your target-board differs, resulting in different propagation delays between
+the FPGA and SSRAM interface, it is recommended that a thorough timing analysis
+be performed to ensure proper operation at high clock speeds. </span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>An explanation
+of the timing guidelines provided above can be found in the Timing Analysis
+Methodology section of this document. For operation at lower clock speeds, up
+to 100MHz, it is likely that no modification to the above settings will be
+required if targeting a custom board. However, performing a thorough timing
+analysis to any off-chip memory interface is always recommended.</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>In addition
+to the above PLL settings, it is recommended that you use the same PLL to
+generate your Avalon clock and external SSRAM clock. This will ensure the Tco
+relationship between the two clocks remains constant.</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><b><span style='font-family:Arial'>Required I/O Assignments</span></b></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>In addition
+to the I/O from the SOPC Builder system module to the SSRAM device, several
+additional pins must be tied high or low in the FPGA design. For the Nios
+Development Board, Cyclone II Edition, the only additional I/O requiring
+assignments are:</span></p>
+
+<ul style='margin-top:0in' type=disc>
+ <li class=MsoNormal><strong><span style='font-size:10.0pt;font-family:Arial;
+     font-weight:normal'>Processor ADS, &#8220;</span></strong><strong><span
+     style='font-size:10.0pt;font-family:Arial'>ADSP</span></strong><strong><span
+     style='font-size:10.0pt;font-family:Arial;font-weight:normal'>&#8221;</span></strong><span
+     style='font-size:10.0pt;font-family:Arial'>, disabled by tying to <strong><span
+     style='font-family:Arial'>Vcc</span></strong> </span></li>
+ <li class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>Burst
+     advance &#8220;<strong><span style='font-family:Arial'>ADV</span></strong><strong><span
+     style='font-family:Arial;font-weight:normal'>&#8221;</span></strong>,
+     disabled by tying to <strong><span style='font-family:Arial'>Vcc</span></strong></span></li>
+</ul>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>The
+following additional I/O must be tied high-or-low for this SSRAM interface to
+operate properly. These pins are tied high or low via pull-up/pull-down
+resistors on the Nios Development Board, Cyclone II Edition:</span></p>
+
+<ul style='margin-top:0in' type=disc>
+ <li class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>Global
+     write &#8220;<strong><span style='font-family:Arial'>GW</span></strong><strong><span
+     style='font-family:Arial;font-weight:normal'>&#8221;</span></strong>,
+     disabled by tying to <strong><span style='font-family:Arial'>Vcc</span></strong>.
+     This is superceded by individual byte write-enables from the SOPC Builder
+     system module</span></li>
+ <li class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>Sleep/low-power
+     mode &#8220;<strong><span style='font-family:Arial'>ZZ</span></strong><strong><span
+     style='font-family:Arial;font-weight:normal'>&#8221;</span></strong>,
+     disabled by tying to <strong><span style='font-family:Arial'>GND</span></strong>
+     </span></li>
+ <li class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>Additional
+     chip-enable inputs should be tied active: &#8220;<strong><span
+     style='font-family:Arial'>CE2</span></strong><strong><span
+     style='font-family:Arial;font-weight:normal'>&#8221;</span></strong>
+     should be tied to <strong><span style='font-family:Arial'>Vcc</span></strong>,
+     &#8220;<strong><span style='font-family:Arial'>CE3</span></strong><strong><span
+     style='font-family:Arial;font-weight:normal'>&#8221;</span></strong> to <strong><span
+     style='font-family:Arial'>GND</span></strong>. The additional chip-enable
+     signals are used for memory-bank expansion purposes when using multiple
+     SSRAM chips. </span></li>
+</ul>
+
+<p class=MsoNormal><b><span style='font-family:Arial'>&nbsp;</span></b></p>
+
+<p class=MsoNormal><b><span style='font-family:Arial'>Un-used SSRAM I/O</span></b></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>The
+CY7C1380 features a 36-bit data bus (4 parity bits). These parity bits are not
+used in this interface.&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><b><span style='font-family:Arial'>Timing Analysis Methodology</span></b></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>Calculating
+the speeds where each latency setting may operate, and any PLL phase shift
+necessary is accomplished as follows:</span></p>
+
+<ol style='margin-top:0in' start=1 type=1>
+ <li class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>Calculate
+     the FPGA-to-SSRAM setup relationship. Since the SSRAM device has the same
+     setup time for both reads and writes, this calculation covers both read
+     initiation and writes to SSRAM. </span></li>
+ <li class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>Calculate
+     the SSRAM-to-FPGA setup relationship. This applies for data read from
+     SSRAM.</span></li>
+ <li class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>Verify
+     &amp; adjust the Tco relationship between Avalon clock driving the SSRAM
+     interface, to the external clock presented to the SSRAM device.</span></li>
+</ol>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>The
+following analysis was performed to obtain the latency, clock speed, and PLL
+phase shift guidelines above. This analysis may serve as a starting-point if
+you wish to use this SSRAM interface at high-speeds with a different Altera
+device (Family, density, or speed-grade), different speed-grade SSRAM device,
+or have a board with very long (or short) trace lengths resulting in
+significantly different propagation delays.</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>For the
+following examples, timing data is based on the Altera EP2C35F672-6 device on
+the Nios Development Board, Cyclone II Edition, board layout (trace length)
+information for this development board, and published timing parameters in the
+Cypress CY7C1380C-167 device datasheet.</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><b><span style='font-size:10.0pt;font-family:Arial'>FPGA-to-SSRAM
+Setup Relationship</span></b></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>The
+FPGA-to-SSRAM setup relationship can be calculated using three components: Tco
+(clock to output) on FPGA I/O to SSRAM, Tpd (propagation delay) on the target
+board, and Tsu (setup time) for SSRAM I/O:</span></p>
+
+<ul style='margin-top:0in' type=disc>
+ <li class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>FPGA Tco
+     (using highest Tco value for all I/O to the SSRAM interface): 2.8ns</span></li>
+</ul>
+
+<ul style='margin-top:0in' type=disc>
+ <li class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>PCB Tpd
+     (supplied by board layout tool): 1ns </span></li>
+ <li class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>SSRAM
+     Tsu: 1.5ns</span></li>
+</ul>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>Note: Each
+of the figures above represents worst-case delays.</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>The sum of
+these is 5.3ns. This means that to satisfy the FPGA-to-SSRAM portion of the
+timing analysis, <i>the SSRAM&#8217;s rising clock edge where a read or write
+is to be initiated must occur at least 5.3ns after the rising edge of the
+Avalon clock driving the SSRAM interface in the FPGA.</i></span></p>
+
+<p class=MsoNormal style='margin-left:.25in'><span style='font-size:10.0pt;
+font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><b><span style='font-size:10.0pt;font-family:Arial'>SSRAM-to-FPGA
+Setup Relationship</span></b></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>The
+SSRAM-to-FPGA setup relationship is calculated just as the FPGA-to-SSRAM
+relationship, but in the opposite direction:</span></p>
+
+<ul style='margin-top:0in' type=disc>
+ <li class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>SSRAM
+     Tco: 3.4ns</span></li>
+ <li class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>PCB Tpd:
+     1.0ns</span></li>
+ <li class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>FPGA Tsu:
+     5.3ns</span></li>
+</ul>
+
+<p class=MsoNormal style='margin-left:.25in'><span style='font-size:10.0pt;
+font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>The sum of
+these is 9.7ns. Therefore<i>, the SSRAM&#8217;s rising clock edge must precede
+the Avalon clock driving the SSRAM interface in the FPGA by a minimum of 9.7ns<span
+class=msoIns><ins cite="mailto:Jesse%20Kempa" datetime="2005-04-11T09:21"><ins
+cite="mailto:Jesse%20Kempa"><ins cite="mailto:Jesse%20Kempa">.</ins></ins></ins></span></i>
+In addition, the FPGA has a <i>negative</i> Th (hold) time requirement of
+-5.1ns. This means that read data from the SSRAM must be present and valid at
+the FPGA I/O between 5.3ns and 5.1ns before the rising edge of the Avalon clock
+driving SSRAM; the SSRAM may hold the read data for a longer period of time if
+necessary.</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><b><span style='font-size:10.0pt;font-family:Arial'>Clock
+Adjustments &#8211; Zero Phase Shift</span></b></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>Using the
+above calculations, the maximum clock speed at two cycles of latency can be
+easily calculated if the SSRAM and Avalon clocks are exactly in phase: The
+minimum period is 9.7ns (higher of the two calculations above), and therefore
+the maximum clock speed is 1/period, or approximately 103MHz. </span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>For
+low-speed operation, the above calculation means that maintaining the phase
+relationship of Avalon and SSRAM clocks is all that is necessary. However, by
+using the precise programmable clock phase-shift features of Altera PLLs, it is
+possible to increase performance substantially by adjusting the Tco
+relationship between Avalon and SSRAM clocks. Figure 1 illustrates the timing
+relationship when the SSRAM &amp; Avalon clocks are in phase.</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>------------------------------------------------------------------------------</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>Figure 1:
+SSRAM read timing with two cycles of Avalon read latency, zero phase-shift
+between Avalon &amp; SSRAM clocks:</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>(Not to
+scale)</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>Avalon
+&amp; SSRAM clock (in phase):</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
++---+&nbsp;&nbsp; +---+&nbsp;&nbsp; +---+&nbsp;&nbsp; +---+</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+|&nbsp;&nbsp; |&nbsp;&nbsp; |&nbsp;&nbsp; |&nbsp;&nbsp; |&nbsp;&nbsp;
+|&nbsp;&nbsp; |&nbsp;&nbsp; | </span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>---+&nbsp;&nbsp;
++---+&nbsp;&nbsp; +---+&nbsp;&nbsp; +---+&nbsp;&nbsp; +---</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+^&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+^&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;^</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+a&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; c&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;e</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>Read
+address &amp; control from FPGA to SSRAM:</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>-----\
+/-----\ /-----\ /-------------</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp;X&nbsp; &#8220;A&#8221;&nbsp; X&nbsp; &#8220;B&#8221;&nbsp;
+X&nbsp; </span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>-----/
+\-----/ \-----/ \-------------</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+^</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+b</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>Read data
+from SSRAM to FPGA:</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>-----------------------\
+/-----\ /---- </span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;X
+&nbsp;&#8220;A&#8221; &nbsp;X&nbsp; &#8220;B&#8221;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>-----------------------/
+\-----/ \----</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;^</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;d</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>Legend:</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>a: Avalon
+presents read to address &#8220;A&#8221; to SSRAM</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>b: Read
+request to address &#8220;A&#8221; presented to SSRAM I/O after FPGA Tco +
+board Tpd</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>c: SSRAM
+registers read request to address &#8220;A&#8221;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>d: After
+one clock delay + Tco delay + board Tpd, SSRAM read data from address
+&#8220;A&#8221; presented to FPGA I/O</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>e: FPGA
+registers read data &#8220;A&#8221; from SSRAM</span></p>
+
+<p class=MsoNormal style='text-indent:0in'><span style='font-size:10.0pt;
+font-family:Arial'>------------------------------------------------------------------------------</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><b><span style='font-size:10.0pt;font-family:Arial'>Clock
+Adjustments &#8211; Maximum Two-Cycle Latency Performance</span></b></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>By
+adjusting the clock phase to utilize the inequality between FPGA-to-SSRAM and
+SSRAM-to-FPGA timing, we can achieve higher speeds. This is done by
+&#8220;pulling&#8221; the SSRAM clock back with a negative phase-shift with
+respect to Avalon. With a shift of <b>-2.0ns</b>, the FPGA-to-SSRAM setup
+relationship is now <i>increased </i>from 5.3ns to 7.3ns, while the
+SSRAM-to-FPGA relationship is <i>decreased </i>from 9.7ns to 7.7ns (much closer
+to equality), thus allowing for a maximum clock speed of approximately 130MHz
+at two cycles of latency. Figure two illustrates this relationship. </span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>------------------------------------------------------------------------------</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>Figure 2:
+SSRAM read timing with two cycles of Avalon read latency <b>(-2.0ns</b>
+phase-shift between Avalon &amp; SSRAM clocks)</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>(Not to
+scale)</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>Avalon
+clock to SSRAM interface:</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;
+&nbsp;&nbsp;+---+&nbsp;&nbsp; +---+&nbsp;&nbsp; +---+&nbsp;&nbsp; +---+</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;
+|&nbsp;&nbsp; |&nbsp;&nbsp; |&nbsp;&nbsp; |&nbsp;&nbsp; |&nbsp;&nbsp;
+|&nbsp;&nbsp; |&nbsp;&nbsp; | </span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;---+&nbsp;&nbsp;
++---+&nbsp;&nbsp; +---+&nbsp;&nbsp; +---+&nbsp;&nbsp; +---</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;
+^&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp;^ </span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;
+b&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+f</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>External
+SSRAM clock:</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;+---+&nbsp;&nbsp;
++---+&nbsp;&nbsp; +---+&nbsp;&nbsp; +---+</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+|&nbsp;&nbsp; |&nbsp;&nbsp; |&nbsp;&nbsp; |&nbsp;&nbsp; |&nbsp;&nbsp;
+|&nbsp;&nbsp; |&nbsp;&nbsp; | </span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>---+&nbsp;&nbsp;
++---+&nbsp;&nbsp; +---+&nbsp;&nbsp; +---+&nbsp;&nbsp; +---</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+^&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+^&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+a&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;d&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>Read
+address &amp; control from FPGA to SSRAM:</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;-----\
+/-----\ /-----\ /-------------</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp;X&nbsp; &#8220;A&#8221;&nbsp; X&nbsp; &#8220;B&#8221;&nbsp;
+X&nbsp; </span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;-----/
+\-----/ \-----/ \-------------</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+^</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+c</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>Read data
+from SSRAM to FPGA:</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;-----------------------\
+/-----\ /---- </span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+X &nbsp;&#8220;A&#8221; &nbsp;X&nbsp; &#8220;B&#8221;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;-----------------------/
+\-----/ \----</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+^</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+e</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>Legend:</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>a: Rising
+edge of SSRAM clock, 2.0ns before Avalon clock</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>b: Rising
+edge of Avalon clock; Avalon presents read to address &#8220;A&#8221; to SSRAM</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>c: Read
+request to address &#8220;A&#8221; presented to SSRAM I/O after FPGA Tco +
+board Tpd</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>d: SSRAM
+registers read request to address &#8220;A&#8221;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>e: After
+one clock + Tco delay, SSRAM read data from address &#8220;A&#8221; presented
+to FPGA I/O</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>f: FPGA
+registers read data &#8220;A&#8221; from SSRAM</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>------------------------------------------------------------------------------</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>To
+summarize, with two cycles of read latency, the clock phase shift is calculated
+by shifting the clock such that the FPGA-to-SSRAM relationship and the
+SSRAM-to-FPGA relationship are approximately equal; the corresponding PLL phase
+shift can then be used to the maximum speed allowed with two cycles of read
+latency.</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><b><span style='font-size:10.0pt;font-family:Arial'>Clock
+Adjustments &#8211;Three-Cycle Latency Operation</span></b></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>For
+operation above 130MHz, it is no longer possible to read from SSRAM with two
+cycles of read latency as depicted above; a timing violation will occur on
+either the FPGA-to-SSRAM relationship or SSRAM-to-FPGA relationship. Therefore,
+we can only increase clock speed by specifying that Avalon look for read data
+after an additional cycle of latency. To accomplish this, the clock phase shift
+must also be adjusted because the SSRAM will only hold read data until just
+after the 2<sup>nd</sup> clock edge following a read request (at that time, it
+will transition to read data for the next address in the read pipeline).</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>Calculating
+the phase shift for 3-cycle read latency is also more tricky and error-prone
+than the above calculation, based on documented worst-case delays. This is
+because we must now pay attention to <i>best</i></span> <span style='font-size:
+10.0pt;font-family:Arial'>case delays. Figure 3 illustrates the relationship
+with three cycles of read latency</span></p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>------------------------------------------------------------------------------</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>Figure 3:
+SSRAM read timing with three cycles of Avalon read latency (<b>+1.5ns</b>
+phase-shift between Avalon &amp; SSRAM clocks)</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>(Not to
+scale)</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>Avalon
+clock to SSRAM interface:</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;+---+&nbsp;&nbsp;
++---+&nbsp;&nbsp; +---+&nbsp;&nbsp; +---+&nbsp;&nbsp; +---</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+|&nbsp;&nbsp; |&nbsp;&nbsp; |&nbsp;&nbsp; |&nbsp;&nbsp; |&nbsp;&nbsp;
+|&nbsp;&nbsp; |&nbsp;&nbsp; | &nbsp;&nbsp;|</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>---+&nbsp;&nbsp;
++---+&nbsp;&nbsp; +---+&nbsp;&nbsp; +---+&nbsp;&nbsp; +---+</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+^&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+^ ^&nbsp; &nbsp;^&nbsp; ^</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+a&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+f g&nbsp; &nbsp;h&nbsp; i</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>External
+SSRAM clock:</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;
+&nbsp;+---+&nbsp; &nbsp;+---+&nbsp;&nbsp; +---+&nbsp;&nbsp; +---+</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;
+&nbsp;&nbsp;|&nbsp;&nbsp; |&nbsp;&nbsp; |&nbsp;&nbsp; |&nbsp;&nbsp;
+|&nbsp;&nbsp; |&nbsp;&nbsp; |&nbsp;&nbsp; | </span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;---+&nbsp;&nbsp;
++---+&nbsp;&nbsp; +---+&nbsp;&nbsp; +---+&nbsp;&nbsp; +---</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;
+^&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+^&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;^</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;
+b&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;e&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;g</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>Read
+address &amp; control from FPGA to SSRAM:</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;-----\
+/-----\ /-----\ /-------------</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp;X&nbsp; &#8220;A&#8221;&nbsp; X&nbsp; &#8220;B&#8221;&nbsp;
+X&nbsp; </span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;-----/
+\-----/ \-----/ \-------------</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;
+^ ^ ^</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;
+b c d</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;
+</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>Read data
+from SSRAM to FPGA:</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;-----------------------\
+/-----\ /---- </span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+X &nbsp;&#8220;A&#8221; &nbsp;X&nbsp; &#8220;B&#8221;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;-----------------------/
+\-----/ \----</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+^&nbsp;&nbsp;&nbsp; &nbsp;^</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+f&nbsp;&nbsp;&nbsp; &nbsp;h</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>Legend:</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>a: Rising
+edge of Avalon clock; Avalon presents read to address &#8220;A&#8221; to SSRAM</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>b: Rising
+edge of SSRAM clock, 1.5ns after Avalon clock</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>c: <i>Previous</i>
+Avalon request to SSRAM asserted until after rising edge of SSRAM clock</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>d: Read
+request to address &#8220;A&#8221; presented to SSRAM I/O after FPGA Tco +
+board Tpd</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>e: SSRAM
+registers read request to address &#8220;A&#8221;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>f: After
+one clock + Tco delay, SSRAM read data from address &#8220;A&#8221; presented
+to FPGA I/O</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>g: SSRAM
+clock edge after which read data will change</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>h: Read
+data from SSRAM no longer valid, Tdoh (min) from SSRAM after clock edge
+&#8220;g&#8221;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>i: FPGA
+registers read data &#8220;A&#8221; from SSRAM</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>------------------------------------------------------------------------------</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>As inferred
+in Figure 3, there are two key points that require precise attention in order
+to operate with three clock cycles of latency. These are in <i>addition</i> to
+the basic calculations that are described above in the zero-phase-shift
+description of SSRAM interface timing.</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>The first occurs
+in the relationship between &#8220;b&#8221; and &#8220;c&#8221; in Figure 3,
+where data from the FPGA to SSRAM is about to change following the rising edge
+of the Avalon clock. We must ensure that Th (hold) time to SSRAM (0.5ns) is
+respected. It is recommended that this relationship be verified with an
+oscilloscope set to observe control signals from Avalon to SSRAM in relation to
+the SSRAM clock, at the SSRAM device, and that this measurement be performed
+with nominal conditions in order to observe the <i>best</i> case Tco delay from
+FPGA to SSRAM. Therefore, the I/O used in the measurement should be selected
+from the Quartus II Timing Analyzer report with the <i>least</i> Tco delay
+amongst I/O to the SSRAM interface. In addition, this experiment should be
+performed observing rising and</span><span style='font-size:10.0pt;font-family:
+Arial'> falling edges of signals from the FPGA to SSRAM. These measurements
+yielded the maximum phase shift &#8211; 1.5ns &#8211; recommended for three-cycle
+read-latency operation on the Nios Development board, Cyclone II Edition.</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>The second occurs
+between &#8220;h&#8221; and &#8220;i&#8221; in Figure 3, where read data from
+SSRAM changes following the clock edge immediately after read data is valid. At
+first glance it may appear that SSRAM read data is switching before the Avalon
+clock edge, causing incorrect data to be read. However, recall that the FPGA
+I/Os have a <i>negative</i> minimum hold time requirement, as reported in the
+Quartus II Timing Analyzer report. Thus, data must only be valid until (in our
+working example) 5.1ns <i>before</i> the clock edge at &#8220;i&#8221;.</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>To verify
+the FPGA hold relationship, the SSRAM timing parameter &#8220;Tdoh&#8221; (data
+output hold after clock rise), the minimum board propagation delay, and PLL
+phase shift are used. </span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>The minimum
+time that read data is valid before clock edge &#8220;i&#8217; is Tp (period)
+&#8211; Tdoh(min) &#8211; Tpd (min) &#8211; Tco (phase delay Avalon to SSRAM),
+or, Tp &#8211; 1.5ns &#8211; 0.5ns &#8211; 1.5ns. Since the <i>minimum</i> hold
+time is 5.1 ns before clock edge &#8220;i&#8221;, Tp (max) may be solved for: Tp
+(max) &#8211; 1.5 &#8211; 0.5 -1.5 = 5.1; <b>Tp (max) = 8.6ns</b>. Thus, the <i>minimum</i>
+clock speed that can safely be used with three cycles of read latency this
+scenario is approximately 117MHz.</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>This is an
+important figure to note &#8211; since we are increasing Avalon read latency interfacing
+to a device with <i>fixed</i> read latency, we must ensure that this minimum
+clock speed is respected. While operating with three cycles of read latency,
+timing margins actually <i>improve</i> with higher clock speeds, up to the
+maximum SSRAM device clock speed of 167MHz.</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:Arial'>When
+performing the above calculations &amp; measurements, it is suggested that you
+start with zero phase-shift (Tco) between Avalon and SSRAM clocks, and then
+adjust clock phase slightly if necessary to correct a timing violation at the
+desired clock speed. Then, re-calculate the other timing parameters to ensure
+that they still meet timing requirements; this approach was used to verify the
+1.5ns phase shift used in this example. Additionally, not all systems may meet
+timing requirements through the spectrum of possible clock frequencies. For
+example, if the maximum allowable Tco delay between Avalon &amp; SSRAM clocks
+had been closer to 0ns, the minimum speed for three-cycle read-latent
+operations would have increased. Careful analysis of your system is
+recommended.</span></p>
+
+</div>
+
+</body>
+
+</html>

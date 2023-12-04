@@ -1,0 +1,365 @@
+-------------------------------------------------------------------------------------------------
+-- Name: comptree.tdf															
+-- Description: comptree implements a tree comprising of short chain-structured	
+-- 			    comparators. This tree generates the equality (aeb) and  		
+-- 			    inequality (agb) outputs. The tree uses the chains in an 		
+--			    optimized fashion to minimize the number of LCells used and 		
+--			    input-output path delay, depending on which combination of 
+--				output ports have been used.
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--------------------------------------------------------------------------------------------------
+
+--        --------------------------				  -------------------
+--   -----|dataa[]     full    aeb |--- eq_node[0] ---|					|
+--   -----|datab[]    chain    agb |--- gt_node[0] ---|					|
+--        --------------------------				  |		 next 		|
+--        --------------------------				  |		 tree		|--- aeb_out ---> aeb
+--   -----|dataa[]     full    aeb |--- eq_node[1] ---|		 level		|
+--   -----|datab[]    chain    agb |--- gt_node[1] ---|					|
+--        --------------------------				  |	eq_only: ARITH  |--- agb_out ---> agb
+--        --------------------------		          |	else:    LOGIC	|
+--   -----|dataa[]   partial   aeb |--- eq_node[2] ---|					|
+--   -----|datab[]    chain    agb |--- gt_node[2] ---|					|
+--        --------------------------				  -------------------
+
+------------------------------------------------------------------------------------------------
+
+INCLUDE "comptree";
+INCLUDE "cmpchain";
+INCLUDE "lpm_constant";
+
+
+PARAMETERS
+(	LPM_WIDTH,				-- No. of input pairs
+	CHAIN_LENGTH = 8,		-- Number of LCells within each chain
+	ONE_INPUT_CONSTANT = 0,	-- 0 ~ NO, 1 ~ YES
+	OUTPUTS_CLOCKED = 0,	-- Should the output ports registered? 0 ~ NO, 1 ~ YES
+	BURRIED_CLOCKED = 1,	-- Should the internal gt/eq nodes registered? 0 ~ NO, 1 ~ YES
+	MODE = 0				-- 0 ~ ARITHMETIC, dataa & datab are treated as independent bits. 
+							-- 1 ~ LOGICAL, dataa is the equality, and datab is the greater-than input.
+							-- Note that in the logical mode, both inputs cannot be 1 simultaneously. 
+);
+
+DEFINE CODE() = -(USED(aeb)*2 + USED(agb));   -- encode the output port usage.
+
+-- Determine how many input pairs can feed a chain with given chain size.
+-- NOTE: The input sizes are determined based on various factors. When a cell contains 2 cells
+-- and the comparator is not using only the eq port, then a sigle-cell chain and a chain of 2-cells
+-- become indistinguishable as both can handle 2 pairs (or 4 pairs if one input is constant). 
+-- cmpchain module (called by comptree) will remove the distinction by a single cell synthesis 
+-- for such cases.  
+-- IF in ARITHMETIC mode: 
+--				IF only eq port is used
+--					IF one input is not constant: 2 input pairs can feed a chain cell.
+--					IF one input is constant: 4 input pairs can feed a chain cell.
+--				IF gt port has also been used (note that we still need eq port for logical level(s))  
+--				 	IF one input is not constant: 
+--						IF only 1 cells/chain, then 2 input pairs can feed this cell (no carry chain).
+--						OTHERWISE only 1 input pair can feed a cell as carry chains should be constructed.
+--					IF one input is constant: 2 input pairs can feed a chain cell.
+-- IF in LOGICAL mode:
+--				IF only eq port is used
+-- 					4 input pairs can feed a chain cell (eq0 & eq1 & eq2 & eq3).
+--				IF gt port has also been used (note that we still need eq port for the logical level(s))  							
+--					IF only 1 cells/chain, then 2 input pairs can feed this cell (no carry chain).
+--					OTHERWISE only 1 input pair can feed a cell as carry chains should be constructed.
+
+DEFINE INPUT_SIZE() = (MODE == 0) ?			  -- 
+						( (CODE() == 2) ? 
+					      	(ONE_INPUT_CONSTANT == 0 ? (CHAIN_LENGTH*2) : (CHAIN_LENGTH*4)) :
+			    	      	(ONE_INPUT_CONSTANT == 0 ? 
+			    	      		(CHAIN_LENGTH == 1 ? 2 : CHAIN_LENGTH) : (CHAIN_LENGTH*2)) 
+			    	    )
+			    	    : 
+			    	    ( (CODE() == 2) ? (4*CHAIN_LENGTH) : (CHAIN_LENGTH == 1 ? 2 : CHAIN_LENGTH))
+			    	    ;
+
+-- Determine the input sizes for the next level of tree (needed to determine whether the next level
+-- is the last level of tree.
+DEFINE NEXT_INPUT_SIZE() = (CODE() == 2) ? (CHAIN_LENGTH*4) : ((CHAIN_LENGTH == 1) ? 2 : CHAIN_LENGTH);	    	    
+
+
+DEFINE CHAIN_NUM() = FLOOR(LPM_WIDTH DIV INPUT_SIZE());	  		-- number of full length chains
+DEFINE REM_BITS()  = LPM_WIDTH MOD INPUT_SIZE();		  		-- number of partial chains
+DEFINE TOT_NUM()   = CEIL(LPM_WIDTH DIV INPUT_SIZE());	  		-- total number of chains
+DEFINE NEXT_TOT_NUM() = CEIL(TOT_NUM() DIV NEXT_INPUT_SIZE());  -- total num. of chain in the next tree level
+
+
+SUBDESIGN comptree
+(
+	dataa[LPM_WIDTH-1..0]	: INPUT = GND;
+	datab[LPM_WIDTH-1..0]	: INPUT = GND;
+	clk						: INPUT = GND;
+	aset					: INPUT = GND;
+	clken					: INPUT = VCC;
+	aeb, agb				: OUTPUT;
+)
+
+
+ 
+VARIABLE
+
+	IF TOT_NUM() > 1 GENERATE
+	
+		aeb_node				 : NODE;	
+		eq_node	[TOT_NUM()-1..0] : NODE;
+		
+		IF CODE() != 2 GENERATE 
+			agb_node					: NODE;
+			gt_node	[TOT_NUM()-1..0]	: NODE;
+		END GENERATE;
+	
+		-------------------------------------------------
+		--   case where more than one chain is needed  --
+		-------------------------------------------------
+		-- consider the full-length chain connections
+		IF CHAIN_NUM() > 0 GENERATE
+			cmp[CHAIN_NUM()-1..0]  	: cmpchain WITH (LPM_WIDTH = INPUT_SIZE(),
+												  	 ONE_INPUT_CONSTANT = ONE_INPUT_CONSTANT,
+												  	 MODE = MODE);
+		END GENERATE;
+		
+		-- next, the partial chain cases, which is definitely not the only chain (as TOT_CHAIN > 0 )
+		IF REM_BITS() > 0 GENERATE
+				cmp_end				: cmpchain WITH (LPM_WIDTH = REM_BITS(),
+		    	                   	                 ONE_INPUT_CONSTANT = ONE_INPUT_CONSTANT,
+		        	               	                 MODE= MODE);
+		END GENERATE;
+	
+		-- now make the connections to the next level of the comparator tree
+		IF CODE() != 2 GENERATE
+			-- IF only aeb port used, then the next level is an ARITHMETIC one as we 
+			-- will compare eq_nodes with 1111...11. Therefore, one input is constant. 
+			sub_comptree 			: comptree WITH (LPM_WIDTH = TOT_NUM(),
+													 CHAIN_LENGTH = CHAIN_LENGTH,
+													 ONE_INPUT_CONSTANT = 0,
+													 OUTPUTS_CLOCKED = OUTPUTS_CLOCKED,
+													 BURRIED_CLOCKED = BURRIED_CLOCKED,
+											 		 MODE = 1);
+												 
+		ELSE GENERATE
+			-- OTHERWISE, it will be a LOGICAL one and no input is constant (not possible by the
+			-- definition of inputs in the logical mode.
+			sub_comptree 			: comptree WITH (LPM_WIDTH = TOT_NUM(),
+													 CHAIN_LENGTH = CHAIN_LENGTH,
+													 ONE_INPUT_CONSTANT = 1,
+													 OUTPUTS_CLOCKED = OUTPUTS_CLOCKED,
+													 BURRIED_CLOCKED = BURRIED_CLOCKED,
+													 MODE = 0);
+		END GENERATE;
+				
+	ELSE GENERATE
+		---------------------------------------------
+		--   case where only one chain is needed   --
+		---------------------------------------------
+		IF MODE == 0 GENERATE
+			-- In ARITHMETIC mode, simply instantiate a full chain.
+ 			cmp_end						: cmpchain WITH (LPM_WIDTH = LPM_WIDTH,
+		    	                      	             	ONE_INPUT_CONSTANT = ONE_INPUT_CONSTANT,
+		        	                  	             	MODE= MODE);
+		ELSE GENERATE
+			-- However, in LOGICAL mode, the GT and EQ chains become separated. Note that
+			-- in the last level of the tree, one can feed 4 eq inputs to one cell,
+			-- while only 1 eq/gt input pair can be fed to a cell because a carry chain should be
+			-- constructed. Thus, the number of cells can be reduced for the aeb output 
+			-- by having separately optimized chains for aeb and agb. This won't work for
+			-- the intermediate stages as an eq output should be generated corresponding to
+			-- to each gt output with the exact same inputs.
+			IF USED(aeb) GENERATE		
+				eq_cmp_end					: cmpchain WITH (LPM_WIDTH = LPM_WIDTH,
+			    	                      	             	 ONE_INPUT_CONSTANT = 1,
+			        	                  	             	 MODE = 0);
+			END GENERATE;
+			
+			IF USED(agb) GENERATE
+			 	gt_cmp_end					: cmpchain WITH (LPM_WIDTH = LPM_WIDTH,
+			    	                      	             	ONE_INPUT_CONSTANT = 0,
+			        	                  	             	MODE = 1);
+			END GENERATE;
+			
+		END GENERATE;
+	END GENERATE;
+	
+
+BEGIN
+	-------------------------------------------------
+	--   case where more than one chain is needed  --
+	-------------------------------------------------
+	IF TOT_NUM() > 1 GENERATE 
+
+ 		-- first consider the full chain length cases ... 
+ 		IF CHAIN_NUM() > 0 GENERATE
+			FOR I IN 0 TO CHAIN_NUM()-1 GENERATE
+ 				cmp[I].dataa[] = dataa[INPUT_SIZE()*(I+1)-1..INPUT_SIZE()*I];
+ 				cmp[I].datab[] = datab[INPUT_SIZE()*(I+1)-1..INPUT_SIZE()*I];
+ 			END GENERATE;
+ 			
+ 			IF (CODE() == 1) GENERATE
+ 				-- If only agb output has been used, then the LSB eq output will
+ 				-- never be used, so ground it to prevent cmp[0] from generating a 
+ 				-- warning. The higher significant eq outputs (if any) will be used, 
+ 				-- so generate/connect them. 
+				-- The LSB eq output of cmp[0] should be ignored, but we cannot
+				-- just ignore it because it will cause a CODE() = 0 for cmpchain
+				-- which will give a warning.
+				eq_node[0] = GND & cmp[0].aeb;	
+				IF CHAIN_NUM() > 1 GENERATE
+ 		 			eq_node[CHAIN_NUM()-1..1] = cmp[CHAIN_NUM()-1..1].aeb;
+ 		 		END GENERATE;
+ 			ELSE GENERATE
+ 				-- for all other cases, generate all eq outputs from chains.
+  			 	eq_node[CHAIN_NUM()-1..0] = cmp[CHAIN_NUM()-1..0].aeb;
+			END GENERATE;
+
+ 			IF CODE() != 2 GENERATE
+ 				-- if not the aeb-only case, then generate the gt outputs from chains.
+	 			gt_node[CHAIN_NUM()-1..0] = cmp[CHAIN_NUM()-1..0].agb;
+		 	END GENERATE;
+	 		
+	 		IF USED(clk) & (BURRIED_CLOCKED == 1) GENERATE
+  				cmp[].(clk, aset) = (clk, aset);
+				IF USED(clken) GENERATE
+					cmp[].clken = clken;
+				END GENERATE;
+  			END GENERATE;
+ 			 
+		END GENERATE;
+	 
+		-- now consider the remaining (shorter) chain left ...
+		IF REM_BITS() > 0 GENERATE		
+		 	cmp_end.dataa[] = dataa[LPM_WIDTH-1..INPUT_SIZE()*CHAIN_NUM()];
+			cmp_end.datab[] = datab[LPM_WIDTH-1..INPUT_SIZE()*CHAIN_NUM()];
+	 		
+	 		-- Note that because this partial chain is not the only chain, its eq output
+	 		-- will definitely be used (becuase it's not the LSB one).
+ 			eq_node[TOT_NUM()-1] = cmp_end.aeb;			 	
+			IF CODE() != 2 GENERATE
+	 			gt_node[TOT_NUM()-1] = cmp_end.agb;
+		 	END GENERATE;
+			 	
+	 		IF USED(clk) & (BURRIED_CLOCKED == 1) GENERATE
+		  		cmp_end.(clk, aset) = (clk, aset);
+				IF USED(clken) GENERATE
+					cmp_end.clken = clken;
+				END GENERATE;
+		  	END GENERATE;
+  		END GENERATE;
+  			
+  		-- make the connections to the next tree level.
+		IF CODE() != 2 GENERATE
+			-- if not the aeb_only case, then both eq and gt outputs from the current tree
+			-- level will be connected to the next level, and the mode is going to be LOGICAL.
+	 		sub_comptree.dataa[] = eq_node[TOT_NUM()-1..0];	
+			sub_comptree.datab[] = gt_node[TOT_NUM()-1..0];
+ 			
+ 			IF CODE() == 1 GENERATE
+		 		aeb_node = GND;
+		 	ELSE GENERATE
+		 		aeb_node = sub_comptree.aeb;
+		 	END GENERATE;
+			agb_node = sub_comptree.agb;	
+
+		ELSE GENERATE	
+			-- The aeb_only case is special because no agb output is required and
+			-- one only has to compare the eq outputs of chains to "1111...11". So,
+			-- ARITHMETIC mode is chosen.
+			sub_comptree.dataa[] = eq_node[TOT_NUM()-1..0];
+			sub_comptree.datab[] = VCC;
+			
+			aeb_node = sub_comptree.aeb;
+		END GENERATE;
+		
+ 		aeb = aeb_node;
+ 		IF CODE() != 2 GENERATE 
+ 			agb = agb_node;
+ 		END GENERATE;
+ 		
+		IF USED(clk) & ((NEXT_TOT_NUM() > 1) # (OUTPUTS_CLOCKED == 1)) GENERATE
+ 			sub_comptree.(clk, aset) = (clk, aset);
+			IF USED(clken) GENERATE
+				sub_comptree.clken = clken;
+			END GENERATE;
+ 		END GENERATE;
+
+
+	ELSE GENERATE
+		--------------------------------------------
+		--   case where only one chain is needed  --
+		--------------------------------------------
+		-- comments similar to the previous case.
+		IF MODE == 0 GENERATE	
+			cmp_end.dataa[] = dataa[];
+			cmp_end.datab[] = datab[];
+ 		
+			IF CODE() == 1 GENERATE
+				aeb = GND;
+			ELSE GENERATE
+ 			 	aeb = cmp_end.aeb;		
+	 		END GENERATE;
+	 	
+			IF CODE() != 2 GENERATE
+	 			agb = cmp_end.agb;
+			END GENERATE;
+			 	
+	 		IF USED(clk) & (OUTPUTS_CLOCKED == 1) GENERATE
+	  			cmp_end.(clk, aset) = (clk, aset);
+				IF USED(clken) GENERATE
+					cmp_end.clken = clken;
+				END GENERATE;
+  			END GENERATE;
+ 	
+ 		ELSE GENERATE
+			IF USED(aeb) GENERATE			
+	 			eq_cmp_end.dataa[] = dataa[];
+				eq_cmp_end.datab[] = VCC;
+				aeb = eq_cmp_end.aeb;
+			
+	 			IF USED(clk) & (OUTPUTS_CLOCKED == 1) GENERATE
+	  				eq_cmp_end.(clk, aset) = (clk, aset);
+					IF USED(clken) GENERATE
+						eq_cmp_end.clken = clken;
+					END GENERATE;
+  				END GENERATE;
+			END GENERATE;
+			
+			IF USED(agb) GENERATE
+	 			IF CODE() != 2 GENERATE
+ 					gt_cmp_end.dataa[] = dataa[];
+ 					gt_cmp_end.datab[] = datab[];
+ 					agb = gt_cmp_end.agb;
+
+	 				IF USED(clk) & (OUTPUTS_CLOCKED == 1) GENERATE
+	  					gt_cmp_end.(clk, aset) = (clk, aset);
+						IF USED(clken) GENERATE
+							gt_cmp_end.clken = clken;
+						END GENERATE;
+  					END GENERATE;
+  				END GENERATE;
+  			END GENERATE;
+
+ 		END GENERATE;	
+	END GENERATE;	
+
+	IF !USED(agb) GENERATE
+		agb = GND;
+	END GENERATE;
+	IF !USED(aeb) GENERATE
+		aeb = GND;
+	END GENERATE;
+END;	

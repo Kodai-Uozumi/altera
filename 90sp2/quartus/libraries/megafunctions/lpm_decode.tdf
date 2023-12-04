@@ -1,0 +1,264 @@
+--------------------------------------------------------------------
+--
+--	LPM_DECODE Parameterized Megafunction
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 3.0
+--
+--------------------------------------------------------------------
+
+-------------------------------------
+-- Top level design for LPM_DECODE --
+-------------------------------------
+OPTIONS NAME_SUBSTITUTION = ON;
+
+INCLUDE "declut";
+INCLUDE "altshift";
+INCLUDE "lpm_compare";
+INCLUDE "lpm_constant";
+
+PARAMETERS
+(
+	LPM_WIDTH,
+	LPM_DECODES = 2^LPM_WIDTH,
+	LPM_PIPELINE = 0,
+	CASCADE_CHAIN = "MANUAL",
+	DEVICE_FAMILY,
+	CBXI_PARAMETER = "NOTHING"
+);
+
+INCLUDE "aglobal90.inc";	% device definitions %
+
+-- Determine number of levels in the tree-based decoder 
+DEFINE DLEVEL(n)     = (n <= 4 ? 1 : 1+(DLEVEL(n-3)));
+DEFINE TOT_LEVELS()  = DLEVEL(LPM_WIDTH - USED(enable));
+
+-- Determine the number of inputs to first (0th or input) level of the tree
+-- not counting enable as one.
+DEFINE INP_NUM0()	 = USED(enable) ? ((LPM_WIDTH MOD 3 == 0) ? 3 : LPM_WIDTH MOD 3) :
+					   ((LPM_WIDTH MOD 3 == 0) ? 3 : ((LPM_WIDTH MOD 3 == 1) ? 4 : LPM_WIDTH MOD 3));
+
+-- Latency-related functions and parameters
+CONSTANT LATENCY     = LPM_PIPELINE;
+DEFINE MIN(a, b)     = (a < b) ? a : b;
+DEFINE INT_LATENCY() = MIN(LATENCY, (TOT_LEVELS()-1)); 
+DEFINE EXT_LATENCY() = (LATENCY > INT_LATENCY()) ? (LATENCY - INT_LATENCY()) : 0;
+FUNCTION @CBXI_PARAMETER (aclr, clken, clock, data[LPM_WIDTH-1..0], enable)
+RETURNS (eq[LPM_DECODES-1..0]);
+
+SUBDESIGN lpm_decode
+(
+	data[LPM_WIDTH-1..0]			: INPUT = GND;
+	enable							: INPUT = VCC;
+	clock, aclr						: INPUT = GND;
+	clken							: INPUT = VCC;
+	eq[LPM_DECODES-1..0]			: OUTPUT;
+)
+
+VARIABLE
+	
+	IF CBXI_PARAMETER != "NOTHING" GENERATE
+		auto_generated : @CBXI_PARAMETER WITH ( CBXI_PARAMETER = "NOTHING" );
+	ELSE GENERATE
+	eq_node[LPM_DECODES-1..0] 		: NODE;
+	external_latency_ffs			: altshift WITH (WIDTH = LPM_DECODES, 
+													 DEPTH = EXT_LATENCY());
+	IF LPM_WIDTH > 1 GENERATE
+		IF !((FAMILY_FLEX() == 1) & 
+		    !USE_CASCADE_CHAINS()) & LATENCY == 0 GENERATE
+			------------------------------------------
+			-- non-pipelined FLEX/FAST or MAX cases	--  
+			------------------------------------------
+			const_data[LPM_DECODES-1..0][LPM_WIDTH-1..0]	: NODE;
+			comparator[LPM_DECODES-1..0]	: lpm_compare WITH (LPM_WIDTH = LPM_WIDTH - USED(enable),
+																LPM_REPRESENTATION = "UNSIGNED",
+																LPM_PIPELINE = INT_LATENCY(),
+																ONE_INPUT_IS_CONSTANT = "YES");
+
+		ELSE GENERATE
+ 			----------------------------------
+			-- 		 all other cases		--  
+			----------------------------------
+  			IF USED(enable) # !USED(enable) & INP_NUM0() < 4 GENERATE
+				decoder			: declut WITH (WIDTH = LPM_WIDTH, LATENCY = INT_LATENCY(),
+										   	   TOT_LEVELS = TOT_LEVELS(), STAGE = 0);
+ 			ELSE GENERATE
+				decoder0		: declut WITH (WIDTH = LPM_WIDTH-1, LATENCY = INT_LATENCY(),
+											   TOT_LEVELS = TOT_LEVELS(), STAGE = 0);
+	
+				decoder1		: declut WITH (WIDTH = LPM_WIDTH-1, LATENCY = INT_LATENCY(),
+											   TOT_LEVELS = TOT_LEVELS(), STAGE = 0);
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+	END GENERATE;
+
+BEGIN
+
+	ASSERT REPORT "WIDTH = %, TOT_LEVELS = %, INT_LATENCY = %" LPM_WIDTH, TOT_LEVELS(), INT_LATENCY() SEVERITY DEBUG; 
+	ASSERT (LPM_WIDTH > 0)
+			REPORT "Value of LPM_WIDTH parameter must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID LPM_DECODE_WIDTH;
+
+	ASSERT (LPM_DECODES > 0)
+			REPORT "Value of LPM_DECODES parameter must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID LPM_DECODE_DECODES;
+
+	ASSERT (LPM_DECODES <= 2^LPM_WIDTH)
+			REPORT "Too few data inputs for the requested number of decoded outputs -- at least % data inputs are needed to generate % decoded outputs"
+				CEIL(LOG2(LPM_DECODES)), LPM_DECODES
+			SEVERITY ERROR
+			HELP_ID LPM_DECODE_DATA;
+
+	ASSERT (USED(clock) ? LATENCY > 0 : LATENCY == 0)
+			REPORT "Value of LPM_PIPELINE parameter must be greater than 0 if clock input is used and vice versa"
+			SEVERITY ERROR
+			HELP_ID LPM_DECODE_CLOCK_WITHOUT_LATENCY;
+
+
+	ASSERT (EXT_LATENCY() <= 1 # TOT_LEVELS() == 1)
+			REPORT "Value of LPM_PIPELINE parameter (%) should be lower -- use % for best performance/utilization" LATENCY, INT_LATENCY()
+			SEVERITY INFO
+			HELP_ID LPM_DECODE_CLOCK_LATENCY_VALUE;
+
+	ASSERT (FAMILY_IS_KNOWN() == 1)
+		REPORT "Megafunction lpm_decode does not recognize the current device family (%) -- ensure that you are using the newest version of the megafunction"
+			DEVICE_FAMILY
+		SEVERITY WARNING
+		HELP_ID LPM_DECODE_FAMILY_UNKNOWN;
+
+	IF (CBXI_PARAMETER != "NOTHING") GENERATE
+		IF USED(aclr) GENERATE
+			auto_generated.aclr = aclr;
+		END GENERATE;
+		IF USED(clken) GENERATE
+			auto_generated.clken = clken;
+		END GENERATE;
+		IF USED(clock) GENERATE
+			auto_generated.clock = clock;
+		END GENERATE;
+		IF USED(data) GENERATE
+			auto_generated.data[] = data[];
+		END GENERATE;
+		IF USED(enable) GENERATE
+			auto_generated.enable = enable;
+		END GENERATE;
+		IF USED(eq) GENERATE
+			eq[] = auto_generated.eq[];
+		END GENERATE;
+	ELSE GENERATE
+	-- Special case: LPM_WIDTH = 1
+	IF LPM_WIDTH == 1 GENERATE
+		eq_node[0] = !data[0] & enable;
+		IF LPM_DECODES == 2 GENERATE
+			eq_node[1] = data[0] & enable;
+		END GENERATE;
+
+	ELSE GENERATE
+		IF !((FAMILY_FLEX() == 1) & 
+		      !USE_CASCADE_CHAINS()) & LATENCY == 0 GENERATE
+			------------------------------------------------------------------
+			-- non-pipelined FLEX/FAST case	and all non-pipelined MAX cases --  
+			------------------------------------------------------------------
+			-- In this case, will use a collection of comparators with fixed inputs specific
+			-- to each comparator. NOTE: In these two special cases, the whole logic
+			-- is essentially one level deep as cascade chains are fast and the whole logic
+			-- is just one cell deep in the MAX case. Therefore, pipelining these two
+			-- cases doesn't make much sense. 
+		 	FOR out IN 0 TO LPM_DECODES-1 GENERATE
+				const_data[out][] = lpm_constant() WITH (LPM_WIDTH = LPM_WIDTH, LPM_CVALUE = out);
+				comparator[out].dataa[LPM_WIDTH-1..0] = data[];
+				comparator[out].datab[LPM_WIDTH-1..0] = const_data[out][];
+			
+				IF USED(enable) GENERATE
+					comparator[out].dataa[LPM_WIDTH] = enable;
+					comparator[out].datab[LPM_WIDTH] = VCC;
+				END GENERATE;
+	
+ 				eq_node[out] = comparator[out].aeb;
+			END GENERATE;
+
+		ELSE GENERATE
+ 			----------------------------------
+			-- 		 all other cases		--  
+			----------------------------------
+			IF USED(enable) # !USED(enable) & INP_NUM0() < 4 GENERATE
+
+				IF USED(enable) GENERATE
+					decoder.enable = enable;
+					decoder.data[] = data[];
+				ELSE GENERATE
+					decoder.data[] = data[LPM_WIDTH-1..0]; 	
+ 				END GENERATE;
+
+				IF USED(clock) GENERATE
+					decoder.(clock, aclr) = (clock, aclr);
+				END GENERATE;
+				
+				IF USED(clken) GENERATE
+					decoder.clken = clken;
+				END GENERATE;
+				
+				eq_node[] = decoder.eq[LPM_DECODES-1..0];
+		
+			ELSE GENERATE
+				decoder0.data[] = data[LPM_WIDTH-2..0];
+				decoder1.data[] = data[LPM_WIDTH-2..0];
+				decoder0.enable = !data[LPM_WIDTH-1];	
+				decoder1.enable =  data[LPM_WIDTH-1];	
+
+				IF USED(clock) GENERATE
+					decoder0.(clock, aclr) = (clock, aclr);
+					decoder1.(clock, aclr) = (clock, aclr);
+
+					IF USED(clken) GENERATE
+						decoder0.clken = clken;
+						decoder1.clken = clken;
+					END GENERATE;
+				END GENERATE;
+
+			   	IF LPM_DECODES <= 2^(LPM_WIDTH-1) GENERATE
+					eq_node[] = decoder0.eq[LPM_DECODES-1..0];
+
+				ELSE GENERATE
+					eq_node[2^(LPM_WIDTH-1)-1..0] = decoder0.eq[];
+					eq_node[LPM_DECODES-1..2^(LPM_WIDTH-1)] = decoder1.eq[LPM_DECODES-1-2^(LPM_WIDTH-1)..0];
+				END GENERATE;
+		 	END GENERATE;
+		END GENERATE; 
+	END GENERATE;
+
+	-- External latency connections
+	external_latency_ffs.data[] = eq_node[];
+	eq[] = external_latency_ffs.result[];
+	
+	IF EXT_LATENCY() > 0 GENERATE
+		external_latency_ffs.(clock, aclr) = (clock, aclr);
+
+		IF USED(clken) GENERATE
+			external_latency_ffs.clken = clken;
+		END GENERATE;
+	END GENERATE;
+	END GENERATE;
+	IF !USED(eq) GENERATE
+		eq[] = GND;
+	END GENERATE;
+END; 
+ 

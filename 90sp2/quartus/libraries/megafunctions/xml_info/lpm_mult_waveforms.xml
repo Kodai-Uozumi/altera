@@ -1,0 +1,36 @@
+<?xml version="1.0" ?>
+<ROOT>
+	<HTML_TEXT>
+		<TITLE>Sample Waveforms for m_design_file_name</TITLE>
+		<HEADER>Sample behavioral waveforms for design file m_design_file_name</HEADER>
+		<INTRO>
+			<T>The following waveforms show the behavior of lpm_mult megafunction for the chosen set of parameters in design m_design_file_name. </T>
+			<T>The design m_design_file_name is a LPM_WIDTHA X LPM_WIDTHB LPM_REPRESENTATION multiplier producing an output of width LPM_WIDTHP.</T>
+			<IF> INPUT_B_IS_CONSTANT == "YES" </IF>
+			<THEN> One of the inputs of the multiplier is the constant datab. </THEN>
+			<IF>is_used(sum)</IF>
+			<THEN> The design has a sum input of width LPM_WIDTHS.</THEN>
+			<IF>LPM_PIPELINE > 0</IF>
+			<THEN> The output of the multiplier has a latency of LPM_PIPELINE.</THEN>
+		</INTRO>
+	</HTML_TEXT>
+	<WAVE_DATA>
+		<WAVE NAME="ALL" TIME_STEP="10" MAX_TIME="550">
+			<CAPTION>Wave showing multiplier operation.</CAPTION>
+
+		        <STIM> force dataa 0 @0, 1 @130, 2 @250, 3 @370</STIM>
+		        <STIM> force datab 1 @0, 2 @130, 3 @250, 1 @370</STIM>
+			<STIM> force sum 1 @0, 2 @130, 3 @250, 1 @450</STIM>
+			<STIM> force clock 0 @0, 1 @20, -repeat @40</STIM>
+			<STIM> force clken 0 @0, 1 @50</STIM>
+			<IF> LPM_PIPELINE == 1</IF>
+			<THEN>
+				<STIM> force aclr 0 @0, 1 @210, 0 @250</STIM>
+			</THEN>
+			<ELSE>
+				<STIM> force aclr 0 @0, 1 @90, 0 @130</STIM>	
+			</ELSE>
+		</WAVE>
+	</WAVE_DATA>
+</ROOT>
+

@@ -1,0 +1,867 @@
+<?xml version="1.0"?>
+<general family="stratix iii">
+    <!-- C-comp Values -->
+    <data_type name="pin_type" index="dedicated">
+        <property name="d_pin_type">
+            <value name="true"/>
+    	</property>
+	<data name="d_c_comp_comment">| C_comp values for dedicated clock input</data>
+        <data name="d_c_comp">0.4pF   0.4pF   0.4pF</data>
+    </data_type>
+
+    <data_type name="pin_type" index="feedback">
+        <property name="f_pin_type">
+            <value name="true"/>
+        </property>
+	<data name="f_c_comp_comment">| C_comp values for Dual-purpose clock output/feedback pin</data>
+        <data name="f_c_comp">3.7pF   3.7pF   3.7pF</data>
+    </data_type>
+
+    <data_type name="pin_type" index="normal">
+        <property name="n_pin_type">
+            <value name="true"/>
+	</property>
+	<data name="n_c_comp_comment">| C_comp values for Normal I/O and dual purpose I/O</data>
+	<data name="n_c_comp">2.5pF   2.5pF   2.5pF</data>
+    </data_type>
+
+    <!-- Polarity and Enable Setting -->
+    <data_type name="polarity">
+        <property name="direction">
+            <value name="input"/>
+            <value name="output"/>
+            <value name="I/O"/>
+	    <value name="I/O_open_drain"/>
+	    <value name="Open_drain"/>
+        </property>
+        <data name="polarity">Non-Inverting</data>
+    </data_type>
+
+    <data_type name="enable">
+        <property name="direction">
+            <value name="output"/>
+            <value name="I/O"/>
+            <value name="I/O_open_drain"/>
+	    <value name="Open_drain"/>
+        </property>
+        <data name="enable">Active-Low</data>
+    </data_type>
+
+    <data_type name="enable-high">
+        <property name="io_standard">
+	    <value name="mini-LVDS"/>
+	    <value name="RSDS" />
+	    <value name="LVDS" />
+        </property>
+        <property name="direction">
+            <value name="output"/>
+            <value name="I/O"/>
+	    <value name="I/O_open_drain"/>
+	    <value name="Open_drain"/>
+        </property>
+	<data name="enable" overwrite="true">Active-High</data>
+	<data name="rref_diff">100</data>
+    </data_type>
+
+    <data_type name="enable-high">
+        <property name="io_standard">
+            <value name="LVDS_E_1R"/>
+            <value name="LVDS_E_3R"/>
+	    <value name="mini-LVDS_E_1R"/>
+            <value name="mini-LVDS_E_3R"/>		    
+            <value name="RSDS_E_1R"/>
+            <value name="RSDS_E_3R"/>
+        </property>
+        <property name="direction">
+            <value name="output"/>
+            <value name="I/O"/>
+	    <value name="I/O_open_drain"/>
+	    <value name="Open_drain"/>
+        </property>
+	<data name="rref_diff">100</data>
+    </data_type>
+
+    <!-- vinl, vinh, cref, vref, rref ... -->
+    <data_type name="input_model" index="input">
+        <property name="direction">
+            <value name="input"/>
+        </property>
+        <data name="vmeas" overwrite="true"></data>
+        <data name="rref" overwrite="true"></data>
+        <data name="cref" overwrite="true"></data>
+        <data name="vref" overwrite="true"></data>
+    </data_type>
+
+    <data_type name="output_model" index="output">
+        <property name="direction">
+		<value name="output"/>
+		<value name="Open_drain"/>
+        </property>
+        <data name="vinl" overwrite="true"></data>
+        <data name="vinh" overwrite="true"></data>
+    </data_type>
+
+    <data_type name="Input_Test_load">
+        <property name="direction">
+ 	    <value name="input"/>
+        </property>
+        <data name="Test_load" overwrite="true"></data>
+        <data name="Test_load_type" overwrite="true"></data>
+        <data name="Rs_near" overwrite="true"></data>
+        <data name="Rp1_near" overwrite="true"></data>
+        <data name="C2_near" overwrite="true"></data>
+	<data name="V_term1" overwrite="true"></data>
+    </data_type>
+
+    <data_type name="1.2 V">
+        <property name="io_standard">
+            <value name="1.2 V"/>
+            <value name="1.2V"/>
+        </property>
+        <data name="vmeas">0.57</data>
+        <data name="rref">10M</data>
+        <data name="cref">0pF</data>
+        <data name="vref">0</data>
+        <data name="vinh">0.78</data>
+        <data name="vinl">0.42</data>
+        <data name="voltage range"> 1.2    1.14    1.26 </data>
+    </data_type>
+
+    <data_type name="1.5 V">
+        <property name="io_standard">
+            <value name="1.5 V"/>
+            <value name="1.5V"/>
+        </property>
+        <data name="vmeas">0.7125</data>
+        <data name="rref">10M</data>
+        <data name="cref">0pF</data>
+        <data name="vref">0</data>
+        <data name="vinh">0.975</data>
+        <data name="vinl">0.525</data>
+        <data name="voltage range"> 1.5    1.425    1.575 </data>
+    </data_type>
+
+    <data_type name="1.8 V">
+        <property name="io_standard">
+            <value name="1.8 V"/>
+            <value name="1.8V"/>
+        </property>
+        <data name="vmeas">0.855</data>
+        <data name="rref">10M</data>
+        <data name="cref">0pF</data>
+        <data name="vref">0</data>
+        <data name="vinh">1.17</data>
+        <data name="vinl">0.63</data>
+        <data name="voltage range"> 1.8    1.71    1.89 </data>
+    </data_type>
+
+    <data_type name="2.5 V">
+        <property name="io_standard">
+            <value name="2.5 V"/>
+            <value name="2.5V"/>
+        </property>
+        <data name="vmeas">1.1875</data>
+        <data name="rref">10M</data>
+        <data name="cref">0pF</data>
+        <data name="vref">0</data>
+        <data name="vinh">1.7</data>
+        <data name="vinl">0.7</data>
+        <data name="voltage range"> 2.5    2.375    2.625 </data>
+    </data_type>
+
+    <data_type name="3.0 V">
+        <property name="io_standard">
+            <value name="3.0 V"/>
+            <value name="3.0-V LVTTL"/>
+            <value name="3.0V"/>
+        </property>
+        <data name="vmeas">1.425</data>
+        <data name="rref">10M</data>
+        <data name="cref">0pF</data>
+        <data name="vref">0</data>
+        <data name="vinh">1.7</data>
+        <data name="vinl">0.8</data>
+        <data name="voltage range"> 3    2.85    3.15 </data>
+    </data_type>
+
+    <data_type name="3.3 V">
+        <property name="io_standard">
+            <value name="3.3 V"/>
+            <value name="3.3-V LVTTL"/>
+            <value name="3.3V"/>
+        </property>
+        <data name="vmeas">1.5675</data>
+        <data name="rref">10M</data>
+        <data name="cref">0pF</data>
+        <data name="vref">0</data>
+        <data name="vinh">1.7</data>
+        <data name="vinl">0.8</data>
+        <data name="voltage range"> 3.3    3.135    3.465 </data>
+    </data_type>
+
+    <data_type name="3.0-V LVCMOS">
+        <property name="io_standard">
+            <value name="3.0-V LVCMOS"/>
+        </property>
+        <data name="vmeas">1.425</data>
+        <data name="rref">10M</data>
+        <data name="cref">0pF</data>
+        <data name="vref">0</data>
+        <data name="vinh">1.7</data>
+        <data name="vinl">0.8</data>
+        <data name="voltage range"> 3    2.85    3.15 </data>
+    </data_type>
+
+    <data_type name="3.3-V LVCMOS">
+        <property name="io_standard">
+            <value name="3.3-V LVCMOS"/>
+        </property>
+        <data name="vmeas">1.5675</data>
+        <data name="rref">10M</data>
+        <data name="cref">0pF</data>
+        <data name="vref">0</data>
+        <data name="vinh">1.7</data>
+        <data name="vinl">0.8</data>
+        <data name="voltage range"> 3.3    3.135    3.465 </data>
+    </data_type>
+
+    <data_type name="3.0-V PCI">
+        <property name="io_standard">
+            <value name="3.0-V PCI"/>
+        </property>
+        <data name="vmeas">1.425</data>
+        <data name="rref">10M</data>
+        <data name="cref">10pF</data>
+        <data name="vref">0</data>
+        <data name="vinh">1.5</data>
+        <data name="vinl">0.9</data>
+        <data name="voltage range"> 3    2.85    3.15 </data>
+    </data_type>
+
+    <data_type name="3.0-V PCI-X">
+        <property name="io_standard">
+            <value name="3.0-V PCI-X"/>
+        </property>
+        <data name="vmeas">1.425</data>
+        <data name="rref">10M</data>
+        <data name="cref">10pF</data>
+        <data name="vref">0</data>
+        <data name="vinh">1.5</data>
+        <data name="vinl">1.05</data>
+        <data name="voltage range"> 3    2.85    3.15 </data>
+    </data_type>
+
+    <data_type name="1.2-V HSTL Class I">
+        <property name="io_standard">
+            <value name="1.2-V HSTL Class I"/>
+        </property>
+        <data name="vmeas">0.545</data>
+        <data name="rref">50</data>
+        <data name="cref">0pF</data>
+        <data name="vref">0.6</data>
+        <data name="vinh">0.75</data>
+        <data name="vinl">0.45</data>
+        <data name="comments">
+|The Vinl and Vinh values are based on AC Spec
+        </data>
+        <data name="Model Spec">
+Vinh    0.75    0.714    0.786
+Vinl    0.45    0.414    0.486
+        </data>
+        <data name="voltage range"> 1.2    1.09    1.26 </data>
+    </data_type>
+
+    <data_type name="1.2-V HSTL Class II">
+        <property name="io_standard">
+            <value name="1.2-V HSTL Class II"/>
+        </property>
+        <data name="vmeas">0.545</data>
+        <data name="rref">25</data>
+        <data name="cref">0pF</data>
+        <data name="vref">0.6</data>
+        <data name="vinh">0.75</data>
+        <data name="vinl">0.45</data>
+        <data name="comments">
+|The Vinl and Vinh values are based on AC Spec
+        </data>
+        <data name="Model Spec">
+Vinh    0.75    0.714    0.786
+Vinl    0.45    0.414    0.486
+        </data>
+        <data name="voltage range"> 1.2    1.09    1.26 </data>
+    </data_type>
+
+    <data_type name="1.5-V HSTL Class I">
+        <property name="io_standard">
+            <value name="1.5-V HSTL Class I"/>
+        </property>
+        <data name="vmeas">0.6875</data>
+        <data name="rref">50</data>
+        <data name="cref">0pF</data>
+        <data name="vref">0.75</data>
+        <data name="vinh">0.95</data>
+        <data name="vinl">0.55</data>
+        <data name="comments">
+|The Vinl and Vinh values are based on AC Spec
+        </data>
+        <data name="Model Spec">
+Vinh    0.95    0.88    1.1
+Vinl    0.55    0.48    0.7
+        </data>
+        <data name="voltage range"> 1.5    1.375    1.575 </data>
+    </data_type>
+
+    <data_type name="1.5-V HSTL Class II">
+        <property name="io_standard">
+            <value name="1.5-V HSTL Class II"/>
+        </property>
+        <data name="vmeas">0.6875</data>
+        <data name="rref">25</data>
+        <data name="cref">0pF</data>
+        <data name="vref">0.75</data>
+        <data name="vinh">0.95</data>
+        <data name="vinl">0.55</data>
+        <data name="comments">
+|The Vinl and Vinh values are based on AC Spec
+        </data>
+        <data name="Model Spec">
+Vinh    0.95    0.88    1.1
+Vinl    0.55    0.48    0.7
+        </data>
+        <data name="voltage range"> 1.5    1.375    1.575 </data>
+    </data_type>
+
+    <data_type name="1.8-V HSTL Class I">
+        <property name="io_standard">
+            <value name="1.8-V HSTL Class I"/>
+        </property>
+        <data name="vmeas">0.83</data>
+        <data name="rref">50</data>
+        <data name="cref">0pF</data>
+        <data name="vref">0.9</data>
+        <data name="vinh">1.1</data>
+        <data name="vinl">0.7</data>
+        <data name="comments">
+|The Vinl and Vinh values are based on AC Spec
+        </data>
+        <data name="Model Spec">
+Vinh    1.1    1.05    1.15
+Vinl    0.7    0.65    0.75
+        </data>
+        <data name="voltage range"> 1.8    1.66    1.89 </data>
+    </data_type>
+
+    <data_type name="1.8-V HSTL Class II">
+        <property name="io_standard">
+            <value name="1.8-V HSTL Class II"/>
+        </property>
+        <data name="vmeas">0.83</data>
+        <data name="rref">25</data>
+        <data name="cref">0pF</data>
+        <data name="vref">0.9</data>
+        <data name="vinh">1.1</data>
+        <data name="vinl">0.7</data>
+        <data name="comments">
+|The Vinl and Vinh values are based on AC Spec
+        </data>
+        <data name="Model Spec">
+Vinh    1.1    1.05    1.15
+Vinl    0.7    0.65    0.75
+        </data>
+        <data name="voltage range"> 1.8    1.66    1.89 </data>
+    </data_type>
+
+    <data_type name="SSTL-15 Class I">
+        <property name="io_standard">
+            <value name="SSTL-15 Class I"/>
+        </property>
+        <data name="vmeas">0.6875</data>
+        <data name="vinh">0.925</data>
+        <data name="vinl">0.575</data>
+        <data name="Test_load">TRUE</data>
+        <data name="Test_load_type">Single_ended</data>
+        <data name="Rs_near">25</data>
+        <data name="Rp1_near">50</data>
+        <data name="C2_near">0pF</data>
+        <data name="V_term1">0.75  0.75  0.75</data>
+        <data name="comments">
+|The Vinl and Vinh values are based on AC Spec
+        </data>
+        <data name="Model Spec">
+Vinh    0.925    0.88    0.97
+Vinl    0.575    0.53    0.62
+        </data>
+        <data name="voltage range"> 1.5    1.375    1.575 </data>
+    </data_type>
+
+    <data_type name="SSTL-15 Class II">
+        <property name="io_standard">
+            <value name="SSTL-15 Class II"/>
+        </property>
+        <data name="vmeas">0.6875</data>
+        <data name="vinh">0.925</data>
+        <data name="vinl">0.575</data>
+        <data name="Test_load">TRUE</data>
+        <data name="Test_load_type">Single_ended</data>
+        <data name="Rs_near">25</data>
+        <data name="Rp1_near">25</data>
+        <data name="C2_near">0pF</data>
+        <data name="V_term1">0.75  0.75  0.75</data>
+        <data name="comments">
+|The Vinl and Vinh values are based on AC Spec
+        </data>
+        <data name="Model Spec">
+Vinh    0.925    0.88    0.97
+Vinl    0.575    0.53    0.62
+        </data>
+        <data name="voltage range"> 1.5    1.375    1.575 </data>
+    </data_type>
+
+    <data_type name="SSTL-18 Class I">
+        <property name="io_standard">
+            <value name="SSTL-18 Class I"/>
+        </property>
+        <data name="vmeas">0.83</data>
+        <data name="vinh">1.15</data>
+        <data name="vinl">0.65</data>
+        <data name="Test_load">TRUE</data>
+        <data name="Test_load_type">Single_ended</data>
+        <data name="Rs_near">25</data>
+        <data name="Rp1_near">50</data>
+        <data name="C2_near">0pF</data>
+        <data name="V_term1">0.9   0.9   0.9</data>
+        <data name="comments">
+|The Vinl and Vinh values are based on AC Spec
+        </data>
+        <data name="Model Spec">
+Vinh    1.15    1.083    1.219
+Vinl    0.65    0.583    0.719
+        </data>
+        <data name="voltage range"> 1.8    1.66    1.89 </data>
+    </data_type>
+
+    <data_type name="SSTL-18 Class II">
+        <property name="io_standard">
+            <value name="SSTL-18 Class II"/>
+        </property>
+        <data name="vmeas">0.83</data>
+        <data name="vinh">1.15</data>
+        <data name="vinl">0.65</data>
+        <data name="Test_load">TRUE</data>
+        <data name="Test_load_type">Single_ended</data>
+        <data name="Rs_near">25</data>
+        <data name="Rp1_near">25</data>
+        <data name="C2_near">0pF</data>
+        <data name="V_term1">0.9   0.9   0.9</data>
+        <data name="comments">
+|The Vinl and Vinh values are based on AC Spec
+        </data>
+        <data name="Model Spec">
+Vinh    1.15    1.083    1.219
+Vinl    0.65    0.583    0.719
+        </data>
+        <data name="voltage range"> 1.8    1.66    1.89 </data>
+    </data_type>
+
+    <data_type name="SSTL-2 Class I">
+        <property name="io_standard">
+            <value name="SSTL-2 Class I"/>
+        </property>
+        <data name="vmeas">1.1625</data>
+        <data name="vinh">1.56</data>
+        <data name="vinl">0.94</data>
+        <data name="Test_load">TRUE</data>
+        <data name="Test_load_type">Single_ended</data>
+        <data name="Rs_near">25</data>
+        <data name="Rp1_near">50</data>
+        <data name="C2_near">0pF</data>
+        <data name="V_term1">1.25  1.25  1.25</data>
+        <data name="comments">
+|The Vinl and Vinh values are based on AC Spec
+        </data>
+        <data name="Model Spec">
+Vinh    1.56    1.535    1.585
+Vinl    0.94    0.915    0.965
+        </data>
+        <data name="voltage range"> 2.5    2.325    2.625 </data>
+    </data_type>
+
+    <data_type name="SSTL-2 Class II">
+        <property name="io_standard">
+            <value name="SSTL-2 Class II"/>
+        </property>
+        <data name="vmeas">1.1625</data>
+        <data name="vinh">1.56</data>
+        <data name="vinl">0.94</data>
+        <data name="Test_load">TRUE</data>
+        <data name="Test_load_type">Single_ended</data>
+        <data name="Rs_near">25</data>
+        <data name="Rp1_near">25</data>
+        <data name="C2_near">0pF</data>
+        <data name="V_term1">1.25  1.25  1.25</data>
+        <data name="comments">
+|The Vinl and Vinh values are based on AC Spec
+        </data>
+        <data name="Model Spec">
+Vinh    1.56    1.535    1.585
+Vinl    0.94    0.915    0.965
+        </data>
+        <data name="voltage range"> 2.5    2.325    2.625 </data>
+    </data_type>
+
+    <data_type name="Differential 1.2-V HSTL Class I">
+        <property name="io_standard">
+            <value name="Differential 1.2-V HSTL Class I"/>
+        </property>
+        <data name="vmeas">0.545</data>
+        <data name="rref">50</data>
+        <data name="vdiff">0.3</data>
+        <data name="cref">0pF</data>
+        <data name="vref">0.6</data>
+        <data name="vinh">0.75</data>
+        <data name="vinl">0.45</data>
+        <data name="comments">
+|The Vinl and Vinh values are based on AC Spec
+        </data>
+        <data name="Model Spec">
+Vinh    0.75    0.714    0.786
+Vinl    0.45    0.414    0.486
+        </data>
+        <data name="voltage range"> 1.2    1.09    1.26 </data>
+    </data_type>
+
+    <data_type name="Differential 1.2-V HSTL Class II">
+        <property name="io_standard">
+            <value name="Differential 1.2-V HSTL Class II"/>
+        </property>
+        <data name="vmeas">0.545</data>
+        <data name="rref">25</data>
+        <data name="vdiff">0.3</data>
+        <data name="cref">0pF</data>
+        <data name="vref">0.6</data>
+        <data name="vinh">0.75</data>
+        <data name="vinl">0.45</data>
+        <data name="comments">
+|The Vinl and Vinh values are based on AC Spec
+        </data>
+        <data name="Model Spec">
+Vinh    0.75    0.714    0.786
+Vinl    0.45    0.414    0.486
+        </data>
+        <data name="voltage range"> 1.2    1.09    1.26 </data>
+    </data_type>
+
+    <data_type name="Differential 1.5-V HSTL Class I">
+        <property name="io_standard">
+            <value name="Differential 1.5-V HSTL Class I"/>
+        </property>
+        <data name="vmeas">0.6875</data>
+        <data name="rref">50</data>
+        <data name="vdiff">0.4</data>
+        <data name="cref">0pF</data>
+        <data name="vref">0.75</data>
+        <data name="vinh">0.95</data>
+        <data name="vinl">0.55</data>
+        <data name="comments">
+|The Vinl and Vinh values are based on AC Spec
+        </data>
+        <data name="Model Spec">
+Vinh    0.95    0.88    1.1
+Vinl    0.55    0.48    0.7
+        </data>
+        <data name="voltage range"> 1.5    1.375    1.575 </data>
+    </data_type>
+
+    <data_type name="Differential 1.5-V HSTL Class II">
+        <property name="io_standard">
+            <value name="Differential 1.5-V HSTL Class II"/>
+        </property>
+        <data name="vmeas">0.6875</data>
+        <data name="rref">25</data>
+        <data name="vdiff">0.4</data>
+        <data name="cref">0pF</data>
+        <data name="vref">0.75</data>
+        <data name="vinh">0.95</data>
+        <data name="vinl">0.55</data>
+        <data name="comments">
+|The Vinl and Vinh values are based on AC Spec
+        </data>
+        <data name="Model Spec">
+Vinh    0.95    0.88    1.1
+Vinl    0.55    0.48    0.7
+        </data>
+        <data name="voltage range"> 1.5    1.375    1.575 </data>
+    </data_type>
+
+    <data_type name="Differential 1.8-V HSTL Class I">
+        <property name="io_standard">
+            <value name="Differential 1.8-V HSTL Class I"/>
+        </property>
+        <data name="vmeas">0.83</data>
+        <data name="rref">50</data>
+        <data name="vdiff">0.4</data>
+        <data name="cref">0pF</data>
+        <data name="vref">0.9</data>
+        <data name="vinh">1.1</data>
+        <data name="vinl">0.7</data>
+        <data name="comments">
+|The Vinl and Vinh values are based on AC Spec
+        </data>
+        <data name="Model Spec">
+Vinh    1.1    1.05    1.15
+Vinl    0.7    0.65    0.75
+        </data>
+        <data name="voltage range"> 1.8    1.66    1.89 </data>
+    </data_type>
+
+    <data_type name="Differential 1.8-V HSTL Class II">
+        <property name="io_standard">
+            <value name="Differential 1.8-V HSTL Class II"/>
+        </property>
+        <data name="vmeas">0.83</data>
+        <data name="rref">25</data>
+        <data name="vdiff">0.4</data>
+        <data name="cref">0pF</data>
+        <data name="vref">0.9</data>
+        <data name="vinh">1.1</data>
+        <data name="vinl">0.7</data>
+        <data name="comments">
+|The Vinl and Vinh values are based on AC Spec
+        </data>
+        <data name="Model Spec">
+Vinh    1.1    1.05    1.15
+Vinl    0.7    0.65    0.75
+        </data>
+        <data name="voltage range"> 1.8    1.66    1.89 </data>
+    </data_type>
+
+    <data_type name="Differential 1.5-V SSTL Class I">
+        <property name="io_standard">
+            <value name="Differential 1.5-V SSTL Class I"/>
+        </property>
+        <data name="vmeas">0.6875</data>
+        <data name="vdiff">0.35</data>
+        <data name="vinh">0.925</data>
+        <data name="vinl">0.575</data>
+        <data name="Test_load">TRUE</data>
+        <data name="Test_load_type">Single_ended</data>
+        <data name="Rs_near">25</data>
+        <data name="Rp1_near">50</data>
+        <data name="C2_near">0pF</data>
+        <data name="V_term1">0.75  0.75  0.75</data>
+        <data name="comments">
+|The Vinl and Vinh values are based on AC Spec
+        </data>
+        <data name="Model Spec">
+Vinh    0.925    0.88    0.97
+Vinl    0.575    0.53    0.62
+        </data>
+        <data name="voltage range"> 1.5    1.375    1.575 </data>
+    </data_type>
+
+    <data_type name="Differential 1.5-V SSTL Class II">
+        <property name="io_standard">
+            <value name="Differential 1.5-V SSTL Class II"/>
+        </property>
+        <data name="vmeas">0.6875</data>
+        <data name="vdiff">0.35</data>
+        <data name="vinh">0.925</data>
+        <data name="vinl">0.575</data>
+        <data name="Test_load">TRUE</data>
+        <data name="Test_load_type">Single_ended</data>
+        <data name="Rs_near">25</data>
+        <data name="Rp1_near">25</data>
+        <data name="C2_near">0pF</data>
+        <data name="V_term1">0.75  0.75  0.75</data>
+        <data name="comments">
+|The Vinl and Vinh values are based on AC Spec
+        </data>
+        <data name="Model Spec">
+Vinh    0.925    0.88    0.97
+Vinl    0.575    0.53    0.62
+        </data>
+        <data name="voltage range"> 1.5    1.375    1.575 </data>
+    </data_type>
+
+    <data_type name="Differential 1.8-V SSTL Class I">
+        <property name="io_standard">
+            <value name="Differential 1.8-V SSTL Class I"/>
+        </property>
+        <data name="vmeas">0.83</data>
+        <data name="vdiff">0.5</data>
+        <data name="vinh">1.15</data>
+        <data name="vinl">0.65</data>
+        <data name="Test_load">TRUE</data>
+        <data name="Test_load_type">Single_ended</data>
+        <data name="Rs_near">25</data>
+        <data name="Rp1_near">50</data>
+        <data name="C2_near">0pF</data>
+        <data name="V_term1">0.9   0.9   0.9</data>
+        <data name="comments">
+|The Vinl and Vinh values are based on AC Spec
+        </data>
+        <data name="Model Spec">
+Vinh    1.15    1.083    1.219
+Vinl    0.65    0.583    0.719
+        </data>
+        <data name="voltage range"> 1.8    1.66    1.89 </data>
+    </data_type>
+
+    <data_type name="Differential 1.8-V SSTL Class II">
+        <property name="io_standard">
+            <value name="Differential 1.8-V SSTL Class II"/>
+        </property>
+        <data name="vmeas">0.83</data>
+        <data name="vdiff">0.5</data>
+        <data name="vinh">1.15</data>
+        <data name="vinl">0.65</data>
+        <data name="Test_load">TRUE</data>
+        <data name="Test_load_type">Single_ended</data>
+        <data name="Rs_near">25</data>
+        <data name="Rp1_near">25</data>
+        <data name="C2_near">0pF</data>
+        <data name="V_term1">0.9   0.9   0.9</data>
+        <data name="comments">
+|The Vinl and Vinh values are based on AC Spec
+        </data>
+        <data name="Model Spec">
+Vinh    1.15    1.083    1.219
+Vinl    0.65    0.583    0.719
+        </data>
+        <data name="voltage range"> 1.8    1.66    1.89 </data>
+    </data_type>
+
+    <data_type name="Differential 2.5-V SSTL Class I">
+        <property name="io_standard">
+            <value name="Differential 2.5-V SSTL Class I"/>
+        </property>
+        <data name="vmeas">1.1625</data>
+        <data name="vdiff">0.62</data>
+        <data name="vinh">1.56</data>
+        <data name="vinl">0.94</data>
+        <data name="Test_load">TRUE</data>
+        <data name="Test_load_type">Single_ended</data>
+        <data name="Rs_near">25</data>
+        <data name="Rp1_near">50</data>
+        <data name="C2_near">0pF</data>
+        <data name="V_term1">1.25  1.25  1.25</data>
+        <data name="comments">
+|The Vinl and Vinh values are based on AC Spec
+        </data>
+        <data name="Model Spec">
+Vinh    1.56    1.535    1.585
+Vinl    0.94    0.915    0.965
+        </data>
+        <data name="voltage range"> 2.5    2.325    2.625 </data>
+    </data_type>
+
+    <data_type name="Differential 2.5-V SSTL Class II">
+        <property name="io_standard">
+            <value name="Differential 2.5-V SSTL Class II"/>
+        </property>
+        <data name="vmeas">1.1625</data>
+        <data name="vdiff">0.62</data>
+        <data name="vinh">1.56</data>
+        <data name="vinl">0.94</data>
+        <data name="Test_load">TRUE</data>
+        <data name="Test_load_type">Single_ended</data>
+        <data name="Rs_near">25</data>
+        <data name="Rp1_near">25</data>
+        <data name="C2_near">0pF</data>
+        <data name="V_term1">1.25  1.25  1.25</data>
+        <data name="comments">
+|The Vinl and Vinh values are based on AC Spec
+        </data>
+        <data name="Model Spec">
+Vinh    1.56    1.535    1.585
+Vinl    0.94    0.915    0.965
+        </data>
+        <data name="voltage range"> 2.5    2.325    2.625 </data>
+    </data_type>
+
+    <data_type name="LVDS">
+        <property name="io_standard">
+            <value name="LVDS"/>
+        </property>
+        <data name="vmeas">1.1625</data>
+        <data name="vdiff">0.1</data>
+        <data name="vinh">1.3</data>
+        <data name="vinl">1.2</data>
+        <data name="voltage range"> 2.5    2.325    2.625 </data>
+    </data_type>
+
+    <data_type name="mini-LVDS">
+        <property name="io_standard">
+            <value name="mini-LVDS"/>
+        </property>
+        <data name="vmeas">1.1625</data>
+        <data name="vdiff">0.2</data>
+        <data name="vinh">1.35</data>
+        <data name="vinl">1.15</data>
+	<data name="voltage range"> 2.5    2.325    2.625 </data>
+    </data_type>
+
+    <data_type name="RSDS">
+        <property name="io_standard">
+            <value name="RSDS"/>
+        </property>
+        <data name="vmeas">1.1625</data>
+        <data name="vdiff">0.1</data>
+        <data name="vinh">1.3</data>
+        <data name="vinl">1.2</data>
+        <data name="voltage range"> 2.5    2.325    2.625 </data>
+    </data_type>
+
+    <data_type name="LVDS_E_1R">
+        <property name="io_standard">
+            <value name="LVDS_E_1R"/>
+            <value name="LVDS_E_3R"/>
+        </property>
+        <data name="vmeas">1.1625</data>
+        <data name="comments">
+| For timing test load parameters, please refer to 
+| Output Timing Measurement Methodology for Output pins table in 
+| SIII Device Datasheet: DC and Switching Characteristics Chapter.
+        </data>
+        <data name="voltage range"> 2.5    2.325    2.625 </data>
+    </data_type>
+
+    <data_type name="mini-LVDS_E_1R">
+        <property name="io_standard">
+            <value name="mini-LVDS_E_1R"/>
+            <value name="mini-LVDS_E_3R"/>
+        </property>
+        <data name="vmeas">1.1625</data>
+        <data name="comments">
+| For timing test load parameters, please refer to 
+| Output Timing Measurement Methodology for Output pins table in 
+| SIII Device Datasheet: DC and Switching Characteristics Chapter.
+        </data>
+        <data name="voltage range"> 2.5    2.325    2.625 </data>
+    </data_type>
+
+    <data_type name="RSDS_E_1R">
+        <property name="io_standard">
+            <value name="RSDS_E_1R"/>
+            <value name="RSDS_E_3R"/>
+        </property>
+        <data name="vmeas">1.1625</data>
+        <data name="comments">
+| For timing test load parameters, please refer to 
+| Output Timing Measurement Methodology for Output pins table in 
+| SIII Device Datasheet: DC and Switching Characteristics Chapter.
+        </data>
+        <data name="voltage range"> 2.5    2.325    2.625 </data>
+    </data_type>
+
+    <data_type name="Differential LVPECL">
+        <property name="io_standard">
+            <value name="Differential LVPECL"/>
+        </property>
+        <data name="vdiff">0.3</data>
+        <data name="vinh">1.4</data>
+        <data name="vinl">1.1</data>
+        <data name="voltage range"> 2.5    2.325    2.625 </data>
+    </data_type>
+
+</general>

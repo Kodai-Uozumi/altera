@@ -1,0 +1,86 @@
+#//START_MODULE_HEADER/////////////////////////////////////////////////////////
+# 
+#  Filename:	makefile.mak
+# 
+#  Description: Gets VHDL library files out of PVCS.
+# 
+#  Authors:		Thiagaraja Gopalsamy
+# 
+#  Copyright (c)  Altera Corporation 1996 - 1999
+# 
+#  All rights reserved.
+# 
+# 
+#//END_MODULE_HEADER///////////////////////////////////////////////////////////
+
+#
+#  $Revision: #1 $
+
+#
+
+###############################################################################
+# Set up the environment
+###############################################################################
+
+BASE_DIR = ../../..
+
+
+include $(BASE_DIR)/environ.gmake
+
+PVCS_DIR = $(PVCS_ROOT)/libraries/vhdl/wysiwyg
+
+###############################################################################
+# Set target(s) and files used.
+###############################################################################
+
+OWNED_FILES = \
+	apex20ke_components.vhd \
+	apex20k_components.vhd \
+	apexii_components.vhd \
+	flex10ke_components.vhd \
+	flex6000_components.vhd \
+	max_components.vhd \
+	mercury_components.vhd \
+	stratixgx_components.vhd
+
+VHDL_FILES =
+define FORFUNC_0
+VHDL_FILES += $(shell echo '$(1)' | tr '[:lower:]' '[:upper:]')
+endef
+$(foreach __file,$(OWNED_FILES),$(eval $(call FORFUNC_0,$(__file))))
+
+###############################################################################
+# Builtins.mak
+###############################################################################
+
+
+include $(BASE_DIR)/builtins.gmake
+
+###############################################################################
+# Now the targets
+###############################################################################
+
+all : $(VHDL_FILES) fix_source
+
+ifeq ($(PORT),UNIX)
+define FORFUNC_1
+$(1) : $(shell echo '$(1)' | tr '[:upper:]' '[:lower:]')
+	cp -pf $$< $$@
+	rm -f $$<
+endef
+$(foreach __file,$(VHDL_FILES),$(eval $(call FORFUNC_1,$(__file))))
+endif
+
+fix_source :
+	$(fix_source)
+define fix_source
+	-@$(foreach FILE, $(VHDL_FILES), \
+	$(PERL_CMD) ../vhdl_proc_components.pl $(FILE) $(FILE).bak ; \
+	$(COPY_FILE) $(FILE).bak $(FILE) ; \
+	rm -f $(FILE).bak ; \
+	)
+
+endef
+
+clean : 
+	rm -f *.vhd *.VHD

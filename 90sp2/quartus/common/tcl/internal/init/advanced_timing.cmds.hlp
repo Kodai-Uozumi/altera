@@ -1,0 +1,2262 @@
+<<<<versions>>>>
+1.1
+1.2
+<<<</versions>>>>
+<<<<1.1>>>>
+<get_timing_nodes>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_timing_nodes [-h | -help] [-long_help] -type <all|pin|reg|clk|comb|keeper>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -type <all|pin|reg|clk|comb|keeper>: Category of node (all|pin|reg|clk|comb|keeper)
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_timing 1.1
+
+------------
+Description:
+------------
+
+Returns a collection of node ids from the timing netlist.
+The collection can be filtered by node type using the 
+"-type" option. Note that the node types in the timing 
+netlist may not correspond to the node types in the Node 
+Finder (or the "get_names" command in ::quartus::project).
+For example, nodes marked as memory in the Node Finder 
+may be represented as registers or combinational nodes in 
+the timing netlist.
+
+The Timing Analyzer represents all designs using a graph of 
+nodes and edges (the netlist). Nodes can be of type "reg" 
+(for registers and latches), "pin" (for top-level pins), 
+"clk" (for nodes reported as clocks), "comb" (for all 
+other combinational nodes), and "keeper" (for registers,
+latches, top-level pins, and clocks). Edges represent 
+delays between nodes.
+
+Use the "get_timing_node_info" command to get specific 
+information about every node,for example, node name, type, 
+or location.	
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Print names of the register and pin nodes
+load_package advanced_timing
+project_open <design>
+create_timing_netlist
+set count 1
+puts "Nodes:"
+foreach_in_collection node [get_timing_nodes -type keeper] {
+    set node_type [get_timing_node_info -info type $node]
+    if {![string equal $node_type  clk] } {
+        set node_name [get_timing_node_info -info name $node]
+        puts " $count : $node_type : $node_name"
+        incr count
+    }
+}
+project_close
+
+# For every timing node, print its type
+load_package advanced_timing
+project_open <design>
+create_timing_netlist
+foreach_in_collection node [get_timing_nodes -type all] {
+    puts "node name is [get_timing_node_info -info name $node]"
+}
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Option <string> has illegal value: <string>. Specify a legal option value.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Create a timing netlist.
+TCL_ERROR	1   	ERROR: Timing netlist is not in a legal state. Remove the current netlist and create a new timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_timing_nodes>
+
+<get_timing_node_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_timing_node_info [-h | -help] [-long_help] -info <info> <node>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -info <info>: Type of information
+        <node>: Node
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_timing 1.1
+
+------------
+Description:
+------------
+
+Returns the requested type of information for the specified 
+timing node. 
+
+Available information types include the following:
+
+    Information Type    Description
+    ----------------    -----------------------------------
+    name                Signal name.
+    type                Type of node (reg, clk, pin, comb).
+    tsu                 For a register, returns micro tsu.
+    th                  For a register, returns micro th.
+    tco                 For a register, returns micro tco.
+    location            Atom location in device.
+    is_loop             Detects whether the node is part of a 
+                        strongly connected component.
+    is_clock_inverted   Detects whether a register is clocked 
+                        by an inverted clock.
+    slack               Worst case slack of the node (Available
+                                after calling "compute_slack_on_edges")
+    delay               Delay of the node (if any).
+    is_tan_generated    Detects whether the Timing Analyzer 
+                        (quartus_tan) synthesized the name 
+                        of the node.
+    is_lvds_channel     Detects whether node is part of an 
+                        LVDS circuit.
+    wysiwyg_port_type   Atom's oterm type.
+    atom_oport          Corresponding atom's oterm (if any).
+    synch_edges         Synch edges.
+    asynch_edges        Asynch edges.
+    clock_edges         Clock edges.
+    fanout_edges        Fanout edges.
+    clock_info          Clock information.
+    internal_location   Internal pin location (IOC_ instead 
+                        of Pin_). Works only for Stratix(R) 
+                        and newer device families.
+    clock_latency       For a clock get the early and late clock
+                        latency values
+    is_pll_out          Detects whether the node is a PLL 
+                        clock output
+    is_clock_pin        Detects whether the node is a clock pin
+    phase_only          Phase shift independent of offset for
+                        a clock
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package advanced_timing
+project_open <design>
+create_timing_netlist
+
+# For every timing node, print its type, name, and location
+foreach_in_collection node [get_timing_nodes -type all] {
+    set node_name [get_timing_node_info -info name $node]
+    set node_type [get_timing_node_info -info type $node]
+    set node_location [get_timing_node_info -info location $node]
+	
+    puts "$node_type : $node_location  : $node_name"
+}
+
+# Print all nodes that are members of a combinational loop
+foreach_in_collection node [get_timing_nodes -type all] {
+    if [get_timing_node_info -info is_loop $node] {
+        set node_name [get_timing_node_info -info name $node]
+        puts "Part of a combinational loop: $node_name"
+    }
+}
+	
+# Print the worst case slack on every register
+# (This assumes timing constraints exist)
+compute_slack_on_edges
+foreach_in_collection node [get_timing_nodes -type all] {
+    set node_name [get_timing_node_info -info name $node]
+    set node_slack [get_timing_node_info -info slack $node]
+    puts "Slack is $node_slack for $node_name"
+}
+
+project_close
+
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal option value for <string>. Specify a legal option value.
+TCL_ERROR	1   	ERROR: Passed value <string> is an illegal integer. Please specify a legal integer.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Create a timing netlist.
+TCL_ERROR	1   	ERROR: Could not find node <string>. Specify an existing node.
+TCL_ERROR	1   	ERROR: Timing netlist is not in a legal state. Remove the current netlist and create a new timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_timing_node_info>
+
+<get_delays_from_clocks>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_delays_from_clocks [-h | -help] [-long_help] <node>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        <node>: Node
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_timing 1.1
+
+------------
+Description:
+------------
+
+Returns delays from clock pins to the specified register 
+node in the following form: 
+    {{clock} {max_delay} {min_delay}}
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Print delays between clocks and registers
+load_package advanced_timing
+project_open <design>
+create_timing_netlist
+create_p2p_delays
+foreach_in_collection node [get_timing_nodes -type reg] {
+    set reg_name [get_timing_node_info -info name $node]
+    set delays_from_clock [get_delays_from_clocks $node]
+    puts "register $reg_name has delays from clocks:"
+    foreach delay $delays_from_clock {
+        set clock_name [get_timing_node_info -info name [lindex $delay 0]]
+        set longest  [lindex $delay 1]
+        set shortest  [lindex $delay 2]
+        puts "-> clock is $clock_name"
+        puts "-> longest delay is $longest"
+        puts "-> shortest delay is $shortest"
+    }
+}
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Create a timing netlist.
+TCL_ERROR	1   	ERROR: Timing netlist is not in a legal state. Remove the current netlist and create a new timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_delays_from_clocks>
+
+<get_delays_from_keepers>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_delays_from_keepers [-h | -help] [-long_help] <node>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        <node>: Keeper node
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_timing 1.1
+
+------------
+Description:
+------------
+
+Returns a list of delays to the specified keeper node from its source
+keeper nodes. If the specified keeper node is a register, then the
+command only returns delays to that register's synch ports.  For 
+example, data and clock-enable ports are included in the returned 
+list, but clock, clear, and preset ports are excluded.
+
+The returned list is in the following form:
+    {{ keeper } {max delay} {min delay}}
+
+A keeper is a node of the type pin, register, or clock.
+
+If there is a "cut" assignment to the path, nothing is 
+returned.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Print delays between source and destination 
+# for registers/pin to register pairs
+load_package advanced_timing
+project_open <design>
+create_timing_netlist
+create_p2p_delays
+foreach_in_collection node [get_timing_nodes -type reg] {
+    set reg_name [get_timing_node_info -info name $node]
+    set delays_from_keeper [get_delays_from_keepers $node]
+    puts "register $reg_name has delays from keepers:"
+    foreach delay $delays_from_keeper {
+        set src_name [get_timing_node_info -info name [lindex $delay 0]]
+        set longest  [lindex $delay 1]
+        set shortest  [lindex $delay 2]
+        puts "-> source is $src_name"
+        puts "-> longest delay is $longest"
+        puts "-> shortest delay is $shortest"
+    }
+}
+project_close
+
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Create a timing netlist.
+TCL_ERROR	1   	ERROR: Timing netlist is not in a legal state. Remove the current netlist and create a new timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_delays_from_keepers>
+
+<get_delay_path>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_delay_path [-h | -help] [-long_help] -from <node> -to <node> -type <type>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -from <node>: Source node
+        -to <node>: Destination node
+        -type <type>: Longest or shortest path
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_timing 1.1
+
+------------
+Description:
+------------
+
+Returns a list of all nodes in the path between two keepers.
+
+A keeper is a node of the type pin, register, or clock.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Print the longest paths from source registers/pin 
+# to destination register pairs
+load_package advanced_timing
+project_open <design>
+create_timing_netlist
+create_p2p_delays
+foreach_in_collection node [get_timing_nodes -type reg] {
+    set reg_name [get_timing_node_info -info name $node]
+    set delays_from_keeper [get_delays_from_keepers $node]
+    puts "register $reg_name has longest paths from sources:"
+    foreach delay $delays_from_keeper {
+        set src_node [lindex $delay 0]
+        puts "-> source is [get_timing_node_info -info name $src_node]"
+        set path [get_delay_path -type longest -from $src_node -to $node]
+        foreach el $path {
+            puts "--> node is [get_timing_node_info -info name [lindex $el 0]]"
+            puts "--> delay is [lindex $el 1]"
+        }
+    }
+}
+project_close
+
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Create a timing netlist.
+TCL_ERROR	1   	ERROR: Timing netlist is not in a legal state. Remove the current netlist and create a new timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_delay_path>
+
+<get_clock_delay_path>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_clock_delay_path [-h | -help] [-long_help] -from <node> -to <node> -type <type>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -from <node>: Source node
+        -to <node>: Destination node
+        -type <type>: Longest or shortest path
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_timing 1.1
+
+------------
+Description:
+------------
+
+Returns a list of all nodes in the path between clock node 
+and keeper.
+
+A keeper is a node of the type pin, register, or clock.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Print the longest paths from source clock  
+# to destination register pairs
+load_package advanced_timing
+project_open <design>
+create_timing_netlist
+create_p2p_delays
+foreach_in_collection node [get_timing_nodes -type reg] {
+    set reg_name [get_timing_node_info -info name $node]
+    set delays_from_clock [get_delays_from_clocks $node]
+    puts "register $reg_name has longest paths from clocks:"
+    foreach delay $delays_from_clock {
+        set src_node [lindex $delay 0]
+        puts "-> clock is [get_timing_node_info -info name $src_node]"
+        set path [get_clock_delay_path -type longest -from $src_node -to $node]
+        foreach el $path {
+            puts "--> node is [get_timing_node_info -info name [lindex $el 0]]"
+            puts "--> delay is [lindex $el 1]"
+        }
+    }
+}
+project_close
+
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Create a timing netlist.
+TCL_ERROR	1   	ERROR: Timing netlist is not in a legal state. Remove the current netlist and create a new timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_clock_delay_path>
+
+<get_timing_node_fanin>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_timing_node_fanin [-h | -help] [-long_help] -type <synch|clock|asynch> <node>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -type <synch|clock|asynch>: Type of feeding node (synch|clock|asynch)
+        <node>: Node
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_timing 1.1
+
+------------
+Description:
+------------
+
+Returns a list of nodes feeding the specified node
+in the following form:
+    {{node} {IC delay} {CELL delay}}
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Print synchronous source nodes for all registers
+load_package advanced_timing
+project_open <design>
+create_timing_netlist
+foreach_in_collection node [get_timing_nodes -type reg] {
+    set reg_name [get_timing_node_info -info name $node]
+    set fanins [get_timing_node_fanin -type synch $node]
+    puts "register $reg_name has synch sources:"
+    foreach fanin $fanins {
+        set src_name [get_timing_node_info -info name [lindex $fanin 0]]
+        puts "-> $src_name"
+    }
+}
+project_close
+
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Create a timing netlist.
+TCL_ERROR	1   	ERROR: Timing netlist is not in a legal state. Remove the current netlist and create a new timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_timing_node_fanin>
+
+<get_timing_node_fanout>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_timing_node_fanout [-h | -help] [-long_help] <node>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        <node>: Node
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_timing 1.1
+
+------------
+Description:
+------------
+
+Returns a list of nodes fed by the specified node
+in the following form:
+    {{node} {IC delay} {CELL delay}}
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Print output nodes for all registers
+load_package advanced_timing
+project_open <design>
+create_timing_netlist
+foreach_in_collection node [get_timing_nodes -type reg] {
+    set reg_name [get_timing_node_info -info name $node]
+    set fanouts [get_timing_node_fanout $node]
+    puts "register $reg_name has fanouts:"
+    foreach fanout $fanouts {
+        set dst_name [get_timing_node_info -info name [lindex $fanout 0]]
+        puts "-> $dst_name"
+    }
+}
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Create a timing netlist.
+TCL_ERROR	1   	ERROR: Timing netlist is not in a legal state. Remove the current netlist and create a new timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_timing_node_fanout>
+
+<get_timing_edges>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_timing_edges [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_timing 1.1
+
+------------
+Description:
+------------
+
+Returns a collection of edge ids.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Count the number of synchronous edges in the design
+load_package advanced_timing
+project_open <design>
+create_timing_netlist
+set count 0
+foreach_in_collection edge [get_timing_edges] {	
+    set type [get_timing_edge_info -info type $edge]
+    if { [string compare $type "synch"] == 0} {		
+        incr count
+    }
+}
+
+puts "found $count synchronous edges"
+project_close
+
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Create a timing netlist.
+TCL_ERROR	1   	ERROR: Timing netlist is not in a legal state. Remove the current netlist and create a new timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_timing_edges>
+
+<get_timing_edge_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_timing_edge_info [-h | -help] [-long_help] -info <info> <edge>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -info <info>: Type of information
+        <edge>: Edge
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_timing 1.1
+
+------------
+Description:
+------------
+
+Returns the requested type of information for the specified 
+timing edge. 
+
+Available information types include the following:
+
+    Information Type    Description
+    ----------------    ---------------------------
+    type                Type of node (synch, asynch, clock).
+    src_node            Source node.
+    dst_node            Destination node.
+    atom_iport          Corresponding atom's iterm (if any).
+    ic_delay            IC delay of the edge.
+    cell_delay          Cell delay of the edge.
+    delay_string        Symbolic representation of the delay.
+    slack               Worst case slack of the edge (Available
+                                after calling "compute_slack_on_edges")
+    wysiwyg_port_type   Atom's iterm type.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Count the number of clock edges in the design
+load_package advanced_timing
+project_open <design>
+create_timing_netlist
+set count 0
+foreach_in_collection edge [get_timing_edges] {	
+    set type [get_timing_edge_info -info type $edge]
+    if { [string compare $type "clock"] == 0} {		
+        incr count
+    }
+}
+puts "found $count clock edges"
+
+# Print the worst case slack on every edge
+# (This assumes timing constraints exist)
+compute_slack_on_edges
+foreach_in_collection edge [get_timing_edges] {	
+    set slack [get_timing_edge_info -info slack $edge]
+    puts "Slack is $slack"
+}
+
+project_close
+
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Could not find edge <string>. Specify an existing edge.
+TCL_ERROR	1   	ERROR: Illegal option value for <string>. Specify a legal option value.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Create a timing netlist.
+TCL_ERROR	1   	ERROR: Timing netlist is not in a legal state. Remove the current netlist and create a new timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_timing_edge_info>
+
+<get_timing_edge_delay>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_timing_edge_delay [-h | -help] [-long_help] [-cell] [-fall] [-ic] [-max] [-min] [-rise] [-total] <edge>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -cell: Get the Cell Delay component
+        -fall: Get Fall Delay
+        -ic: Get the Interconnect Delay component
+        -max: DEFAULT - Get Max Delay
+        -min: Get Min Delay
+        -rise: Get Rise Delay
+        -total: DEFAULT - Get the Total (IC + Cell) Delay
+        <edge>: Edge
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_timing 1.1
+
+------------
+Description:
+------------
+
+Returns the requested delay for the specified timing edge. 
+
+Each edge stores two delay components, the interconnect and the cell
+delays. The interconnect delay represents the routing delay to the
+atom itself, while the cell delay represents the point to point delay
+in the atom. (Note that timing nodes always represent the output 
+port of the atom). Use -ic, -cell, or -total to get the interconnect, cell,
+or sum of both delays
+
+If neither -rise nor -fall is specified, then an undefined delay edge
+is assumed and the worst case or best case delay is returned based
+on the -max or -min options. If the family does not have Rise/Fall delays,
+then -max and -min will return the same value. (Note that this may
+change in the future when the Quartus II software models On Chip Variation)
+
+-min and -max are mutually exclusive
+-rise and -fall are mutually exclusive
+-ic, -cell and -total are mutually exclusive
+
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Count the number of clock edges in the design
+load_package advanced_timing
+project_open <design>
+create_timing_netlist
+foreach_in_collection edge [get_timing_edges] {	
+    set max_delay [get_timing_edge_delay -max $edge]
+    set rise_max_delay [get_timing_edge_delay -max -rise $edge]
+    set fall_max_delay [get_timing_edge_delay -max -fall $edge]
+    puts "Worst Case Max = $max_delay, Rise Max = $rise_max_delay, Fall Max = $fall_max_delay"
+}
+
+foreach_in_collection edge [get_timing_edges] {	
+    set max_delay [get_timing_edge_delay -max -total -rise $edge]
+    set ic_max_delay [get_timing_edge_delay -max -ic -rise $edge]
+    set cell_max_delay [get_timing_edge_delay -max -cell -rise $edge]
+    puts "RISE: $max_delay = $ic_max_delay + $cell_max_delay"
+}
+
+project_close
+
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Could not find edge <string>. Specify an existing edge.
+TCL_ERROR	1   	ERROR: Illegal option value for <string>. Specify a legal option value.
+TCL_ERROR	1   	ERROR: Options -<string> and -<string> are mutually exclusive. Specify only one of the two options.
+TCL_ERROR	1   	ERROR: Options -<string>, -<string>, and -<string> are mutually exclusive. Specify only one option.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Create a timing netlist.
+TCL_ERROR	1   	ERROR: Timing netlist is not in a legal state. Remove the current netlist and create a new timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_timing_edge_delay>
+
+<create_p2p_delays>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: create_p2p_delays [-h | -help] [-long_help] [-clock_filter <names>] [-clock_hold] [-clock_setup] [-from <names>] [-min_tco] [-min_tpd] [-tco] [-th] [-to <names>] [-tpd] [-tsu]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -clock_filter <names>: Valid clocks for clock analyses
+        -clock_hold: Option to report clock hold paths
+        -clock_setup: Option to report clock setup paths
+        -from <names>: Valid sources
+        -min_tco: Option to report minimum tco paths
+        -min_tpd: Option to report minimum tpd paths
+        -tco: Option to report tco paths
+        -th: Option to report th paths
+        -to <names>: Valid destinations
+        -tpd: Option to report tpd paths
+        -tsu: Option to report tsu paths
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_timing 1.1
+
+------------
+Description:
+------------
+
+Creates a data structure with sources, delays, and clock
+paths for each keeper. This data is required by other 
+commands such as "get_delay_path" or "get_clock_delay_path".
+
+Use the options to filter specific paths between keepers.
+
+A keeper is a node of the type pin, register, or clock.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Print the longest paths from source clock 
+# to destination register pairs
+load_package advanced_timing
+project_open <design>
+create_timing_netlist
+create_p2p_delays
+foreach_in_collection node [get_timing_nodes -type reg] {
+    set reg_name [get_timing_node_info -info name $node]
+    set delays_from_clock [get_delays_from_clocks $node]
+    puts "register $reg_name has longest paths from clocks:"
+    foreach delay $delays_from_clock {
+        set src_node [lindex $delay 0]
+        puts "-> clock is [get_timing_node_info -info name $src_node]"
+        set path [get_clock_delay_path -type longest -from $src_node -to $node]
+        foreach el $path {
+            puts "--> node is [get_timing_node_info -info name [lindex $el 0]]"
+            puts "--> delay is [lindex $el 1]"
+        }
+    }
+}
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</create_p2p_delays>
+
+<p2p_timing_cut_exist>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: p2p_timing_cut_exist [-h | -help] [-long_help] -from <from> -to <to>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -from <from>: source node id
+        -to <to>: destination node id
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_timing 1.1
+
+------------
+Description:
+------------
+
+Returns whether a p2p path is cut or not
+
+Arguments:	-from <node_id>
+			-to <node_id>
+
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# iterate through all nodes and print all CUT assignments
+# from registers to pins
+load_package advanced_timing
+project_open <design>
+create_timing_netlist
+load_package advanced_timing
+puts "CUT Assignments:"
+foreach_in_collection src_node [get_timing_nodes -type reg] {
+    foreach_in_collection dst_node [get_timing_nodes -type pin] {
+        if [p2p_timing_cut_exist -from $src_node -to $dst_node] {
+            puts "from: [get_timing_node_info -info name $src_node] \
+              to: [get_timing_node_info -info name $dst_node]"
+        }
+    }
+}
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal option value for <string>. Specify a legal option value.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Create a timing netlist.
+TCL_ERROR	1   	ERROR: Timing netlist is not in a legal state. Remove the current netlist and create a new timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</p2p_timing_cut_exist>
+
+<<<</1.1>>>>
+<<<<1.2>>>>
+<get_timing_nodes>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_timing_nodes [-h | -help] [-long_help] -type <all|pin|reg|clk|comb|keeper>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -type <all|pin|reg|clk|comb|keeper>: Category of node (all|pin|reg|clk|comb|keeper)
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_timing 1.2
+
+------------
+Description:
+------------
+
+Returns a collection of node ids from the timing netlist.
+The collection can be filtered by node type using the 
+"-type" option. Note that the node types in the timing 
+netlist may not correspond to the node types in the Node 
+Finder (or the "get_names" command in ::quartus::project).
+For example, nodes marked as memory in the Node Finder 
+may be represented as registers or combinational nodes in 
+the timing netlist.
+
+The Timing Analyzer represents all designs using a graph of 
+nodes and edges (the netlist). Nodes can be of type "reg" 
+(for registers and latches), "pin" (for top-level pins), 
+"clk" (for nodes reported as clocks), "comb" (for all 
+other combinational nodes), and "keeper" (for registers,
+latches, top-level pins, and clocks). Edges represent 
+delays between nodes.
+
+Use the "get_timing_node_info" command to get specific 
+information about every node,for example, node name, type, 
+or location.	
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Print names of the register and pin nodes
+load_package advanced_timing
+project_open <design>
+create_timing_netlist
+set count 1
+puts "Nodes:"
+foreach_in_collection node [get_timing_nodes -type keeper] {
+    set node_type [get_timing_node_info -info type $node]
+    if {![string equal $node_type  clk] } {
+        set node_name [get_timing_node_info -info name $node]
+        puts " $count : $node_type : $node_name"
+        incr count
+    }
+}
+project_close
+
+# For every timing node, print its type
+load_package advanced_timing
+project_open <design>
+create_timing_netlist
+foreach_in_collection node [get_timing_nodes -type all] {
+    puts "node name is [get_timing_node_info -info name $node]"
+}
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Option <string> has illegal value: <string>. Specify a legal option value.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Create a timing netlist.
+TCL_ERROR	1   	ERROR: Timing netlist is not in a legal state. Remove the current netlist and create a new timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_timing_nodes>
+
+<get_timing_node_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_timing_node_info [-h | -help] [-long_help] -info <info> <node>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -info <info>: Type of information
+        <node>: Node
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_timing 1.2
+
+------------
+Description:
+------------
+
+Returns the requested type of information for the specified 
+timing node. 
+
+Available information types include the following:
+
+    Information Type    Description
+    ----------------    -----------------------------------
+    name                Signal name.
+    type                Type of node (reg, clk, pin, comb).
+    tsu                 For a register, returns micro tsu.
+    th                  For a register, returns micro th.
+    tco                 For a register, returns micro tco.
+    location            Atom location in device.
+    is_loop             Detects whether the node is part of a 
+                        strongly connected component.
+    is_clock_inverted   Detects whether a register is clocked 
+                        by an inverted clock.
+    slack               Worst case slack of the node (Available
+                                after calling "compute_slack_on_edges")
+    delay               Delay of the node (if any).
+    is_tan_generated    Detects whether the Timing Analyzer 
+                        (quartus_tan) synthesized the name 
+                        of the node.
+    is_lvds_channel     Detects whether node is part of an 
+                        LVDS circuit.
+    wysiwyg_port_type   Atom's oterm type.
+    atom_oport          Corresponding atom's oterm (if any).
+    synch_edges         Synch edges.
+    asynch_edges        Asynch edges.
+    clock_edges         Clock edges.
+    fanout_edges        Fanout edges.
+    clock_info          Clock information.
+    internal_location   Internal pin location (IOC_ instead 
+                        of Pin_). Works only for Stratix(R) 
+                        and newer device families.
+    clock_latency       For a clock get the early and late clock
+                        latency values
+    is_pll_out          Detects whether the node is a PLL 
+                        clock output
+    is_clock_pin        Detects whether the node is a clock pin
+    phase_only          Phase shift independent of offset for
+                        a clock
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package advanced_timing
+project_open <design>
+create_timing_netlist
+
+# For every timing node, print its type, name, and location
+foreach_in_collection node [get_timing_nodes -type all] {
+    set node_name [get_timing_node_info -info name $node]
+    set node_type [get_timing_node_info -info type $node]
+    set node_location [get_timing_node_info -info location $node]
+	
+    puts "$node_type : $node_location  : $node_name"
+}
+
+# Print all nodes that are members of a combinational loop
+foreach_in_collection node [get_timing_nodes -type all] {
+    if [get_timing_node_info -info is_loop $node] {
+        set node_name [get_timing_node_info -info name $node]
+        puts "Part of a combinational loop: $node_name"
+    }
+}
+	
+# Print the worst case slack on every register
+# (This assumes timing constraints exist)
+compute_slack_on_edges
+foreach_in_collection node [get_timing_nodes -type all] {
+    set node_name [get_timing_node_info -info name $node]
+    set node_slack [get_timing_node_info -info slack $node]
+    puts "Slack is $node_slack for $node_name"
+}
+
+project_close
+
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal option value for <string>. Specify a legal option value.
+TCL_ERROR	1   	ERROR: Passed value <string> is an illegal integer. Please specify a legal integer.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Create a timing netlist.
+TCL_ERROR	1   	ERROR: Could not find node <string>. Specify an existing node.
+TCL_ERROR	1   	ERROR: Timing netlist is not in a legal state. Remove the current netlist and create a new timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_timing_node_info>
+
+<get_delays_from_clocks>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_delays_from_clocks [-h | -help] [-long_help] <node>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        <node>: Node
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_timing 1.2
+
+------------
+Description:
+------------
+
+Returns delays from clock pins to the specified register 
+node in the following form: 
+    {{clock} {max_delay} {min_delay}}
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Print delays between clocks and registers
+load_package advanced_timing
+project_open <design>
+create_timing_netlist
+create_p2p_delays
+foreach_in_collection node [get_timing_nodes -type reg] {
+    set reg_name [get_timing_node_info -info name $node]
+    set delays_from_clock [get_delays_from_clocks $node]
+    puts "register $reg_name has delays from clocks:"
+    foreach delay $delays_from_clock {
+        set clock_name [get_timing_node_info -info name [lindex $delay 0]]
+        set longest  [lindex $delay 1]
+        set shortest  [lindex $delay 2]
+        puts "-> clock is $clock_name"
+        puts "-> longest delay is $longest"
+        puts "-> shortest delay is $shortest"
+    }
+}
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Create a timing netlist.
+TCL_ERROR	1   	ERROR: Timing netlist is not in a legal state. Remove the current netlist and create a new timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_delays_from_clocks>
+
+<get_delays_from_keepers>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_delays_from_keepers [-h | -help] [-long_help] <node>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        <node>: Keeper node
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_timing 1.2
+
+------------
+Description:
+------------
+
+Returns a list of delays to the specified keeper node from its source
+keeper nodes. If the specified keeper node is a register, then the
+command only returns delays to that register's synch ports.  For 
+example, data and clock-enable ports are included in the returned 
+list, but clock, clear, and preset ports are excluded.
+
+The returned list is in the following form:
+    {{ keeper } {max delay} {min delay}}
+
+A keeper is a node of the type pin, register, or clock.
+
+If there is a "cut" assignment to the path, nothing is 
+returned.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Print delays between source and destination 
+# for registers/pin to register pairs
+load_package advanced_timing
+project_open <design>
+create_timing_netlist
+create_p2p_delays
+foreach_in_collection node [get_timing_nodes -type reg] {
+    set reg_name [get_timing_node_info -info name $node]
+    set delays_from_keeper [get_delays_from_keepers $node]
+    puts "register $reg_name has delays from keepers:"
+    foreach delay $delays_from_keeper {
+        set src_name [get_timing_node_info -info name [lindex $delay 0]]
+        set longest  [lindex $delay 1]
+        set shortest  [lindex $delay 2]
+        puts "-> source is $src_name"
+        puts "-> longest delay is $longest"
+        puts "-> shortest delay is $shortest"
+    }
+}
+project_close
+
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Create a timing netlist.
+TCL_ERROR	1   	ERROR: Timing netlist is not in a legal state. Remove the current netlist and create a new timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_delays_from_keepers>
+
+<get_delay_path>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_delay_path [-h | -help] [-long_help] -from <node> -to <node> -type <type>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -from <node>: Source node
+        -to <node>: Destination node
+        -type <type>: Longest or shortest path
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_timing 1.2
+
+------------
+Description:
+------------
+
+Returns a list of all nodes in the path between two keepers.
+
+A keeper is a node of the type pin, register, or clock.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Print the longest paths from source registers/pin 
+# to destination register pairs
+load_package advanced_timing
+project_open <design>
+create_timing_netlist
+create_p2p_delays
+foreach_in_collection node [get_timing_nodes -type reg] {
+    set reg_name [get_timing_node_info -info name $node]
+    set delays_from_keeper [get_delays_from_keepers $node]
+    puts "register $reg_name has longest paths from sources:"
+    foreach delay $delays_from_keeper {
+        set src_node [lindex $delay 0]
+        puts "-> source is [get_timing_node_info -info name $src_node]"
+        set path [get_delay_path -type longest -from $src_node -to $node]
+        foreach el $path {
+            puts "--> node is [get_timing_node_info -info name [lindex $el 0]]"
+            puts "--> delay is [lindex $el 1]"
+        }
+    }
+}
+project_close
+
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Create a timing netlist.
+TCL_ERROR	1   	ERROR: Timing netlist is not in a legal state. Remove the current netlist and create a new timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_delay_path>
+
+<get_clock_delay_path>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_clock_delay_path [-h | -help] [-long_help] -from <node> -to <node> -type <type>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -from <node>: Source node
+        -to <node>: Destination node
+        -type <type>: Longest or shortest path
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_timing 1.2
+
+------------
+Description:
+------------
+
+Returns a list of all nodes in the path between clock node 
+and keeper.
+
+A keeper is a node of the type pin, register, or clock.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Print the longest paths from source clock  
+# to destination register pairs
+load_package advanced_timing
+project_open <design>
+create_timing_netlist
+create_p2p_delays
+foreach_in_collection node [get_timing_nodes -type reg] {
+    set reg_name [get_timing_node_info -info name $node]
+    set delays_from_clock [get_delays_from_clocks $node]
+    puts "register $reg_name has longest paths from clocks:"
+    foreach delay $delays_from_clock {
+        set src_node [lindex $delay 0]
+        puts "-> clock is [get_timing_node_info -info name $src_node]"
+        set path [get_clock_delay_path -type longest -from $src_node -to $node]
+        foreach el $path {
+            puts "--> node is [get_timing_node_info -info name [lindex $el 0]]"
+            puts "--> delay is [lindex $el 1]"
+        }
+    }
+}
+project_close
+
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Create a timing netlist.
+TCL_ERROR	1   	ERROR: Timing netlist is not in a legal state. Remove the current netlist and create a new timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_clock_delay_path>
+
+<get_timing_node_fanin>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_timing_node_fanin [-h | -help] [-long_help] -type <synch|clock|asynch> <node>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -type <synch|clock|asynch>: Type of feeding node (synch|clock|asynch)
+        <node>: Node
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_timing 1.2
+
+------------
+Description:
+------------
+
+Returns a list of nodes feeding the specified node
+in the following form:
+    {{node} {IC delay} {CELL delay}}
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Print synchronous source nodes for all registers
+load_package advanced_timing
+project_open <design>
+create_timing_netlist
+foreach_in_collection node [get_timing_nodes -type reg] {
+    set reg_name [get_timing_node_info -info name $node]
+    set fanins [get_timing_node_fanin -type synch $node]
+    puts "register $reg_name has synch sources:"
+    foreach fanin $fanins {
+        set src_name [get_timing_node_info -info name [lindex $fanin 0]]
+        puts "-> $src_name"
+    }
+}
+project_close
+
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Create a timing netlist.
+TCL_ERROR	1   	ERROR: Timing netlist is not in a legal state. Remove the current netlist and create a new timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_timing_node_fanin>
+
+<get_timing_node_fanout>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_timing_node_fanout [-h | -help] [-long_help] <node>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        <node>: Node
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_timing 1.2
+
+------------
+Description:
+------------
+
+Returns a list of nodes fed by the specified node
+in the following form:
+    {{node} {IC delay} {CELL delay}}
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Print output nodes for all registers
+load_package advanced_timing
+project_open <design>
+create_timing_netlist
+foreach_in_collection node [get_timing_nodes -type reg] {
+    set reg_name [get_timing_node_info -info name $node]
+    set fanouts [get_timing_node_fanout $node]
+    puts "register $reg_name has fanouts:"
+    foreach fanout $fanouts {
+        set dst_name [get_timing_node_info -info name [lindex $fanout 0]]
+        puts "-> $dst_name"
+    }
+}
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Create a timing netlist.
+TCL_ERROR	1   	ERROR: Timing netlist is not in a legal state. Remove the current netlist and create a new timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_timing_node_fanout>
+
+<get_timing_edges>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_timing_edges [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_timing 1.2
+
+------------
+Description:
+------------
+
+Returns a collection of edge ids.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Count the number of synchronous edges in the design
+load_package advanced_timing
+project_open <design>
+create_timing_netlist
+set count 0
+foreach_in_collection edge [get_timing_edges] {	
+    set type [get_timing_edge_info -info type $edge]
+    if { [string compare $type "synch"] == 0} {		
+        incr count
+    }
+}
+
+puts "found $count synchronous edges"
+project_close
+
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Create a timing netlist.
+TCL_ERROR	1   	ERROR: Timing netlist is not in a legal state. Remove the current netlist and create a new timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_timing_edges>
+
+<get_timing_edge_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_timing_edge_info [-h | -help] [-long_help] -info <info> <edge>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -info <info>: Type of information
+        <edge>: Edge
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_timing 1.2
+
+------------
+Description:
+------------
+
+Returns the requested type of information for the specified 
+timing edge. 
+
+Available information types include the following:
+
+    Information Type    Description
+    ----------------    ---------------------------
+    type                Type of node (synch, asynch, clock).
+    src_node            Source node.
+    dst_node            Destination node.
+    atom_iport          Corresponding atom's iterm (if any).
+    ic_delay            IC delay of the edge.
+    cell_delay          Cell delay of the edge.
+    delay_string        Symbolic representation of the delay.
+    slack               Worst case slack of the edge (Available
+                                after calling "compute_slack_on_edges")
+    wysiwyg_port_type   Atom's iterm type.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Count the number of clock edges in the design
+load_package advanced_timing
+project_open <design>
+create_timing_netlist
+set count 0
+foreach_in_collection edge [get_timing_edges] {	
+    set type [get_timing_edge_info -info type $edge]
+    if { [string compare $type "clock"] == 0} {		
+        incr count
+    }
+}
+puts "found $count clock edges"
+
+# Print the worst case slack on every edge
+# (This assumes timing constraints exist)
+compute_slack_on_edges
+foreach_in_collection edge [get_timing_edges] {	
+    set slack [get_timing_edge_info -info slack $edge]
+    puts "Slack is $slack"
+}
+
+project_close
+
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Could not find edge <string>. Specify an existing edge.
+TCL_ERROR	1   	ERROR: Illegal option value for <string>. Specify a legal option value.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Create a timing netlist.
+TCL_ERROR	1   	ERROR: Timing netlist is not in a legal state. Remove the current netlist and create a new timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_timing_edge_info>
+
+<get_timing_edge_delay>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_timing_edge_delay [-h | -help] [-long_help] [-cell] [-fall] [-ic] [-max] [-min] [-rise] [-total] <edge>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -cell: Get the Cell Delay component
+        -fall: Get Fall Delay
+        -ic: Get the Interconnect Delay component
+        -max: DEFAULT - Get Max Delay
+        -min: Get Min Delay
+        -rise: Get Rise Delay
+        -total: DEFAULT - Get the Total (IC + Cell) Delay
+        <edge>: Edge
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_timing 1.2
+
+------------
+Description:
+------------
+
+Returns the requested delay for the specified timing edge. 
+
+Each edge stores two delay components, the interconnect and the cell
+delays. The interconnect delay represents the routing delay to the
+atom itself, while the cell delay represents the point to point delay
+in the atom. (Note that timing nodes always represent the output 
+port of the atom). Use -ic, -cell, or -total to get the interconnect, cell,
+or sum of both delays
+
+If neither -rise nor -fall is specified, then an undefined delay edge
+is assumed and the worst case or best case delay is returned based
+on the -max or -min options. If the family does not have Rise/Fall delays,
+then -max and -min will return the same value. (Note that this may
+change in the future when the Quartus II software models On Chip Variation)
+
+-min and -max are mutually exclusive
+-rise and -fall are mutually exclusive
+-ic, -cell and -total are mutually exclusive
+
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Count the number of clock edges in the design
+load_package advanced_timing
+project_open <design>
+create_timing_netlist
+foreach_in_collection edge [get_timing_edges] {	
+    set max_delay [get_timing_edge_delay -max $edge]
+    set rise_max_delay [get_timing_edge_delay -max -rise $edge]
+    set fall_max_delay [get_timing_edge_delay -max -fall $edge]
+    puts "Worst Case Max = $max_delay, Rise Max = $rise_max_delay, Fall Max = $fall_max_delay"
+}
+
+foreach_in_collection edge [get_timing_edges] {	
+    set max_delay [get_timing_edge_delay -max -total -rise $edge]
+    set ic_max_delay [get_timing_edge_delay -max -ic -rise $edge]
+    set cell_max_delay [get_timing_edge_delay -max -cell -rise $edge]
+    puts "RISE: $max_delay = $ic_max_delay + $cell_max_delay"
+}
+
+project_close
+
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Could not find edge <string>. Specify an existing edge.
+TCL_ERROR	1   	ERROR: Illegal option value for <string>. Specify a legal option value.
+TCL_ERROR	1   	ERROR: Options -<string> and -<string> are mutually exclusive. Specify only one of the two options.
+TCL_ERROR	1   	ERROR: Options -<string>, -<string>, and -<string> are mutually exclusive. Specify only one option.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Create a timing netlist.
+TCL_ERROR	1   	ERROR: Timing netlist is not in a legal state. Remove the current netlist and create a new timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_timing_edge_delay>
+
+<create_p2p_delays>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: create_p2p_delays [-h | -help] [-long_help] [-clock_filter <names>] [-clock_hold] [-clock_setup] [-from <names>] [-min_tco] [-min_tpd] [-tco] [-th] [-to <names>] [-tpd] [-tsu]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -clock_filter <names>: Valid clocks for clock analyses
+        -clock_hold: Option to report clock hold paths
+        -clock_setup: Option to report clock setup paths
+        -from <names>: Valid sources
+        -min_tco: Option to report minimum tco paths
+        -min_tpd: Option to report minimum tpd paths
+        -tco: Option to report tco paths
+        -th: Option to report th paths
+        -to <names>: Valid destinations
+        -tpd: Option to report tpd paths
+        -tsu: Option to report tsu paths
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_timing 1.2
+
+------------
+Description:
+------------
+
+Creates a data structure with sources, delays, and clock
+paths for each keeper. This data is required by other 
+commands such as "get_delay_path" or "get_clock_delay_path".
+
+Use the options to filter specific paths between keepers.
+
+A keeper is a node of the type pin, register, or clock.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Print the longest paths from source clock 
+# to destination register pairs
+load_package advanced_timing
+project_open <design>
+create_timing_netlist
+create_p2p_delays
+foreach_in_collection node [get_timing_nodes -type reg] {
+    set reg_name [get_timing_node_info -info name $node]
+    set delays_from_clock [get_delays_from_clocks $node]
+    puts "register $reg_name has longest paths from clocks:"
+    foreach delay $delays_from_clock {
+        set src_node [lindex $delay 0]
+        puts "-> clock is [get_timing_node_info -info name $src_node]"
+        set path [get_clock_delay_path -type longest -from $src_node -to $node]
+        foreach el $path {
+            puts "--> node is [get_timing_node_info -info name [lindex $el 0]]"
+            puts "--> delay is [lindex $el 1]"
+        }
+    }
+}
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</create_p2p_delays>
+
+<p2p_timing_cut_exist>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: p2p_timing_cut_exist [-h | -help] [-long_help] -from <from> -to <to>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -from <from>: source node id
+        -to <to>: destination node id
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_timing 1.2
+
+------------
+Description:
+------------
+
+Returns whether a p2p path is cut or not
+
+Arguments:	-from <node_id>
+			-to <node_id>
+
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# iterate through all nodes and print all CUT assignments
+# from registers to pins
+load_package advanced_timing
+project_open <design>
+create_timing_netlist
+load_package advanced_timing
+puts "CUT Assignments:"
+foreach_in_collection src_node [get_timing_nodes -type reg] {
+    foreach_in_collection dst_node [get_timing_nodes -type pin] {
+        if [p2p_timing_cut_exist -from $src_node -to $dst_node] {
+            puts "from: [get_timing_node_info -info name $src_node] \
+              to: [get_timing_node_info -info name $dst_node]"
+        }
+    }
+}
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal option value for <string>. Specify a legal option value.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Create a timing netlist.
+TCL_ERROR	1   	ERROR: Timing netlist is not in a legal state. Remove the current netlist and create a new timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</p2p_timing_cut_exist>
+
+<get_illegal_delay_value>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_illegal_delay_value [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_timing 1.2
+
+------------
+Description:
+------------
+
+Returns the value that designates an illegal delay.
+
+Arguments: NONE
+
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package advanced_timing
+project_open <design>
+create_timing_netlist
+create_p2p_delays
+foreach_in_collection node [get_timing_nodes -type all] {
+    set node_name [get_timing_node_info -info name $node]
+    set delays_from_keeper [get_delays_from_keepers $node]
+    puts "node $node_name has delays from keepers:"
+    foreach delay $delays_from_keeper {
+        set src_name [get_timing_node_info -info name [lindex $delay 0]]
+        set longest  [lindex $delay 1]
+        set shortest  [lindex $delay 2]
+        if {$longest == [get_illegal_delay_value] || $shortest == [get_illegal_delay_value]} {
+            puts "Node $node_name has illegal delay values"
+        }
+    }
+}
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_illegal_delay_value>
+
+<get_max_delay_value>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_max_delay_value [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_timing 1.2
+
+------------
+Description:
+------------
+
+Returns the value that designates a maximum delay.
+
+Arguments: NONE
+
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package advanced_timing
+project_open <design>
+create_timing_netlist
+create_p2p_delays
+foreach_in_collection node [get_timing_nodes -type all] {
+set node_name [get_timing_node_info -info name $node]
+	set delays_from_keeper [get_delays_from_keepers $node]
+	puts "node $node_name has delays from keepers:"
+	foreach delay $delays_from_keeper {
+		set src_name [get_timing_node_info -info name [lindex $delay 0]]
+		set longest  [lindex $delay 1]
+		set shortest  [lindex $delay 2]
+		if {$longest == [get_max_delay_value] || $shortest == [get_max_delay_value]} {
+			puts "Node $node_name has maximum delay values"
+        }
+    }
+}
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_max_delay_value>
+
+<is_legal_delay_value>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: is_legal_delay_value [-h | -help] [-long_help] <delay>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        <delay>: Delay value
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_timing 1.2
+
+------------
+Description:
+------------
+
+Returns true if the delay value is not an illegal delay and not a 
+max delay.
+
+Arguments: Delay value
+
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package advanced_timing
+project_open <design>
+create_timing_netlist
+create_p2p_delays
+foreach_in_collection node [get_timing_nodes -type all] {
+    set node_name [get_timing_node_info -info name $node]
+    set delays_from_keeper [get_delays_from_keepers $node]
+    puts "node $node_name has delays from keepers:"
+    foreach delay $delays_from_keeper {
+        set src_name [get_timing_node_info -info name [lindex $delay 0]]
+        set longest  [lindex $delay 1]
+        set shortest  [lindex $delay 2]
+        if {![is_legal_delay_value $longest] || ![is_legal_delay_value $shortest]} {
+            puts "Node $node_name has illegal delay values"
+        }
+    }
+}
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal option value for <string>. Specify a legal option value.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</is_legal_delay_value>
+
+<<<</1.2>>>>

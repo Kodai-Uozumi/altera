@@ -1,0 +1,54 @@
+TITLE "Top-level file for the expdff macrofunction, which chooses a device-family-optimized implementation"; 
+
+FUNCTION pexpdff (d, clk, clrn, prn) RETURNS (q, /q);
+FUNCTION fexpdff (d, clk, clrn, prn) RETURNS (q, /q);
+
+PARAMETERS
+(
+	DEVICE_FAMILY
+);
+INCLUDE "aglobal.inc";
+
+SUBDESIGN expdff
+(
+	d                : INPUT = VCC;
+	clk              : INPUT = GND;
+	clrn             : INPUT = VCC;
+	prn              : INPUT = VCC;
+	q                : OUTPUT;
+	/q               : OUTPUT;
+)
+
+VARIABLE
+	IF (FAMILY_FLEX() == 1) GENERATE
+		sub  : fexpdff;
+	ELSE GENERATE
+		sub  : pexpdff;
+	END GENERATE;
+
+BEGIN
+
+	ASSERT (  DEVICE_FAMILY != "MAX7000"
+			& DEVICE_FAMILY != "MAX7000E" 
+			& DEVICE_FAMILY != "MAX7000S" 
+			& DEVICE_FAMILY != "MAX9000")
+		REPORT "Macrofunction expdff is not recommended for the % device family -- use a DFFE primitive instead"
+			DEVICE_FAMILY
+		SEVERITY WARNING
+		HELP_ID EXPDFF_FAMILY;
+
+	IF (USED(d)) GENERATE
+		sub.d = d;
+	END GENERATE;
+	IF (USED(clk)) GENERATE
+		sub.clk = clk;
+	END GENERATE;
+	IF (USED(clrn)) GENERATE
+		sub.clrn = clrn;
+	END GENERATE;
+	IF (USED(prn)) GENERATE
+		sub.prn = prn;
+	END GENERATE;
+	q = sub.q;
+	/q = sub./q;
+END;

@@ -1,0 +1,14 @@
+subdesign syn_tffe
+(
+	t, clk, clrn, prn, ena	: input;
+	q						: output;
+)
+
+BEGIN
+	q = tffe(.t=t, .clk=clk, .clrn=clrn, .prn=prn, .ena=ena);
+
+	IF !USED(q) GENERATE
+		q = GND;
+	END GENERATE;
+END;
+

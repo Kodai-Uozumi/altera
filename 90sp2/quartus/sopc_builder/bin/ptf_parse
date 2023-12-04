@@ -1,0 +1,94 @@
+#!/bin/sh
+perl - "$@" <<\ENDOFPERL
+#!perl
+
+#|#
+#|# ptf_parse
+#|#	  wrapper for ptf_parse library which allows
+#|#   retrieval/modification of PTF file content
+#|#
+#|# TBD: <path>+<data> to add delimited-list items
+#|# TBD: <path>-<data> to remove delimited-list items
+
+use ptf_parse;
+
+my $ptf_file = null;
+my $modified = 0;
+
+#|#
+#|# display usage as needed
+#|#
+if (scalar @ARGV == 0 || @ARGV[0] eq "--help")
+{
+	print <<EOT;
+Usage:  ptf_parse <ptf-file> <op>*
+Displays and/or modifies entries in <ptf-file>.
+
+     Format of <op> args
+    --------------------------------------------------------
+     <path>         display assignment
+     <path>=<data>  set assignment at <path> to <data>
+     <path>~<data>  set assignment if it does not exist (any
+                    existing assignment is left untouched)
+EOT
+
+	exit 0;
+}
+
+#|#
+#|# parse the command-line
+#|#
+foreach $arg (@ARGV) 
+{
+	# if we have a file open, get/set data
+	if ($ptf_file != null)
+	{
+		# set <path>=<data>
+		if ($arg =~ /(.*)=(.*)/)
+		{
+			&ptf_parse::set_data_by_path($ptf_file, $1, $2);
+			$modified = 1;
+			next;
+		}
+		# set <path>=<data> if <path> not present
+		if ($arg =~ /^(.*)~(.*)/)
+		{
+			$data = &ptf_parse::get_data_by_path($ptf_file, $1);
+			if (!$data)
+			{
+				&ptf_parse::set_data_by_path($ptf_file, $1, $2);
+				$modified = 1;
+			}
+			next;
+		}
+		# get <path>
+		$data = &ptf_parse::get_data_by_path($ptf_file, $arg);
+		print $data . "\n";
+	} else {
+		# no file: attempt to open next thing
+		next if ( -d $arg );
+		$ptf_file = &ptf_parse::new_ptf_from_file($arg);
+		if (!$ptf_file)
+		{
+			$ptf_file = &ptf_parse::new_ptf_file($arg);
+		}
+		if (!$ptf_file)
+		{
+			warn "ptf_parse: Unable to open $arg\n";
+		}
+	}
+}
+
+#|#
+#|# save file if modified
+#|#
+if ($modified && $ptf_file)
+{
+   &ptf_parse::enable_file_header(0);
+	if (&ptf_parse::write_ptf_file($ptf_file) ne "ok")
+	{
+		die "ptf_parse: Unable to write PTF file\n";
+	}
+}
+
+exit 0;

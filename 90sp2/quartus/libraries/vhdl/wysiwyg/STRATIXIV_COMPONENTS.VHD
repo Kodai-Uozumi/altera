@@ -1,0 +1,3134 @@
+library IEEE, stratixiv;
+use IEEE.STD_LOGIC_1164.all;
+
+package stratixiv_components is
+
+--clearbox auto-generated components begin
+--Dont add any component declarations after this section
+
+------------------------------------------------------------------
+-- stratixiv_hssi_pll parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_hssi_pll
+	generic (
+		auto_settings	:	string := "true";
+		bandwidth_type	:	string := "Auto";
+		base_data_rate	:	string := "0 ps";
+		channel_num	:	natural := 0;
+		charge_pump_current_bits	:	natural := 10;
+		charge_pump_mode_bits	:	natural := 0;
+		charge_pump_test_enable	:	string := "false";
+		dprio_config_mode	:	std_logic_vector(5 downto 0) := "000000";
+		effective_data_rate	:	string := "0 ps";
+		inclk0_input_period	:	natural := 0;
+		inclk1_input_period	:	natural := 0;
+		inclk2_input_period	:	natural := 0;
+		inclk3_input_period	:	natural := 0;
+		inclk4_input_period	:	natural := 0;
+		inclk5_input_period	:	natural := 0;
+		inclk6_input_period	:	natural := 0;
+		inclk7_input_period	:	natural := 0;
+		inclk8_input_period	:	natural := 0;
+		inclk9_input_period	:	natural := 0;
+		input_clock_frequency	:	string := "0 ps";
+		logical_channel_address	:	natural := 0;
+		logical_tx_pll_number	:	natural := 0;
+		loop_filter_c_bits	:	natural := 0;
+		loop_filter_r_bits	:	natural := 1600;
+		lpm_type	:	string := "stratixiv_hssi_pll";
+		m	:	natural := 4;
+		n	:	natural := 1;
+		pd_charge_pump_current_bits	:	natural := 5;
+		pd_loop_filter_r_bits	:	natural := 300;
+		pfd_clk_select	:	natural := 0;
+		pfd_fb_select	:	string := "internal";
+		pll_type	:	string := "Auto";
+		protocol_hint	:	string := "basic";
+		refclk_divide_by	:	natural := 0;
+		refclk_multiply_by	:	natural := 0;
+		sim_is_negative_ppm_drift	:	string := "false";
+		sim_net_ppm_variation	:	natural := 0;
+		test_charge_pump_current_down	:	string := "false";
+		test_charge_pump_current_up	:	string := "false";
+		use_refclk_pin	:	string := "false";
+		vco_data_rate	:	natural := 0;
+		vco_divide_by	:	natural := 0;
+		vco_multiply_by	:	natural := 0;
+		vco_post_scale	:	natural := 2;
+		vco_range	:	string := "low";
+		vco_tuning_bits	:	natural := 0;
+		volt_reg_control_bits	:	natural := 2;
+		volt_reg_output_bits	:	natural := 20	);
+	port(
+		areset	:	in std_logic := '0';
+		clk	:	out std_logic_vector(3 downto 0);
+		datain	:	in std_logic := '0';
+		dataout	:	out std_logic_vector(1 downto 0);
+		dpriodisable	:	in std_logic := '0';
+		dprioin	:	in std_logic_vector(299 downto 0) := (others => '0');
+		dprioout	:	out std_logic_vector(299 downto 0);
+		earlyeios	:	in std_logic := '0';
+		extra10gin	:	in std_logic_vector(5 downto 0) := (others => '0');
+		freqlocked	:	out std_logic;
+		inclk	:	in std_logic_vector(9 downto 0) := (others => '0');
+		locked	:	out std_logic;
+		locktorefclk	:	in std_logic := '1';
+		pfdfbclk	:	in std_logic := '0';
+		pfdfbclkout	:	out std_logic;
+		pfdrefclkout	:	out std_logic;
+		powerdown	:	in std_logic := '0';
+		rateswitch	:	in std_logic := '0';
+		vcobypassout	:	out std_logic
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_lvds_transmitter parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_lvds_transmitter
+	generic (
+		bypass_serializer	:	string := "false";
+		channel_width	:	natural := 10;
+		differential_drive	:	natural := 0;
+		enable_dpaclk_to_lvdsout	:	string := "off";
+		invert_clock	:	string := "false";
+		is_used_as_outclk	:	string := "false";
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_lvds_transmitter";
+		preemphasis_setting	:	natural := 0;
+		tx_output_path_delay_engineering_bits	:	natural := -1;
+		use_falling_clock_edge	:	string := "false";
+		use_post_dpa_serial_data_input	:	string := "false";
+		use_serial_data_input	:	string := "false";
+		vod_setting	:	natural := 0	);
+	port(
+		clk0	:	in std_logic := '0';
+		datain	:	in std_logic_vector(9 downto 0) := (others => '0');
+		dataout	:	out std_logic;
+		devclrn	:	in std_logic := '1';
+		devpor	:	in std_logic := '1';
+		dpaclkin	:	in std_logic := '0';
+		enable0	:	in std_logic := '0';
+		observableout	:	out std_logic_vector(2 downto 0);
+		postdpaserialdatain	:	in std_logic := '0';
+		serialdatain	:	in std_logic := '0';
+		serialfdbkout	:	out std_logic
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_ddio_in parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_ddio_in
+	generic (
+		async_mode	:	string := "none";
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_ddio_in";
+		power_up	:	string := "low";
+		sync_mode	:	string := "none";
+		use_clkn	:	string := "FALSE"	);
+	port(
+		areset	:	in std_logic := '0';
+		clk	:	in std_logic := '0';
+		clkn	:	in std_logic := '0';
+		datain	:	in std_logic := '0';
+		devclrn	:	in std_logic := '1';
+		devpor	:	in std_logic := '1';
+		dfflo	:	out std_logic;
+		ena	:	in std_logic := '1';
+		regouthi	:	out std_logic;
+		regoutlo	:	out std_logic;
+		sreset	:	in std_logic := '0'
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_hssi_calibration_block parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_hssi_calibration_block
+	generic (
+		cont_cal_mode	:	string := "false";
+		enable_rx_cal_tw	:	string := "false";
+		enable_tx_cal_tw	:	string := "false";
+		lpm_type	:	string := "stratixiv_hssi_calibration_block";
+		rtest	:	string := "false";
+		rx_cal_wt_value	:	natural := 0;
+		send_rx_cal_status	:	string := "false";
+		tx_cal_wt_value	:	natural := 1	);
+	port(
+		calibrationstatus	:	out std_logic_vector(4 downto 0);
+		clk	:	in std_logic := '0';
+		enabletestbus	:	in std_logic := '0';
+		nonusertocmu	:	out std_logic;
+		powerdn	:	in std_logic := '0';
+		testctrl	:	in std_logic := '0'
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_hssi_rx_pma parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_hssi_rx_pma
+	generic (
+		adaptive_equalization_mode	:	string := "none";
+		allow_serial_loopback	:	string := "false";
+		allow_vco_bypass	:	natural := 0;
+		analog_power	:	string := "1.4V";
+		channel_number	:	natural := 0;
+		channel_type	:	string := "auto";
+		common_mode	:	string := "0.82V";
+		deserialization_factor	:	natural := 8;
+		dprio_config_mode	:	std_logic_vector(5 downto 0) := "000000";
+		enable_ltd	:	string := "false";
+		enable_ltr	:	string := "false";
+		eq_adapt_seq_control	:	natural := 0;
+		eq_dc_gain	:	natural := 0;
+		eq_max_gradient_control	:	natural := 0;
+		eqa_ctrl	:	natural := 0;
+		eqb_ctrl	:	natural := 0;
+		eqc_ctrl	:	natural := 0;
+		eqd_ctrl	:	natural := 0;
+		eqv_ctrl	:	natural := 0;
+		eyemon_bandwidth	:	natural := 0;
+		force_signal_detect	:	string := "true";
+		ignore_lock_detect	:	string := "false";
+		logical_channel_address	:	natural := 0;
+		low_speed_test_select	:	natural := 0;
+		lpm_type	:	string := "stratixiv_hssi_rx_pma";
+		offset_cancellation	:	natural := 0;
+		ppm_gen1_2_xcnt_en	:	natural := 0;
+		ppm_post_eidle	:	natural := 0;
+		ppmselect	:	natural := 0;
+		protocol_hint	:	string := "basic";
+		send_direct_reverse_serial_loopback	:	string := "None";
+		signal_detect_hysteresis	:	natural := 0;
+		signal_detect_hysteresis_valid_threshold	:	natural := 0;
+		signal_detect_loss_threshold	:	natural := 0;
+		termination	:	string := "OCT 100 Ohms";
+		use_deser_double_data_width	:	string := "false";
+		use_pma_direct	:	string := "false"	);
+	port(
+		adaptcapture	:	in std_logic := '0';
+		adaptdone	:	out std_logic;
+		adcepowerdn	:	in std_logic := '0';
+		adcereset	:	in std_logic := '0';
+		adcestandby	:	in std_logic := '0';
+		analogtestbus	:	out std_logic_vector(7 downto 0);
+		clockout	:	out std_logic;
+		datain	:	in std_logic := '0';
+		dataout	:	out std_logic;
+		dataoutfull	:	out std_logic_vector(19 downto 0);
+		deserclock	:	in std_logic_vector(3 downto 0) := (others => '0');
+		dpriodisable	:	in std_logic := '1';
+		dprioin	:	in std_logic_vector(299 downto 0) := (others => '0');
+		dprioout	:	out std_logic_vector(299 downto 0);
+		extra10gin	:	in std_logic_vector(37 downto 0) := (others => '0');
+		freqlock	:	in std_logic := '0';
+		ignorephslck	:	in std_logic := '0';
+		locktodata	:	in std_logic := '0';
+		locktoref	:	in std_logic := '0';
+		locktorefout	:	out std_logic;
+		offsetcancellationen	:	in std_logic := '0';
+		plllocked	:	in std_logic := '0';
+		powerdn	:	in std_logic := '0';
+		ppmdetectclkrel	:	out std_logic;
+		ppmdetectdividedclk	:	in std_logic := '0';
+		ppmdetectrefclk	:	in std_logic := '0';
+		recoverdatain	:	in std_logic_vector(1 downto 0) := (others => '0');
+		recoverdataout	:	out std_logic_vector(63 downto 0);
+		reverselpbkout	:	out std_logic;
+		revserialfdbkout	:	out std_logic;
+		rxpmareset	:	in std_logic := '0';
+		seriallpbken	:	in std_logic := '0';
+		seriallpbkin	:	in std_logic := '0';
+		signaldetect	:	out std_logic;
+		testbussel	:	in std_logic_vector(3 downto 0) := (others => '0')
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_pll parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_pll
+	generic (
+		auto_settings	:	string := "true";
+		bandwidth	:	natural := 0;
+		bandwidth_type	:	string := "Auto";
+		c0_high	:	natural := 1;
+		c0_initial	:	natural := 1;
+		c0_low	:	natural := 1;
+		c0_mode	:	string := "Bypass";
+		c0_ph	:	natural := 0;
+		c0_test_source	:	natural := -1;
+		c1_high	:	natural := 1;
+		c1_initial	:	natural := 1;
+		c1_low	:	natural := 1;
+		c1_mode	:	string := "Bypass";
+		c1_ph	:	natural := 0;
+		c1_test_source	:	natural := -1;
+		c1_use_casc_in	:	string := "off";
+		c2_high	:	natural := 1;
+		c2_initial	:	natural := 1;
+		c2_low	:	natural := 1;
+		c2_mode	:	string := "Bypass";
+		c2_ph	:	natural := 0;
+		c2_test_source	:	natural := -1;
+		c2_use_casc_in	:	string := "off";
+		c3_high	:	natural := 1;
+		c3_initial	:	natural := 1;
+		c3_low	:	natural := 1;
+		c3_mode	:	string := "Bypass";
+		c3_ph	:	natural := 0;
+		c3_test_source	:	natural := -1;
+		c3_use_casc_in	:	string := "off";
+		c4_high	:	natural := 1;
+		c4_initial	:	natural := 1;
+		c4_low	:	natural := 1;
+		c4_mode	:	string := "Bypass";
+		c4_ph	:	natural := 0;
+		c4_test_source	:	natural := -1;
+		c4_use_casc_in	:	string := "off";
+		c5_high	:	natural := 1;
+		c5_initial	:	natural := 1;
+		c5_low	:	natural := 1;
+		c5_mode	:	string := "Bypass";
+		c5_ph	:	natural := 0;
+		c5_test_source	:	natural := -1;
+		c5_use_casc_in	:	string := "off";
+		c6_high	:	natural := 1;
+		c6_initial	:	natural := 1;
+		c6_low	:	natural := 1;
+		c6_mode	:	string := "Bypass";
+		c6_ph	:	natural := 0;
+		c6_test_source	:	natural := -1;
+		c6_use_casc_in	:	string := "off";
+		c7_high	:	natural := 1;
+		c7_initial	:	natural := 1;
+		c7_low	:	natural := 1;
+		c7_mode	:	string := "Bypass";
+		c7_ph	:	natural := 0;
+		c7_test_source	:	natural := -1;
+		c7_use_casc_in	:	string := "off";
+		c8_high	:	natural := 1;
+		c8_initial	:	natural := 1;
+		c8_low	:	natural := 1;
+		c8_mode	:	string := "Bypass";
+		c8_ph	:	natural := 0;
+		c8_test_source	:	natural := -1;
+		c8_use_casc_in	:	string := "off";
+		c9_high	:	natural := 1;
+		c9_initial	:	natural := 1;
+		c9_low	:	natural := 1;
+		c9_mode	:	string := "Bypass";
+		c9_ph	:	natural := 0;
+		c9_test_source	:	natural := -1;
+		c9_use_casc_in	:	string := "off";
+		charge_pump_current	:	natural := 0;
+		charge_pump_current_bits	:	natural := 9999;
+		clk0_counter	:	string := "Unused";
+		clk0_divide_by	:	natural := 0;
+		clk0_duty_cycle	:	natural := 50;
+		clk0_multiply_by	:	natural := 0;
+		clk0_output_frequency	:	natural := 0;
+		clk0_phase_shift	:	string := "0";
+		clk0_use_even_counter_mode	:	string := "off";
+		clk0_use_even_counter_value	:	string := "off";
+		clk1_counter	:	string := "Unused";
+		clk1_divide_by	:	natural := 0;
+		clk1_duty_cycle	:	natural := 50;
+		clk1_multiply_by	:	natural := 0;
+		clk1_output_frequency	:	natural := 0;
+		clk1_phase_shift	:	string := "0";
+		clk1_use_even_counter_mode	:	string := "off";
+		clk1_use_even_counter_value	:	string := "off";
+		clk2_counter	:	string := "Unused";
+		clk2_divide_by	:	natural := 0;
+		clk2_duty_cycle	:	natural := 50;
+		clk2_multiply_by	:	natural := 0;
+		clk2_output_frequency	:	natural := 0;
+		clk2_phase_shift	:	string := "0";
+		clk2_use_even_counter_mode	:	string := "off";
+		clk2_use_even_counter_value	:	string := "off";
+		clk3_counter	:	string := "Unused";
+		clk3_divide_by	:	natural := 0;
+		clk3_duty_cycle	:	natural := 50;
+		clk3_multiply_by	:	natural := 0;
+		clk3_output_frequency	:	natural := 0;
+		clk3_phase_shift	:	string := "0";
+		clk3_use_even_counter_mode	:	string := "off";
+		clk3_use_even_counter_value	:	string := "off";
+		clk4_counter	:	string := "Unused";
+		clk4_divide_by	:	natural := 0;
+		clk4_duty_cycle	:	natural := 50;
+		clk4_multiply_by	:	natural := 0;
+		clk4_output_frequency	:	natural := 0;
+		clk4_phase_shift	:	string := "0";
+		clk4_use_even_counter_mode	:	string := "off";
+		clk4_use_even_counter_value	:	string := "off";
+		clk5_counter	:	string := "Unused";
+		clk5_divide_by	:	natural := 0;
+		clk5_duty_cycle	:	natural := 50;
+		clk5_multiply_by	:	natural := 0;
+		clk5_output_frequency	:	natural := 0;
+		clk5_phase_shift	:	string := "0";
+		clk5_use_even_counter_mode	:	string := "off";
+		clk5_use_even_counter_value	:	string := "off";
+		clk6_counter	:	string := "Unused";
+		clk6_divide_by	:	natural := 0;
+		clk6_duty_cycle	:	natural := 50;
+		clk6_multiply_by	:	natural := 0;
+		clk6_output_frequency	:	natural := 0;
+		clk6_phase_shift	:	string := "0";
+		clk6_use_even_counter_mode	:	string := "off";
+		clk6_use_even_counter_value	:	string := "off";
+		clk7_counter	:	string := "Unused";
+		clk7_divide_by	:	natural := 0;
+		clk7_duty_cycle	:	natural := 50;
+		clk7_multiply_by	:	natural := 0;
+		clk7_output_frequency	:	natural := 0;
+		clk7_phase_shift	:	string := "0";
+		clk7_use_even_counter_mode	:	string := "off";
+		clk7_use_even_counter_value	:	string := "off";
+		clk8_counter	:	string := "Unused";
+		clk8_divide_by	:	natural := 0;
+		clk8_duty_cycle	:	natural := 50;
+		clk8_multiply_by	:	natural := 0;
+		clk8_output_frequency	:	natural := 0;
+		clk8_phase_shift	:	string := "0";
+		clk8_use_even_counter_mode	:	string := "off";
+		clk8_use_even_counter_value	:	string := "off";
+		clk9_counter	:	string := "Unused";
+		clk9_divide_by	:	natural := 0;
+		clk9_duty_cycle	:	natural := 50;
+		clk9_multiply_by	:	natural := 0;
+		clk9_output_frequency	:	natural := 0;
+		clk9_phase_shift	:	string := "0";
+		clk9_use_even_counter_mode	:	string := "off";
+		clk9_use_even_counter_value	:	string := "off";
+		compensate_clock	:	string := "clock0";
+		dpa_divide_by	:	natural := 0;
+		dpa_divider	:	natural := 0;
+		dpa_multiply_by	:	natural := 0;
+		dpa_output_clock_phase_shift	:	natural := 0;
+		enable_switch_over_counter	:	string := "off";
+		inclk0_input_frequency	:	natural := 0;
+		inclk1_input_frequency	:	natural := 0;
+		init_block_reset_a_count	:	natural := 1;
+		init_block_reset_b_count	:	natural := 1;
+		lock_c	:	natural := 4;
+		lock_high	:	natural := -1;
+		lock_low	:	natural := -1;
+		lock_window	:	natural := 0;
+		lock_window_ui	:	string := "0.05";
+		lock_window_ui_bits	:	natural := -1;
+		loop_filter_c	:	natural := 0;
+		loop_filter_c_bits	:	natural := 9999;
+		loop_filter_r	:	string := "0.0";
+		loop_filter_r_bits	:	natural := 9999;
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_pll";
+		m	:	natural := 0;
+		m_initial	:	natural := 1;
+		m_ph	:	natural := 0;
+		m_test_source	:	natural := -1;
+		n	:	natural := 1;
+		operation_mode	:	string := "Normal";
+		pfd_max	:	natural := 0;
+		pfd_min	:	natural := 0;
+		pll_compensation_delay	:	natural := 0;
+		pll_type	:	string := "Auto";
+		scan_chain_mif_file	:	string := "UNUSED";
+		self_reset_on_loss_lock	:	string := "off";
+		sim_gate_lock_device_behavior	:	string := "off";
+		simulation_type	:	string := "functional";
+		switch_over_counter	:	natural := -1;
+		switch_over_type	:	string := "Auto";
+		test_bypass_lock_detect	:	string := "off";
+		test_counter_c0_delay_chain_bits	:	natural := -1;
+		test_counter_c1_delay_chain_bits	:	natural := -1;
+		test_counter_c2_delay_chain_bits	:	natural := -1;
+		test_counter_c3_delay_chain_bits	:	natural := -1;
+		test_counter_c3_sclk_delay_chain_bits	:	natural := -1;
+		test_counter_c4_delay_chain_bits	:	natural := -1;
+		test_counter_c4_sclk_delay_chain_bits	:	natural := -1;
+		test_counter_c5_delay_chain_bits	:	natural := -1;
+		test_counter_c5_lden_delay_chain_bits	:	natural := -1;
+		test_counter_c6_delay_chain_bits	:	natural := -1;
+		test_counter_c6_lden_delay_chain_bits	:	natural := -1;
+		test_counter_c7_delay_chain_bits	:	natural := -1;
+		test_counter_c8_delay_chain_bits	:	natural := -1;
+		test_counter_c9_delay_chain_bits	:	natural := -1;
+		test_counter_m_delay_chain_bits	:	natural := -1;
+		test_counter_n_delay_chain_bits	:	natural := -1;
+		test_feedback_comp_delay_chain_bits	:	natural := -1;
+		test_input_comp_delay_chain_bits	:	natural := -1;
+		test_volt_reg_output_mode_bits	:	natural := -1;
+		test_volt_reg_output_voltage_bits	:	natural := -1;
+		test_volt_reg_test_mode	:	string := "false";
+		use_dc_coupling	:	string := "false";
+		use_vco_bypass	:	string := "false";
+		vco_center	:	natural := 0;
+		vco_divide_by	:	natural := 0;
+		vco_frequency_control	:	string := "Auto";
+		vco_max	:	natural := 0;
+		vco_min	:	natural := 0;
+		vco_multiply_by	:	natural := 0;
+		vco_phase_shift_step	:	natural := 0;
+		vco_post_scale	:	natural := 1;
+		vco_range_detector_high_bits	:	natural := -1;
+		vco_range_detector_low_bits	:	natural := -1	);
+	port(
+		activeclock	:	out std_logic;
+		areset	:	in std_logic := '0';
+		clk	:	out std_logic_vector(9 downto 0);
+		clkbad	:	out std_logic_vector(1 downto 0);
+		clkswitch	:	in std_logic := '0';
+		configupdate	:	in std_logic := '0';
+		fbin	:	in std_logic := '0';
+		fbout	:	out std_logic;
+		inclk	:	in std_logic_vector(1 downto 0) := (others => '0');
+		locked	:	out std_logic;
+		observablephasecounterselectdff	:	out std_logic;
+		observablephaseupdowndff	:	out std_logic;
+		observablescandff	:	out std_logic;
+		observablevcoout	:	out std_logic;
+		pfdena	:	in std_logic := '1';
+		phasecounterselect	:	in std_logic_vector(3 downto 0) := (others => '0');
+		phasedone	:	out std_logic;
+		phasestep	:	in std_logic := '0';
+		phaseupdown	:	in std_logic := '0';
+		scanclk	:	in std_logic := '0';
+		scanclkena	:	in std_logic := '1';
+		scandata	:	in std_logic := '0';
+		scandataout	:	out std_logic;
+		scandone	:	out std_logic;
+		vcooverrange	:	out std_logic;
+		vcounderrange	:	out std_logic
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_hssi_refclk_divider parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_hssi_refclk_divider
+	generic (
+		divider_number	:	natural := 0;
+		enable_divider	:	string := "false";
+		lpm_type	:	string := "stratixiv_hssi_refclk_divider";
+		refclk_coupling_termination	:	string := "normal_100_ohm_termination"	);
+	port(
+		clkout	:	out std_logic;
+		dpriodisable	:	in std_logic := '1';
+		dprioin	:	in std_logic := '0';
+		dprioout	:	out std_logic;
+		inclk	:	in std_logic := '0'
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_hssi_tx_pcs parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_hssi_tx_pcs
+	generic (
+		allow_polarity_inversion	:	string := "false";
+		auto_spd_self_switch_enable	:	string := "false";
+		bitslip_enable	:	string := "false";
+		channel_bonding	:	string := "none";
+		channel_number	:	natural := 0;
+		channel_width	:	natural := 8;
+		core_clock_0ppm	:	string := "false";
+		datapath_low_latency_mode	:	string := "false";
+		datapath_protocol	:	string := "basic";
+		disable_ph_low_latency_mode	:	string := "false";
+		disparity_mode	:	string := "none";
+		dprio_config_mode	:	std_logic_vector(5 downto 0) := "000000";
+		elec_idle_delay	:	natural := 3;
+		enable_bit_reversal	:	string := "false";
+		enable_idle_selection	:	string := "false";
+		enable_phfifo_bypass	:	string := "false";
+		enable_reverse_parallel_loopback	:	string := "false";
+		enable_self_test_mode	:	string := "false";
+		enable_symbol_swap	:	string := "false";
+		enc_8b_10b_compatibility_mode	:	string := "false";
+		enc_8b_10b_mode	:	string := "none";
+		force_echar	:	string := "false";
+		force_kchar	:	string := "false";
+		hip_enable	:	string := "false";
+		iqp_bypass	:	string := "false";
+		iqp_ph_fifo_xn_select	:	natural := 0;
+		logical_channel_address	:	natural := 0;
+		lpm_type	:	string := "stratixiv_hssi_tx_pcs";
+		ph_fifo_reg_mode	:	string := "false";
+		ph_fifo_reset_enable	:	string := "false";
+		ph_fifo_user_ctrl_enable	:	string := "false";
+		ph_fifo_xn_mapping0	:	string := "none";
+		ph_fifo_xn_mapping1	:	string := "none";
+		ph_fifo_xn_mapping2	:	string := "none";
+		ph_fifo_xn_select	:	natural := 0;
+		pipe_auto_speed_nego_enable	:	string := "false";
+		pipe_freq_scale_mode	:	string := "Frequency";
+		pipe_voltage_swing_control	:	string := "false";
+		prbs_all_one_detect	:	string := "false";
+		prbs_cid_pattern	:	string := "false";
+		prbs_cid_pattern_length	:	natural := 0;
+		protocol_hint	:	string := "basic";
+		refclk_select	:	string := "local";
+		reset_clock_output_during_digital_reset	:	string := "false";
+		self_test_mode	:	string := "crpat";
+		use_double_data_mode	:	string := "false";
+		use_serializer_double_data_mode	:	string := "false";
+		wr_clk_mux_select	:	string := "int_clk"	);
+	port(
+		bitslipboundaryselect	:	in std_logic_vector(4 downto 0) := (others => '0');
+		clkout	:	out std_logic;
+		coreclk	:	in std_logic := '0';
+		coreclkout	:	out std_logic;
+		ctrlenable	:	in std_logic_vector(3 downto 0) := (others => '0');
+		datain	:	in std_logic_vector(39 downto 0) := (others => '0');
+		datainfull	:	in std_logic_vector(43 downto 0) := (others => '0');
+		dataout	:	out std_logic_vector(19 downto 0);
+		detectrxloop	:	in std_logic := '0';
+		digitalreset	:	in std_logic := '0';
+		dispval	:	in std_logic_vector(3 downto 0) := (others => '0');
+		dpriodisable	:	in std_logic := '1';
+		dprioin	:	in std_logic_vector(149 downto 0) := (others => '0');
+		dprioout	:	out std_logic_vector(149 downto 0);
+		elecidleinfersel	:	in std_logic_vector(2 downto 0) := (others => '0');
+		enrevparallellpbk	:	in std_logic := '0';
+		forcedisp	:	in std_logic_vector(3 downto 0) := (others => '0');
+		forcedispcompliance	:	in std_logic := '0';
+		forceelecidle	:	in std_logic := '0';
+		forceelecidleout	:	out std_logic;
+		freezptr	:	in std_logic := '0';
+		grayelecidleinferselout	:	out std_logic_vector(2 downto 0);
+		hipdatain	:	in std_logic_vector(9 downto 0) := (others => '0');
+		hipdetectrxloop	:	in std_logic := '0';
+		hipelecidleinfersel	:	in std_logic_vector(2 downto 0) := (others => '0');
+		hipforceelecidle	:	in std_logic := '0';
+		hippowerdn	:	in std_logic_vector(1 downto 0) := (others => '0');
+		hiptxclkout	:	out std_logic;
+		hiptxdeemph	:	in std_logic := '0';
+		hiptxmargin	:	in std_logic_vector(2 downto 0) := (others => '0');
+		invpol	:	in std_logic := '0';
+		iqpphfifobyteselout	:	out std_logic;
+		iqpphfifordclkout	:	out std_logic;
+		iqpphfifordenableout	:	out std_logic;
+		iqpphfifowrenableout	:	out std_logic;
+		iqpphfifoxnbytesel	:	in std_logic_vector(1 downto 0) := (others => '0');
+		iqpphfifoxnrdclk	:	in std_logic_vector(1 downto 0) := (others => '0');
+		iqpphfifoxnrdenable	:	in std_logic_vector(1 downto 0) := (others => '0');
+		iqpphfifoxnwrenable	:	in std_logic_vector(1 downto 0) := (others => '0');
+		localrefclk	:	in std_logic := '0';
+		parallelfdbkout	:	out std_logic_vector(19 downto 0);
+		phfifobyteselout	:	out std_logic;
+		phfifobyteserdisable	:	in std_logic := '0';
+		phfifooverflow	:	out std_logic;
+		phfifoptrsreset	:	in std_logic := '0';
+		phfifordclkout	:	out std_logic;
+		phfiforddisable	:	in std_logic := '0';
+		phfiforddisableout	:	out std_logic;
+		phfifordenableout	:	out std_logic;
+		phfiforeset	:	in std_logic := '0';
+		phfiforesetout	:	out std_logic;
+		phfifounderflow	:	out std_logic;
+		phfifowrenable	:	in std_logic := '1';
+		phfifowrenableout	:	out std_logic;
+		phfifox4bytesel	:	in std_logic := '0';
+		phfifox4rdclk	:	in std_logic := '0';
+		phfifox4rdenable	:	in std_logic := '0';
+		phfifox4wrenable	:	in std_logic := '0';
+		phfifoxnbottombytesel	:	in std_logic := '0';
+		phfifoxnbottomrdclk	:	in std_logic := '0';
+		phfifoxnbottomrdenable	:	in std_logic := '0';
+		phfifoxnbottomwrenable	:	in std_logic := '0';
+		phfifoxnbytesel	:	in std_logic_vector(2 downto 0) := (others => '0');
+		phfifoxnptrsreset	:	in std_logic_vector(2 downto 0) := (others => '0');
+		phfifoxnrdclk	:	in std_logic_vector(2 downto 0) := (others => '0');
+		phfifoxnrdenable	:	in std_logic_vector(2 downto 0) := (others => '0');
+		phfifoxntopbytesel	:	in std_logic := '0';
+		phfifoxntoprdclk	:	in std_logic := '0';
+		phfifoxntoprdenable	:	in std_logic := '0';
+		phfifoxntopwrenable	:	in std_logic := '0';
+		phfifoxnwrenable	:	in std_logic_vector(2 downto 0) := (others => '0');
+		pipeenrevparallellpbkout	:	out std_logic;
+		pipepowerdownout	:	out std_logic_vector(1 downto 0);
+		pipepowerstateout	:	out std_logic_vector(3 downto 0);
+		pipestatetransdone	:	in std_logic := '0';
+		pipetxdeemph	:	in std_logic := '0';
+		pipetxmargin	:	in std_logic_vector(2 downto 0) := (others => '0');
+		pipetxswing	:	in std_logic := '0';
+		powerdn	:	in std_logic_vector(1 downto 0) := (others => '0');
+		prbscidenable	:	in std_logic := '0';
+		quadreset	:	in std_logic := '0';
+		rateswitch	:	in std_logic := '0';
+		rateswitchisdone	:	in std_logic := '0';
+		rateswitchout	:	out std_logic;
+		rateswitchxndone	:	in std_logic := '0';
+		rdenablesync	:	out std_logic;
+		refclk	:	in std_logic := '0';
+		revparallelfdbk	:	in std_logic_vector(19 downto 0) := (others => '0');
+		txdetectrx	:	out std_logic;
+		xgmctrl	:	in std_logic := '0';
+		xgmctrlenable	:	out std_logic;
+		xgmdatain	:	in std_logic_vector(7 downto 0) := (others => '0');
+		xgmdataout	:	out std_logic_vector(7 downto 0)
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_ddio_oe parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_ddio_oe
+	generic (
+		async_mode	:	string := "none";
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_ddio_oe";
+		power_up	:	string := "low";
+		sync_mode	:	string := "none"	);
+	port(
+		areset	:	in std_logic := '0';
+		clk	:	in std_logic := '0';
+		dataout	:	out std_logic;
+		devclrn	:	in std_logic := '1';
+		devpor	:	in std_logic := '1';
+		dffhi	:	out std_logic;
+		dfflo	:	out std_logic;
+		ena	:	in std_logic := '1';
+		oe	:	in std_logic := '1';
+		sreset	:	in std_logic := '0'
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_asmiblock parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_asmiblock
+	generic (
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_asmiblock"	);
+	port(
+		data0in	:	in std_logic := '0';
+		data0out	:	out std_logic;
+		dclkin	:	in std_logic := '0';
+		dclkout	:	out std_logic;
+		oe	:	in std_logic := '0';
+		scein	:	in std_logic := '0';
+		sceout	:	out std_logic;
+		sdoin	:	in std_logic := '0';
+		sdoout	:	out std_logic
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_lcell_comb parameterized megafunction component declaration
+-- Generated with 'clearbox' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_lcell_comb
+	generic (
+		dont_touch	:	string := "off";
+		extended_lut	:	string := "off";
+		lut_mask	:	std_logic_vector(63 downto 0) := "0000000000000000000000000000000000000000000000000000000000000000";
+		shared_arith	:	string := "off";
+		lpm_type	:	string := "stratixiv_lcell_comb"
+	);
+	port(
+		cin	:	in std_logic := '0';
+		combout	:	out std_logic;
+		cout	:	out std_logic;
+		dataa	:	in std_logic := '0';
+		datab	:	in std_logic := '0';
+		datac	:	in std_logic := '0';
+		datad	:	in std_logic := '0';
+		datae	:	in std_logic := '0';
+		dataf	:	in std_logic := '0';
+		datag	:	in std_logic := '0';
+		sharein	:	in std_logic := '0';
+		shareout	:	out std_logic;
+		sumout	:	out std_logic
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_mac_mult parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_mac_mult
+	generic (
+		dataa_clear	:	string := "NONE";
+		dataa_clock	:	string := "NONE";
+		dataa_width	:	natural := 1;
+		datab_clear	:	string := "NONE";
+		datab_clock	:	string := "NONE";
+		datab_width	:	natural := 1;
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_mac_mult";
+		scanouta_clear	:	string := "NONE";
+		scanouta_clock	:	string := "NONE";
+		signa_clear	:	string := "NONE";
+		signa_clock	:	string := "NONE";
+		signa_internally_grounded	:	string := "FALSE";
+		signb_clear	:	string := "NONE";
+		signb_clock	:	string := "NONE";
+		signb_internally_grounded	:	string := "FALSE"	);
+	port(
+		aclr	:	in std_logic_vector(3 downto 0) := (others => '0');
+		clk	:	in std_logic_vector(3 downto 0) := (others => '0');
+		dataa	:	in std_logic_vector(17 downto 0) := (others => '1');
+		datab	:	in std_logic_vector(17 downto 0) := (others => '1');
+		dataout	:	out std_logic_vector(35 downto 0);
+		devclrn	:	in std_logic := '1';
+		devpor	:	in std_logic := '1';
+		ena	:	in std_logic_vector(3 downto 0) := (others => '1');
+		observabledataaregout	:	out std_logic_vector(17 downto 0);
+		observabledatabregout	:	out std_logic_vector(17 downto 0);
+		observablesignaregout	:	out std_logic;
+		observablesignbregout	:	out std_logic;
+		scanouta	:	out std_logic_vector(17 downto 0);
+		signa	:	in std_logic := '1';
+		signb	:	in std_logic := '1'
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_ff parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_ff
+	generic (
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_ff";
+		power_up	:	string := "low";
+		x_on_violation	:	string := "on"	);
+	port(
+		aload	:	in std_logic := '0';
+		asdata	:	in std_logic := '0';
+		clk	:	in std_logic := '0';
+		clrn	:	in std_logic := '0';
+		d	:	in std_logic := '0';
+		devclrn	:	in std_logic := '1';
+		devpor	:	in std_logic := '1';
+		ena	:	in std_logic := '1';
+		q	:	out std_logic;
+		sclr	:	in std_logic := '0';
+		sload	:	in std_logic := '0'
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_pseudo_diff_out parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_pseudo_diff_out
+	generic (
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_pseudo_diff_out"	);
+	port(
+		i	:	in std_logic := '0';
+		o	:	out std_logic;
+		obar	:	out std_logic
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_io_pad parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_io_pad
+	generic (
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_io_pad"	);
+	port(
+		padin	:	in std_logic := '0';
+		padout	:	out std_logic
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_jtag parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_jtag
+	generic (
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_jtag"	);
+	port(
+		clkdruser	:	out std_logic;
+		ntrst	:	in std_logic := '0';
+		runidleuser	:	out std_logic;
+		shiftuser	:	out std_logic;
+		tck	:	in std_logic := '0';
+		tckutap	:	out std_logic;
+		tdi	:	in std_logic := '0';
+		tdiutap	:	out std_logic;
+		tdo	:	out std_logic;
+		tdouser	:	in std_logic := '0';
+		tdoutap	:	in std_logic := '0';
+		tms	:	in std_logic := '0';
+		tmsutap	:	out std_logic;
+		updateuser	:	out std_logic;
+		usr1user	:	out std_logic
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_tsdblock parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_tsdblock
+	generic (
+		clock_divider_enable	:	string := "on";
+		clock_divider_value	:	natural := 40;
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_tsdblock";
+		poi_cal_temperature	:	natural := 85;
+		sim_tsdcalo	:	natural := 0;
+		user_offset_enable	:	string := "off"	);
+	port(
+		ce	:	in std_logic := '1';
+		clk	:	in std_logic := '0';
+		clr	:	in std_logic := '0';
+		compouttest	:	in std_logic := '0';
+		fdbkctrlfromcore	:	in std_logic := '0';
+		offset	:	in std_logic_vector(5 downto 0) := (others => '0');
+		offsetout	:	out std_logic_vector(5 downto 0);
+		testin	:	in std_logic_vector(7 downto 0) := (others => '0');
+		tsdcaldone	:	out std_logic;
+		tsdcalo	:	out std_logic_vector(7 downto 0);
+		tsdcompout	:	out std_logic
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_hssi_rx_pcs parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_hssi_rx_pcs
+	generic (
+		align_ordered_set_based	:	string := "false";
+		align_pattern	:	string := "UNUSED";
+		align_pattern_length	:	natural := 8;
+		align_to_deskew_pattern_pos_disp_only	:	string := "false";
+		allow_align_polarity_inversion	:	string := "false";
+		allow_pipe_polarity_inversion	:	string := "false";
+		auto_spd_deassert_ph_fifo_rst_count	:	natural := 0;
+		auto_spd_phystatus_notify_count	:	natural := 0;
+		auto_spd_self_switch_enable	:	string := "false";
+		bit_slip_enable	:	string := "false";
+		byte_order_back_compat_enable	:	string := "false";
+		byte_order_double_data_mode_mask_enable	:	string := "false";
+		byte_order_invalid_code_or_run_disp_error	:	string := "false";
+		byte_order_mode	:	string := "none";
+		byte_order_pad_pattern	:	string := "UNUSED";
+		byte_order_pattern	:	string := "UNUSED";
+		byte_order_pld_ctrl_enable	:	string := "false";
+		cdrctrl_bypass_ppm_detector_cycle	:	natural := 0;
+		cdrctrl_cid_mode_enable	:	string := "false";
+		cdrctrl_enable	:	string := "false";
+		cdrctrl_mask_cycle	:	natural := 0;
+		cdrctrl_min_lock_to_ref_cycle	:	natural := 0;
+		cdrctrl_rxvalid_mask	:	string := "false";
+		channel_bonding	:	string := "none";
+		channel_number	:	natural := 0;
+		channel_width	:	natural := 8;
+		clk1_mux_select	:	string := "recovered clock";
+		clk2_mux_select	:	string := "recovered clock";
+		clk_pd_enable	:	string := "false";
+		core_clock_0ppm	:	string := "false";
+		datapath_low_latency_mode	:	string := "false";
+		datapath_protocol	:	string := "basic";
+		dec_8b_10b_compatibility_mode	:	string := "false";
+		dec_8b_10b_mode	:	string := "none";
+		dec_8b_10b_polarity_inv_enable	:	string := "false";
+		deskew_pattern	:	string := "UNUSED";
+		disable_auto_idle_insertion	:	string := "false";
+		disable_running_disp_in_word_align	:	string := "false";
+		disallow_kchar_after_pattern_ordered_set	:	string := "false";
+		dprio_config_mode	:	std_logic_vector(5 downto 0) := "000000";
+		elec_idle_eios_detect_priority_over_eidle_disable	:	string := "false";
+		elec_idle_gen1_sigdet_enable	:	string := "false";
+		elec_idle_infer_enable	:	string := "false";
+		elec_idle_k_detect	:	string := "false";
+		elec_idle_num_com_detect	:	natural := 0;
+		enable_bit_reversal	:	string := "false";
+		enable_deep_align	:	string := "false";
+		enable_deep_align_byte_swap	:	string := "false";
+		enable_phfifo_bypass	:	string := "false";
+		enable_self_test_mode	:	string := "false";
+		enable_true_complement_match_in_word_align	:	string := "false";
+		error_from_wa_or_8b_10b_select	:	string := "false";
+		force_signal_detect_dig	:	string := "false";
+		hip_enable	:	string := "false";
+		infiniband_invalid_code	:	natural := 0;
+		insert_pad_on_underflow	:	string := "false";
+		iqp_bypass	:	string := "false";
+		iqp_ph_fifo_xn_select	:	natural := 0;
+		logical_channel_address	:	natural := 0;
+		lpm_type	:	string := "stratixiv_hssi_rx_pcs";
+		num_align_code_groups_in_ordered_set	:	natural := 0;
+		num_align_cons_good_data	:	natural := 1;
+		num_align_cons_pat	:	natural := 1;
+		num_align_loss_sync_error	:	natural := 1;
+		ph_fifo_disable	:	string := "false";
+		ph_fifo_low_latency_enable	:	string := "false";
+		ph_fifo_reg_mode	:	string := "false";
+		ph_fifo_reset_enable	:	string := "false";
+		ph_fifo_user_ctrl_enable	:	string := "false";
+		ph_fifo_xn_mapping0	:	string := "none";
+		ph_fifo_xn_mapping1	:	string := "none";
+		ph_fifo_xn_mapping2	:	string := "none";
+		ph_fifo_xn_select	:	natural := 0;
+		phystatus_delay	:	natural := 0;
+		phystatus_reset_toggle	:	string := "false";
+		pipe_auto_speed_nego_enable	:	string := "false";
+		pipe_freq_scale_mode	:	string := "Frequency";
+		pipe_hip_enable	:	string := "false";
+		pma_done_count	:	natural := 53392;
+		prbs_all_one_detect	:	string := "false";
+		prbs_cid_pattern	:	string := "false";
+		prbs_cid_pattern_length	:	natural := 0;
+		protocol_hint	:	string := "basic";
+		rate_match_almost_empty_threshold	:	natural := 1;
+		rate_match_almost_full_threshold	:	natural := 5;
+		rate_match_back_to_back	:	string := "false";
+		rate_match_delete_threshold	:	natural := 0;
+		rate_match_empty_threshold	:	natural := 0;
+		rate_match_fifo_mode	:	string := "false";
+		rate_match_full_threshold	:	natural := 0;
+		rate_match_insert_threshold	:	natural := 0;
+		rate_match_ordered_set_based	:	string := "false";
+		rate_match_pattern1	:	string := "UNUSED";
+		rate_match_pattern2	:	string := "UNUSED";
+		rate_match_pattern_size	:	natural := 10;
+		rate_match_pipe_enable	:	string := "false";
+		rate_match_reset_enable	:	string := "false";
+		rate_match_skip_set_based	:	string := "false";
+		rate_match_start_threshold	:	natural := 0;
+		rd_clk_mux_select	:	string := "int clock";
+		recovered_clk_mux_select	:	string := "recovered clock";
+		reset_clock_output_during_digital_reset	:	string := "false";
+		run_length	:	natural := 4;
+		run_length_enable	:	string := "false";
+		rx_detect_bypass	:	string := "false";
+		rx_phfifo_wait_cnt	:	natural := 0;
+		rxstatus_error_report_mode	:	natural := 0;
+		self_test_mode	:	string := "prbs7";
+		test_bus_sel	:	natural := 0;
+		use_alignment_state_machine	:	string := "false";
+		use_deserializer_double_data_mode	:	string := "false";
+		use_deskew_fifo	:	string := "false";
+		use_double_data_mode	:	string := "false";
+		use_parallel_loopback	:	string := "false";
+		use_rising_edge_triggered_pattern_align	:	string := "false"	);
+	port(
+		a1a2size	:	in std_logic := '0';
+		a1a2sizeout	:	out std_logic_vector(3 downto 0);
+		a1detect	:	out std_logic_vector(1 downto 0);
+		a2detect	:	out std_logic_vector(1 downto 0);
+		adetectdeskew	:	out std_logic;
+		alignstatus	:	in std_logic := '0';
+		alignstatussync	:	in std_logic := '0';
+		alignstatussyncout	:	out std_logic;
+		autospdrateswitchout	:	out std_logic;
+		autospdspdchgout	:	out std_logic;
+		autospdxnconfigsel	:	in std_logic_vector(2 downto 0) := (others => '0');
+		autospdxnspdchg	:	in std_logic_vector(2 downto 0) := (others => '0');
+		bistdone	:	out std_logic;
+		bisterr	:	out std_logic;
+		bitslip	:	in std_logic := '0';
+		bitslipboundaryselectout	:	out std_logic_vector(4 downto 0);
+		byteorderalignstatus	:	out std_logic;
+		cdrctrlearlyeios	:	out std_logic;
+		cdrctrllocktorefcl	:	in std_logic := '0';
+		cdrctrllocktorefclkout	:	out std_logic;
+		clkout	:	out std_logic;
+		coreclk	:	in std_logic := '0';
+		coreclkout	:	out std_logic;
+		ctrldetect	:	out std_logic_vector(3 downto 0);
+		datain	:	in std_logic_vector(19 downto 0) := (others => '0');
+		dataout	:	out std_logic_vector(39 downto 0);
+		dataoutfull	:	out std_logic_vector(63 downto 0);
+		digitalreset	:	in std_logic := '0';
+		digitaltestout	:	out std_logic_vector(9 downto 0);
+		disablefifordin	:	in std_logic := '0';
+		disablefifordout	:	out std_logic;
+		disablefifowrin	:	in std_logic := '0';
+		disablefifowrout	:	out std_logic;
+		disperr	:	out std_logic_vector(3 downto 0);
+		dpriodisable	:	in std_logic := '1';
+		dprioin	:	in std_logic_vector(399 downto 0) := (others => '0');
+		dprioout	:	out std_logic_vector(399 downto 0);
+		elecidleinfersel	:	in std_logic_vector(2 downto 0) := (others => '0');
+		enabledeskew	:	in std_logic := '0';
+		enabyteord	:	in std_logic := '0';
+		enapatternalign	:	in std_logic := '0';
+		errdetect	:	out std_logic_vector(3 downto 0);
+		fifordin	:	in std_logic := '0';
+		fifordout	:	out std_logic;
+		fiforesetrd	:	in std_logic := '0';
+		grayelecidleinferselfromtx	:	in std_logic_vector(2 downto 0) := (others => '0');
+		hip8b10binvpolarity	:	in std_logic := '0';
+		hipdataout	:	out std_logic_vector(8 downto 0);
+		hipdatavalid	:	out std_logic;
+		hipelecidle	:	out std_logic;
+		hipelecidleinfersel	:	in std_logic_vector(2 downto 0) := (others => '0');
+		hipphydonestatus	:	out std_logic;
+		hippowerdown	:	in std_logic_vector(1 downto 0) := (others => '0');
+		hiprateswitch	:	in std_logic := '0';
+		hipstatus	:	out std_logic_vector(2 downto 0);
+		invpol	:	in std_logic := '0';
+		iqpautospdxnspgchg	:	in std_logic_vector(1 downto 0) := (others => '0');
+		iqpphfifobyteselout	:	out std_logic;
+		iqpphfifoptrsresetout	:	out std_logic;
+		iqpphfifordenableout	:	out std_logic;
+		iqpphfifowrclkout	:	out std_logic;
+		iqpphfifowrenableout	:	out std_logic;
+		iqpphfifoxnbytesel	:	in std_logic_vector(1 downto 0) := (others => '0');
+		iqpphfifoxnptrsreset	:	in std_logic_vector(1 downto 0) := (others => '0');
+		iqpphfifoxnrdenable	:	in std_logic_vector(1 downto 0) := (others => '0');
+		iqpphfifoxnwrclk	:	in std_logic_vector(1 downto 0) := (others => '0');
+		iqpphfifoxnwrenable	:	in std_logic_vector(1 downto 0) := (others => '0');
+		k1detect	:	out std_logic_vector(1 downto 0);
+		k2detect	:	out std_logic_vector(1 downto 0);
+		localrefclk	:	in std_logic := '0';
+		masterclk	:	in std_logic := '0';
+		parallelfdbk	:	in std_logic_vector(19 downto 0) := (others => '0');
+		patterndetect	:	out std_logic_vector(3 downto 0);
+		phfifobyteselout	:	out std_logic;
+		phfifobyteserdisableout	:	out std_logic;
+		phfifooverflow	:	out std_logic;
+		phfifoptrsresetout	:	out std_logic;
+		phfifordenable	:	in std_logic := '1';
+		phfifordenableout	:	out std_logic;
+		phfiforeset	:	in std_logic := '0';
+		phfiforesetout	:	out std_logic;
+		phfifounderflow	:	out std_logic;
+		phfifowrclkout	:	out std_logic;
+		phfifowrdisable	:	in std_logic := '0';
+		phfifowrdisableout	:	out std_logic;
+		phfifowrenableout	:	out std_logic;
+		phfifox4bytesel	:	in std_logic := '0';
+		phfifox4rdenable	:	in std_logic := '0';
+		phfifox4wrclk	:	in std_logic := '0';
+		phfifox4wrenable	:	in std_logic := '0';
+		phfifox8bytesel	:	in std_logic := '0';
+		phfifox8rdenable	:	in std_logic := '0';
+		phfifox8wrclk	:	in std_logic := '0';
+		phfifox8wrenable	:	in std_logic := '0';
+		phfifoxnbytesel	:	in std_logic_vector(2 downto 0) := (others => '0');
+		phfifoxnptrsreset	:	in std_logic_vector(2 downto 0) := (others => '0');
+		phfifoxnrdenable	:	in std_logic_vector(2 downto 0) := (others => '0');
+		phfifoxnwrclk	:	in std_logic_vector(2 downto 0) := (others => '0');
+		phfifoxnwrenable	:	in std_logic_vector(2 downto 0) := (others => '0');
+		pipe8b10binvpolarity	:	in std_logic := '0';
+		pipebufferstat	:	out std_logic_vector(3 downto 0);
+		pipedatavalid	:	out std_logic;
+		pipeelecidle	:	out std_logic;
+		pipeenrevparallellpbkfromtx	:	in std_logic := '0';
+		pipephydonestatus	:	out std_logic;
+		pipepowerdown	:	in std_logic_vector(1 downto 0) := (others => '0');
+		pipepowerstate	:	in std_logic_vector(3 downto 0) := (others => '0');
+		pipestatetransdoneout	:	out std_logic;
+		pipestatus	:	out std_logic_vector(2 downto 0);
+		pmatestbusin	:	in std_logic_vector(7 downto 0) := (others => '0');
+		powerdn	:	in std_logic_vector(1 downto 0) := (others => '0');
+		ppmdetectdividedclk	:	in std_logic := '0';
+		ppmdetectrefclk	:	in std_logic := '0';
+		prbscidenable	:	in std_logic := '0';
+		quadreset	:	in std_logic := '0';
+		rateswitch	:	in std_logic := '0';
+		rateswitchisdone	:	in std_logic := '0';
+		rateswitchout	:	out std_logic;
+		rateswitchxndone	:	in std_logic := '0';
+		rdalign	:	out std_logic;
+		recoveredclk	:	in std_logic := '0';
+		refclk	:	in std_logic := '0';
+		revbitorderwa	:	in std_logic := '0';
+		revbyteorderwa	:	in std_logic := '0';
+		revparallelfdbkdata	:	out std_logic_vector(19 downto 0);
+		rlv	:	out std_logic;
+		rmfifoalmostempty	:	out std_logic;
+		rmfifoalmostfull	:	out std_logic;
+		rmfifodatadeleted	:	out std_logic_vector(3 downto 0);
+		rmfifodatainserted	:	out std_logic_vector(3 downto 0);
+		rmfifoempty	:	out std_logic;
+		rmfifofull	:	out std_logic;
+		rmfifordena	:	in std_logic := '1';
+		rmfiforeset	:	in std_logic := '0';
+		rmfifowrena	:	in std_logic := '1';
+		runningdisp	:	out std_logic_vector(3 downto 0);
+		rxdetectvalid	:	in std_logic := '0';
+		rxelecidlerateswitch	:	in std_logic := '0';
+		rxfound	:	in std_logic_vector(1 downto 0) := (others => '0');
+		signaldetect	:	out std_logic;
+		signaldetected	:	in std_logic := '0';
+		syncstatus	:	out std_logic_vector(3 downto 0);
+		syncstatusdeskew	:	out std_logic;
+		xauidelcondmet	:	in std_logic := '0';
+		xauidelcondmetout	:	out std_logic;
+		xauififoovr	:	in std_logic := '0';
+		xauififoovrout	:	out std_logic;
+		xauiinsertincomplete	:	in std_logic := '0';
+		xauiinsertincompleteout	:	out std_logic;
+		xauilatencycomp	:	in std_logic := '0';
+		xauilatencycompout	:	out std_logic;
+		xgmctrldet	:	out std_logic;
+		xgmctrlin	:	in std_logic := '0';
+		xgmdatain	:	in std_logic_vector(7 downto 0) := (others => '0');
+		xgmdataout	:	out std_logic_vector(7 downto 0);
+		xgmdatavalid	:	out std_logic;
+		xgmrunningdisp	:	out std_logic
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_lvds_receiver parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_lvds_receiver
+	generic (
+		align_to_rising_edge_only	:	string := "on";
+		channel_width	:	natural := 10;
+		data_align_rollover	:	natural := 2;
+		dpa_debug	:	string := "off";
+		dpa_initial_phase_value	:	natural := 0;
+		dpa_output_clock_phase_shift	:	natural := 0;
+		enable_dpa	:	string := "off";
+		enable_dpa_align_to_rising_edge_only	:	string := "off";
+		enable_dpa_initial_phase_selection	:	string := "off";
+		enable_soft_cdr	:	string := "off";
+		is_negative_ppm_drift	:	string := "off";
+		lose_lock_on_one_change	:	string := "off";
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_lvds_receiver";
+		net_ppm_variation	:	natural := 0;
+		reset_fifo_at_first_lock	:	string := "on";
+		rx_input_path_delay_engineering_bits	:	natural := -1;
+		use_serial_feedback_input	:	string := "off";
+		x_on_bitslip	:	string := "on"	);
+	port(
+		bitslip	:	in std_logic := '0';
+		bitslipmax	:	out std_logic;
+		bitslipreset	:	in std_logic := '0';
+		clk0	:	in std_logic := '0';
+		datain	:	in std_logic := '0';
+		dataout	:	out std_logic_vector(9 downto 0);
+		devclrn	:	in std_logic := '1';
+		devpor	:	in std_logic := '1';
+		divfwdclk	:	out std_logic;
+		dpaclkout	:	out std_logic;
+		dpahold	:	in std_logic := '0';
+		dpalock	:	out std_logic;
+		dpareset	:	in std_logic := '0';
+		dpaswitch	:	in std_logic := '1';
+		enable0	:	in std_logic := '0';
+		fiforeset	:	in std_logic := '0';
+		observableout	:	out std_logic_vector(3 downto 0);
+		postdpaserialdataout	:	out std_logic;
+		serialdataout	:	out std_logic;
+		serialfbk	:	in std_logic := '0'
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_io_obuf parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_io_obuf
+	generic (
+		bus_hold	:	string := "false";
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_io_obuf";
+		open_drain_output	:	string := "false";
+		shift_series_termination_control	:	string := "false";
+		sim_dynamic_termination_control_is_connected	:	string := "false"	);
+	port(
+		devoe	:	in std_logic := '1';
+		dynamicterminationcontrol	:	in std_logic := '0';
+		i	:	in std_logic := '0';
+		o	:	out std_logic;
+		obar	:	out std_logic;
+		oe	:	in std_logic := '1';
+		parallelterminationcontrol	:	in std_logic_vector(13 downto 0) := (others => '0');
+		seriesterminationcontrol	:	in std_logic_vector(13 downto 0) := (others => '0')
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_ram_block parameterized megafunction component declaration
+-- Generated with 'clearbox' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_ram_block
+	generic (
+		clk0_core_clock_enable	:	string := "none";
+		clk0_input_clock_enable	:	string := "none";
+		clk0_output_clock_enable	:	string := "none";
+		clk1_core_clock_enable	:	string := "none";
+		clk1_input_clock_enable	:	string := "none";
+		clk1_output_clock_enable	:	string := "none";
+		connectivity_checking	:	string := "OFF";
+		data_interleave_offset_in_bits	:	natural := 1;
+		data_interleave_width_in_bits	:	natural := 1;
+		enable_ecc	:	string := "false";
+		init_file	:	string := "UNUSED";
+		init_file_layout	:	string := "UNUSED";
+		logical_ram_name	:	string;
+		mem_init0	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init1	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init10	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init11	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init12	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init13	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init14	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init15	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init16	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init17	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init18	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init19	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init2	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init20	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init21	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init22	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init23	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init24	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init25	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init26	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init27	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init28	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init29	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init3	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init30	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init31	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init32	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init33	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init34	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init35	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init36	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init37	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init38	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init39	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init4	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init40	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init41	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init42	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init43	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init44	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init45	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init46	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init47	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init48	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init49	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init5	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init50	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init51	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init52	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init53	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init54	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init55	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init56	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init57	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init58	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init59	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init6	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init60	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init61	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init62	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init63	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init64	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init65	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init66	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init67	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init68	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init69	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init7	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init70	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init71	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init8	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mem_init9	:	std_logic_vector(2047 downto 0) := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mixed_port_feed_through_mode	:	string := "UNUSED";
+		operation_mode	:	string;
+		port_a_address_clear	:	string := "UNUSED";
+		port_a_address_width	:	natural := 1;
+		port_a_byte_enable_mask_width	:	natural := 1;
+		port_a_byte_size	:	natural := 8;
+		port_a_data_out_clear	:	string := "UNUSED";
+		port_a_data_out_clock	:	string := "none";
+		port_a_data_width	:	natural := 1;
+		port_a_first_address	:	natural;
+		port_a_first_bit_number	:	natural;
+		port_a_last_address	:	natural;
+		port_a_logical_ram_depth	:	natural := 0;
+		port_a_logical_ram_width	:	natural := 0;
+		port_a_read_during_write_mode	:	string := "new_data_no_nbe_read";
+		port_b_address_clear	:	string := "UNUSED";
+		port_b_address_clock	:	string := "UNUSED";
+		port_b_address_width	:	natural := 1;
+		port_b_byte_enable_clock	:	string := "UNUSED";
+		port_b_byte_enable_mask_width	:	natural := 1;
+		port_b_byte_size	:	natural := 8;
+		port_b_data_in_clock	:	string := "UNUSED";
+		port_b_data_out_clear	:	string := "UNUSED";
+		port_b_data_out_clock	:	string := "none";
+		port_b_data_width	:	natural := 1;
+		port_b_first_address	:	natural := 0;
+		port_b_first_bit_number	:	natural := 0;
+		port_b_last_address	:	natural := 0;
+		port_b_logical_ram_depth	:	natural := 0;
+		port_b_logical_ram_width	:	natural := 0;
+		port_b_read_during_write_mode	:	string := "new_data_no_nbe_read";
+		port_b_read_enable_clock	:	string := "UNUSED";
+		port_b_write_enable_clock	:	string := "UNUSED";
+		power_up_uninitialized	:	string := "false";
+		ram_block_type	:	string;
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_ram_block"
+	);
+	port(
+		clk0	:	in std_logic;
+		clk1	:	in std_logic := '0';
+		clr0	:	in std_logic := '0';
+		clr1	:	in std_logic := '0';
+		dftout	:	out std_logic_vector(8 downto 0);
+		eccstatus	:	out std_logic_vector(2 downto 0);
+		ena0	:	in std_logic := '1';
+		ena1	:	in std_logic := '1';
+		ena2	:	in std_logic := '1';
+		ena3	:	in std_logic := '1';
+		portaaddr	:	in std_logic_vector(port_a_address_width-1 downto 0) := (others => '0');
+		portaaddrstall	:	in std_logic := '0';
+		portabyteenamasks	:	in std_logic_vector(port_a_byte_enable_mask_width-1 downto 0) := (others => '1');
+		portadatain	:	in std_logic_vector(port_a_data_width-1 downto 0) := (others => '0');
+		portadataout	:	out std_logic_vector(port_a_data_width-1 downto 0);
+		portare	:	in std_logic := '1';
+		portawe	:	in std_logic := '0';
+		portbaddr	:	in std_logic_vector(port_b_address_width-1 downto 0) := (others => '0');
+		portbaddrstall	:	in std_logic := '0';
+		portbbyteenamasks	:	in std_logic_vector(port_b_byte_enable_mask_width-1 downto 0) := (others => '1');
+		portbdatain	:	in std_logic_vector(port_b_data_width-1 downto 0) := (others => '0');
+		portbdataout	:	out std_logic_vector(port_b_data_width-1 downto 0);
+		portbre	:	in std_logic := '1';
+		portbwe	:	in std_logic := '0'
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_hssi_tx_pma parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_hssi_tx_pma
+	generic (
+		analog_power	:	string := "1.5V";
+		channel_number	:	natural := 0;
+		channel_type	:	string := "auto";
+		clkin_select	:	natural := 0;
+		clkmux_delay	:	string := "false";
+		common_mode	:	string := "0.6V";
+		dprio_config_mode	:	std_logic_vector(5 downto 0) := "000000";
+		enable_reverse_serial_loopback	:	string := "false";
+		logical_channel_address	:	natural := 0;
+		low_speed_test_select	:	natural := 0;
+		lpm_type	:	string := "stratixiv_hssi_tx_pma";
+		physical_clkin0_mapping	:	string := "x1";
+		physical_clkin1_mapping	:	string := "x4";
+		physical_clkin2_mapping	:	string := "xn_top";
+		physical_clkin3_mapping	:	string := "xn_bottom";
+		physical_clkin4_mapping	:	string := "hypertransport";
+		preemp_pretap	:	natural := 0;
+		preemp_pretap_inv	:	string := "false";
+		preemp_tap_1	:	natural := 0;
+		preemp_tap_1_a	:	natural := 0;
+		preemp_tap_1_b	:	natural := 0;
+		preemp_tap_1_c	:	natural := 0;
+		preemp_tap_2	:	natural := 0;
+		preemp_tap_2_inv	:	string := "false";
+		protocol_hint	:	string := "basic";
+		rx_detect	:	natural := 0;
+		serialization_factor	:	natural := 8;
+		slew_rate	:	string := "low";
+		termination	:	string := "OCT 100 Ohms";
+		use_pclk	:	string := "false";
+		use_pma_direct	:	string := "false";
+		use_rx_detect	:	string := "false";
+		use_ser_double_data_mode	:	string := "false";
+		vod_selection	:	natural := 0;
+		vod_selection_a	:	natural := 0;
+		vod_selection_b	:	natural := 0;
+		vod_selection_c	:	natural := 0;
+		vod_selection_d	:	natural := 0	);
+	port(
+		clockout	:	out std_logic;
+		datain	:	in std_logic_vector(63 downto 0) := (others => '0');
+		datainfull	:	in std_logic_vector(19 downto 0) := (others => '0');
+		dataout	:	out std_logic;
+		detectrxpowerdown	:	in std_logic := '0';
+		dftout	:	out std_logic_vector(5 downto 0);
+		dpriodisable	:	in std_logic := '0';
+		dprioin	:	in std_logic_vector(299 downto 0) := (others => '0');
+		dprioout	:	out std_logic_vector(299 downto 0);
+		extra10gin	:	in std_logic_vector(10 downto 0) := (others => '0');
+		fastrefclk0in	:	in std_logic_vector(1 downto 0) := (others => '0');
+		fastrefclk1in	:	in std_logic_vector(1 downto 0) := (others => '0');
+		fastrefclk2in	:	in std_logic_vector(1 downto 0) := (others => '0');
+		fastrefclk3in	:	in std_logic_vector(1 downto 0) := (others => '0');
+		fastrefclk4in	:	in std_logic_vector(1 downto 0) := (others => '0');
+		forceelecidle	:	in std_logic := '0';
+		pclk	:	in std_logic_vector(4 downto 0) := (others => '0');
+		powerdn	:	in std_logic := '0';
+		refclk0in	:	in std_logic_vector(1 downto 0) := (others => '0');
+		refclk0inpulse	:	in std_logic := '0';
+		refclk1in	:	in std_logic_vector(1 downto 0) := (others => '0');
+		refclk1inpulse	:	in std_logic := '0';
+		refclk2in	:	in std_logic_vector(1 downto 0) := (others => '0');
+		refclk2inpulse	:	in std_logic := '0';
+		refclk3in	:	in std_logic_vector(1 downto 0) := (others => '0');
+		refclk3inpulse	:	in std_logic := '0';
+		refclk4in	:	in std_logic_vector(1 downto 0) := (others => '0');
+		refclk4inpulse	:	in std_logic := '0';
+		revserialfdbk	:	in std_logic := '0';
+		rxdetectclk	:	in std_logic := '0';
+		rxdetecten	:	in std_logic := '0';
+		rxdetectvalidout	:	out std_logic;
+		rxfoundout	:	out std_logic;
+		seriallpbkout	:	out std_logic;
+		txpmareset	:	in std_logic := '0'
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_hssi_cmu parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_hssi_cmu
+	generic (
+		analog_test_bus_enable	:	string := "false";
+		auto_spd_deassert_ph_fifo_rst_count	:	natural := 0;
+		auto_spd_phystatus_notify_count	:	natural := 0;
+		bonded_quad_mode	:	string := "none";
+		bypass_bandgap	:	string := "false";
+		central_test_bus_select	:	natural := 0;
+		clkdiv0_inclk0_logical_to_physical_mapping	:	string := "pll0";
+		clkdiv0_inclk1_logical_to_physical_mapping	:	string := "pll1";
+		clkdiv1_inclk0_logical_to_physical_mapping	:	string := "pll0";
+		clkdiv1_inclk1_logical_to_physical_mapping	:	string := "pll1";
+		clkdiv2_inclk0_logical_to_physical_mapping	:	string := "pll0";
+		clkdiv2_inclk1_logical_to_physical_mapping	:	string := "pll1";
+		clkdiv3_inclk0_logical_to_physical_mapping	:	string := "pll0";
+		clkdiv3_inclk1_logical_to_physical_mapping	:	string := "pll1";
+		clkdiv4_inclk0_logical_to_physical_mapping	:	string := "pll0";
+		clkdiv4_inclk1_logical_to_physical_mapping	:	string := "pll1";
+		clkdiv5_inclk0_logical_to_physical_mapping	:	string := "pll0";
+		clkdiv5_inclk1_logical_to_physical_mapping	:	string := "pll1";
+		cmu_divider0_inclk0_physical_mapping	:	string := "pll0";
+		cmu_divider0_inclk1_physical_mapping	:	string := "pll1";
+		cmu_divider0_inclk2_physical_mapping	:	string := "x4";
+		cmu_divider0_inclk3_physical_mapping	:	string := "xn_t";
+		cmu_divider0_inclk4_physical_mapping	:	string := "xn_b";
+		cmu_divider1_inclk0_physical_mapping	:	string := "pll0";
+		cmu_divider1_inclk1_physical_mapping	:	string := "pll1";
+		cmu_divider1_inclk2_physical_mapping	:	string := "x4";
+		cmu_divider1_inclk3_physical_mapping	:	string := "xn_t";
+		cmu_divider1_inclk4_physical_mapping	:	string := "xn_b";
+		cmu_divider2_inclk0_physical_mapping	:	string := "pll0";
+		cmu_divider2_inclk1_physical_mapping	:	string := "pll1";
+		cmu_divider2_inclk2_physical_mapping	:	string := "x4";
+		cmu_divider2_inclk3_physical_mapping	:	string := "xn_t";
+		cmu_divider2_inclk4_physical_mapping	:	string := "xn_b";
+		cmu_divider3_inclk0_physical_mapping	:	string := "pll0";
+		cmu_divider3_inclk1_physical_mapping	:	string := "pll1";
+		cmu_divider3_inclk2_physical_mapping	:	string := "x4";
+		cmu_divider3_inclk3_physical_mapping	:	string := "xn_t";
+		cmu_divider3_inclk4_physical_mapping	:	string := "xn_b";
+		cmu_divider4_inclk0_physical_mapping	:	string := "pll0";
+		cmu_divider4_inclk1_physical_mapping	:	string := "pll1";
+		cmu_divider4_inclk2_physical_mapping	:	string := "x4";
+		cmu_divider4_inclk3_physical_mapping	:	string := "xn_t";
+		cmu_divider4_inclk4_physical_mapping	:	string := "xn_b";
+		cmu_divider5_inclk0_physical_mapping	:	string := "pll0";
+		cmu_divider5_inclk1_physical_mapping	:	string := "pll1";
+		cmu_divider5_inclk2_physical_mapping	:	string := "x4";
+		cmu_divider5_inclk3_physical_mapping	:	string := "xn_t";
+		cmu_divider5_inclk4_physical_mapping	:	string := "xn_b";
+		cmu_type	:	string := "regular";
+		devaddr	:	natural := 1;
+		dprio_config_mode	:	std_logic_vector(5 downto 0) := "000000";
+		in_xaui_mode	:	string := "false";
+		lpm_type	:	string := "stratixiv_hssi_cmu";
+		num_con_align_chars_for_align	:	natural := 0;
+		num_con_errors_for_align_loss	:	natural := 0;
+		num_con_good_data_for_align_approach	:	natural := 0;
+		offset_all_errors_align	:	string := "false";
+		pipe_auto_speed_nego_enable	:	string := "false";
+		pipe_freq_scale_mode	:	string := "Data width";
+		pll0_inclk0_logical_to_physical_mapping	:	string := "clkrefclk0";
+		pll0_inclk1_logical_to_physical_mapping	:	string := "clkrefclk1";
+		pll0_inclk2_logical_to_physical_mapping	:	string := "iq2";
+		pll0_inclk3_logical_to_physical_mapping	:	string := "iq3";
+		pll0_inclk4_logical_to_physical_mapping	:	string := "iq4";
+		pll0_inclk5_logical_to_physical_mapping	:	string := "iq5";
+		pll0_inclk6_logical_to_physical_mapping	:	string := "iq6";
+		pll0_inclk7_logical_to_physical_mapping	:	string := "iq7";
+		pll0_inclk8_logical_to_physical_mapping	:	string := "pld_clk";
+		pll0_inclk9_logical_to_physical_mapping	:	string := "gpll_clk";
+		pll0_logical_to_physical_mapping	:	natural := 0;
+		pll1_inclk0_logical_to_physical_mapping	:	string := "clkrefclk0";
+		pll1_inclk1_logical_to_physical_mapping	:	string := "clkrefclk1";
+		pll1_inclk2_logical_to_physical_mapping	:	string := "iq2";
+		pll1_inclk3_logical_to_physical_mapping	:	string := "iq3";
+		pll1_inclk4_logical_to_physical_mapping	:	string := "iq4";
+		pll1_inclk5_logical_to_physical_mapping	:	string := "iq5";
+		pll1_inclk6_logical_to_physical_mapping	:	string := "iq6";
+		pll1_inclk7_logical_to_physical_mapping	:	string := "iq7";
+		pll1_inclk8_logical_to_physical_mapping	:	string := "pld_clk";
+		pll1_inclk9_logical_to_physical_mapping	:	string := "gpll_clk";
+		pll1_logical_to_physical_mapping	:	natural := 1;
+		pll2_inclk0_logical_to_physical_mapping	:	string := "clkrefclk0";
+		pll2_inclk1_logical_to_physical_mapping	:	string := "clkrefclk1";
+		pll2_inclk2_logical_to_physical_mapping	:	string := "iq2";
+		pll2_inclk3_logical_to_physical_mapping	:	string := "iq3";
+		pll2_inclk4_logical_to_physical_mapping	:	string := "iq4";
+		pll2_inclk5_logical_to_physical_mapping	:	string := "iq5";
+		pll2_inclk6_logical_to_physical_mapping	:	string := "iq6";
+		pll2_inclk7_logical_to_physical_mapping	:	string := "iq7";
+		pll2_inclk8_logical_to_physical_mapping	:	string := "pld_clk";
+		pll2_inclk9_logical_to_physical_mapping	:	string := "gpll_clk";
+		pll2_logical_to_physical_mapping	:	natural := 2;
+		pll3_inclk0_logical_to_physical_mapping	:	string := "clkrefclk0";
+		pll3_inclk1_logical_to_physical_mapping	:	string := "clkrefclk1";
+		pll3_inclk2_logical_to_physical_mapping	:	string := "iq2";
+		pll3_inclk3_logical_to_physical_mapping	:	string := "iq3";
+		pll3_inclk4_logical_to_physical_mapping	:	string := "iq4";
+		pll3_inclk5_logical_to_physical_mapping	:	string := "iq5";
+		pll3_inclk6_logical_to_physical_mapping	:	string := "iq6";
+		pll3_inclk7_logical_to_physical_mapping	:	string := "iq7";
+		pll3_inclk8_logical_to_physical_mapping	:	string := "pld_clk";
+		pll3_inclk9_logical_to_physical_mapping	:	string := "gpll_clk";
+		pll3_logical_to_physical_mapping	:	natural := 3;
+		pll4_inclk0_logical_to_physical_mapping	:	string := "clkrefclk0";
+		pll4_inclk1_logical_to_physical_mapping	:	string := "clkrefclk1";
+		pll4_inclk2_logical_to_physical_mapping	:	string := "iq2";
+		pll4_inclk3_logical_to_physical_mapping	:	string := "iq3";
+		pll4_inclk4_logical_to_physical_mapping	:	string := "iq4";
+		pll4_inclk5_logical_to_physical_mapping	:	string := "iq5";
+		pll4_inclk6_logical_to_physical_mapping	:	string := "iq6";
+		pll4_inclk7_logical_to_physical_mapping	:	string := "iq7";
+		pll4_inclk8_logical_to_physical_mapping	:	string := "pld_clk";
+		pll4_inclk9_logical_to_physical_mapping	:	string := "gpll_clk";
+		pll4_logical_to_physical_mapping	:	natural := 4;
+		pll5_inclk0_logical_to_physical_mapping	:	string := "clkrefclk0";
+		pll5_inclk1_logical_to_physical_mapping	:	string := "clkrefclk1";
+		pll5_inclk2_logical_to_physical_mapping	:	string := "iq2";
+		pll5_inclk3_logical_to_physical_mapping	:	string := "iq3";
+		pll5_inclk4_logical_to_physical_mapping	:	string := "iq4";
+		pll5_inclk5_logical_to_physical_mapping	:	string := "iq5";
+		pll5_inclk6_logical_to_physical_mapping	:	string := "iq6";
+		pll5_inclk7_logical_to_physical_mapping	:	string := "iq7";
+		pll5_inclk8_logical_to_physical_mapping	:	string := "pld_clk";
+		pll5_inclk9_logical_to_physical_mapping	:	string := "gpll_clk";
+		pll5_logical_to_physical_mapping	:	natural := 5;
+		pma_done_count	:	natural := 0;
+		portaddr	:	natural := 1;
+		refclk_divider0_logical_to_physical_mapping	:	natural := 0;
+		refclk_divider1_logical_to_physical_mapping	:	natural := 1;
+		rx0_auto_spd_self_switch_enable	:	string := "false";
+		rx0_channel_bonding	:	string := "none";
+		rx0_clk1_mux_select	:	string := "recovered clock";
+		rx0_clk2_mux_select	:	string := "recovered clock";
+		rx0_clk_pd_enable	:	string := "false";
+		rx0_logical_to_physical_mapping	:	natural := 0;
+		rx0_ph_fifo_reg_mode	:	string := "false";
+		rx0_ph_fifo_reset_enable	:	string := "false";
+		rx0_ph_fifo_user_ctrl_enable	:	string := "false";
+		rx0_phfifo_wait_cnt	:	natural := 0;
+		rx0_rd_clk_mux_select	:	string := "int clock";
+		rx0_recovered_clk_mux_select	:	string := "recovered clock";
+		rx0_reset_clock_output_during_digital_reset	:	string := "false";
+		rx0_use_double_data_mode	:	string := "false";
+		rx1_logical_to_physical_mapping	:	natural := 1;
+		rx2_logical_to_physical_mapping	:	natural := 2;
+		rx3_logical_to_physical_mapping	:	natural := 3;
+		rx4_logical_to_physical_mapping	:	natural := 4;
+		rx5_logical_to_physical_mapping	:	natural := 5;
+		rx_master_direction	:	string := "none";
+		rx_xaui_sm_backward_compatible_enable	:	string := "false";
+		test_mode	:	string := "false";
+		tx0_auto_spd_self_switch_enable	:	string := "false";
+		tx0_channel_bonding	:	string := "none";
+		tx0_clk_pd_enable	:	string := "false";
+		tx0_logical_to_physical_mapping	:	natural := 0;
+		tx0_ph_fifo_reg_mode	:	string := "false";
+		tx0_ph_fifo_reset_enable	:	string := "false";
+		tx0_ph_fifo_user_ctrl_enable	:	string := "false";
+		tx0_pma_inclk0_logical_to_physical_mapping	:	string := "x1";
+		tx0_pma_inclk1_logical_to_physical_mapping	:	string := "x4";
+		tx0_pma_inclk2_logical_to_physical_mapping	:	string := "xn_top";
+		tx0_pma_inclk3_logical_to_physical_mapping	:	string := "xn_bottom";
+		tx0_pma_inclk4_logical_to_physical_mapping	:	string := "hypertransport";
+		tx0_rd_clk_mux_select	:	string := "local";
+		tx0_reset_clock_output_during_digital_reset	:	string := "false";
+		tx0_use_double_data_mode	:	string := "false";
+		tx0_wr_clk_mux_select	:	string := "int_clk";
+		tx1_logical_to_physical_mapping	:	natural := 1;
+		tx1_pma_inclk0_logical_to_physical_mapping	:	string := "x1";
+		tx1_pma_inclk1_logical_to_physical_mapping	:	string := "x4";
+		tx1_pma_inclk2_logical_to_physical_mapping	:	string := "xn_top";
+		tx1_pma_inclk3_logical_to_physical_mapping	:	string := "xn_bottom";
+		tx1_pma_inclk4_logical_to_physical_mapping	:	string := "hypertransport";
+		tx2_logical_to_physical_mapping	:	natural := 2;
+		tx2_pma_inclk0_logical_to_physical_mapping	:	string := "x1";
+		tx2_pma_inclk1_logical_to_physical_mapping	:	string := "x4";
+		tx2_pma_inclk2_logical_to_physical_mapping	:	string := "xn_top";
+		tx2_pma_inclk3_logical_to_physical_mapping	:	string := "xn_bottom";
+		tx2_pma_inclk4_logical_to_physical_mapping	:	string := "hypertransport";
+		tx3_logical_to_physical_mapping	:	natural := 3;
+		tx3_pma_inclk0_logical_to_physical_mapping	:	string := "x1";
+		tx3_pma_inclk1_logical_to_physical_mapping	:	string := "x4";
+		tx3_pma_inclk2_logical_to_physical_mapping	:	string := "xn_top";
+		tx3_pma_inclk3_logical_to_physical_mapping	:	string := "xn_bottom";
+		tx3_pma_inclk4_logical_to_physical_mapping	:	string := "hypertransport";
+		tx4_logical_to_physical_mapping	:	natural := 4;
+		tx4_pma_inclk0_logical_to_physical_mapping	:	string := "x1";
+		tx4_pma_inclk1_logical_to_physical_mapping	:	string := "x4";
+		tx4_pma_inclk2_logical_to_physical_mapping	:	string := "xn_top";
+		tx4_pma_inclk3_logical_to_physical_mapping	:	string := "xn_bottom";
+		tx4_pma_inclk4_logical_to_physical_mapping	:	string := "hypertransport";
+		tx5_logical_to_physical_mapping	:	natural := 5;
+		tx5_pma_inclk0_logical_to_physical_mapping	:	string := "x1";
+		tx5_pma_inclk1_logical_to_physical_mapping	:	string := "x4";
+		tx5_pma_inclk2_logical_to_physical_mapping	:	string := "xn_top";
+		tx5_pma_inclk3_logical_to_physical_mapping	:	string := "xn_bottom";
+		tx5_pma_inclk4_logical_to_physical_mapping	:	string := "hypertransport";
+		tx_master_direction	:	string := "none";
+		tx_pll0_used_as_rx_cdr	:	string := "false";
+		tx_pll1_used_as_rx_cdr	:	string := "false";
+		tx_xaui_sm_backward_compatible_enable	:	string := "false";
+		use_deskew_fifo	:	string := "false";
+		vcceh_voltage	:	string := "Auto"	);
+	port(
+		adet	:	in std_logic_vector(3 downto 0) := (others => '0');
+		alignstatus	:	out std_logic;
+		autospdx4configsel	:	out std_logic;
+		autospdx4rateswitchout	:	out std_logic;
+		autospdx4spdchg	:	out std_logic;
+		clkdivpowerdn	:	out std_logic_vector(1 downto 0);
+		cmudividerdprioin	:	in std_logic_vector(599 downto 0) := (others => '0');
+		cmudividerdprioout	:	out std_logic_vector(599 downto 0);
+		cmuplldprioin	:	in std_logic_vector(1799 downto 0) := (others => '0');
+		cmuplldprioout	:	out std_logic_vector(1799 downto 0);
+		digitaltestout	:	out std_logic_vector(9 downto 0);
+		dpclk	:	in std_logic := '0';
+		dpriodisable	:	in std_logic := '1';
+		dpriodisableout	:	out std_logic;
+		dprioin	:	in std_logic := '0';
+		dprioload	:	in std_logic := '0';
+		dpriooe	:	out std_logic;
+		dprioout	:	out std_logic;
+		enabledeskew	:	out std_logic;
+		extra10gin	:	in std_logic_vector(6 downto 0) := (others => '0');
+		extra10gout	:	out std_logic;
+		fiforesetrd	:	out std_logic;
+		fixedclk	:	in std_logic_vector(5 downto 0) := (others => '0');
+		lccmurtestbussel	:	in std_logic_vector(2 downto 0) := (others => '0');
+		lccmutestbus	:	out std_logic_vector(7 downto 0);
+		nonuserfromcal	:	in std_logic := '0';
+		phfifiox4ptrsreset	:	out std_logic;
+		pllpowerdn	:	out std_logic_vector(1 downto 0);
+		pllresetout	:	out std_logic_vector(1 downto 0);
+		pmacramtest	:	in std_logic := '0';
+		quadreset	:	in std_logic := '0';
+		quadresetout	:	out std_logic;
+		rateswitch	:	in std_logic := '0';
+		rateswitchdonein	:	in std_logic := '0';
+		rdalign	:	in std_logic_vector(3 downto 0) := (others => '0');
+		rdenablesync	:	in std_logic := '1';
+		recovclk	:	in std_logic := '0';
+		refclkdividerdprioin	:	in std_logic_vector(1 downto 0) := (others => '0');
+		refclkdividerdprioout	:	out std_logic_vector(1 downto 0);
+		rxadcepowerdown	:	out std_logic_vector(3 downto 0);
+		rxadceresetout	:	out std_logic_vector(3 downto 0);
+		rxanalogreset	:	in std_logic_vector(5 downto 0) := (others => '0');
+		rxanalogresetout	:	out std_logic_vector(5 downto 0);
+		rxclk	:	in std_logic := '0';
+		rxcoreclk	:	in std_logic := '0';
+		rxcrupowerdown	:	out std_logic_vector(5 downto 0);
+		rxcruresetout	:	out std_logic_vector(5 downto 0);
+		rxctrl	:	in std_logic_vector(3 downto 0) := (others => '0');
+		rxctrlout	:	out std_logic_vector(3 downto 0);
+		rxdatain	:	in std_logic_vector(31 downto 0) := (others => '0');
+		rxdataout	:	out std_logic_vector(31 downto 0);
+		rxdatavalid	:	in std_logic_vector(3 downto 0) := (others => '0');
+		rxdigitalreset	:	in std_logic_vector(3 downto 0) := (others => '0');
+		rxdigitalresetout	:	out std_logic_vector(3 downto 0);
+		rxibpowerdown	:	out std_logic_vector(5 downto 0);
+		rxpcsdprioin	:	in std_logic_vector(1599 downto 0) := (others => '0');
+		rxpcsdprioout	:	out std_logic_vector(1599 downto 0);
+		rxphfifordenable	:	in std_logic := '1';
+		rxphfiforeset	:	in std_logic := '0';
+		rxphfifowrdisable	:	in std_logic := '0';
+		rxphfifox4byteselout	:	out std_logic;
+		rxphfifox4rdenableout	:	out std_logic;
+		rxphfifox4wrclkout	:	out std_logic;
+		rxphfifox4wrenableout	:	out std_logic;
+		rxpmadprioin	:	in std_logic_vector(1799 downto 0) := (others => '0');
+		rxpmadprioout	:	out std_logic_vector(1799 downto 0);
+		rxpowerdown	:	in std_logic_vector(5 downto 0) := (others => '0');
+		rxrunningdisp	:	in std_logic_vector(3 downto 0) := (others => '0');
+		scanclk	:	in std_logic := '0';
+		scanin	:	in std_logic_vector(22 downto 0) := (others => '0');
+		scanmode	:	in std_logic := '0';
+		scanout	:	out std_logic_vector(22 downto 0);
+		scanshift	:	in std_logic := '0';
+		syncstatus	:	in std_logic_vector(3 downto 0) := (others => '0');
+		testin	:	in std_logic_vector(9999 downto 0) := (others => '0');
+		testout	:	out std_logic_vector(6999 downto 0);
+		txanalogresetout	:	out std_logic_vector(5 downto 0);
+		txclk	:	in std_logic := '0';
+		txcoreclk	:	in std_logic := '0';
+		txctrl	:	in std_logic_vector(3 downto 0) := (others => '0');
+		txctrlout	:	out std_logic_vector(3 downto 0);
+		txdatain	:	in std_logic_vector(31 downto 0) := (others => '0');
+		txdataout	:	out std_logic_vector(31 downto 0);
+		txdetectrxpowerdown	:	out std_logic_vector(5 downto 0);
+		txdigitalreset	:	in std_logic_vector(3 downto 0) := (others => '0');
+		txdigitalresetout	:	out std_logic_vector(3 downto 0);
+		txdividerpowerdown	:	out std_logic_vector(5 downto 0);
+		txobpowerdown	:	out std_logic_vector(5 downto 0);
+		txpcsdprioin	:	in std_logic_vector(599 downto 0) := (others => '0');
+		txpcsdprioout	:	out std_logic_vector(599 downto 0);
+		txphfiforddisable	:	in std_logic := '0';
+		txphfiforeset	:	in std_logic := '0';
+		txphfifowrenable	:	in std_logic := '0';
+		txphfifox4byteselout	:	out std_logic;
+		txphfifox4rdclkout	:	out std_logic;
+		txphfifox4rdenableout	:	out std_logic;
+		txphfifox4wrenableout	:	out std_logic;
+		txpllreset	:	in std_logic_vector(1 downto 0) := (others => '0');
+		txpmadprioin	:	in std_logic_vector(1799 downto 0) := (others => '0');
+		txpmadprioout	:	out std_logic_vector(1799 downto 0)
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_termination parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_termination
+	generic (
+		allow_serial_data_from_core	:	string := "false";
+		bypass_enser_logic	:	string := "false";
+		bypass_rt_calclk	:	string := "false";
+		clock_divider_enable	:	string := "false";
+		divide_intosc_by	:	natural := 2;
+		enable_calclk_divider	:	string := "false";
+		enable_loopback	:	string := "false";
+		enable_parallel_termination	:	string := "false";
+		enable_pwrupmode_enser_for_usrmode	:	string := "false";
+		enable_rt_scan_mode	:	string := "false";
+		enable_rt_sm_loopback	:	string := "false";
+		force_rtcalen_for_pllbiasen	:	string := "false";
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_termination";
+		power_down	:	string := "true";
+		runtime_control	:	string := "false";
+		select_vrefh_values	:	natural := 0;
+		select_vrefl_values	:	natural := 0;
+		test_mode	:	string := "false";
+		use_usrmode_clear_for_configmode	:	string := "false"	);
+	port(
+		devclrn	:	in std_logic := '1';
+		devpor	:	in std_logic := '1';
+		incrdn	:	out std_logic;
+		incrup	:	out std_logic;
+		otherserializerenable	:	in std_logic_vector(8 downto 0) := (others => '0');
+		rdn	:	in std_logic := '0';
+		rup	:	in std_logic := '0';
+		scanen	:	in std_logic := '0';
+		scanin	:	in std_logic := '0';
+		scanout	:	out std_logic;
+		serializerenable	:	in std_logic := '0';
+		serializerenableout	:	out std_logic;
+		shiftregisterprobe	:	out std_logic;
+		terminationclear	:	in std_logic := '0';
+		terminationclock	:	in std_logic := '0';
+		terminationcontrol	:	out std_logic;
+		terminationcontrolin	:	in std_logic := '0';
+		terminationcontrolprobe	:	out std_logic;
+		terminationenable	:	in std_logic := '1'
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_clkena parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_clkena
+	generic (
+		clock_type	:	string := "Auto";
+		ena_register_mode	:	string := "falling edge";
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_clkena"	);
+	port(
+		devclrn	:	in std_logic := '1';
+		devpor	:	in std_logic := '1';
+		ena	:	in std_logic := '1';
+		enaout	:	out std_logic;
+		inclk	:	in std_logic := '1';
+		observableena	:	out std_logic_vector(1 downto 0);
+		outclk	:	out std_logic
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_io_ibuf parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_io_ibuf
+	generic (
+		bus_hold	:	string := "false";
+		differential_mode	:	string := "false";
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_io_ibuf";
+		simulate_z_as	:	string := "Z"	);
+	port(
+		dynamicterminationcontrol	:	in std_logic := '0';
+		i	:	in std_logic := '0';
+		ibar	:	in std_logic := '0';
+		o	:	out std_logic
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_mlab_cell parameterized megafunction component declaration
+-- Generated with 'clearbox' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_mlab_cell
+	generic (
+		address_width	:	natural := 1;
+		byte_enable_mask_width	:	natural := 1;
+		data_width	:	natural := 1;
+		first_address	:	natural;
+		first_bit_number	:	natural;
+		init_file	:	string := "UNUSED";
+		last_address	:	natural;
+		logical_ram_depth	:	natural := 0;
+		logical_ram_name	:	string;
+		logical_ram_width	:	natural := 0;
+		mem_init0	:	std_logic_vector(639 downto 0) := "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+		mixed_port_feed_through_mode	:	string := "dont_care";
+		lpm_type	:	string := "stratixiv_mlab_cell"
+	);
+	port(
+		clk0	:	in std_logic := '0';
+		ena0	:	in std_logic := '1';
+		portaaddr	:	in std_logic_vector(address_width-1 downto 0) := (others => '0');
+		portabyteenamasks	:	in std_logic_vector(byte_enable_mask_width-1 downto 0) := (others => '1');
+		portadatain	:	in std_logic_vector(data_width-1 downto 0) := (others => '0');
+		portbaddr	:	in std_logic_vector(address_width-1 downto 0) := (others => '0');
+		portbdataout	:	out std_logic_vector(data_width-1 downto 0)
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_termination_logic parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_termination_logic
+	generic (
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_termination_logic";
+		test_mode	:	string := "false"	);
+	port(
+		devclrn	:	in std_logic := '1';
+		devpor	:	in std_logic := '1';
+		parallelloadenable	:	in std_logic := '0';
+		parallelterminationcontrol	:	out std_logic_vector(13 downto 0);
+		serialloadenable	:	in std_logic := '0';
+		seriesterminationcontrol	:	out std_logic_vector(13 downto 0);
+		terminationclock	:	in std_logic := '0';
+		terminationdata	:	in std_logic := '0'
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_hssi_clock_divider parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_hssi_clock_divider
+	generic (
+		channel_num	:	natural := 0;
+		coreclk_out_gated_by_quad_reset	:	string := "false";
+		data_rate	:	natural := 0;
+		divide_by	:	natural := 4;
+		divider_type	:	string := "CHANNEL_REGULAR";
+		dprio_config_mode	:	std_logic_vector(5 downto 0) := "000000";
+		effective_data_rate	:	string := "0 ps";
+		enable_dynamic_divider	:	string := "false";
+		enable_refclk_out	:	string := "false";
+		inclk_select	:	natural := 0;
+		logical_channel_address	:	natural := 0;
+		lpm_type	:	string := "stratixiv_hssi_clock_divider";
+		pre_divide_by	:	natural := 1;
+		rate_switch_base_clk_in_select	:	natural := 0;
+		rate_switch_done_in_select	:	natural := 0;
+		refclk_divide_by	:	natural := 0;
+		refclk_multiply_by	:	natural := 0;
+		refclkin_select	:	natural := 0;
+		select_local_rate_switch_base_clock	:	string := "false";
+		select_local_rate_switch_done	:	string := "false";
+		select_local_refclk	:	string := "false";
+		select_refclk_dig	:	string := "false";
+		sim_analogfastrefclkout_phase_shift	:	natural := 0;
+		sim_analogrefclkout_phase_shift	:	natural := 0;
+		sim_coreclkout_phase_shift	:	natural := 0;
+		sim_refclkout_phase_shift	:	natural := 0;
+		use_coreclk_out_post_divider	:	string := "false";
+		use_refclk_post_divider	:	string := "false";
+		use_vco_bypass	:	string := "false"	);
+	port(
+		analogfastrefclkout	:	out std_logic_vector(1 downto 0);
+		analogfastrefclkoutshifted	:	out std_logic_vector(1 downto 0);
+		analogrefclkout	:	out std_logic_vector(1 downto 0);
+		analogrefclkoutshifted	:	out std_logic_vector(1 downto 0);
+		analogrefclkpulse	:	out std_logic;
+		analogrefclkpulseshifted	:	out std_logic;
+		clk0in	:	in std_logic_vector(3 downto 0) := (others => '0');
+		clk1in	:	in std_logic_vector(3 downto 0) := (others => '0');
+		coreclkout	:	out std_logic;
+		dpriodisable	:	in std_logic := '0';
+		dprioin	:	in std_logic_vector(99 downto 0) := (others => '0');
+		dprioout	:	out std_logic_vector(99 downto 0);
+		powerdn	:	in std_logic := '0';
+		quadreset	:	in std_logic := '0';
+		rateswitch	:	in std_logic := '0';
+		rateswitchbaseclkin	:	in std_logic_vector(1 downto 0) := (others => '0');
+		rateswitchbaseclock	:	out std_logic;
+		rateswitchdone	:	out std_logic;
+		rateswitchdonein	:	in std_logic_vector(1 downto 0) := (others => '0');
+		rateswitchout	:	out std_logic;
+		refclkdig	:	in std_logic := '0';
+		refclkin	:	in std_logic_vector(1 downto 0) := (others => '0');
+		refclkout	:	out std_logic;
+		vcobypassin	:	in std_logic := '0'
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_ddio_out parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_ddio_out
+	generic (
+		async_mode	:	string := "none";
+		half_rate_mode	:	string := "FALSE";
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_ddio_out";
+		power_up	:	string := "low";
+		sync_mode	:	string := "none";
+		use_new_clocking_model	:	string := "FALSE"	);
+	port(
+		areset	:	in std_logic := '0';
+		clk	:	in std_logic := '0';
+		clkhi	:	in std_logic := '0';
+		clklo	:	in std_logic := '0';
+		datainhi	:	in std_logic := '0';
+		datainlo	:	in std_logic := '0';
+		dataout	:	out std_logic;
+		devclrn	:	in std_logic := '1';
+		devpor	:	in std_logic := '1';
+		dffhi	:	out std_logic_vector(1 downto 0);
+		dfflo	:	out std_logic;
+		ena	:	in std_logic := '1';
+		muxsel	:	in std_logic := '0';
+		sreset	:	in std_logic := '0'
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_hssi_pcie_hip parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_hssi_pcie_hip
+	generic (
+		advanced_errors	:	string := "false";
+		allow_rx_valid_empty	:	string := "false";
+		bar0_64bit_mem_space	:	string := "true";
+		bar0_io_space	:	string := "false";
+		bar0_prefetchable	:	string := "true";
+		bar0_size_mask	:	natural := 32;
+		bar1_64bit_mem_space	:	string := "false";
+		bar1_io_space	:	string := "false";
+		bar1_prefetchable	:	string := "false";
+		bar1_size_mask	:	natural := 4;
+		bar2_64bit_mem_space	:	string := "false";
+		bar2_io_space	:	string := "false";
+		bar2_prefetchable	:	string := "false";
+		bar2_size_mask	:	natural := 4;
+		bar3_64bit_mem_space	:	string := "false";
+		bar3_io_space	:	string := "false";
+		bar3_prefetchable	:	string := "false";
+		bar3_size_mask	:	natural := 4;
+		bar4_64bit_mem_space	:	string := "false";
+		bar4_io_space	:	string := "false";
+		bar4_prefetchable	:	string := "false";
+		bar4_size_mask	:	natural := 4;
+		bar5_64bit_mem_space	:	string := "false";
+		bar5_io_space	:	string := "false";
+		bar5_prefetchable	:	string := "false";
+		bar5_size_mask	:	natural := 4;
+		bar_io_window_size	:	string := "NONE";
+		bar_prefetchable	:	natural := 0;
+		base_address	:	natural := 0;
+		bridge_port_ssid_support	:	string := "false";
+		bridge_port_vga_enable	:	string := "false";
+		bypass_cdc	:	string := "false";
+		bypass_tl	:	string := "false";
+		class_code	:	natural := 16711680;
+		completion_timeout	:	string := "ABCD";
+		core_clk_divider	:	natural := 1;
+		core_clk_source	:	string := "PLL_FIXED_CLK";
+		credit_buffer_allocation_aux	:	string := "BALANCED";
+		deemphasis_enable	:	string := "false";
+		device_address	:	natural := 0;
+		device_id	:	natural := 1;
+		device_number	:	natural := 0;
+		diffclock_nfts_count	:	natural := 128;
+		disable_async_l2_logic	:	string := "false";
+		disable_cdc_clk_ppm	:	string := "true";
+		disable_link_x2_support	:	string := "false";
+		disable_snoop_packet	:	std_logic_vector(7 downto 0) := "00000000";
+		dll_active_report_support	:	string := "false";
+		ei_delay_powerdown_count	:	natural := 10;
+		eie_before_nfts_count	:	natural := 4;
+		enable_adapter_half_rate_mode	:	string := "false";
+		enable_ch0_pclk_out	:	string := "false";
+		enable_completion_timeout_disable	:	string := "true";
+		enable_coreclk_out_half_rate	:	string := "false";
+		enable_ecrc_check	:	string := "false";
+		enable_ecrc_gen	:	string := "false";
+		enable_function_msi_support	:	string := "true";
+		enable_function_msix_support	:	string := "false";
+		enable_gen2_core	:	string := "true";
+		enable_hip_x1_loopback	:	string := "false";
+		enable_l1_aspm	:	string := "false";
+		enable_msi_64bit_addressing	:	string := "true";
+		enable_msi_masking	:	string := "false";
+		enable_rcv0buf_a_we	:	string := "true";
+		enable_rcv0buf_b_re	:	string := "true";
+		enable_rcv0buf_output_regs	:	string := "false";
+		enable_rcv1buf_a_we	:	string := "true";
+		enable_rcv1buf_b_re	:	string := "true";
+		enable_rcv1buf_output_regs	:	string := "false";
+		enable_retrybuf_a_we	:	string := "true";
+		enable_retrybuf_b_re	:	string := "true";
+		enable_retrybuf_ecc	:	string := "false";
+		enable_retrybuf_output_regs	:	string := "false";
+		enable_retrybuf_x8_clk_stealing	:	natural := 0;
+		enable_rx0buf_ecc	:	string := "false";
+		enable_rx0buf_x8_clk_stealing	:	natural := 0;
+		enable_rx1buf_ecc	:	string := "false";
+		enable_rx1buf_x8_clk_stealing	:	natural := 0;
+		enable_rx_buffer_checking	:	string := "false";
+		enable_rx_ei_l0s_exit_refined	:	string := "false";
+		enable_rx_reordering	:	string := "true";
+		enable_slot_register	:	string := "false";
+		endpoint_l0_latency	:	natural := 0;
+		endpoint_l1_latency	:	natural := 0;
+		expansion_base_address_register	:	natural := 0;
+		extend_tag_field	:	string := "false";
+		fc_init_timer	:	natural := 1024;
+		flow_control_timeout_count	:	natural := 200;
+		flow_control_update_count	:	natural := 30;
+		gen2_diffclock_nfts_count	:	natural := 255;
+		gen2_lane_rate_mode	:	string := "false";
+		gen2_sameclock_nfts_count	:	natural := 255;
+		hot_plug_support	:	std_logic_vector(6 downto 0) := "0000000";
+		iei_logic	:	string := "IEI_IIIS";
+		indicator	:	natural := 7;
+		l01_entry_latency	:	natural := 31;
+		l0_exit_latency_diffclock	:	natural := 6;
+		l0_exit_latency_sameclock	:	natural := 6;
+		l1_exit_latency_diffclock	:	natural := 0;
+		l1_exit_latency_sameclock	:	natural := 0;
+		lane_mask	:	std_logic_vector(7 downto 0) := "11110000";
+		low_priority_vc	:	natural := 0;
+		lpm_type	:	string := "stratixiv_hssi_pcie_hip";
+		max_link_width	:	natural := 4;
+		max_payload_size	:	natural := 2;
+		maximum_current	:	natural := 0;
+		millisecond_cycle_count	:	natural := 0;
+		mram_bist_settings	:	string := "UNUSED";
+		msi_function_count	:	natural := 2;
+		msix_pba_bir	:	natural := 0;
+		msix_pba_offset	:	natural := 0;
+		msix_table_bir	:	natural := 0;
+		msix_table_offset	:	natural := 0;
+		msix_table_size	:	natural := 0;
+		no_command_completed	:	string := "true";
+		no_soft_reset	:	string := "false";
+		pcie_mode	:	string := "SHARED_MODE";
+		pme_state_enable	:	std_logic_vector(4 downto 0) := "00000";
+		port_address	:	natural := 0;
+		port_link_number	:	natural := 1;
+		register_pipe_signals	:	string := "false";
+		retry_buffer_last_active_address	:	natural := 2047;
+		retry_buffer_memory_settings	:	natural := 0;
+		revision_id	:	natural := 1;
+		rx0_adap_fifo_full_value	:	natural := 9;
+		rx1_adap_fifo_full_value	:	natural := 9;
+		rx_cdc_full_value	:	natural := 12;
+		rx_idl_os_count	:	natural := 0;
+		rx_ptr0_nonposted_dpram_max	:	natural := 0;
+		rx_ptr0_nonposted_dpram_min	:	natural := 0;
+		rx_ptr0_posted_dpram_max	:	natural := 0;
+		rx_ptr0_posted_dpram_min	:	natural := 0;
+		rx_ptr1_nonposted_dpram_max	:	natural := 0;
+		rx_ptr1_nonposted_dpram_min	:	natural := 0;
+		rx_ptr1_posted_dpram_max	:	natural := 0;
+		rx_ptr1_posted_dpram_min	:	natural := 0;
+		sameclock_nfts_count	:	natural := 128;
+		single_rx_detect	:	natural := 0;
+		skp_os_schedule_count	:	natural := 0;
+		slot_number	:	natural := 0;
+		slot_power_limit	:	natural := 0;
+		slot_power_scale	:	natural := 0;
+		ssid	:	natural := 0;
+		ssvid	:	natural := 0;
+		subsystem_device_id	:	natural := 1;
+		subsystem_vendor_id	:	natural := 4466;
+		surprise_down_error_support	:	string := "false";
+		tx0_adap_fifo_full_value	:	natural := 11;
+		tx1_adap_fifo_full_value	:	natural := 11;
+		tx_cdc_full_value	:	natural := 12;
+		tx_cdc_stop_dummy_full_value	:	natural := 11;
+		use_crc_forwarding	:	string := "false";
+		vc0_clk_enable	:	string := "true";
+		vc0_rx_buffer_memory_settings	:	natural := 0;
+		vc0_rx_flow_ctrl_compl_data	:	natural := 448;
+		vc0_rx_flow_ctrl_compl_header	:	natural := 112;
+		vc0_rx_flow_ctrl_nonposted_data	:	natural := 0;
+		vc0_rx_flow_ctrl_nonposted_header	:	natural := 54;
+		vc0_rx_flow_ctrl_posted_data	:	natural := 360;
+		vc0_rx_flow_ctrl_posted_header	:	natural := 50;
+		vc1_clk_enable	:	string := "false";
+		vc1_rx_buffer_memory_settings	:	natural := 0;
+		vc1_rx_flow_ctrl_compl_data	:	natural := 448;
+		vc1_rx_flow_ctrl_compl_header	:	natural := 112;
+		vc1_rx_flow_ctrl_nonposted_data	:	natural := 0;
+		vc1_rx_flow_ctrl_nonposted_header	:	natural := 54;
+		vc1_rx_flow_ctrl_posted_data	:	natural := 360;
+		vc1_rx_flow_ctrl_posted_header	:	natural := 50;
+		vc_arbitration	:	natural := 1;
+		vc_enable	:	std_logic_vector(6 downto 0) := "0000000";
+		vendor_id	:	natural := 4466	);
+	port(
+		bistdonearcv0	:	out std_logic;
+		bistdonearcv1	:	out std_logic;
+		bistdonearpl	:	out std_logic;
+		bistdonebrcv0	:	out std_logic;
+		bistdonebrcv1	:	out std_logic;
+		bistdonebrpl	:	out std_logic;
+		bistenrcv0	:	in std_logic := '0';
+		bistenrcv1	:	in std_logic := '0';
+		bistenrpl	:	in std_logic := '0';
+		bistpassrcv0	:	out std_logic;
+		bistpassrcv1	:	out std_logic;
+		bistpassrpl	:	out std_logic;
+		bistscanen	:	in std_logic := '0';
+		bistscanin	:	in std_logic := '0';
+		bistscanoutrcv0	:	out std_logic;
+		bistscanoutrcv1	:	out std_logic;
+		bistscanoutrpl	:	out std_logic;
+		bisttesten	:	in std_logic := '0';
+		clrrxpath	:	out std_logic;
+		coreclkin	:	in std_logic := '0';
+		coreclkout	:	out std_logic;
+		corecrst	:	in std_logic := '0';
+		corepor	:	in std_logic := '0';
+		corerst	:	in std_logic := '0';
+		coresrst	:	in std_logic := '0';
+		cplerr	:	in std_logic_vector(6 downto 0) := (others => '0');
+		cplpending	:	in std_logic := '0';
+		dataenablen	:	out std_logic;
+		dbgpipex1rx	:	in std_logic_vector(14 downto 0) := (others => '0');
+		derrcorextrcv0	:	out std_logic;
+		derrcorextrcv1	:	out std_logic;
+		derrcorextrpl	:	out std_logic;
+		derrrpl	:	out std_logic;
+		dlackphypm	:	out std_logic_vector(1 downto 0);
+		dlackrequpfc	:	out std_logic;
+		dlacksndupfc	:	out std_logic;
+		dlaspmcr0	:	in std_logic := '0';
+		dlcomclkreg	:	in std_logic := '0';
+		dlctrllink2	:	in std_logic_vector(12 downto 0) := (others => '0');
+		dlcurrentdeemp	:	out std_logic;
+		dlcurrentspeed	:	out std_logic_vector(1 downto 0);
+		dldataupfc	:	in std_logic_vector(11 downto 0) := (others => '0');
+		dldllreq	:	out std_logic;
+		dlerrdll	:	out std_logic_vector(4 downto 0);
+		dlerrphy	:	out std_logic;
+		dlhdrupfc	:	in std_logic_vector(7 downto 0) := (others => '0');
+		dlinhdllp	:	in std_logic := '1';
+		dllinkautobdwstatus	:	out std_logic;
+		dllinkbdwmngstatus	:	out std_logic;
+		dlltssm	:	out std_logic_vector(4 downto 0);
+		dlmaxploaddcr	:	in std_logic_vector(2 downto 0) := (others => '0');
+		dlreqphycfg	:	in std_logic_vector(3 downto 0) := (others => '0');
+		dlreqphypm	:	in std_logic_vector(3 downto 0) := (others => '0');
+		dlrequpfc	:	in std_logic := '0';
+		dlreqwake	:	in std_logic := '0';
+		dlrpbufemp	:	out std_logic;
+		dlrstentercompbit	:	out std_logic;
+		dlrsttxmarginfield	:	out std_logic;
+		dlrxecrcchk	:	in std_logic := '0';
+		dlrxtyppm	:	out std_logic_vector(2 downto 0);
+		dlrxvalpm	:	out std_logic;
+		dlsndupfc	:	in std_logic := '0';
+		dltxackpm	:	out std_logic;
+		dltxcfgextsy	:	in std_logic := '0';
+		dltxreqpm	:	in std_logic := '0';
+		dltxtyppm	:	in std_logic_vector(2 downto 0) := (others => '0');
+		dltypupfc	:	in std_logic_vector(1 downto 0) := (others => '0');
+		dlup	:	out std_logic;
+		dlupexit	:	out std_logic;
+		dlvcctrl	:	in std_logic_vector(7 downto 0) := (others => '0');
+		dlvcidmap	:	in std_logic_vector(23 downto 0) := (others => '0');
+		dlvcidupfc	:	in std_logic_vector(2 downto 0) := (others => '0');
+		dlvcstatus	:	out std_logic_vector(7 downto 0);
+		dpclk	:	in std_logic := '0';
+		dpriodisable	:	in std_logic := '1';
+		dprioin	:	in std_logic := '0';
+		dprioload	:	in std_logic := '0';
+		dprioout	:	out std_logic;
+		dpriostate	:	out std_logic_vector(2 downto 0);
+		eidleinfersel	:	out std_logic_vector(23 downto 0);
+		ev128ns	:	out std_logic;
+		ev1us	:	out std_logic;
+		gen2rate	:	out std_logic;
+		gen2rategnd	:	out std_logic;
+		hotrstexit	:	out std_logic;
+		intstatus	:	out std_logic_vector(3 downto 0);
+		l2exit	:	out std_logic;
+		laneact	:	out std_logic_vector(3 downto 0);
+		linkup	:	out std_logic;
+		lmiack	:	out std_logic;
+		lmiaddr	:	in std_logic_vector(11 downto 0) := (others => '0');
+		lmidin	:	in std_logic_vector(31 downto 0) := (others => '0');
+		lmidout	:	out std_logic_vector(31 downto 0);
+		lmirden	:	in std_logic := '0';
+		lmiwren	:	in std_logic := '0';
+		ltssml0state	:	out std_logic;
+		mode	:	in std_logic_vector(1 downto 0) := (others => '0');
+		mramhiptestenable	:	in std_logic := '0';
+		mramregscanen	:	in std_logic := '0';
+		mramregscanin	:	in std_logic := '0';
+		mramregscanout	:	out std_logic;
+		pclkcentral	:	in std_logic := '0';
+		pclkch0	:	in std_logic := '0';
+		phyrst	:	in std_logic := '0';
+		physrst	:	in std_logic := '0';
+		phystatus	:	in std_logic_vector(7 downto 0) := (others => '0');
+		pldclk	:	in std_logic := '0';
+		pldrst	:	in std_logic := '0';
+		pldsrst	:	in std_logic := '0';
+		pllfixedclk	:	in std_logic := '0';
+		powerdown	:	out std_logic_vector(15 downto 0);
+		resetstatus	:	out std_logic;
+		rxbardecvc0	:	out std_logic_vector(7 downto 0);
+		rxbardecvc1	:	out std_logic_vector(7 downto 0);
+		rxbevc00	:	out std_logic_vector(7 downto 0);
+		rxbevc01	:	out std_logic_vector(7 downto 0);
+		rxbevc10	:	out std_logic_vector(7 downto 0);
+		rxbevc11	:	out std_logic_vector(7 downto 0);
+		rxdata	:	in std_logic_vector(63 downto 0) := (others => '0');
+		rxdatak	:	in std_logic_vector(7 downto 0) := (others => '0');
+		rxdatavc00	:	out std_logic_vector(63 downto 0);
+		rxdatavc01	:	out std_logic_vector(63 downto 0);
+		rxdatavc10	:	out std_logic_vector(63 downto 0);
+		rxdatavc11	:	out std_logic_vector(63 downto 0);
+		rxelecidle	:	in std_logic_vector(7 downto 0) := (others => '0');
+		rxeopvc00	:	out std_logic;
+		rxeopvc01	:	out std_logic;
+		rxeopvc10	:	out std_logic;
+		rxeopvc11	:	out std_logic;
+		rxerrvc0	:	out std_logic;
+		rxerrvc1	:	out std_logic;
+		rxfifoemptyvc0	:	out std_logic;
+		rxfifoemptyvc1	:	out std_logic;
+		rxfifofullvc0	:	out std_logic;
+		rxfifofullvc1	:	out std_logic;
+		rxfifordpvc0	:	out std_logic_vector(3 downto 0);
+		rxfifordpvc1	:	out std_logic_vector(3 downto 0);
+		rxfifowrpvc0	:	out std_logic_vector(3 downto 0);
+		rxfifowrpvc1	:	out std_logic_vector(3 downto 0);
+		rxmaskvc0	:	in std_logic := '0';
+		rxmaskvc1	:	in std_logic := '0';
+		rxpolarity	:	out std_logic_vector(7 downto 0);
+		rxreadyvc0	:	in std_logic := '0';
+		rxreadyvc1	:	in std_logic := '0';
+		rxsopvc00	:	out std_logic;
+		rxsopvc01	:	out std_logic;
+		rxsopvc10	:	out std_logic;
+		rxsopvc11	:	out std_logic;
+		rxstatus	:	in std_logic_vector(23 downto 0) := (others => '0');
+		rxvalid	:	in std_logic_vector(7 downto 0) := (others => '0');
+		rxvalidvc0	:	out std_logic;
+		rxvalidvc1	:	out std_logic;
+		scanen	:	in std_logic := '0';
+		scanmoden	:	in std_logic := '1';
+		serrout	:	out std_logic;
+		swdnin	:	in std_logic_vector(2 downto 0) := (others => '0');
+		swdnwake	:	out std_logic;
+		swuphotrst	:	out std_logic;
+		swupin	:	in std_logic_vector(6 downto 0) := (others => '0');
+		testin	:	in std_logic_vector(39 downto 0) := (others => '0');
+		testout	:	out std_logic_vector(63 downto 0);
+		tlaermsinum	:	in std_logic_vector(4 downto 0) := (others => '0');
+		tlappintaack	:	out std_logic;
+		tlappintasts	:	in std_logic := '0';
+		tlappmsiack	:	out std_logic;
+		tlappmsinum	:	in std_logic_vector(4 downto 0) := (others => '0');
+		tlappmsireq	:	in std_logic := '0';
+		tlappmsitc	:	in std_logic_vector(2 downto 0) := (others => '0');
+		tlcfgadd	:	out std_logic_vector(3 downto 0);
+		tlcfgctl	:	out std_logic_vector(31 downto 0);
+		tlcfgctlwr	:	out std_logic;
+		tlcfgsts	:	out std_logic_vector(52 downto 0);
+		tlcfgstswr	:	out std_logic;
+		tlhpgctrler	:	in std_logic_vector(4 downto 0) := (others => '0');
+		tlpexmsinum	:	in std_logic_vector(4 downto 0) := (others => '0');
+		tlpmauxpwr	:	in std_logic := '0';
+		tlpmdata	:	in std_logic_vector(9 downto 0) := (others => '0');
+		tlpmetocr	:	in std_logic := '0';
+		tlpmetosr	:	out std_logic;
+		tlpmevent	:	in std_logic := '0';
+		tlslotclkcfg	:	in std_logic := '0';
+		txcompl	:	out std_logic_vector(7 downto 0);
+		txcredvc0	:	out std_logic_vector(35 downto 0);
+		txcredvc1	:	out std_logic_vector(35 downto 0);
+		txdata	:	out std_logic_vector(63 downto 0);
+		txdatak	:	out std_logic_vector(7 downto 0);
+		txdatavc00	:	in std_logic_vector(63 downto 0) := (others => '0');
+		txdatavc01	:	in std_logic_vector(63 downto 0) := (others => '0');
+		txdatavc10	:	in std_logic_vector(63 downto 0) := (others => '0');
+		txdatavc11	:	in std_logic_vector(63 downto 0) := (others => '0');
+		txdeemph	:	out std_logic_vector(7 downto 0);
+		txdetectrx	:	out std_logic_vector(7 downto 0);
+		txelecidle	:	out std_logic_vector(7 downto 0);
+		txeopvc00	:	in std_logic := '0';
+		txeopvc01	:	in std_logic := '0';
+		txeopvc10	:	in std_logic := '0';
+		txeopvc11	:	in std_logic := '0';
+		txerrvc0	:	in std_logic := '0';
+		txerrvc1	:	in std_logic := '0';
+		txfifoemptyvc0	:	out std_logic;
+		txfifoemptyvc1	:	out std_logic;
+		txfifofullvc0	:	out std_logic;
+		txfifofullvc1	:	out std_logic;
+		txfifordpvc0	:	out std_logic_vector(3 downto 0);
+		txfifordpvc1	:	out std_logic_vector(3 downto 0);
+		txfifowrpvc0	:	out std_logic_vector(3 downto 0);
+		txfifowrpvc1	:	out std_logic_vector(3 downto 0);
+		txmargin	:	out std_logic_vector(23 downto 0);
+		txreadyvc0	:	out std_logic;
+		txreadyvc1	:	out std_logic;
+		txsopvc00	:	in std_logic := '0';
+		txsopvc01	:	in std_logic := '0';
+		txsopvc10	:	in std_logic := '0';
+		txsopvc11	:	in std_logic := '0';
+		txvalidvc0	:	in std_logic := '0';
+		txvalidvc1	:	in std_logic := '0';
+		wakeoen	:	out std_logic
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_clkselect parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_clkselect
+	generic (
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_clkselect"	);
+	port(
+		clkselect	:	in std_logic_vector(1 downto 0) := (others => '0');
+		inclk	:	in std_logic_vector(3 downto 0) := (others => '0');
+		outclk	:	out std_logic
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_mac_out parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_mac_out
+	generic (
+		acc_adder_operation	:	string := "Add";
+		chainin_width	:	natural := 1;
+		dataa_width	:	natural := 1;
+		datab_width	:	natural := 1;
+		datac_width	:	natural := 1;
+		datad_width	:	natural := 1;
+		dataout_width	:	natural := 72;
+		first_adder0_clear	:	string := "NONE";
+		first_adder0_clock	:	string := "NONE";
+		first_adder0_mode	:	string := "Add";
+		first_adder1_clear	:	string := "NONE";
+		first_adder1_clock	:	string := "NONE";
+		first_adder1_mode	:	string := "Add";
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_mac_out";
+		multa_signa_internally_grounded	:	string := "false";
+		multa_signb_internally_grounded	:	string := "false";
+		multb_signa_internally_grounded	:	string := "false";
+		multb_signb_internally_grounded	:	string := "false";
+		multc_signa_internally_grounded	:	string := "false";
+		multc_signb_internally_grounded	:	string := "false";
+		multd_signa_internally_grounded	:	string := "false";
+		multd_signb_internally_grounded	:	string := "false";
+		operation_mode	:	string := "OUTPUT_ONLY";
+		output_clear	:	string := "NONE";
+		output_clock	:	string := "NONE";
+		rotate_clear	:	string := "NONE";
+		rotate_clock	:	string := "NONE";
+		rotate_output_clear	:	string := "NONE";
+		rotate_output_clock	:	string := "NONE";
+		rotate_pipeline_clear	:	string := "NONE";
+		rotate_pipeline_clock	:	string := "NONE";
+		round_chain_out_mode	:	string := "Nearest_Integer";
+		round_chain_out_width	:	natural := 15;
+		round_clear	:	string := "NONE";
+		round_clock	:	string := "NONE";
+		round_mode	:	string := "Nearest_Integer";
+		round_pipeline_clear	:	string := "NONE";
+		round_pipeline_clock	:	string := "NONE";
+		round_width	:	natural := 15;
+		roundchainout_clear	:	string := "NONE";
+		roundchainout_clock	:	string := "NONE";
+		roundchainout_output_clear	:	string := "NONE";
+		roundchainout_output_clock	:	string := "NONE";
+		roundchainout_pipeline_clear	:	string := "NONE";
+		roundchainout_pipeline_clock	:	string := "NONE";
+		saturate_chain_out_mode	:	string := "Asymmetric";
+		saturate_chain_out_width	:	natural := 1;
+		saturate_clear	:	string := "NONE";
+		saturate_clock	:	string := "NONE";
+		saturate_mode	:	string := "Asymmetric";
+		saturate_pipeline_clear	:	string := "NONE";
+		saturate_pipeline_clock	:	string := "NONE";
+		saturate_width	:	natural := 1;
+		saturatechainout_clear	:	string := "NONE";
+		saturatechainout_clock	:	string := "NONE";
+		saturatechainout_output_clear	:	string := "NONE";
+		saturatechainout_output_clock	:	string := "NONE";
+		saturatechainout_pipeline_clear	:	string := "NONE";
+		saturatechainout_pipeline_clock	:	string := "NONE";
+		second_adder_clear	:	string := "NONE";
+		second_adder_clock	:	string := "NONE";
+		shiftright_clear	:	string := "NONE";
+		shiftright_clock	:	string := "NONE";
+		shiftright_output_clear	:	string := "NONE";
+		shiftright_output_clock	:	string := "NONE";
+		shiftright_pipeline_clear	:	string := "NONE";
+		shiftright_pipeline_clock	:	string := "NONE";
+		signa_clear	:	string := "NONE";
+		signa_clock	:	string := "NONE";
+		signa_pipeline_clear	:	string := "NONE";
+		signa_pipeline_clock	:	string := "NONE";
+		signb_clear	:	string := "NONE";
+		signb_clock	:	string := "NONE";
+		signb_pipeline_clear	:	string := "NONE";
+		signb_pipeline_clock	:	string := "NONE";
+		zeroacc_clear	:	string := "NONE";
+		zeroacc_clock	:	string := "NONE";
+		zeroacc_pipeline_clear	:	string := "NONE";
+		zeroacc_pipeline_clock	:	string := "NONE";
+		zerochainout_output_clear	:	string := "NONE";
+		zerochainout_output_clock	:	string := "NONE";
+		zeroloopback_clear	:	string := "NONE";
+		zeroloopback_clock	:	string := "NONE";
+		zeroloopback_output_clear	:	string := "NONE";
+		zeroloopback_output_clock	:	string := "NONE";
+		zeroloopback_pipeline_clear	:	string := "NONE";
+		zeroloopback_pipeline_clock	:	string := "NONE"	);
+	port(
+		aclr	:	in std_logic_vector(3 downto 0) := (others => '0');
+		chainin	:	in std_logic_vector(43 downto 0) := (others => '0');
+		clk	:	in std_logic_vector(3 downto 0) := (others => '0');
+		dataa	:	in std_logic_vector(35 downto 0) := (others => '1');
+		datab	:	in std_logic_vector(35 downto 0) := (others => '1');
+		datac	:	in std_logic_vector(35 downto 0) := (others => '1');
+		datad	:	in std_logic_vector(35 downto 0) := (others => '1');
+		dataout	:	out std_logic_vector(71 downto 0);
+		devclrn	:	in std_logic := '1';
+		devpor	:	in std_logic := '1';
+		dftout	:	out std_logic;
+		ena	:	in std_logic_vector(3 downto 0) := (others => '1');
+		loopbackout	:	out std_logic_vector(17 downto 0);
+		observablefirstadder0regout	:	out std_logic_vector(53 downto 0);
+		observablefirstadder1regout	:	out std_logic_vector(53 downto 0);
+		observablerotateoutputregout	:	out std_logic;
+		observablerotatepipelineregout	:	out std_logic;
+		observablerotateregout	:	out std_logic;
+		observableroundchainoutoutputregout	:	out std_logic;
+		observableroundchainoutpipelineregout	:	out std_logic;
+		observableroundchainoutregout	:	out std_logic;
+		observableroundpipelineregout	:	out std_logic;
+		observableroundregout	:	out std_logic;
+		observablesaturatechainoutoutputregout	:	out std_logic;
+		observablesaturatechainoutpipelineregout	:	out std_logic;
+		observablesaturatechainoutregout	:	out std_logic;
+		observablesaturatepipelineregout	:	out std_logic;
+		observablesaturateregout	:	out std_logic;
+		observablesecondadderregout	:	out std_logic_vector(43 downto 0);
+		observableshiftrightoutputregout	:	out std_logic;
+		observableshiftrightpipelineregout	:	out std_logic;
+		observableshiftrightregout	:	out std_logic;
+		observablesignapipelineregout	:	out std_logic;
+		observablesignaregout	:	out std_logic;
+		observablesignbpipelineregout	:	out std_logic;
+		observablesignbregout	:	out std_logic;
+		observablezeroaccpipelineregout	:	out std_logic;
+		observablezeroaccregout	:	out std_logic;
+		observablezerochainoutoutputregout	:	out std_logic;
+		observablezeroloopbackoutputregout	:	out std_logic;
+		observablezeroloopbackpipelineregout	:	out std_logic;
+		observablezeroloopbackregout	:	out std_logic;
+		overflow	:	out std_logic;
+		rotate	:	in std_logic := '0';
+		round	:	in std_logic := '0';
+		roundchainout	:	in std_logic := '0';
+		saturate	:	in std_logic := '0';
+		saturatechainout	:	in std_logic := '0';
+		saturatechainoutoverflow	:	out std_logic;
+		shiftright	:	in std_logic := '0';
+		signa	:	in std_logic := '1';
+		signb	:	in std_logic := '1';
+		zeroacc	:	in std_logic := '0';
+		zerochainout	:	in std_logic := '0';
+		zeroloopback	:	in std_logic := '0'
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_rublock parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_rublock
+	generic (
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_rublock";
+		sim_init_config	:	string := "factory";
+		sim_init_status	:	natural := 0;
+		sim_init_watchdog_value	:	natural := 0	);
+	port(
+		captnupdt	:	in std_logic := '0';
+		clk	:	in std_logic := '0';
+		rconfig	:	in std_logic := '0';
+		regin	:	in std_logic := '0';
+		regout	:	out std_logic;
+		rsttimer	:	in std_logic := '0';
+		shiftnld	:	in std_logic := '0'
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_crcblock parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_crcblock
+	generic (
+		crc_deld_disable	:	string := "off";
+		error_delay	:	natural := 0;
+		error_dra_dl_bypass	:	string := "off";
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_crcblock";
+		oscillator_divider	:	natural := 1	);
+	port(
+		clk	:	in std_logic := '0';
+		crcerror	:	out std_logic;
+		regout	:	out std_logic;
+		shiftnld	:	in std_logic := '0'
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_input_phase_alignment parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_input_phase_alignment
+	generic (
+		add_input_cycle_delay	:	string := "false";
+		add_phase_transfer_reg	:	string := "false";
+		async_mode	:	string := "none";
+		bypass_output_register	:	string := "false";
+		delay_buffer_mode	:	string := "high";
+		invert_phase	:	string := "false";
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_input_phase_alignment";
+		phase_setting	:	natural := 0;
+		power_up	:	string := "low";
+		sim_buffer_delay_increment	:	natural := 10;
+		sim_high_buffer_intrinsic_delay	:	natural := 175;
+		sim_low_buffer_intrinsic_delay	:	natural := 350;
+		use_phasectrlin	:	string := "true"	);
+	port(
+		areset	:	in std_logic := '0';
+		clk	:	in std_logic := '0';
+		datain	:	in std_logic := '1';
+		dataout	:	out std_logic;
+		delayctrlin	:	in std_logic_vector(5 downto 0) := (others => '0');
+		devclrn	:	in std_logic := '1';
+		devpor	:	in std_logic := '1';
+		dff1t	:	out std_logic;
+		dffin	:	out std_logic;
+		enainputcycledelay	:	in std_logic := '0';
+		enaphasetransferreg	:	in std_logic := '0';
+		phasectrlin	:	in std_logic_vector(3 downto 0) := (others => '0');
+		phaseinvertctrl	:	in std_logic := '0'
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_dqs_delay_chain parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_dqs_delay_chain
+	generic (
+		delay_buffer_mode	:	string := "low";
+		dqs_ctrl_latches_enable	:	string := "false";
+		dqs_input_frequency	:	string := "unused";
+		dqs_offsetctrl_enable	:	string := "false";
+		dqs_phase_shift	:	natural := 0;
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_dqs_delay_chain";
+		phase_setting	:	natural := 0;
+		sim_buffer_delay_increment	:	natural := 10;
+		sim_high_buffer_intrinsic_delay	:	natural := 175;
+		sim_low_buffer_intrinsic_delay	:	natural := 350;
+		test_enable	:	string := "false";
+		test_select	:	natural := 0;
+		use_phasectrlin	:	string := "false"	);
+	port(
+		delayctrlin	:	in std_logic_vector(5 downto 0) := (others => '0');
+		devclrn	:	in std_logic := '1';
+		devpor	:	in std_logic := '1';
+		dffin	:	out std_logic;
+		dqsbusout	:	out std_logic;
+		dqsin	:	in std_logic := '0';
+		dqsupdateen	:	in std_logic := '0';
+		offsetctrlin	:	in std_logic_vector(5 downto 0) := (others => '0');
+		phasectrlin	:	in std_logic_vector(2 downto 0) := (others => '0')
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_io_config parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_io_config
+	generic (
+		enhanced_mode	:	string := "false";
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_io_config"	);
+	port(
+		clk	:	in std_logic := '0';
+		datain	:	in std_logic := '0';
+		dataout	:	out std_logic;
+		devclrn	:	in std_logic := '1';
+		devpor	:	in std_logic := '1';
+		dffin	:	out std_logic;
+		dutycycledelaymode	:	out std_logic;
+		dutycycledelaysettings	:	out std_logic_vector(3 downto 0);
+		ena	:	in std_logic := '1';
+		outputdelaysetting1	:	out std_logic_vector(3 downto 0);
+		outputdelaysetting2	:	out std_logic_vector(2 downto 0);
+		outputfinedelaysetting1	:	out std_logic;
+		outputfinedelaysetting2	:	out std_logic;
+		outputonlydelaysetting2	:	out std_logic_vector(2 downto 0);
+		outputonlyfinedelaysetting2	:	out std_logic;
+		padtoinputregisterdelaysetting	:	out std_logic_vector(3 downto 0);
+		padtoinputregisterfinedelaysetting	:	out std_logic;
+		update	:	in std_logic := '0'
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_io_clock_divider parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_io_clock_divider
+	generic (
+		delay_buffer_mode	:	string := "high";
+		invert_phase	:	string := "false";
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_io_clock_divider";
+		phase_setting	:	natural := 0;
+		sim_buffer_delay_increment	:	natural := 10;
+		sim_high_buffer_intrinsic_delay	:	natural := 175;
+		sim_low_buffer_intrinsic_delay	:	natural := 350;
+		use_masterin	:	string := "false";
+		use_phasectrlin	:	string := "true"	);
+	port(
+		clk	:	in std_logic := '0';
+		clkout	:	out std_logic;
+		delayctrlin	:	in std_logic_vector(5 downto 0) := (others => '0');
+		devclrn	:	in std_logic := '1';
+		devpor	:	in std_logic := '1';
+		masterin	:	in std_logic := '0';
+		phasectrlin	:	in std_logic_vector(3 downto 0) := (others => '0');
+		phaseinvertctrl	:	in std_logic := '0';
+		phaseselect	:	in std_logic := '0';
+		slaveout	:	out std_logic
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_output_phase_alignment parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_output_phase_alignment
+	generic (
+		add_output_cycle_delay	:	string := "false";
+		add_phase_transfer_reg	:	string := "false";
+		async_mode	:	string := "none";
+		bypass_input_register	:	string := "false";
+		delay_buffer_mode	:	string := "high";
+		duty_cycle_delay_mode	:	string := "none";
+		invert_phase	:	string := "false";
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_output_phase_alignment";
+		operation_mode	:	string := "ddio_out";
+		phase_setting	:	natural := 0;
+		phase_setting_for_delayed_clock	:	natural := 2;
+		power_up	:	string := "low";
+		sim_buffer_delay_increment	:	natural := 10;
+		sim_dutycycledelayctrlin_falling_delay_0	:	natural := 0;
+		sim_dutycycledelayctrlin_falling_delay_1	:	natural := 25;
+		sim_dutycycledelayctrlin_falling_delay_10	:	natural := 250;
+		sim_dutycycledelayctrlin_falling_delay_11	:	natural := 275;
+		sim_dutycycledelayctrlin_falling_delay_12	:	natural := 300;
+		sim_dutycycledelayctrlin_falling_delay_13	:	natural := 325;
+		sim_dutycycledelayctrlin_falling_delay_14	:	natural := 350;
+		sim_dutycycledelayctrlin_falling_delay_15	:	natural := 375;
+		sim_dutycycledelayctrlin_falling_delay_2	:	natural := 50;
+		sim_dutycycledelayctrlin_falling_delay_3	:	natural := 75;
+		sim_dutycycledelayctrlin_falling_delay_4	:	natural := 100;
+		sim_dutycycledelayctrlin_falling_delay_5	:	natural := 125;
+		sim_dutycycledelayctrlin_falling_delay_6	:	natural := 150;
+		sim_dutycycledelayctrlin_falling_delay_7	:	natural := 175;
+		sim_dutycycledelayctrlin_falling_delay_8	:	natural := 200;
+		sim_dutycycledelayctrlin_falling_delay_9	:	natural := 225;
+		sim_dutycycledelayctrlin_rising_delay_0	:	natural := 0;
+		sim_dutycycledelayctrlin_rising_delay_1	:	natural := 25;
+		sim_dutycycledelayctrlin_rising_delay_10	:	natural := 250;
+		sim_dutycycledelayctrlin_rising_delay_11	:	natural := 275;
+		sim_dutycycledelayctrlin_rising_delay_12	:	natural := 300;
+		sim_dutycycledelayctrlin_rising_delay_13	:	natural := 325;
+		sim_dutycycledelayctrlin_rising_delay_14	:	natural := 350;
+		sim_dutycycledelayctrlin_rising_delay_15	:	natural := 375;
+		sim_dutycycledelayctrlin_rising_delay_2	:	natural := 50;
+		sim_dutycycledelayctrlin_rising_delay_3	:	natural := 75;
+		sim_dutycycledelayctrlin_rising_delay_4	:	natural := 100;
+		sim_dutycycledelayctrlin_rising_delay_5	:	natural := 125;
+		sim_dutycycledelayctrlin_rising_delay_6	:	natural := 150;
+		sim_dutycycledelayctrlin_rising_delay_7	:	natural := 175;
+		sim_dutycycledelayctrlin_rising_delay_8	:	natural := 200;
+		sim_dutycycledelayctrlin_rising_delay_9	:	natural := 225;
+		sim_high_buffer_intrinsic_delay	:	natural := 175;
+		sim_low_buffer_intrinsic_delay	:	natural := 350;
+		sync_mode	:	string := "none";
+		use_delayed_clock	:	string := "false";
+		use_phasectrl_clock	:	string := "true";
+		use_phasectrlin	:	string := "true";
+		use_primary_clock	:	string := "true"	);
+	port(
+		areset	:	in std_logic := '0';
+		clk	:	in std_logic := '0';
+		clkena	:	in std_logic := '1';
+		datain	:	in std_logic_vector(1 downto 0) := (others => '1');
+		dataout	:	out std_logic;
+		delayctrlin	:	in std_logic_vector(5 downto 0) := (others => '0');
+		delaymode	:	in std_logic := '0';
+		devclrn	:	in std_logic := '1';
+		devpor	:	in std_logic := '1';
+		dff1t	:	out std_logic_vector(1 downto 0);
+		dffdataout	:	out std_logic;
+		dffddiodataout	:	out std_logic;
+		dffin	:	out std_logic_vector(1 downto 0);
+		dffphasetransfer	:	out std_logic_vector(1 downto 0);
+		dutycycledelayctrlin	:	in std_logic_vector(3 downto 0) := (others => '0');
+		enaoutputcycledelay	:	in std_logic := '0';
+		enaphasetransferreg	:	in std_logic := '0';
+		phasectrlin	:	in std_logic_vector(3 downto 0) := (others => '0');
+		phaseinvertctrl	:	in std_logic := '0';
+		sreset	:	in std_logic := '0'
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_dll_offset_ctrl parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_dll_offset_ctrl
+	generic (
+		delay_buffer_mode	:	string := "low";
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_dll_offset_ctrl";
+		static_offset	:	natural := 0;
+		use_offset	:	string := "false"	);
+	port(
+		addnsub	:	in std_logic := '1';
+		aload	:	in std_logic := '0';
+		clk	:	in std_logic := '0';
+		devclrn	:	in std_logic := '1';
+		devpor	:	in std_logic := '0';
+		dffin	:	out std_logic;
+		offset	:	in std_logic_vector(5 downto 0) := (others => '0');
+		offsetctrlout	:	out std_logic_vector(5 downto 0);
+		offsetdelayctrlin	:	in std_logic_vector(5 downto 0) := (others => '0');
+		offsettestout	:	out std_logic_vector(5 downto 0)
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_dqs_enable_ctrl parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_dqs_enable_ctrl
+	generic (
+		add_phase_transfer_reg	:	string := "false";
+		delay_buffer_mode	:	string := "high";
+		delay_dqs_enable_by_half_cycle	:	string := "false";
+		invert_phase	:	string := "false";
+		level_dqs_enable	:	string := "false";
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_dqs_enable_ctrl";
+		phase_setting	:	natural := 0;
+		sim_buffer_delay_increment	:	natural := 10;
+		sim_high_buffer_intrinsic_delay	:	natural := 175;
+		sim_low_buffer_intrinsic_delay	:	natural := 350;
+		use_phasectrlin	:	string := "true"	);
+	port(
+		clk	:	in std_logic := '1';
+		delayctrlin	:	in std_logic_vector(5 downto 0) := (others => '0');
+		devclrn	:	in std_logic := '1';
+		devpor	:	in std_logic := '1';
+		dffextenddqsenable	:	out std_logic;
+		dffin	:	out std_logic;
+		dqsenablein	:	in std_logic := '1';
+		dqsenableout	:	out std_logic;
+		enaphasetransferreg	:	in std_logic := '0';
+		phasectrlin	:	in std_logic_vector(3 downto 0) := (others => '0');
+		phaseinvertctrl	:	in std_logic := '0'
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_dqs_config parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_dqs_config
+	generic (
+		enhanced_mode	:	string := "false";
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_dqs_config"	);
+	port(
+		clk	:	in std_logic := '0';
+		datain	:	in std_logic := '0';
+		dataout	:	out std_logic;
+		devclrn	:	in std_logic := '1';
+		devpor	:	in std_logic := '1';
+		dffin	:	out std_logic;
+		dividerphasesetting	:	out std_logic;
+		dqoutputphaseinvert	:	out std_logic;
+		dqoutputphasesetting	:	out std_logic_vector(3 downto 0);
+		dqsbusoutdelaysetting	:	out std_logic_vector(3 downto 0);
+		dqsbusoutfinedelaysetting	:	out std_logic;
+		dqsenablectrlphaseinvert	:	out std_logic;
+		dqsenablectrlphasesetting	:	out std_logic_vector(3 downto 0);
+		dqsenabledelaysetting	:	out std_logic_vector(2 downto 0);
+		dqsenablefinedelaysetting	:	out std_logic;
+		dqsinputphasesetting	:	out std_logic_vector(2 downto 0);
+		dqsoutputphaseinvert	:	out std_logic;
+		dqsoutputphasesetting	:	out std_logic_vector(3 downto 0);
+		ena	:	in std_logic := '1';
+		enadataoutbypass	:	out std_logic;
+		enadqsenablephasetransferreg	:	out std_logic;
+		enainputcycledelaysetting	:	out std_logic;
+		enainputphasetransferreg	:	out std_logic;
+		enaoctcycledelaysetting	:	out std_logic;
+		enaoctphasetransferreg	:	out std_logic;
+		enaoutputcycledelaysetting	:	out std_logic;
+		enaoutputphasetransferreg	:	out std_logic;
+		octdelaysetting1	:	out std_logic_vector(3 downto 0);
+		octdelaysetting2	:	out std_logic_vector(2 downto 0);
+		resyncinputphaseinvert	:	out std_logic;
+		resyncinputphasesetting	:	out std_logic_vector(3 downto 0);
+		update	:	in std_logic := '0'
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_dll parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_dll
+	generic (
+		delay_buffer_mode	:	string := "low";
+		delay_chain_length	:	natural := 12;
+		delayctrlout_mode	:	string := "normal";
+		dual_phase_comparators	:	string := "true";
+		input_frequency	:	string := "0 MHz";
+		jitter_reduction	:	string := "false";
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_dll";
+		sim_buffer_delay_increment	:	natural := 10;
+		sim_high_buffer_intrinsic_delay	:	natural := 175;
+		sim_low_buffer_intrinsic_delay	:	natural := 350;
+		sim_valid_lock	:	natural := 16;
+		sim_valid_lockcount	:	natural := 0;
+		static_delay_ctrl	:	natural := 0;
+		use_upndnin	:	string := "false";
+		use_upndninclkena	:	string := "false"	);
+	port(
+		aload	:	in std_logic := '0';
+		clk	:	in std_logic := '0';
+		delayctrlout	:	out std_logic_vector(5 downto 0);
+		devclrn	:	in std_logic := '1';
+		devpor	:	in std_logic := '0';
+		dffin	:	out std_logic;
+		dqsupdate	:	out std_logic;
+		offsetdelayctrlclkout	:	out std_logic;
+		offsetdelayctrlout	:	out std_logic_vector(5 downto 0);
+		upndnin	:	in std_logic := '1';
+		upndninclkena	:	in std_logic := '1';
+		upndnout	:	out std_logic
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_bias_block parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_bias_block
+	generic (
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_bias_block"	);
+	port(
+		captnupdt	:	in std_logic := '0';
+		clk	:	in std_logic := '0';
+		din	:	in std_logic := '0';
+		dout	:	out std_logic;
+		shiftnld	:	in std_logic := '0'
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_half_rate_input parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_half_rate_input
+	generic (
+		async_mode	:	string := "none";
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_half_rate_input";
+		power_up	:	string := "low";
+		use_dataoutbypass	:	string := "false"	);
+	port(
+		areset	:	in std_logic := '0';
+		clk	:	in std_logic := '0';
+		datain	:	in std_logic_vector(1 downto 0) := (others => '1');
+		dataout	:	out std_logic_vector(3 downto 0);
+		dataoutbypass	:	in std_logic := '0';
+		devclrn	:	in std_logic := '1';
+		devpor	:	in std_logic := '1';
+		dffin	:	out std_logic_vector(1 downto 0);
+		directin	:	in std_logic := '1'
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_dqs_enable parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_dqs_enable
+	generic (
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_dqs_enable"	);
+	port(
+		devclrn	:	in std_logic := '1';
+		devpor	:	in std_logic := '1';
+		dffin	:	out std_logic;
+		dqsbusout	:	out std_logic;
+		dqsenable	:	in std_logic := '1';
+		dqsin	:	in std_logic := '0'
+	);
+end component;
+
+------------------------------------------------------------------
+-- stratixiv_delay_chain parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+component stratixiv_delay_chain
+	generic (
+		delay_setting	:	natural := 0;
+		lpm_hint	:	string := "UNUSED";
+		lpm_type	:	string := "stratixiv_delay_chain";
+		sim_delayctrlin_falling_delay_0	:	natural := 0;
+		sim_delayctrlin_falling_delay_1	:	natural := 50;
+		sim_delayctrlin_falling_delay_10	:	natural := 500;
+		sim_delayctrlin_falling_delay_11	:	natural := 550;
+		sim_delayctrlin_falling_delay_12	:	natural := 600;
+		sim_delayctrlin_falling_delay_13	:	natural := 650;
+		sim_delayctrlin_falling_delay_14	:	natural := 700;
+		sim_delayctrlin_falling_delay_15	:	natural := 750;
+		sim_delayctrlin_falling_delay_2	:	natural := 100;
+		sim_delayctrlin_falling_delay_3	:	natural := 150;
+		sim_delayctrlin_falling_delay_4	:	natural := 200;
+		sim_delayctrlin_falling_delay_5	:	natural := 250;
+		sim_delayctrlin_falling_delay_6	:	natural := 300;
+		sim_delayctrlin_falling_delay_7	:	natural := 350;
+		sim_delayctrlin_falling_delay_8	:	natural := 400;
+		sim_delayctrlin_falling_delay_9	:	natural := 450;
+		sim_delayctrlin_rising_delay_0	:	natural := 0;
+		sim_delayctrlin_rising_delay_1	:	natural := 50;
+		sim_delayctrlin_rising_delay_10	:	natural := 500;
+		sim_delayctrlin_rising_delay_11	:	natural := 550;
+		sim_delayctrlin_rising_delay_12	:	natural := 600;
+		sim_delayctrlin_rising_delay_13	:	natural := 650;
+		sim_delayctrlin_rising_delay_14	:	natural := 700;
+		sim_delayctrlin_rising_delay_15	:	natural := 750;
+		sim_delayctrlin_rising_delay_2	:	natural := 100;
+		sim_delayctrlin_rising_delay_3	:	natural := 150;
+		sim_delayctrlin_rising_delay_4	:	natural := 200;
+		sim_delayctrlin_rising_delay_5	:	natural := 250;
+		sim_delayctrlin_rising_delay_6	:	natural := 300;
+		sim_delayctrlin_rising_delay_7	:	natural := 350;
+		sim_delayctrlin_rising_delay_8	:	natural := 400;
+		sim_delayctrlin_rising_delay_9	:	natural := 450;
+		sim_finedelayctrlin_falling_delay_0	:	natural := 0;
+		sim_finedelayctrlin_falling_delay_1	:	natural := 25;
+		sim_finedelayctrlin_rising_delay_0	:	natural := 0;
+		sim_finedelayctrlin_rising_delay_1	:	natural := 25;
+		use_delayctrlin	:	string := "true";
+		use_finedelayctrlin	:	string := "false"	);
+	port(
+		datain	:	in std_logic := '0';
+		dataout	:	out std_logic;
+		delayctrlin	:	in std_logic_vector(3 downto 0) := (others => '0');
+		devclrn	:	in std_logic := '1';
+		devpor	:	in std_logic := '1';
+		finedelayctrlin	:	in std_logic := '0'
+	);
+end component;
+
+--clearbox auto-generated components end
+end stratixiv_components;

@@ -1,0 +1,112 @@
+#
+# nios_sh - source this script to set-up SOPC/Nios environment
+#
+
+# add a cygdrive-style directory to the path
+# (avoids x:/dir problems in colon-separated paths)
+safe_path ()
+{
+   if [ "$1"X != X ] && [ -x /bin/cygpath ]
+   then
+      echo "`eval /bin/cygpath -u \'$1\'`"
+   else
+      echo "$1"
+   fi
+}
+
+safe_path_m ()
+{
+   if [ "$1"X != X ] && [ -x /bin/cygpath ]
+   then
+      echo "`eval /bin/cygpath -m \'$1\'`"
+   else
+      echo "$1"
+   fi
+}
+
+if [ "$NIOS_SH_RUN_9_0" = "" ]
+then
+PATH=/bin:/usr/bin:$PATH
+
+# flip slashes just like nios_bash does #
+QUARTUS_ROOTDIR=`echo $QUARTUS_ROOTDIR | tr '\\\' /`
+
+
+# if $sopc_builder is not defined, use $sopc_directory, else Q/sopc_builder
+q=`safe_path "${QUARTUS_ROOTDIR}"`
+sopc_builder=${sopc_builder:-${sopc_directory}}
+sopc_builder=${sopc_builder:-${q}/sopc_builder}
+export sopc_builder
+
+# add the built-in sopc_builder path items
+x=`safe_path "${sopc_builder}"`
+q=`safe_path "${QUARTUS_ROOTDIR}"`
+qb="bin"
+plat=`uname -a`
+if [ -n "`echo $plat | grep -i sunos`" ]; then qb="solaris"; fi
+if [ -n "`echo $plat | grep -i linux`" ]; then qb="linux"; fi
+if [ -n "`echo $plat | grep -i hp-ux`" ]; then qb="hp11"; fi
+PATH="$q/bin:$q/$qb/perl/bin:$q/$qb/gnu:$x/bin:$PATH"
+PERL5LIB="$x/bin:$PERL5LIB"
+PERL5LIB="$x/bin/europa:$PERL5LIB"
+PERL5LIB="$x/bin/perl_lib:$PERL5LIB"
+
+# on windows we need to have /bin first in the path
+# so that the cygwin perl is found by default
+# 6.0: also add quartus/win
+if [ "$qb" = "bin" ]; then
+  PATH=/bin:/usr/bin:$q/win:$PATH
+fi
+
+# add any user-specified path entries to head of path
+if [ -n "$SOPC_SHELL_PATH" ]; then PATH=${SOPC_SHELL_PATH}:$PATH; fi
+
+export PATH
+export PERL5LIB
+
+#
+# unset GCC settings which interfere with our environment
+#
+unset GCC_EXEC_PREFIX
+unset COMPILER_PATH
+unset LIBRARY_PATH
+
+# gnu make on windows needs to be told to act unixy
+# this shell variable will be ignored on other unix platforms.
+MAKE_MODE=unix
+export MAKE_MODE
+
+NIOS_SH_RUN_9_0=1
+
+old_IFS=$IFS
+old_pwd=`pwd`
+kit_dirs="$SOPC_BUILDER_PATH${SOPC_BUILDER_PATH:++}$SOPC_BUILDER_PATH_90"
+IFS="+"
+
+for kit_dir in $kit_dirs
+do
+    IFS=$old_IFS
+    kit_dir=`safe_path "$kit_dir"`
+    if [ -f "$kit_dir/kit_sh" ]
+    then
+        # needed for nios-classic; remove when unsupported
+        if [ -d "$kit_dir/bin/nios-gnupro" ]; then
+            PATH=$kit_dir/bin:$kit_dir/bin/nios-gnupro/bin:$kit_dir/bin/fs2/bin:$PATH
+        fi
+        cd "$kit_dir"
+        . ./kit_sh
+    fi
+    IFS="+"
+done
+cd "$old_pwd"
+IFS=$old_IFS
+
+fi
+
+unset old_pwd
+unset old_IFS
+unset x
+unset q
+unset qb
+unset plat
+unset kit_dir

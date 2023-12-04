@@ -1,0 +1,14 @@
+subdesign syn_dffe
+(
+	d, clk, clrn, prn, ena	: input;
+	q						: output;
+)
+
+BEGIN
+	q = dffe(.d=d, .clk=clk, .clrn=clrn, .prn=prn, .ena=ena);
+
+	IF !USED(q) GENERATE
+		q = GND;
+	END GENERATE;
+END;
+

@@ -1,0 +1,258 @@
+------------------------------------------------------------------------------------------------------
+-- LPM_DIVIDE Parameterized Megafunction
+-- 
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 2.0
+
+-- Description:	This function performs a divide operation such that denom * quotient + remain = numer
+--				The function allows for all combinations of signed(two's complement) and unsigned
+--				inputs.  If any of the inputs is signed, the output is signed.  Otherwise the 
+--				output is unsigned.  The function also allows the remainder to be specified as
+--				always positive (in which case remain >= 0); otherwise remain is zero or the same
+--				sign as the numerator (this parameter is ignored in the case of purely unsigned
+--				division.  There is also a speed factor which can be used to optimize size vs. speed.
+--				Finally the function is also pipelinable.
+--
+--
+-- Detailed Description:
+-- ---------------------
+--		The output of the LPM_DIVIDE is such that:
+-- 		denom * quotient + remain = numer
+--
+-- 		The values will vary depending on the value given to the LPM_REMAINDERPOSITIVE parameter.
+-- 		The following tables should make the difference between the two clear.
+--
+-- 		For LPM_REMAINDERPOSITIVE = "FALSE"
+-- 		------------------------------------------------
+-- 		numer		denom		quotient		remain |
+-- 		-----		-----		--------		------ |
+--   	3			  3				1			   0   |
+--	 	3			  2				1			   1   |
+--		3			  1				3			   0   |
+--   	3			  0				X              X   |
+--  	3			 -1     	   -3			   0   |
+--	 	3			 -2 		   -1			   1   |
+--	 	3 			 -3			   -1			   0   |
+-- 	   ------------------------------------------------|
+--     -3			  3			   -1			   0   |
+--     -3			  2			   -1			  -1   |  <--- remainder allowed to be negative
+--     -3			  1			   -3			   0   |
+--     -3			  0				X			   X   |
+--     -3			 -1			    3			   0   |
+--     -3			 -2				1			  -1   |  <--- remainder allowed to be negative
+--     -3			 -3				1			   0   |
+--     -------------------------------------------------
+--     For LPM_REMAINDERPOSITIVE = "TRUE"
+--     ------------------------------------------------
+--     numer		denom		quotient		remain |
+--     -----		-----		--------		------ |
+--     3			  3				1			   0   |
+--	   3			  2				1			   1   |
+--	   3			  1				3			   0   |
+--     3			  0				X              X   |
+--     3			 -1     	   -3			   0   |
+--	   3			 -2 		   -1			   1   |
+--	   3 			 -3			   -1			   0   |
+--	   ------------------------------------------------|
+--    -3			  3			   -1			   0   |
+--    -3			  2			   -2			   1   | <--- remainder is positive
+--    -3			  1			   -3			   0   |
+--    -3			  0				X			   X   |
+--    -3			 -1			    3			   0   |
+--    -3			 -2				2			   1   | <--- remainder is positive
+--    -3			 -3				1			   0   |
+--     -------------------------------------------------
+--
+--     In operations where the remainder is unimportant or where it makes sense to have a positive
+--     remainder, Altera recommends using LPM_REMAINDERPOSITIVE=TRUE.  This is because it has better
+--     size and speed performance.
+--
+------------------------------------------------------------------------------------------------------
+OPTIONS NAME_SUBSTITUTION = ON;
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+
+PARAMETERS (
+	LPM_WIDTHN,							-- the number of bits in numer, also the number of bits for quotient
+	LPM_WIDTHD,							-- the number of bits in denom, also the number of bits for remain
+	LPM_NREPRESENTATION = "UNSIGNED",	-- the representation of numer - must be "UNSIGNED" or "SIGNED"
+	LPM_DREPRESENTATION = "UNSIGNED",   -- the representation of denom - must be "UNSIGNED" or "SIGNED"
+	LPM_PIPELINE = 0,					-- size of the pipeline (0 results in purely combinatorial logic)
+										-- for pipeline of length N it will take N clock cycles before output of result
+	LPM_REMAINDERPOSITIVE = "TRUE",		-- must be "TRUE" or "FALSE" :   "TRUE" => remain >= 0 												
+										--								 "FLASE" => remain is same sign as numer or remain == 0
+    MAXIMIZE_SPEED = 5,					-- must have 0 <= MAXIMIZE_SPEED <= 9
+										-- a larger value of MAXIMIZE_SPEED results in a faster circuit at the cost
+										-- of decreased routability and increased circuit size. a lower value of MAXIMIZE_SPEED
+										-- results in a smaller circuit with increased routability at the cost of slower performance										
+	CBXI_PARAMETER = "NOTHING",
+	CARRY_CHAIN = "IGNORE",				-- global parameter
+	OPTIMIZE_FOR_SPEED = 5				-- global parameter										
+);
+
+-- include the divider designs
+
+INCLUDE "abs_divider";					-- signed division with signed remainder
+INCLUDE "sign_div_unsign";				-- signed division with positive remainder
+
+INCLUDE "aglobal90";
+
+FUNCTION @CBXI_PARAMETER ( numer[LPM_WIDTHN - 1..0], denom[LPM_WIDTHD - 1..0], aclr, clock, clken) WITH (LPM_WIDTHN, LPM_WIDTHD, LPM_NREPRESENTATION, LPM_DREPRESENTATION, LPM_PIPELINE, LPM_REMAINDERPOSITIVE, MAXIMIZE_SPEED, CARRY_CHAIN, OPTIMIZE_FOR_SPEED) RETURNS (quotient[LPM_WIDTHN - 1..0],remain[LPM_WIDTHD-1..0]);
+CONSTANT WIDTH_NUM = (LPM_WIDTHN >= LPM_WIDTHD) ? LPM_WIDTHN : LPM_WIDTHD;
+CONSTANT SPEED_MAX_FACTOR = USED(MAXIMIZE_SPEED) ? MAXIMIZE_SPEED : OPTIMIZE_FOR_SPEED;
+
+SUBDESIGN lpm_divide (
+	-- inputs
+	numer[LPM_WIDTHN - 1..0] : INPUT;	-- the numerator
+	denom[LPM_WIDTHD - 1..0] : INPUT;	-- the denominator
+	
+	-- input signals for pipelined design
+	clock, aclr : INPUT = GND;			-- the clock and asynchronous clear
+	clken : INPUT = VCC;				-- the clock enable
+	
+	-- output signals
+	quotient[LPM_WIDTHN - 1..0] : OUTPUT; -- quotient
+	remain[LPM_WIDTHD - 1..0] : OUTPUT;   -- remainder
+)
+VARIABLE
+    IF CBXI_PARAMETER == "NOTHING" GENERATE
+
+    	-- pad the numerator if it is too small for the divider
+    	IF WIDTH_NUM != LPM_WIDTHN GENERATE			
+    		num_padder[LPM_WIDTHD - LPM_WIDTHN - 1..0] : NODE;
+    	END GENERATE;
+    	
+    	IF (LPM_REMAINDERPOSITIVE == "TRUE") # ((LPM_NREPRESENTATION == "UNSIGNED") & (LPM_DREPRESENTATION == "UNSIGNED")) GENERATE
+    		divider : sign_div_unsign WITH (NUM_WIDTH = WIDTH_NUM, DEN_WIDTH = LPM_WIDTHD, LPM_PIPELINE = LPM_PIPELINE, CARRY_CHAIN = CARRY_CHAIN,
+    										NUM_REPRESENTATION = LPM_NREPRESENTATION, DEN_REPRESENTATION = LPM_DREPRESENTATION, MAXIMIZE_SPEED = SPEED_MAX_FACTOR);
+    	ELSE GENERATE -- signed division with signed remainder
+    		divider : abs_divider WITH (WIDTH_N = WIDTH_NUM, WIDTH_D = LPM_WIDTHD, NUM_REPRESENTATION = LPM_NREPRESENTATION, CARRY_CHAIN = CARRY_CHAIN,
+    									DEN_REPRESENTATION = LPM_DREPRESENTATION, LPM_PIPELINE = LPM_PIPELINE, MAXIMIZE_SPEED = SPEED_MAX_FACTOR);
+    	END GENERATE;
+    ELSE GENERATE
+        auto_generated : @CBXI_PARAMETER WITH (CBXI_PARAMETER = "NOTHING");
+    END GENERATE;
+BEGIN
+    IF CBXI_PARAMETER == "NOTHING" GENERATE 
+        -- basic assertions
+    	ASSERT LPM_WIDTHN > 0
+    		REPORT "LPM_WIDTHN (%) must be > 0" LPM_WIDTHN
+    		SEVERITY ERROR
+    		HELP_ID DIVIDE_WIDTH;
+    		
+    	ASSERT LPM_WIDTHD > 0
+    		REPORT "LPM_WIDTHD (%) must be > 0" LPM_WIDTHD
+    		SEVERITY ERROR
+    		HELP_ID DIVIDE_WIDTH;
+    		
+    	ASSERT (LPM_NREPRESENTATION == "SIGNED") # (LPM_NREPRESENTATION == "UNSIGNED")
+    		REPORT "LPM_NREPRESENTATION (%) must be UNSIGNED or SIGNED" LPM_NREPRESENTATION
+    		SEVERITY ERROR
+    		HELP_ID LPM_MULT_REPRESENTATION;
+    		
+    	ASSERT (LPM_DREPRESENTATION == "SIGNED") # (LPM_DREPRESENTATION == "UNSIGNED")
+    		REPORT "LPM_DREPRESENTATION (%) must be UNSIGNED OR SIGNED" LPM_DREPRESENTATION
+    		SEVERITY ERROR
+    		HELP_ID LPM_MULT_REPRESENTATION;		
+    
+    -- CAUSE:  Illegal value specified for this parameter. Value must be "TRUE" or "FALSE".
+    -- ACTION: Use one of the legal values ("TRUE" or "FALSE")
+    	ASSERT (LPM_REMAINDERPOSITIVE == "TRUE") # (LPM_REMAINDERPOSITIVE == "FALSE")
+    		REPORT "LPM_REMAINDERPOSITIVE (%) must be TRUE or FALSE" LPM_REMAINDERPOSITIVE
+    		SEVERITY ERROR
+    		HELP_ID LPM_DIVIDE_REMAINDER_CHOICE_UNKNOWN;
+    		
+    	ASSERT USED(clock) ? LPM_PIPELINE > 0 : LPM_PIPELINE == 0
+    		REPORT "clock must be used iff LPM_PIPELINE (%) > 0" LPM_PIPELINE
+    		SEVERITY ERROR
+    		HELP_ID LPM_MULT_CLOCK_WITHOUT_LATENCY;
+    
+    -- CAUSE:  Must use at least one of the output ports (quotient and remainder)
+    -- ACTION: Connect one of the outputs in the design
+    	ASSERT USED(quotient) # USED(remain)
+    		REPORT "At least one of ports quotient or remain must be used"
+    		SEVERITY ERROR
+    		HELP_ID LPM_DIVIDE_NOT_USING_OUTPUTS;
+    --END OF ASSERTIONS----------------------------------------------------------------------------------
+    
+    	-- hook up the selected divider
+    	-- this may require padding the numerator with extra bits
+    	IF WIDTH_NUM != LPM_WIDTHN GENERATE
+    		IF LPM_NREPRESENTATION == "UNSIGNED" GENERATE
+    			num_padder[] = GND;						-- pad numerator with 0's
+    		ELSE GENERATE
+    			num_padder[] = numer[LPM_WIDTHN - 1];	-- pad with the sign bit
+    		END GENERATE;
+    		
+    		divider.numerator[] = (num_padder[], numer[]);
+    	ELSE GENERATE
+    		divider.numerator[] = numer[];
+    	END GENERATE;
+    	divider.denominator[] = denom[];
+    	
+    	-- hook up possible pipelined signals
+    	IF USED(clock) GENERATE
+    		divider.clock = clock;
+    	END GENERATE;
+    	
+    	IF USED(clken) GENERATE
+    		divider.clk_en = clken;
+    	END GENERATE;
+    	
+    	IF USED(Aclr) GENERATE
+    		divider.aclr = Aclr;
+    	END GENERATE;
+    
+    	-- normalize the quotient back to the proper number of bits if necessary
+    	IF WIDTH_NUM != LPM_WIDTHN GENERATE
+    		quotient[] = divider.quotient[LPM_WIDTHN-1..0];
+    	ELSE GENERATE
+    		quotient[] = divider.quotient[];
+    	END GENERATE;
+    	
+    	remain[] = divider.remainder[];
+    ELSE GENERATE
+        -- This is the clearbox case
+        IF USED(numer) GENERATE
+            auto_generated.numer[] = numer[];
+        END GENERATE;
+        IF USED(denom) GENERATE
+            auto_generated.denom[] = denom[];
+        END GENERATE;
+        IF USED(aclr) GENERATE
+            auto_generated.aclr = aclr;
+        END GENERATE;
+        IF USED(clock) GENERATE
+            auto_generated.clock = clock;
+        END GENERATE;
+        IF USED(clken) GENERATE
+            auto_generated.clken = clken;
+        END GENERATE;
+        IF USED(quotient) GENERATE
+            quotient[] = auto_generated.quotient[];
+        END GENERATE;
+        IF USED(remain) GENERATE
+            remain[] = auto_generated.remain[];
+        END GENERATE;
+    END GENERATE;
+	IF !USED(remain) GENERATE
+		remain[] = GND;
+	END GENERATE;
+	IF !USED(quotient) GENERATE
+		quotient[] = GND;
+	END GENERATE;
+END;

@@ -1,0 +1,263 @@
+//              Copyright 2006-2008 Mentor Graphics Corporation             
+//                           All Rights Reserved.                           
+//                                                                          
+//              THIS WORK CONTAINS TRADE SECRET AND PROPRIETARY             
+//            INFORMATION WHICH IS THE PROPERTY OF MENTOR GRAPHICS          
+//           CORPORATION OR ITS LICENSORS AND IS SUBJECT TO LICENSE         
+//                                  TERMS.                                  
+//                                                                          
+//                   Questa Verification Library (QVL)
+//
+
+ /***********************************************************************
+ * 
+ * PURPOSE      This file is part of 0-In CheckerWare.
+ *              It describes the bus monitor for the AMBA 3 APB bus 
+ *              standard.
+ *
+ * DESCRIPTION  This monitor checks the AMBA 3 APB protocol.
+ *
+ * REFERENCE AMBA 3 APB Protocol Specification, ARM IHI 0024B, v1.0, 17 Aug 2004
+ * 
+ * INPUTS       pclk          - Clock signal
+ *              presetn       - Asynchonous Reset signal (active low)
+ *              paddr         - Address Bus
+ *		pselx         - Select Input
+ *		penable       - Enable Input
+ *		pwrite        - Read/Write Input (Write is active high)
+ *		pwdata        - Write Data Bus
+ *		prdata        - Read Data Bus
+ *              pready        - Ready Input 
+ *              pslverr       - Slave Error Input
+ *
+ * NOTES        The PWDATA and PRDATA buses can be implemented as a single
+ *		bi-directional bus with tri-state capability.  Under such
+ *		circumstances, the single data bus should be connected to both
+ *		the PWDATA and PRDATA inputs of the interface checker.
+ *
+ * USAGE        The monitor should be instantiated within the target design.
+ *
+ *                 +----------+               +---------------+
+ *                 |          | -- paddr   -->|               |
+ *                 |          | -- pselx   -->|+-------------+|
+ *                 |          | -- penable -->||amba3_apb_mon||
+ *                 |  Bridge  | -- pwrite  -->||             ||
+ *                 |          | -- pwdata  -->|+-------------+|
+ *                 |          | <- prdata  ---|  APB Slave    |
+ *                 |          | <- pready  ---|               |
+ *                 |          | <- pslverr ---|               |
+ *                 +----------+	              +---------------+
+ *                             
+ ***********************************************************************/
+
+`ifdef ZiCwDebug
+`define ZiCwDebugDelay1 #1
+`else
+`define ZiCwDebugDelay1
+`endif //ZiCwDebug
+
+`ifdef QVL_SVA_INTERFACE
+`define qvlmodule interface
+`define qvlendmodule endinterface
+`else
+`define qvlmodule module
+`define qvlendmodule endmodule
+`endif
+
+`ifdef QVL_ASSERT_ON
+`define OVL_ASSERT_ON
+`define OVL_SVA
+`endif
+
+`ifdef QVL_COVER_ON
+  `ifdef QVL_SV_COVERGROUP_OFF
+    // Do nothing
+  `else
+    `define QVL_SV_COVERGROUP
+  `endif
+  `ifdef QVL_MW_FINAL_COVER_OFF
+    // Do nothing
+  `else
+    `define QVL_MW_FINAL_COVER
+  `endif
+`endif
+
+//----------------------------------------------------
+// Module Declaration
+//----------------------------------------------------
+
+`qvlmodule qvl_amba3_apb_monitor (
+                                  pclk, 
+                                  presetn, 
+                                  paddr, 
+                                  pselx, 
+                                  penable, 
+                                  pwrite, 
+                                  pwdata, 
+                                  prdata,
+                                  pready,
+                                  pslverr
+                                 );
+
+//----------------------------------------------------
+// Paramter Declaration
+//----------------------------------------------------
+
+  parameter Constraints_Mode = 0; // ##0in constraint
+  wire [31:0] pw_Constraints_Mode = Constraints_Mode;
+
+  parameter ADD_BUS_WIDTH  = 32;
+  wire [31:0] pw_ADD_BUS_WIDTH = ADD_BUS_WIDTH; // ##0in max 32 -name AMBA3_APB_10 -message "Width of the APB Address bus is at most 32" -clock pclk -areset !presetn -group amba3_apb_monitor
+
+  parameter DATA_BUS_WIDTH = 32;
+  wire [31:0] pw_DATA_BUS_WIDTH = DATA_BUS_WIDTH; // ##0in max 32 -name AMBA3_APB_11 -message "Width of the APB Data bus is at most 32" -clock pclk  -areset !presetn -group amba3_apb_monitor
+
+//----------------------------------------------------
+// Input Declaration
+//----------------------------------------------------
+
+  input                        pclk;
+  input                        presetn;
+  input  [ADD_BUS_WIDTH-1 : 0] paddr;
+  input                        pselx;   // ##0in known_driven -name AMBA3_APB_09_pselx -clock pclk -areset !presetn -message "Control signal, pselx, should not be X or Z" -group amba3_apb_monitor
+  input                        penable; // ##0in known_driven -name AMBA3_APB_09_penable -clock pclk -areset !presetn -message "Control signal, penable, should not be X or Z" -group amba3_apb_monitor
+  input                        pwrite;  // ##0in known_driven -name AMBA3_APB_09_pwrite -clock pclk -areset !presetn -message "Control signal, pwrite, should not be X or Z" -group amba3_apb_monitor
+  input [DATA_BUS_WIDTH-1 : 0] pwdata;
+  input [DATA_BUS_WIDTH-1 : 0] prdata;
+  input                        pready;  // ##0in known_driven -name AMBA3_APB_09_pready -clock pclk -areset !presetn -message "Control signal, pready, should not be X or Z" -group amba3_apb_monitor
+  input                        pslverr; // ##0in known_driven -name AMBA3_APB_09_pslverr -clock pclk -areset !presetn -message "Control signal, pslverr, should not be X or Z" -group amba3_apb_monitor
+  
+  parameter ZI_IDLE_STATE    = 0;
+  parameter ZI_SETUP_STATE   = 1;
+  parameter ZI_ACCESS_STATE  = 2;
+  parameter ZI_WAIT_STATE    = 3;
+  parameter ZI_UNKNOWN_STATE = 4;
+
+//----------------------------------------------------
+// Reg/Wire Declaration
+//----------------------------------------------------
+
+  wire                        bus_idle;
+  wire                        bus_setup;
+  wire                        bus_wait;
+  wire                        bus_access;
+
+  reg                         bus_idle_to_unknown;
+  reg                         bus_setup_to_unknown;
+  reg                         bus_wait_to_unknown;
+  reg                         bus_access_to_unknown;
+  reg                         bus_unknown_to_unknown;
+  reg                         paddr_fire;
+  reg                         pwrite_fire;
+  reg                         pwdata_fire;
+
+  reg                 [2 : 0] bus_state;
+  reg                 [2 : 0] next_state;
+
+  reg   [ADD_BUS_WIDTH-1 : 0] latched_paddr;
+  reg  [DATA_BUS_WIDTH-1 : 0] latched_pwdata;
+  reg                         latched_pwrite;
+  reg                [63 : 0] temp_wait_count;
+
+//----------------------------------------------------
+// Initial block
+//----------------------------------------------------
+  
+`protected
+
+    MTI!#P@s+kR5A1GW]Bns@7Czp_a_UI+v'e1wShQB'["rX-o{s*H\}w=\\\[8VECrD1!jeO7vI'i'
+    QZ;WZoHelA}k5D+rpWXpXC^Cij-j*;x{eX,_}Q,J!n=k}iJV5<erd~7#~BH=joGz;Tou_5E?o7kj
+    J*V>35uD{j+5ZzdG3uDUQ6[2wAGWpi?,7'>}v7,=mE=Z*G;8eH@$7Oo>3-TYorZ~s,-,NBCW?7mu
+    ;Is#*KR@*-{^,H&X'3}IAW#97+X[rujA4'=-ri7pYHY#DHXZtx{KOZ$au<5XTO=p#pxDel5[aGsC
+    2JY<j1X_\-B?AzeE_5}rwd*7!#<][B-X^uQ5waD2BKPoamoIpV,R1I7rWXD\A<e,C~=wX<QAs?oR
+    ra^E>T>irl=IipYaN^}<\t/Q,'=7_*_Q=D{}~5AJ>O{a[J5O_RH2w'@:l79\pV7*+1Ykj+7ZsOi;
+    D;;rV#Xv>KUv],!rZ$J!QWrpAHp&R%AaCRe4ZlC!eK+#qRJDk*,QG<CJx'my)jYo[E=a>|9$+TYv
+    {li^m7<q=u_k^F2e+77<51MTOXr+^Zn;7JO/\azK7E-E1@+Y!'zvQnA\Z\rAeJ*}zQRQzI;WaTlE
+    WHTT5vTu37BK[}=Gi+~2onI2AUoA^uzr]Bm1)BZ@T,T-3IJz74,j[!HYjBA>I7Y{xCY_Y[t}~HTl
+    Jarl#Q!)=UQOU$k=pB{@]^z#oOoV2=~7QzSxZI3hKn$lguXan'BYEu(2BG]oBkZIi2lR>mTBK'XG
+    R$^i{HC[Em{*i}i@5oi<XAQ*kHw8?rAkrUIu,?=~Xl<3p{>rp!oKn>[Il~_?rG=]G1D>u[jsM_lC
+    @=}#1!o-Q/BX}^VnA*I,j?%^CY_r=,75=pkk5U]!sQ2]JAkTo[2zr,vEx-T[^3HE1^==v3mOAOkj
+    su=0I7T}{HIY@>RJP@lYrv?AXz\-n\+}>v*aw]BRzEk!po@3EUnvVo-na+<AE"zj-#r3]KRQw_;a
+    {zViIDYnQu*AC+;t*=_A5?<G]pKD5!]\lJvRlW+AA$3H^Gnulo]<]'W<?1me.'?<VkVR2^e@oS\D
+    1Hl{e<G*_Ogelx?n*p!\_~;?+<a*pZmrZZ-+>'uCU_U(~-W1CWT[)BHOAM~(VnoeJYxzz-[}%:=U
+    {jUAoT{{\GAp-WU<\pjxXjW^R11]A[ixQaLb"]BJu$,Q7#H~R:;{BjEe7]#=K<[-K#%1DY\=WrAC
+    ZY,'Z\[Xl;lW__+^~{1qciv~Bn5}>7Kz;sAG\0};3p>r]17nV{T1~krpVn?B^!I*~*-R@Q<<ZQj]
+    @?EB1#\=AA>E;mr?-m{*e}gI_VG+5T5vTmI-7sz^>>*uzeRVCRTDHmOOV=12TWmoC'otC=]C:2*<
+    \9<(:2+m}kY^2]1zCjmGo,JrmL,Xa?^5n$,?-'r^I@1zlm<5aI-'iC{j\J[*/z>[,][J^{+,x-{<
+    A=?<]#Y?7r'\{Ae}Oe62>2E0'~3=A_*u{rv,y-A_{fW'1AZX<1Y3YpVeG+]p<KkV!3GmQJ{CBl35
+    YQe>Z,'KspeQaA|)%kX;!+<BEz>oi7AA'PXAU!e5k$RpAH#xxUEOJ#Rk-!XGTw|aUxHb=,EkR@eX
+    TGu3dtE#$=bZs!]Fi[p^sJDB\wT@iR]1['a];>KHS--ow1JmIO]1]aaW}d}8Tj##}sXp,,5O,'zx
+    Q]UrepZ$'onn=vXprT]T=*$u?=]awTxzw*rY;{R\[BUeu^QxXBe'Bp<-Aa,$Q5lK>rkz?zO\R*HX
+    ]+Tz~I3p,-x77]sV=s7osku!Y_?p4uarJ.}rvr=xXxo5H!^3EUToA~1Qi;;T}}aq}fu]WlO$'uI=
+    w{E!T*Y=m*uGETQwU__Y*5GZ{-E!G5nxGuqllZmL3T]R~omTZ7I*w7O++E>xBKZre7z2C<5#$[UX
+    =ZuopZTV}G=E'3A[HE3U'7jsF<QBl#>x{;QK~p1kKz'vWlls\Sn[x^N#Cu}n<vHe}ZVn}W>_*{QD
+    U-?l>~D+wD<EGe[5We]ZT-R0~CZQps?3p2v\X>amB@>zw1V#E'W$suxIvGi!'']\eGY$a_G#wE-j
+    C';$=H_2OA~~#eA__>+TQK!!Mw<lsB@2WHOr$#IA3Eb^'ux;\kwom{kX$\QRH37KU!Zm\1HlxZ>v
+    JW\l~>2l=Q{TYeC\]^'1*nl2R<ez+jCvHXCcxTB]Hz}ok,WYl-jZG}Z7^+-Uw6zBZ*o!-V\xk@~e
+    V]2>}e0cj>WEETI-nQslJ'>W}1<1;CW?-R+n3TxW5YDmpzmR}w\7)5[,n_x#<_5^Gur}'=n@vk,5
+    ?r,>I?$7_1Z^_Kl!3CKllqu1QY}R{=ZEi,,*x@3Ek3BM2s-,OOp>cB3Y+DX@Kj1123{-[%<Au#CY
+    ?o}Us{;EB^2}V!JTW,>}#CkGp=?UT["WAI[+'7i13!{<RJe3]n<_;@ICsk=IXaXc67V'VJR>XYIU
+    V_Jno<U>e7YI#2Bx5[IA3oH2j}R@=*\QQp-^!BHQ\kpv2gaT,#'zG?l'!VQk}\eTE-9;l{}J,,i=
+    #R,-<[5=#mEI,I;G3uZ|Y2_w!,sCD7TWD3e]]+H@x3VQmVvH[l2#R3Z+IWns'UK7e{@*2xz,WDr\
+    T{'sk_J;Y^xwFNk*5mNsY{D3wED{aG+S1AX'jneosr-olIG_\W_KhDxD~2,v|bw_Vkm]Zum-_z}E
+    G_G,iQ*A7C(xT$m2*u]R'aptQX_!IB1Y?5kJQQs2Mn<Ka1W5}/x@=}w}@m^*!=wa3ogXx*K*[=ZT
+    {rAeuDZVvB?DM}AvwZ\uz*I3rT5OGIUX~KAV1@BzDu]{uskX+/.,vW3X5AT^1p[827C$QvU^em7?
+    lj@DnhJ]xDsNBz_KDu]AmaTTJv~GOp[sa12pM~+T'{{Z[@{ABv7JOlHC}QV}n\Q^BvmBDJr'_|E!
+    3OmEwI-CD3OKo'1e#7wwpH^xhI+<?[\DT{'boZpzC~\{'Z{ZR32ZeI\I7ZI_&[\+E/Fu1-{i=5=}
+    iw;T'W-3=$^CYB2ds!l!aC3+=5vlY,Yn[m{rN3}J\)N;C~!jpX-!C{27[1rzWvYQUj5BQw5z#!?s
+    u]"[U!;e\xpA[{aJAJTp]}1VBie*i2'z~V~=A+e=B~I:IA*Io=-KkoWQbxOZ-N^Yq^Yn!-ri$]V>
+    ^9F~R<$"!GE1QCIK={Ya?^eu]?zrl#{';7vTCV2{RDIIk[2~Gn=+r25{BRH<YYvel[ks[RUm@RsG
+    ]*As}xA]x?we17Z+mBYoY>3uX$R9nlR;'1<VD~JedE>YWTO+\iX3jWzUuv$?CEBT@Ym_Tj,kB_VT
+    D]l>7Jl7}IJ]!oI,5:e+Yi>]xivv[sa+^7Y3771\!r#^+EtaD[IsV2-\TYs+_m{H{\EDHr{+^B'l
+    1,Cr>K@\wTXlFprf1pAJE;JTGs#$d#&mRHD]IVV?=u]nIW;wv5{e='ViwAuz$ZO'#IO.*BJJIKl_
+    ^s5UxQw=?.^x{rv*@~Y#oQ?<*E}8}eQe=;]x[[,CRAY~EE~@W\H_QU}_oB'K3zI#1|.4,zs~}o,\
+    pzRs9[g>I<2Xs\In1BW/X$e[[n*{^~7]<I#KmO^Q]o'JV@5B[7?r7CD'zrKzTwE7!Tl<O,<>([>A
+    ').m[GHXOxZl?Jep~XH<RX2U[kkTOj*E=+A5XxWlVYs^ij*zrYx2YzQ}$#GKzQB#Co+5<A]DKQi)
+    Mi5WUr{>Bkw[V7><rWHu!1?xHLsKa]l3}D,3*KDs{2U^poaUoGlWpal#Us1I+!ZVZkY1{$jkm!YE
+    Ro5Tr+<5jeU[pAB=\#Cj\o*<xr.8,~v7$C^B[_$kAX1E;jHsqwo@uH=T*>I_nXTKO,,3_75#vHH-
+    '!jw=T*7}sslJwBD\l[KOE#s7Lyj#;3W{^@5W3'3vlrqceZx=d#a{@Q[kZ$REoQp@A^uDBA[T>I^
+    \zix}GYn*X5ejBs*RKzeVII$"YR}E$Ou2j7@<I;G?X8?Ae\@+{\&hAV2pUYkB_ekp3QO-zeCr[Re
+    DoO*^}W,r&*)B<<p>E*?qFa&E}2]IO#GR1JD.(#S.#5U\#R;pN*m3\Jx^xJs]GC9YC#z=H<7\v>^
+    B=<Roa_Y#}l}?VW[OeR{Dmmwra,aDGk'Horvx^D1#7?=i7RDXC7u?QDi^<W$1w;ss[;{BY{@Z+@2
+    -AA>C~<I,zs[l3mp{^wGvi
+`endprotected
+
+  reg                [63 : 0] setup_count; 
+  reg                [63 : 0] idle_count;
+  reg                [63 : 0] access_count;
+  reg                [63 : 0] read_count;
+  reg                [63 : 0] write_count;
+  reg                [63 : 0] back2back_count;
+  reg                [63 : 0] min_wait_count;
+  reg                [63 : 0] max_wait_count;
+  reg                [63 : 0] slave_error_count;
+  reg                         min_wait_count_set;
+  wire                        collect_stats;
+
+`protected
+
+    MTI!#yI$17x,D-H'^IY\Kp:}2-+wCU+@R~_EDkrC5*"knjUYp#s"ArViZ'kInj5k5T<3,^uoK5k=
+    P]\s~$l$Q?_]utqII{;EHTe7ZjOvHv$8Xa_U3QmUr+R;#aBE.=?V,\WuAm5lAnR$zWst'lm^';H@
+    UUYRT]$<&vja*Zh'\;#K,e<_BmrI3Kj8BeAWKlD2owwks,+1)1{u}9CXuakz$e[>ECemYX&^w_17
+    -K*}op\y;vE}iaK'2TK;nO}ll3JEvCK;i|E\}H._D@[)$ZOQ3<}@-RJ<~E2$N<aD$0o2xi7O#rBG
+    7Voi7mU$Tul#=[z.kGV'Dv--Ha]-#sK=X7W*nX52R6]^ze#jz](x~U>q*cKX{asVZ@1w>[hk{*po
+    mXu^CEnjQ}p2[A]5J3uV$Wj+C<v^IOG|7r2}XQDmtF_Y[iNVGp?Gl7WiEli7aAx;=rID_'RlJw]r
+    A~vjQ]*V\pA%_oA!:ozC3B{Qw=X\iG~Y2w9<o>;*aH1tBIjYoU*DG5~z\e>=A}G<TlX_^izIV5@u
+    >nwYEQxJ0(A1k]{=1{9Q_O2=BEGBlxa-TpEB/=U--?]#J:m$]7x}CGoeX#ooi@1l>p#z]Ue;rCsU
+    $w8vm1X>s,E2l'x?zK>$S9~I'@]-]D(U13o'O7>7OvW;VRX\A3!AHDB3e3$v5Q\l!2x,,pGsTo<@
+    N-Vo}35nv?R?e*CIo[#uBDDT~s7Hk6BKV[M)Bc[#~wV~xYcxmzvQ\X';BUI*"z[jzx*+3esYJHEB
+    V}7kYzV2s'o,slv52V,22AA5'p<@+@Ee#7DkW<oA]nl^R&v;jlxTj?o7#}~D=iKU]i};V7jS-53x
+    o-mE6-r{==*9#\u^=^{,vXC*w<2Z^!A^OOEw?a1U\xW*O[rk7deUj7zvm+$&vAuk1pD]wVi*~l}o
+    ^X+s2_[Yp*55_{mZEonUvO=EU+}2lZZBUBpom(?>!j)y_i2;{Ba5s<$>t\_XnmI'3_r3VwT5uc#x
+    ,5vDK;v+K?c=@-{R@nRW1X\[UJ'3X[m@*,1?]*E*~}KnYR7i'u$?em7l,XlO[xD'QBi]O2Z@QkUm
+    _sk37WkAvaurtEGxToBYZV*~]5wZA$[^za_I33aR5n={\C<aD"r23Z@-$U!<
+`endprotected
+
+  //--------------------------------------------------------------------------
+  // OVL SVA Assertions are included here
+  //--------------------------------------------------------------------------
+
+`include "qvl_amba3_apb_monitor_assertions.inc"
+`include "qvl_amba3_apb_monitor_cover.inc"
+
+`qvlendmodule // qvl_amba3_apb_monitor

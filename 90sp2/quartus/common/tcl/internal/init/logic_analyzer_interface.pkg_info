@@ -1,0 +1,20 @@
+# Add ::quartus::logic_analyzer_interface to the table of packages
+lappend quartus(package_table) {logic_analyzer_interface quartus_stp generic}
+
+if {[lsearch -exact [list quartus_stp] $quartus(nameofexecutable)] != -1} {
+
+    # Make ::quartus::logic_analyzer_interface available to load
+    set qpkg_script_auto [file join [file dirname [info script]] logic_analyzer_interface.tcl]
+    if {[file exist $qpkg_script_auto]} {
+       source $qpkg_script_auto
+    }
+    unset qpkg_script_auto
+
+}
+
+if {[lsearch -exact [list quartus_stp] $quartus(nameofexecutable)] != -1} {
+
+    # Load ::quartus::logic_analyzer_interface by default
+    package require ::quartus::logic_analyzer_interface
+
+}

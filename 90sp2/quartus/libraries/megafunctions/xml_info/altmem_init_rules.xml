@@ -1,0 +1,65 @@
+<?xml version="1.0"?>
+<ROOT>
+	<INCLUDE FILE="mfam_family_macros.xml" />
+	<MACROS>
+		<MACRO NAME="m_rom_data_ready_port_used" DEFINITION="is_used(rom_data_ready) ? true : false" />
+		<MACRO NAME="m_init_file_used">
+			<DEFINITION> 
+				INIT_FILE != "UNUSED"
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_rom_data_ready_param_used">
+			<DEFINITION> 
+				PORT_ROM_DATA_READY != "PORT_UNUSED"
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_init_to_zero_used">
+			<DEFINITION>
+				INIT_TO_ZERO == "YES"
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_rom_read_latency_used">
+			<DEFINITION>
+				ROM_READ_LATENCY != 1
+			</DEFINITION>
+		</MACRO>
+	</MACROS>
+	<PARAMETER_RULES>
+		<PARAMETER NAME="WIDTH" VALUE="1-256" />
+		<PARAMETER NAME="WIDTHAD" VALUE="5-16" />
+		<PARAMETER NAME="ROM_READ_LATENCY" VALUE="1-6" />
+		<PARAMETER NAME="NUMWORDS" >
+			<FORCE_RANGE MIN="(2 exp (WIDTHAD - 1))" MAX="(2 exp WIDTHAD)" />
+		</PARAMETER>
+		<PARAMETER NAME="init_to_zero" >
+			<FORCE_VALUE TO="NO" WHEN="m_init_file_used" />
+		</PARAMETER>
+		<PARAMETER NAME="port_rom_data_ready" >
+			<FORCE_VALUE TO="PORT_UNUSED" WHEN="m_init_file_used || m_init_to_zero_used" />
+		</PARAMETER>
+		<PARAMETER NAME="rom_read_latency" >
+			<FORCE_VALUE TO="1" WHEN="m_init_file_used || m_init_to_zero_used || m_rom_data_ready_param_used" />
+		</PARAMETER>
+	</PARAMETER_RULES>
+	<PORT_RULES>
+		<PORT NAME="rom_data_ready" USAGE="VARIABLE" >
+			<STATE TO="UNUSED" >
+				<WHEN> m_init_to_zero_used || m_init_file_used </WHEN>
+			</STATE>
+			<STATE TO="USED" >
+				<WHEN> m_rom_data_ready_param_used </WHEN>
+			</STATE>
+		</PORT>
+		<PORT NAME="datain" USAGE="VARIABLE" >
+			<STATE TO="UNUSED" WHEN="m_init_to_zero_used || m_init_file_used" ELSE="USED" />
+		</PORT>
+		<PORT NAME="rom_rden" USAGE="VARIABLE" >
+			<STATE TO="UNUSED" WHEN="(!mfam_family_has_stratixiii_style_ram and !m_rom_data_ready_param_used) || m_init_to_zero_used || m_init_file_used" />
+		</PORT>
+		<PORT NAME="rom_address" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="m_init_to_zero_used || m_init_file_used" ELSE="USED" />
+		</PORT>
+		<PORT NAME="clken" USAGE="VARIABLE" />
+		<PORT NAME="clock" IS_CLOCK_PORT="TRUE" USAGE="USED" />
+	</PORT_RULES>
+</ROOT>

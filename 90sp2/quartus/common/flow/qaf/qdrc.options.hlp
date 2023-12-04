@@ -1,0 +1,304 @@
+<DEFAULT_READ_ASSIGNMENT>
+--------
+Overview
+--------
+
+Option to read the assignments from the Quartus II Settings 
+File (.qsf) and override assignments obtained from the 
+database. All options that pass from the command line 
+still override any conflicting assignments found in the 
+QSF.
+
+By default, assignments are read from the QSF unless you 
+specify "--read_settings_files=off".
+
+---------------------------
+Command-Line Option Details
+---------------------------
+
+Command-line options are provided for making many common
+global project settings and performing common tasks. You
+can use either of two methods to make assignments to an
+individual entity. If the project exists, open the project
+in the Quartus II GUI, change the assignment, and close the
+project. The changed assignment is updated in the QSF. Any 
+command-line executables you run after this update use the 
+updated assignment. See "Option Precedence" below for more 
+information. You can also make assignments using the 
+Quartus II Tcl scripting API. To completely script the 
+creation of a Quartus II project, choose this method.
+
+-----------------
+Option Precedence
+-----------------
+
+If you are using the command-line executables, you need to
+be aware of the precedence of various project assignments
+and how to control the precedence. Assignments for a
+particular project exist in the QSF for the project.
+Assignments for a project can also be made by using
+command-line options, as described earlier. Project
+assignments are reflected in compiler database files that
+hold intermediate compilation results and reflect assignments
+made in the previous project compilation.
+
+All command-line options override any conflicting assignments
+found in the QSF or the compiler database files. There are
+two command-line options to specify whether QSF or compiler
+database files take precedence for any assignments not
+specified as command-line options.
+
+Note: Any assignment not specified as a command-line option
+or found in the QSF or compiler database files is set to its
+Quartus II software default value.
+
+The file precedence command-line options are
+--read_settings_files and --write_settings_files. By default,
+the --read_settings_files and --write_settings_files options
+are turned on. Turning on the --read_settings_files option
+causes a command-line executable to read assignments from
+the QSF instead of from the compiler database files. Turning
+on the --write_settings_files option causes a command-line
+executable to update the QSF to reflect any specified options,
+as happens when closing a project in the Quartus II GUI.
+
+Table 1 lists the precedence for reading assignments
+depending on the value of the --read_settings_files option.
+
+
+* Table 1. Precedence for Reading Assignments
+
+Option Specified                      Precedence for Reading Assignments
+------------------------------------  ----------------------------------
+--import_settings_files=on (Default)  1. Command-line options
+                                      2. Quartus II Settings File (.qsf)
+                                      3. Compiler database (db directory, if it exists)
+                                      4. Quartus II software defaults
+
+--import_settings_files=off           1. Quartus II Settings File (.qsf)
+                                      2. Compiler database (db directory, if it exists)
+                                      3. Quartus II software defaults
+
+
+Table 2 lists the locations to which assignments are
+written, depending on the value of the --write_settings_files
+command-line option.
+
+
+* Table 2. Location for Writing Assignments
+
+Option Specified                      Location for Writing Assignments
+------------------------------------  --------------------------------
+--export_settings_files=on (Default)  1. Quartus II Settings File (.qsf) and
+                                      2. Compiler database
+
+--export_settings_files=off           1. Compiler database
+
+
+The following example assumes that a project named fir_filter
+exists, and that the Analysis & Synthesis step has been
+performed (using the quartus_map executable).
+
+quartus_fit fir_filter --fmax=80MHz
+quartus_tan fir_filter
+quartus_tan fir_filter --fmax=100MHz --tao=timing_result-100.tao --write_settings_files=off
+
+The first command, quartus_fit fir_filter --fmax=80MHz, runs
+the Quartus II Fitter and specifies a global fMAX requirement
+of 80 MHz.
+
+The second command, quartus_tan fir_filter, runs Quartus II
+Timing Analyzer for the results of the previous fit.
+
+The third command reruns Quartus II Timing Analyzer with a
+global Fmax requirement of 100 MHz and saves the result in
+a file called timing_result-100.tao. By specifying the
+--write_settings_files=off option, the command-line executable
+does not update the QSF to reflect the changed Fmax requirement.
+The compiler database files reflect the changed Fmax requirement.
+If the --write_settings_files=off option is not specified, the
+command-line executable updates the .qsf to reflect the 100 MHz
+global fMAX requirement.
+
+Use the --read_settings_files=off and --write_settings_files=off
+options (where appropriate) to optimize the way that the
+Quartus II software reads and updates the QSF. The following
+example shows how to avoid unnecessary QSF reading and writing.
+
+quartus_map filtref --source=filtref --part=ep1s10f780c5
+quartus_fit filtref --fmax=100MHz --read_settings_files=off
+quartus_tan filtref --read_settings_files=off --write_settings_files=off
+quartus_asm filtref --read_settings_files=off --write_settings_files=off
+
+The quartus_tan and quartus_asm executables do not need to
+read or write settings files because they do not change any
+settings in the project.
+</DEFAULT_READ_ASSIGNMENT>
+
+<DEFAULT_WRITE_ASSIGNMENT>
+--------
+Overview
+--------
+
+Option to write out the settings obtained from command-line 
+options to the Quartus II Settings File (.qsf). 
+
+By default, assignments are written to the QSF unless you 
+specify "--write_settings_files=off".
+
+---------------------------
+Command-Line Option Details
+---------------------------
+
+Command-line options are provided for making many common
+global project settings and performing common tasks. You
+can use either of two methods to make assignments to an
+individual entity. If the project exists, open the project
+in the Quartus II GUI, change the assignment, and close the
+project. The changed assignment is updated in the QSF. Any
+command-line executables that are run after this update use
+the updated assignment. See "Option Precedence" below for
+more information. You can also make assignments using the
+Quartus II Tcl scripting API. To completely script the 
+creation of a Quartus II project, choose this method.
+
+-----------------
+Option Precedence
+-----------------
+
+If you are using the command-line executables, you need to
+be aware of the precedence of various project assignments
+and how to control the precedence. You can find ssignments 
+for a particular project exist in the QSF for the project.
+You can also make assignments for a project by using
+command-line options, as described earlier. Project
+assignments are reflected in compiler database files that
+hold intermediate compilation results and reflect assignments
+made in the previous project compilation.
+
+All command-line options override any conflicting assignments
+found in the QSF or the compiler database files. There are
+two command-line options to specify whether QSF or compiler
+database files take precedence for any assignments not
+specified as command-line options.
+
+Note: Any assignment not specified as a command-line option
+or found in the QSF or compiler database files is set to its
+Quartus II software default value.
+
+The file precedence command-line options are
+--read_settings_files and --write_settings_files. By default,
+the --read_settings_files and --write_settings_files options
+are turned on. Turning on the --read_settings_files option
+causes a command-line executable to read assignments from
+the QSF instead of from the compiler database files. Turning
+on the --write_settings_files option causes a command-line
+executable to update the QSF to reflect any specified options,
+as happens when closing a project in the Quartus II GUI.
+
+Table 1 lists the precedence for reading assignments
+depending on the value of the --read_settings_files option.
+
+
+* Table 1. Precedence for Reading Assignments
+
+Option Specified                      Precedence for Reading Assignments
+------------------------------------  ----------------------------------
+--import_settings_files=on (Default)  1. Command-line options
+                                      2. Quartus II Settings File (QSF)
+                                      3. Compiler database (db directory, if it exists)
+                                      4. Quartus II software defaults
+
+--import_settings_files=off           1. Quartus II Settings File (QSF)
+                                      2. Compiler database (db directory, if it exists)
+                                      3. Quartus II software defaults
+
+
+Table 2 lists the locations to which assignments are
+written, depending on the value of the --write_settings_files
+command-line option.
+
+
+* Table 2. Location for Writing Assignments
+
+Option Specified                      Location for Writing Assignments
+------------------------------------  --------------------------------
+--export_settings_files=on (Default)  1. Quartus II Settings File (.qsf) and
+                                      2. Compiler database
+
+--export_settings_files=off           1. Compiler database
+
+
+The following example assumes that a project named fir_filter
+exists, and that the Analysis & Synthesis step has been
+performed (using the quartus_map executable).
+
+quartus_fit fir_filter --fmax=80MHz
+quartus_tan fir_filter
+quartus_tan fir_filter --fmax=100MHz --tao=timing_result-100.tao --write_settings_files=off
+
+The first command, quartus_fit fir_filter --fmax=80MHz, runs
+the Quartus II Fitter and specifies a global fMAX requirement
+of 80 MHz.
+
+The second command, quartus_tan fir_filter, runs Quartus II
+Timing Analyzer for the results of the previous fit.
+
+The third command reruns Quartus II Timing Analyzer with a
+global Fmax requirement of 100 MHz and saves the result in
+a file called timing_result-100.tao. By specifying the
+--write_settings_files=off option, the command-line executable
+does not update the QSF to reflect the changed Fmax requirement.
+The compiler database files reflect the changed Fmax requirement.
+If the --write_settings_files=off option is not specified, the
+command-line executable updates the QSF to reflect the 100 MHz
+global fMAX requirement.
+
+Use the --read_settings_files=off and --write_settings_files=off
+options (where appropriate) to optimize the way that the
+Quartus II software reads and updates the QSF. The following
+example shows how to avoid unnecessary QSF reading and writing.
+
+quartus_map filtref --source=filtref --part=ep1s10f780c5
+quartus_fit filtref --fmax=100MHz --read_settings_files=off
+quartus_tan filtref --read_settings_files=off --write_settings_files=off
+quartus_asm filtref --read_settings_files=off --write_settings_files=off
+
+The quartus_tan and quartus_asm executables do not need to
+read or write settings files because they do not change any
+settings in the project.
+</DEFAULT_WRITE_ASSIGNMENT>
+
+<POST_SYN_ID>
+Option to perform post-synthesis design analysis.
+</POST_SYN_ID>
+
+<POST_FIT_ID>
+Option to perform post-fit design analysis.
+</POST_FIT_ID>
+
+<HARDCOPY_ID>
+Option to generate HardCopy(R) files.
+
+This option overrides the settings specified in the
+Quartus II Settings File (.qsf). 
+</HARDCOPY_ID>
+
+<APP_DESCRIPTION_ID>
+The Quartus(R) II Design Assistant checks the reliability 
+of a design based on a set of design rules. The Design 
+Assistant is especially useful for checking the reliability 
+of a design before converting the design for HardCopy(R) 
+devices. 
+
+The Design Assistant supports designs that target any 
+Altera device supported by the Quartus II software. 
+
+Quartus II Analysis & Synthesis or the Fitter must be run 
+successfully before running the Design Assistant.
+</APP_DESCRIPTION_ID>
+
+<RTL_ID>
+Option to run Design Assistant in pre-synthesis (RTL) mode.
+</RTL_ID>
+

@@ -1,0 +1,108 @@
+------------------------------------------------------------------
+-- altfp_matrix_mult parameterized megafunction
+-- Generated with 'clearbox' loader - do not edit
+------------------------------------------------------------------
+
+
+-- Copyright (C) 1991-2009 Altera Corporation
+--  Your use of Altera Corporation's design tools, logic functions 
+--  and other software and tools, and its AMPP partner logic 
+--  functions, and any output files from any of the foregoing 
+--  (including device programming or simulation files), and any 
+--  associated documentation or information are expressly subject 
+--  to the terms and conditions of the Altera Program License 
+--  Subscription Agreement, Altera MegaCore Function License 
+--  Agreement, or other applicable license agreement, including, 
+--  without limitation, that your use is for the sole purpose of 
+--  programming logic devices manufactured by Altera and sold by 
+--  Altera or its authorized distributors.  Please refer to the 
+--  applicable agreement for further details.
+
+--  Version 9.0 Build 235 06/17/2009
+
+OPTIONS NAME_SUBSTITUTION = ON;
+
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+
+PARAMETERS
+(
+	BLOCKS = 0,
+	CLUSTER = 8,
+	COLUMNSAA = 0,
+	COLUMNSBB = 0,
+	ROWSAA = 0,
+	VECTORSIZE = 0,
+	WIDTH_EXP = 8,
+	WIDTH_MAN = 23,
+	CBXI_PARAMETER = "NOTHING"
+);
+FUNCTION @CBXI_PARAMETER (calcmatrix, enable, loadaa, loadbb, loaddata[WIDTH_EXP+WIDTH_MAN+1-1..0], reset, sysclk)
+RETURNS (done, outdata[WIDTH_EXP+WIDTH_MAN+1-1..0], outvalid, ready);
+
+
+SUBDESIGN altfp_matrix_mult
+(
+	calcmatrix		:	INPUT = GND;
+	done		:	OUTPUT;
+	enable		:	INPUT = VCC;
+	loadaa		:	INPUT = GND;
+	loadbb		:	INPUT = GND;
+	loaddata[WIDTH_EXP+WIDTH_MAN+1-1..0]		:	INPUT = GND;
+	outdata[WIDTH_EXP+WIDTH_MAN+1-1..0]		:	OUTPUT;
+	outvalid		:	OUTPUT;
+	ready		:	OUTPUT;
+	reset		:	INPUT = GND;
+	sysclk		:	INPUT;
+)
+VARIABLE
+	IF CBXI_PARAMETER != "NOTHING" GENERATE
+		auto_generated : @CBXI_PARAMETER WITH ( CBXI_PARAMETER = "NOTHING" );
+	END GENERATE;
+BEGIN
+	ASSERT (CBXI_PARAMETER != "NOTHING")
+	REPORT "Valid clear box generator not found or Errors encountered during clear box generation"
+	SEVERITY ERROR;
+	IF (CBXI_PARAMETER != "NOTHING") GENERATE
+		IF USED(calcmatrix) GENERATE
+			auto_generated.calcmatrix = calcmatrix;
+		END GENERATE;
+		IF USED(done) GENERATE
+			done = auto_generated.done;
+		ELSE GENERATE
+			done = GND;
+		END GENERATE;
+		IF USED(enable) GENERATE
+			auto_generated.enable = enable;
+		END GENERATE;
+		IF USED(loadaa) GENERATE
+			auto_generated.loadaa = loadaa;
+		END GENERATE;
+		IF USED(loadbb) GENERATE
+			auto_generated.loadbb = loadbb;
+		END GENERATE;
+		IF USED(loaddata) GENERATE
+			auto_generated.loaddata[] = loaddata[];
+		END GENERATE;
+		IF USED(outdata) GENERATE
+			outdata[] = auto_generated.outdata[];
+		ELSE GENERATE
+			outdata[] = GND;
+		END GENERATE;
+		IF USED(outvalid) GENERATE
+			outvalid = auto_generated.outvalid;
+		ELSE GENERATE
+			outvalid = GND;
+		END GENERATE;
+		IF USED(ready) GENERATE
+			ready = auto_generated.ready;
+		ELSE GENERATE
+			ready = GND;
+		END GENERATE;
+		IF USED(reset) GENERATE
+			auto_generated.reset = reset;
+		END GENERATE;
+		IF USED(sysclk) GENERATE
+			auto_generated.sysclk = sysclk;
+		END GENERATE;
+	END GENERATE;
+END;

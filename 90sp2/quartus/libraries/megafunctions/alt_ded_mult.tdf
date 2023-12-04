@@ -1,0 +1,1033 @@
+-----------------------------------------------------------------------
+-- ALT_DED_MULT
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+-- Version 1.0
+--
+------------------------------------------------------------------------
+
+INCLUDE "mercury_lcell";
+INCLUDE "dffpipe";
+INCLUDE "alt_ded_mult";
+INCLUDE "lpm_add_sub";
+
+PARAMETERS
+(
+	WIDTH_A,
+	WIDTH_B,
+	TERMINATION_LEVEL = CEIL(LOG2(WIDTH_B)),
+	LEVEL = 0,
+	REPRESENTATION = "UNSIGNED",
+	PIPELINE = 0,
+	LATENCY_REMAINING,
+	LEFTMOST = 1,
+	RIGHTMOST = 1,
+	INDEX = 0,
+	PARENT_OVERHANG = 0,
+	SIGN_EXTENSION_SUPPRESSION = "NO",
+	PIPE_INDEX = 0,
+	A_REP = "UNSIGNED",
+	B_REP = "UNSIGNED"
+);
+
+------------------------
+-- >16 tree splitting --
+------------------------
+DEFINE MAKE_EVEN(x) = x + (x MOD 2);
+CONSTANT MAX_DED_MULT_WIDTH = 16;
+-- splitting calculation for the a input
+DEFINE SPLIT_A_STAGE() = !SPLIT_B_STAGE() & (WIDTH_A > MAX_DED_MULT_WIDTH);
+CONSTANT LEFT_TREE_A_SPLIT = FLOOR(WIDTH_A DIV 2);
+CONSTANT RIGHT_TREE_A_SPLIT = WIDTH_A - LEFT_TREE_A_SPLIT;
+
+-- splitting calculation for the b input
+DEFINE SPLIT_B_STAGE() = (WIDTH_B > MAX_DED_MULT_WIDTH);
+CONSTANT LEFT_TREE_B_SPLIT_PRELIM = FLOOR(WIDTH_B DIV 2);
+CONSTANT LEFT_TREE_B_SPLIT = ((LEFT_TREE_B_SPLIT_PRELIM < MAX_DED_MULT_WIDTH) & (REPRESENTATION == "SIGNED") & ((LEFT_TREE_B_SPLIT_PRELIM MOD 2) != 0))
+	?	LEFT_TREE_B_SPLIT_PRELIM - 1
+	:	LEFT_TREE_B_SPLIT_PRELIM;
+CONSTANT RIGHT_TREE_B_SPLIT = WIDTH_B - LEFT_TREE_B_SPLIT;
+
+-- what will the actual split be in thye event that there is a split
+CONSTANT LEFT_SPLIT = SPLIT_A_STAGE() ? LEFT_TREE_A_SPLIT : LEFT_TREE_B_SPLIT;
+CONSTANT RIGHT_SPLIT = SPLIT_A_STAGE() ? RIGHT_TREE_A_SPLIT : RIGHT_TREE_B_SPLIT;
+CONSTANT B_PASSDOWN_VALUE_LEFT = SPLIT_B_STAGE() ? LEFT_SPLIT : WIDTH_B;
+CONSTANT B_PASSDOWN_VALUE_RIGHT = SPLIT_B_STAGE() ? RIGHT_SPLIT : WIDTH_B;
+
+-- determining the bitwidths of the adders for a splitting node
+CONSTANT ADDER_DROP_BITS = RIGHT_SPLIT;
+CONSTANT LEFT_MULT_WIDTH = SPLIT_A_STAGE() ? WIDTH_B + LEFT_SPLIT : WIDTH_A + LEFT_SPLIT;
+CONSTANT RIGHT_MULT_WIDTH = SPLIT_A_STAGE() ? WIDTH_B + RIGHT_SPLIT : WIDTH_A + RIGHT_SPLIT;
+CONSTANT NON_CONST_ADDER_WIDTH = RIGHT_MULT_WIDTH - ADDER_DROP_BITS;
+CONSTANT CONST_ADDER_WIDTH = LEFT_MULT_WIDTH - NON_CONST_ADDER_WIDTH;
+
+-- predicate to see if this is a splitting stage
+DEFINE SPLITTING_IS_NECESSARY() = SPLIT_A_STAGE() # SPLIT_B_STAGE();
+
+-------------------------
+-- <=16 tree splitting --
+-------------------------
+DEFINE SIGNED() = REPRESENTATION == "SIGNED";
+DEFINE SUPPRESS_SIGN_EXTENSION() = SIGN_EXTENSION_SUPPRESSION == "YES";
+CONSTANT MULTIPLIER_MODE = "MULTIPLIER";
+CONSTANT ARITHMETIC_MODE = "ARITHMETIC";
+-- for computing the greatest power of 2 less than some integer
+DEFINE LEAST_POW_2(power, index) = (2^power == index) ? FLOOR(index DIV 2) : (2^(power + 1) > index ? 2^power : LEAST_POW_2(power + 1, index));
+-- how many B bits should be computed by the right subtree
+CONSTANT RIGHT_TREE_VAL = LEAST_POW_2(0, WIDTH_B);
+-- how many B bits should be computed by the left subtree
+CONSTANT LEFT_TREE_VAL = WIDTH_B - RIGHT_TREE_VAL;
+-- what will be the result width of the right subtree
+CONSTANT RIGHT_TREE_RESULT_WIDTH = RIGHT_TREE_VAL <= 1 ? WIDTH_A : WIDTH_A + RIGHT_TREE_VAL;
+-- what will be the result width of the left subtree
+CONSTANT LEFT_TREE_RESULT_WIDTH = LEFT_TREE_VAL <= 1 ? WIDTH_A : WIDTH_A + LEFT_TREE_VAL;
+-- what is the result width of this tree
+CONSTANT RESULT_WIDTH = WIDTH_B == 1 ? WIDTH_A : (WIDTH_A == 1 ? WIDTH_B : WIDTH_A + WIDTH_B);
+-- how many drop bits from the right subtree
+CONSTANT RIGHT_OVERHANG = RIGHT_TREE_VAL;
+-- how many bits should the left subtree be sign extended before feeding to the adder
+CONSTANT LEFT_SIGN_EXTENSION = RESULT_WIDTH - RIGHT_OVERHANG - LEFT_TREE_RESULT_WIDTH;
+-- how wide is the adder for this stage
+CONSTANT ADDER_WIDTH = LEFT_SIGN_EXTENSION + LEFT_TREE_RESULT_WIDTH;
+-- how many bits should the right subtree be sign extended before being fed to the adder
+CONSTANT RIGHT_SIGN_EXTENSION = ADDER_WIDTH - (RIGHT_TREE_RESULT_WIDTH - RIGHT_OVERHANG);
+-- how many drop bits will need to be rerouted
+CONSTANT DROP_BIT_ROUTE_NUMBER = ((RIGHT_TREE_VAL == 1) # (RIGHTMOST == 1) # (RIGHT_TREE_VAL == 1)) ? 0 : RIGHT_OVERHANG;
+CONSTANT EXTERNAL_SIGN_EXTENSION_RIGHT = (SIGNED() & (RIGHT_TREE_VAL != 1) & !SUPPRESS_SIGN_EXTENSION()) ? RIGHT_SIGN_EXTENSION : 0;
+CONSTANT EXTERNAL_SIGN_EXTENSION_LEFT = (SIGNED() & (LEFT_TREE_VAL != 1) & !SUPPRESS_SIGN_EXTENSION()) ? LEFT_SIGN_EXTENSION : 0;
+CONSTANT SIGNED_TWO_LATENCY = PIPELINE >= 2 ? PIPELINE - 2 : 0;
+
+----------------------------------
+-- pipeline placement calculations
+----------------------------------
+-- If there are any pipeline registers, make sure that the
+-- multiplier output is chosen as one of the layers to get them
+DEFINE MIN(a, b) = a < b ? a : b;
+CONSTANT PIPELINE_FOR_CALC = (PIPELINE > 0) ? (PIPELINE - 1) : PIPELINE;
+CONSTANT N_STAGE = (TERMINATION_LEVEL > 1) ? (TERMINATION_LEVEL - 1) : TERMINATION_LEVEL;
+CONSTANT N_INTERNAL_DFF = MIN(N_STAGE, PIPELINE_FOR_CALC);
+CONSTANT N_EXTERNAL_DFF = PIPELINE_FOR_CALC - N_INTERNAL_DFF;
+CONSTANT PIPELINE_DELAY = FLOOR(N_STAGE DIV 2);
+DEFINE STAGE_VAL(k) = ((k * N_INTERNAL_DFF) + PIPELINE_DELAY );
+DEFINE STAGE_NUM(k) = FLOOR(STAGE_VAL(k) DIV N_STAGE);
+DEFINE STAGE_REM(k) = STAGE_VAL(k) MOD N_STAGE;
+DEFINE PUT_STAGE_HERE(k) = ((LEVEL == 0) & !SPLITTING_IS_NECESSARY() & (k == PIPE_INDEX)) #
+							(LEVEL == 0 & k > PIPE_INDEX & !SPLITTING_IS_NECESSARY())	? (PIPELINE_FOR_CALC > 0) & (STAGE_REM(k - 1) >= STAGE_REM(k))
+																						: (PIPELINE_FOR_CALC > 0) & (STAGE_REM(k) >= STAGE_REM(k + 1));
+
+-----------
+-- Masks --
+-----------
+-- unregistered carry mask
+CONSTANT CARRY_LE_MASK = "AAAA";
+-- dataa is the register feedback
+-- datab is the select input
+CONSTANT CARRY_LE_PIPE_MASK = "CCAA";
+-- should the carry le be registered
+DEFINE PIPE_CARRY_LE() = SUBSTAGE_LATENCY > 0;
+-- calculate the LUT mask of the carry le
+DEFINE CARRY_MASK() = PIPE_CARRY_LE() ? CARRY_LE_PIPE_MASK : CARRY_LE_MASK;
+-- adder with a cin
+CONSTANT SUM_CELL_MASK = "96E8";
+-- adder with no cin
+CONSTANT SUM_CELL_NO_CIN_MASK = "6688";
+-- the msb of the adder
+-- need to route the sign through the chain
+CONSTANT MSB_ADDER_MASK = "9696";
+-- datab gets the drop bit
+-- cin must be connected
+CONSTANT DROP_BIT_ROUTER = "AAF0";
+DEFINE INSERT_CARRY_LE() = SIGNED() & (LEFTMOST == 1) & ((1 < LEFT_TREE_VAL) & (4 > LEFT_TREE_VAL));
+-- For the leaf nodes there is one bit that hangs off the side that simply needs a mux and multout output
+CONSTANT LSB_BIT_MASK = SUM_CELL_NO_CIN_MASK;
+-- datab get the drop bit
+-- cin must not be connected
+-- this will send out a GND on the cin to get the chain
+-- started
+CONSTANT DROP_BIT_ROUTER_BOTTOM = "AA00";
+-- cell for extending the sign through the carries
+CONSTANT SIGN_EXTENDER_MASK = "F0F0";
+-- the adder cell mask for this particular bit
+CONSTANT LOW_INCREMENTOR = "6688";
+CONSTANT MIDDLE_INCREMENTOR = "6A80";
+CONSTANT LEFT_SIGN_EXTENDER_MASK = "CCF0";
+DEFINE CELL_MASK(i) = ((i == 0) & !ADDER_HAS_CIN())	?	SUM_CELL_NO_CIN_MASK
+													:	((i == ADDER_WIDTH - 1)	& (LEFT_TREE_VAL + RIGHT_TREE_VAL >= 4))	?	MSB_ADDER_MASK
+																															:	SUM_CELL_MASK;
+
+DEFINE DROP_BIT_ROUTE_MASK(i) = ((i != 0) # INSERT_CARRY_LE()) ? DROP_BIT_ROUTER : DROP_BIT_ROUTER_BOTTOM;
+CONSTANT SUBSTAGE_LATENCY = LATENCY_REMAINING == 0 ? 0 : (PUT_STAGE_HERE(PIPE_INDEX) # (LEVEL == 0 & !SPLITTING_IS_NECESSARY() & PIPELINE > 0)) ? LATENCY_REMAINING - 1 : LATENCY_REMAINING;
+CONSTANT SUB_LATENCY = SUBSTAGE_LATENCY - ((PUT_STAGE_HERE(PIPE_INDEX + 1) & (SUBSTAGE_LATENCY != 0)) ? 1 : 0);
+-- perform ripple sign-extension if this is a post formation stage on the left tree
+CONSTANT SIGN_EXTENSION_MASK = (RIGHT_TREE_VAL > 2) ? SIGN_EXTENDER_MASK : SUM_CELL_MASK;
+CONSTANT SIGN_EXTENSION_MASK_LEFT = (LEFT_TREE_VAL > 2) ? LEFT_SIGN_EXTENDER_MASK : SUM_CELL_MASK;
+
+-----------------------------------
+-- multiplier fanout calculation --
+-----------------------------------
+-- this is a multiplier output if
+--	1) This is a node on the tree root
+--	2) This node is on the rightmost edge of the tree (i.e. it has drop bit to the result) and it is a drop bit
+DEFINE ADDER_CELL_MULTIPLIER_OUTPUT(i) = ((LEVEL == 0) # ((RIGHTMOST == 1) & (i + DROP_BIT_ROUTE_NUMBER) < RIGHT_OVERHANG)) ? "TRUE" : "FALSE";
+
+----------------
+-- predicates --
+----------------
+DEFINE UNSIGNED() = REPRESENTATION == "UNSIGNED";
+-- the adder will have a cin in the event that:
+-- 	(1) it is at the pp formation stage (...bottom bit hangs off)
+-- 	(2) There are drop bits that need to be rerouted or this is the stage that will receive the carry_le to finish
+-- 		off a previous subtract
+DEFINE ADDER_HAS_CIN() = ((LEFT_TREE_VAL == 1) & (RIGHT_TREE_VAL == 1)) # (INSERT_CARRY_LE() # (DROP_BIT_ROUTE_NUMBER > 0));
+DEFINE SIGNED_TWO() = SIGNED() & (LEVEL == 0) & (WIDTH_B == 2);
+
+SUBDESIGN alt_ded_mult
+(
+	dataa[PIPELINE..0][WIDTH_A - 1..0]		:	INPUT;
+	datab[PIPELINE..0][WIDTH_B - 1..0]		:	INPUT;
+
+	clock									:	INPUT = VCC;
+	clken									:	INPUT = VCC;
+	aclr									:	INPUT = GND;
+
+	result[RESULT_WIDTH - 1..0]				:	OUTPUT;
+	msb										:	OUTPUT;
+	db_a									:	OUTPUT;
+	db_b									:	OUTPUT;
+)
+
+VARIABLE
+	IF !SPLITTING_IS_NECESSARY() GENERATE
+		IF !SIGNED_TWO() GENERATE
+			-- More significant bits
+			IF LEFT_TREE_VAL > 1 GENERATE
+				left_subtree : alt_ded_mult WITH(
+													WIDTH_A = WIDTH_A,
+													WIDTH_B = MAKE_EVEN(LEFT_TREE_VAL),
+													LEVEL = LEVEL + 1,
+													REPRESENTATION = REPRESENTATION,
+													PIPELINE = PIPELINE,
+													LATENCY_REMAINING = SUBSTAGE_LATENCY,
+													LEFTMOST = LEFTMOST,
+													RIGHTMOST = 0,
+													INDEX = INDEX * 2 + 1,
+													PARENT_OVERHANG = RIGHT_OVERHANG,
+													PIPE_INDEX = LEVEL == 0 ? PIPE_INDEX : PIPE_INDEX + 1
+												);
+			END GENERATE;
+
+			-- less significant bits
+			IF RIGHT_TREE_VAL > 1 GENERATE
+				right_subtree : alt_ded_mult WITH(
+													WIDTH_A = WIDTH_A,
+													WIDTH_B = MAKE_EVEN(RIGHT_TREE_VAL),
+													LEVEL = LEVEL + 1,
+													REPRESENTATION = REPRESENTATION,
+													PIPELINE = PIPELINE,
+													LATENCY_REMAINING = SUBSTAGE_LATENCY,
+													LEFTMOST = 0,
+													RIGHTMOST = RIGHTMOST,
+													INDEX = (INDEX + 1) * 2,
+													PARENT_OVERHANG = RIGHT_OVERHANG,
+													PIPE_INDEX = LEVEL == 0 ? PIPE_INDEX : PIPE_INDEX + 1
+												);
+			ELSE GENERATE
+				lsb_bit : mercury_lcell WITH	(
+													LUT_MASK = LSB_BIT_MASK,
+													OPERATION_MODE = MULTIPLIER_MODE,
+													MULTIPLIER_OUTPUT = ((LEVEL == 0) # (RIGHTMOST == 1)) ? "TRUE" : "FALSE"
+												);
+			END GENERATE;
+
+			-- sign extension for the right subtree
+			IF EXTERNAL_SIGN_EXTENSION_RIGHT > 0 GENERATE
+				right_sign_extender[RIGHT_SIGN_EXTENSION - 1..0] : mercury_lcell WITH	(
+																							OPERATION_MODE = MULTIPLIER_MODE,
+																							LUT_MASK = SIGN_EXTENSION_MASK,
+																							MULTIPLIER_OUTPUT = "FALSE"
+																						);
+			END GENERATE;
+
+			-- sign extension for the left subtree
+			IF EXTERNAL_SIGN_EXTENSION_LEFT > 0 GENERATE
+				left_sign_extender[LEFT_SIGN_EXTENSION - 1..0] : mercury_lcell WITH	(
+																						OPERATION_MODE = MULTIPLIER_MODE,
+																						LUT_MASK = SIGN_EXTENSION_MASK_LEFT,
+																						MULTIPLIER_OUTPUT = "FALSE"
+																					);
+			END GENERATE;
+
+			-- drop bits from the right subtree that must be rerouted since they will not participate in the add
+			-- at this stage
+			IF DROP_BIT_ROUTE_NUMBER > 0 GENERATE
+				drop_bit_cells[DROP_BIT_ROUTE_NUMBER - 1..0] :	FOR i IN DROP_BIT_ROUTE_NUMBER - 1 TO 0 GENERATE
+																	mercury_lcell WITH	(
+																							OPERATION_MODE = MULTIPLIER_MODE,
+																							LUT_MASK = DROP_BIT_ROUTE_MASK(i),
+																							MULTIPLIER_OUTPUT = "FALSE"
+																						)
+																END GENERATE;
+			END GENERATE;
+
+			-- the adder
+			adder_cells[ADDER_WIDTH - 1..0] :	FOR i IN ADDER_WIDTH - 1 TO 0 GENERATE
+													mercury_lcell WITH	(
+																			OPERATION_MODE = MULTIPLIER_MODE,
+																			LUT_MASK = CELL_MASK(i),
+																			MULTIPLIER_OUTPUT = ADDER_CELL_MULTIPLIER_OUTPUT(i)
+																		)
+												END GENERATE;
+
+			-- carry le
+			IF INSERT_CARRY_LE() GENERATE
+				carry_cell : mercury_lcell WITH	(
+													OPERATION_MODE = MULTIPLIER_MODE,
+													LUT_MASK = CARRY_MASK(),
+													MULTIPLIER_OUTPUT = "TRUE"
+												);
+
+			END GENERATE;
+
+			-- the partial product selectors
+			partial_product_a_select : NODE;
+			partial_product_b_select : NODE;
+		ELSE GENERATE
+			-- need to handle this differently since there arent enough levels for a carry le
+			adder_cells[WIDTH_A + 1..0] :	FOR i IN WIDTH_A + 1 TO 0 GENERATE
+												mercury_lcell WITH	(
+																		OPERATION_MODE = MULTIPLIER_MODE,
+																		LUT_MASK = i == 0 ? SUM_CELL_NO_CIN_MASK : SUM_CELL_MASK,
+																		MULTIPLIER_OUTPUT = "FALSE"
+																	)
+											END GENERATE;
+
+			incrementor[WIDTH_A + 1..0] :	FOR i IN WIDTH_A  + 1 TO 0 GENERATE
+											mercury_lcell WITH	(
+																	OPERATION_MODE = MULTIPLIER_MODE,
+																	LUT_MASK = i == 0 ? LOW_INCREMENTOR : MIDDLE_INCREMENTOR,
+																	MULTIPLIER_OUTPUT = "TRUE"
+																)
+										END GENERATE;
+		END GENERATE;
+	ELSE GENERATE
+		-- the non-constant input adder
+		nc_adder : lpm_add_sub WITH	(
+										LPM_WIDTH = NON_CONST_ADDER_WIDTH + CONST_ADDER_WIDTH,
+										LPM_PIPELINE = PUT_STAGE_HERE(PIPE_INDEX) ? 1 : 0
+									);
+
+		-- left subtree multiplier
+		left_mult : alt_ded_mult WITH	(
+											WIDTH_A = SPLIT_A_STAGE() ? LEFT_SPLIT : WIDTH_A,
+											WIDTH_B = MAKE_EVEN(SPLIT_B_STAGE() ? LEFT_SPLIT : WIDTH_B),
+											PIPELINE = PIPELINE,
+											REPRESENTATION = REPRESENTATION,
+											TERMINATION_LEVEL = TERMINATION_LEVEL,
+											LEVEL = 0,
+											LATENCY_REMAINING = SUBSTAGE_LATENCY,
+											SIGN_EXTENSION_SUPPRESSION = SIGN_EXTENSION_SUPPRESSION,
+											PIPE_INDEX = PIPE_INDEX + 1,
+											A_REP = A_REP,
+											B_REP = B_REP
+										);
+
+		-- right subtree multiplier
+		right_mult : alt_ded_mult WITH	(
+											WIDTH_A = SPLIT_A_STAGE() ? RIGHT_SPLIT : WIDTH_A,
+											WIDTH_B = MAKE_EVEN(SPLIT_B_STAGE() ? RIGHT_SPLIT : WIDTH_B),
+											PIPELINE = PIPELINE,
+											REPRESENTATION = (A_REP == "UNSIGNED") & (B_REP == "UNSIGNED") ? A_REP : "SIGNED",
+											TERMINATION_LEVEL = TERMINATION_LEVEL,
+											LEVEL = 0,
+											LATENCY_REMAINING = SUBSTAGE_LATENCY,
+											SIGN_EXTENSION_SUPPRESSION = SPLIT_A_STAGE() ? "YES" : SIGN_EXTENSION_SUPPRESSION,
+											LEFTMOST = SPLIT_B_STAGE() ? 0 : LEFTMOST,
+											PIPE_INDEX = PIPE_INDEX + 1,
+											A_REP = SPLIT_A_STAGE() ? "UNSIGNED" : A_REP,
+											B_REP = SPLIT_B_STAGE() ? "UNSIGNED" : B_REP
+										);
+	END GENERATE;
+BEGIN
+(db_a, db_b) = GND;
+
+	IF !SPLITTING_IS_NECESSARY() GENERATE
+		IF !SIGNED_TWO() GENERATE
+			-- avoid errors about unsued ports
+			result[0] = GND & clock & clken & aclr;
+				
+			ASSERT (LEFT_TREE_VAL > 0) & (RIGHT_TREE_VAL > 0)
+				REPORT "Failure in alt_ded_mult"
+				SEVERITY ERROR;
+
+			ASSERT ADDER_WIDTH > 1
+				REPORT "Failure in alt_ded_mult"
+				SEVERITY ERROR;
+
+			ASSERT RIGHT_OVERHANG > 0
+				REPORT "Failure in alt_ded_mult"
+				SEVERITY ERROR;
+		
+			----------------------
+			-- Adder/Subtractor --
+			----------------------
+			-- connect pipeline parameters if this is a pipeline stage
+			IF PUT_STAGE_HERE(PIPE_INDEX) GENERATE
+				adder_cells[].clk = clock;
+				IF USED(clken) GENERATE
+					adder_cells[].ena = clken;
+				END GENERATE;
+				IF USED(aclr) GENERATE
+					adder_cells[].aclr = aclr;
+				END GENERATE;
+			END GENERATE;
+
+			-- adder carries
+			IF ADDER_WIDTH > 1 GENERATE
+				adder_cells[ADDER_WIDTH - 1..1].cin = adder_cells[ADDER_WIDTH - 2..0].cout;
+			END GENERATE;
+
+			----------------
+			-- Carry Cell --
+			----------------
+			-- This will be necessary for the signed case to get a complete subtract for the case
+			-- of MSB == VCC, since the partial product mux won't be able to handle it
+			IF INSERT_CARRY_LE() GENERATE
+				carry_cell.(multsela, multselb) = VCC;
+
+				-- the carry might need to be pipelined
+				IF PIPE_CARRY_LE() GENERATE
+					carry_cell.clk = clock;
+					IF USED(clken) GENERATE
+						carry_cell.ena = clken;
+					END GENERATE;
+					IF USED(aclr) GENERATE
+						carry_cell.aclr = aclr;
+					END GENERATE;
+
+					carry_cell.dataa = carry_cell.regout;
+					carry_cell.datab = datab[SUBSTAGE_LATENCY - 1][WIDTH_B - 1];
+				ELSE GENERATE
+					carry_cell.dataa = datab[SUBSTAGE_LATENCY][WIDTH_B - 1];
+				END GENERATE;
+				
+				IF DROP_BIT_ROUTE_NUMBER > 0 GENERATE
+					adder_cells[0].cin = drop_bit_cells[DROP_BIT_ROUTE_NUMBER - 1].cout;
+					drop_bit_cells[0].cin = carry_cell.cout;
+				ELSE GENERATE
+					adder_cells[0].cin = carry_cell.cout;
+				END GENERATE;
+			END GENERATE;
+		
+			---------------
+			-- Drop Bits --
+			---------------
+			-- may need to insert dummy cells to assist in routing drop bits
+			-- to later stages in the adder tree
+			IF DROP_BIT_ROUTE_NUMBER > 0 GENERATE
+				-- if a pipeline stage, connect the pipeline signals
+				IF PUT_STAGE_HERE(PIPE_INDEX) GENERATE
+					drop_bit_cells[].clk = clock;
+					IF USED(clken) GENERATE
+						drop_bit_cells[].ena = clken;
+					END GENERATE;
+					IF USED(aclr) GENERATE
+						drop_bit_cells[].aclr = aclr;
+					END GENERATE;
+				END GENERATE;
+				IF INSERT_CARRY_LE() GENERATE
+					drop_bit_cells[0].cin = carry_cell.cout;
+				END GENERATE;
+				IF DROP_BIT_ROUTE_NUMBER > 0 GENERATE
+					drop_bit_cells[DROP_BIT_ROUTE_NUMBER - 1..1].cin = drop_bit_cells[DROP_BIT_ROUTE_NUMBER - 2..0].cout;
+				END GENERATE;
+				
+				drop_bit_cells[].dataa = right_subtree.result[DROP_BIT_ROUTE_NUMBER - 1..0];
+				drop_bit_cells[].datab = GND;
+
+				adder_cells[0].cin = drop_bit_cells[DROP_BIT_ROUTE_NUMBER - 1].cout;
+			END GENERATE;
+
+			-----------------------------
+			-- Left Subtree Connection --
+			-----------------------------
+			IF LEFT_TREE_VAL == 1 GENERATE
+				IF SIGNED() GENERATE
+					IF LEFTMOST == 1 GENERATE
+						IF !SUPPRESS_SIGN_EXTENSION() GENERATE
+							adder_cells[ADDER_WIDTH - 1..ADDER_WIDTH - LEFT_SIGN_EXTENSION].datab = !dataa[SUBSTAGE_LATENCY][WIDTH_A - 1];
+							adder_cells[ADDER_WIDTH - LEFT_SIGN_EXTENSION - 1..0].datab = !dataa[SUBSTAGE_LATENCY][];
+						ELSE GENERATE
+							adder_cells[ADDER_WIDTH - 1..ADDER_WIDTH - LEFT_SIGN_EXTENSION].datab = VCC;
+							adder_cells[ADDER_WIDTH - LEFT_SIGN_EXTENSION - 1..0].datab = !dataa[SUBSTAGE_LATENCY][];
+						END GENERATE;
+					ELSE GENERATE
+						IF !SUPPRESS_SIGN_EXTENSION() GENERATE
+							adder_cells[ADDER_WIDTH - 1..ADDER_WIDTH - LEFT_SIGN_EXTENSION].datab = dataa[SUBSTAGE_LATENCY][WIDTH_A - 1];
+						ELSE GENERATE
+							adder_cells[ADDER_WIDTH - 1..ADDER_WIDTH - LEFT_SIGN_EXTENSION].datab = GND;
+						END GENERATE;
+						adder_cells[ADDER_WIDTH - LEFT_SIGN_EXTENSION - 1..0].datab = dataa[SUBSTAGE_LATENCY][];
+					END GENERATE;
+				ELSE GENERATE
+					adder_cells[ADDER_WIDTH - 1..ADDER_WIDTH - LEFT_SIGN_EXTENSION].datab = GND;
+					adder_cells[ADDER_WIDTH - LEFT_SIGN_EXTENSION - 1..0].datab = dataa[SUBSTAGE_LATENCY][];
+				END GENERATE;
+			ELSE GENERATE
+				-- perform any needed sign extension
+				IF EXTERNAL_SIGN_EXTENSION_LEFT > 0 GENERATE
+					IF PUT_STAGE_HERE(PIPE_INDEX + 1) GENERATE
+						left_sign_extender[].clk = clock;
+						IF USED(clken) GENERATE
+							left_sign_extender[].ena = clken;
+						END GENERATE;
+						IF USED(aclr) GENERATE
+							left_sign_extender[].aclr = aclr;
+						END GENERATE;
+						adder_cells[ADDER_WIDTH - 1..ADDER_WIDTH - EXTERNAL_LEFT_SIGN_EXTENSION].datab = left_sign_extender[].regout;
+					ELSE GENERATE
+						adder_cells[ADDER_WIDTH - 1..ADDER_WIDTH - EXTERNAL_LEFT_SIGN_EXTENSION].datab = left_sign_extender[].multout;
+					END GENERATE;
+					-- common connections for the extenders
+					left_sign_extender[0].cin = left_subtree.msb;
+					IF LEFT_TREE_VAL == 2 GENERATE
+						left_sign_extender[].(multsela, multselb) = (	datab[SUB_LATENCY][WIDTH_B - 2],
+																		datab[SUB_LATENCY][WIDTH_B - 1]);
+					ELSE GENERATE
+						left_sign_extender[].(multsela, multselb) = (VCC, VCC);
+					END GENERATE;
+
+					IF EXTERNAL_SIGN_EXTENSION_LEFT > 1 GENERATE
+						left_sign_extender[EXTERNAL_SIGN_EXTENSION_LEFT - 1..1].cin = left_sign_extender[EXTERNAL_SIGN_EXTENSION_LEFT - 2..0].cout;
+					END GENERATE;
+				ELSE GENERATE
+					left_subtree.dataa[][] = dataa[][];
+
+					IF MAKE_EVEN(LEFT_TREE_VAL) == LEFT_TREE_VAL GENERATE
+						left_subtree.datab[][] = datab[][WIDTH_B - 1..WIDTH_B - LEFT_TREE_VAL];
+					ELSE GENERATE
+						IF REPRESENTATION == "SIGNED" GENERATE
+							left_subtree.datab[][] = (datab[][WIDTH_B - 1], datab[][WIDTH_B - 1..WIDTH_B - LEFT_TREE_VAL]);
+						ELSE GENERATE
+							left_subtree.datab[][] = GND;
+							left_subtree.datab[][WIDTH_B - 1..WIDTH_B - LEFT_TREE_VAL] = datab[][WIDTH_B - 1..WIDTH_B - LEFT_TREE_VAL];
+						END GENERATE;
+					END GENERATE;
+					
+					left_subtree.clock = clock;
+					IF USED(clken) GENERATE
+						left_subtree.clken = clken;
+					END GENERATE;
+					IF USED(aclr) GENERATE
+						left_subtree.aclr = aclr;
+					END GENERATE;
+					
+					IF LEFT_SIGN_EXTENSION > 0 GENERATE
+						IF SIGNED() GENERATE
+							adder_cells[ADDER_WIDTH - 1..ADDER_WIDTH - LEFT_SIGN_EXTENSION].datab = dataa[SUBSTAGE_LATENCY][WIDTH_A - 1];
+						ELSE GENERATE
+							adder_cells[ADDER_WIDTH - 1..ADDER_WIDTH - LEFT_SIGN_EXTENSION].datab = GND;
+						END GENERATE;
+						adder_cells[ADDER_WIDTH - LEFT_SIGN_EXTENSION - 1..0].datab = left_subtree.result[ADDER_WIDTH - LEFT_SIGN_EXTENSION - 1..0];
+					ELSE GENERATE
+						adder_cells[].datab = left_subtree.result[ADDER_WIDTH - 1..0];
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+
+			------------------------------
+			-- Right Subtree Connection --
+			------------------------------
+			IF RIGHT_TREE_VAL == 1 GENERATE
+				-- the branch is terminal
+				IF SIGNED() & !SUPPRESS_SIGN_EXTENSION() GENERATE
+					adder_cells[ADDER_WIDTH - 1..ADDER_WIDTH - RIGHT_SIGN_EXTENSION].dataa = dataa[SUBSTAGE_LATENCY][WIDTH_A - 1];
+				ELSE GENERATE
+					adder_cells[ADDER_WIDTH - 1..ADDER_WIDTH - RIGHT_SIGN_EXTENSION].dataa = GND;
+				END GENERATE;
+				adder_cells[ADDER_WIDTH - RIGHT_SIGN_EXTENSION - 1..0].dataa = dataa[SUBSTAGE_LATENCY][WIDTH_A - 1..RIGHT_OVERHANG];
+			ELSE GENERATE
+				-- the branch has a subtree
+				right_subtree.dataa[][] = dataa[][];
+
+				IF MAKE_EVEN(RIGHT_TREE_VAL) == RIGHT_TREE_VAL GENERATE
+					right_subtree.datab[][] = datab[][WIDTH_B - LEFT_TREE_VAL - 1..0];
+				ELSE GENERATE
+					right_subtree.datab[][] = GND;
+					right_subtree.datab[][WIDTHB - LEFT_TREE_VAL - 1..0] = datab[][WIDTH_B - LEFT_TREE_VAL - 1..0];
+				END GENERATE;
+				
+				right_subtree.clock = clock;
+				IF USED(clken) GENERATE
+					right_subtree.clken = clken;
+				END GENERATE;
+				IF USED(aclr) GENERATE
+					right_subtree.aclr = aclr;
+				END GENERATE;
+						
+				IF SIGNED() & !SUPPRESS_SIGN_EXTENSION() GENERATE
+					IF PUT_STAGE_HERE(PIPE_INDEX + 1) GENERATE
+						right_sign_extender[].clk = clock;
+						IF USED(clken) GENERATE
+							right_sign_extender[].ena = clken;
+						END GENERATE;
+						IF USED(aclr) GENERATE
+							right_sign_extender[].aclr = aclr;
+						END GENERATE;
+
+						adder_cells[ADDER_WIDTH - 1..ADDER_WIDTH - RIGHT_SIGN_EXTENSION].dataa = right_sign_extender[].regout;
+					ELSE GENERATE
+						adder_cells[ADDER_WIDTH - 1..ADDER_WIDTH - RIGHT_SIGN_EXTENSION].dataa = right_sign_extender[].multout;
+					END GENERATE;
+					
+					IF RIGHT_TREE_VAL <= 2 GENERATE
+						right_sign_extender[].dataa = dataa[SUB_LATENCY][WIDTH_A - 1];
+						right_sign_extender[].datab = dataa[SUB_LATENCY][WIDTH_A - 1];
+					END GENERATE;
+					
+					IF EXTERNAL_SIGN_EXTENSION_RIGHT > 1 GENERATE
+						right_sign_extender[EXTERNAL_SIGN_EXTENSION_RIGHT - 1..1].cin = right_sign_extender[EXTERNAL_SIGN_EXTENSION_RIGHT - 2..0].cout;
+					END GENERATE;
+					right_sign_extender[0].cin = right_subtree.msb;
+				ELSE GENERATE
+					adder_cells[ADDER_WIDTH - 1..ADDER_WIDTH - RIGHT_SIGN_EXTENSION].dataa = GND;
+				END GENERATE;
+				
+				adder_cells[ADDER_WIDTH - RIGHT_SIGN_EXTENSION - 1..0].dataa = right_subtree.result[RIGHT_TREE_RESULT_WIDTH - 1..RIGHT_OVERHANG];
+			END GENERATE;
+
+			-----------------------------------
+			-- Partial Product Mux Selectors --
+			-----------------------------------
+			-- The selector inputs are labwide so it is critical that they be
+			-- identical for all cells in the chain
+			IF (LEFT_TREE_VAL == 1) GENERATE
+				partial_product_b_select = datab[SUBSTAGE_LATENCY][WIDTH_B - 1];
+			ELSE GENERATE
+				partial_product_b_select = VCC;
+			END GENERATE;
+
+			IF RIGHT_TREE_VAL == 1 GENERATE
+				partial_product_a_select = datab[SUBSTAGE_LATENCY][WIDTH_B - 2];
+				lsb_bit.(multsela, multselb) = (datab[SUBSTAGE_LATENCY][WIDTH_B - 2], datab[SUBSTAGE_LATENCY][WIDTH_B - 1]);
+
+				IF SIGNED() & (LEFTMOST == 1) GENERATE
+					lsb_bit.(dataa, datab) = (dataa[SUBSTAGE_LATENCY][0], VCC); -- i.e. invert the GND that would normally be here
+				ELSE GENERATE
+					lsb_bit.(dataa, datab) = (dataa[SUBSTAGE_LATENCY][0], GND);
+				END GENERATE;
+				
+				adder_cells[0].cin = lsb_bit.cout;
+			ELSE GENERATE
+				partial_product_a_select = VCC;
+			END GENERATE;
+
+			-- the adder
+			adder_cells[].multsela = partial_product_a_select;
+			adder_cells[].multselb = partial_product_b_select;
+
+			-- the drop bit selectors
+			IF DROP_BIT_ROUTE_NUMBER > 0 GENERATE
+				drop_bit_cells[].multsela = partial_product_a_select;
+				drop_bit_cells[].multselb = partial_product_b_select;
+			END GENERATE;
+
+			IF EXTERNAL_SIGN_EXTENSION_RIGHT > 0 GENERATE
+				IF RIGHT_TREE_VAL == 2 GENERATE
+					right_sign_extender[].multsela = datab[SUB_LATENCY][WIDTH_B - 2 - LEFT_TREE_VAL];
+					right_sign_extender[].multselb = datab[SUB_LATENCY][WIDTH_B - 1 - LEFT_TREE_VAL];
+				ELSE GENERATE
+					right_sign_extender[].multsela = VCC;
+					right_sign_extender[].multselb = VCC;
+				END GENERATE;
+			END GENERATE;
+
+			-----------------------
+			-- Result Production --
+			-----------------------
+			IF PUT_STAGE_HERE(PIPE_INDEX) GENERATE
+				IF RIGHTMOST == 1 & LEVEL != 0 GENERATE
+					FOR i IN ADDER_WIDTH - 1 TO 0 GENERATE
+						IF ADDER_CELL_MULTIPLIER_OUTPUT(ADDER_WIDTH - i - 1) == "TRUE" GENERATE
+							result[RESULT_WIDTH - 1 - i] = dffe (.d = adder_cells[ADDER_WIDTH - i -1].regout, .ena = clken, .clk = clock, .clrn = !aclr);
+						ELSE GENERATE
+							result[RESULT_WIDTH - 1 - i] = adder_cells[ADDER_WIDTH - i - 1].regout;
+						END GENERATE;
+					END GENERATE;
+
+					IF RIGHT_TREE_VAL == 1 GENERATE
+						IF SIGNED() & (LEFTMOST == 1) GENERATE
+							lsb_bit.(dataa, datab) = (dataa[SUBSTAGE_LATENCY][0], VCC);
+						ELSE GENERATE
+							lsb_bit.(dataa, datab) = (dataa[SUBSTAGE_LATENCY][0], GND);
+						END GENERATE;
+						lsb_bit.clk = clock;
+						IF USED(clken) GENERATE
+							lsb_bit.ena = clken;
+						END GENERATE;
+						IF USED(aclr) GENERATE
+							lsb_bit.aclr = aclr;
+						END GENERATE;
+						result[RESULT_WIDTH - ADDER_WIDTH - 1] = dffe(.d = lsb_bit.regout, .clk = clock, .ena = clken, .clrn = !aclr);
+					ELSE GENERATE
+						IF DROP_BIT_ROUTE_NUMBER > 0 GENERATE
+							result[RIGHT_OVERHANG - 1..RIGHT_OVERHANG - DROP_BIT_ROUTE_NUMBER] = drop_bit_cells[].regout;
+						END GENERATE;
+						
+						IF RIGHT_OVERHANG > DROP_BIT_ROUTE_NUMBER GENERATE
+							result[RIGHT_OVERHANG - DROP_BIT_ROUTE_NUMBER - 1..0] = dffpipe	(
+																								.d[] = right_subtree.result[RIGHT_OVERHANG - DROP_BIT_ROUTE_NUMBER - 1..0],
+																								.clock = clock,
+																								.ena = clken,
+																								.clrn = !aclr
+																							)
+																							WITH
+																							(
+																								WIDTH = RIGHT_OVERHANG - DROP_BIT_ROUTE_NUMBER,
+																								DELAY = (LEVEL == 0) ? 0 : 1
+																							)
+																							RETURNS
+																							(
+																								.q[]
+																							);
+						END GENERATE;
+					END GENERATE;
+				ELSE GENERATE
+					result[RESULT_WIDTH - 1..RESULT_WIDTH - ADDER_WIDTH] = adder_cells[].regout;
+					IF RIGHT_TREE_VAL == 1 GENERATE
+						IF SIGNED() & (LEFTMOST == 1) GENERATE
+							lsb_bit.(dataa, datab) = (dataa[SUBSTAGE_LATENCY][0], VCC);
+						ELSE GENERATE
+							lsb_bit.(dataa, datab) = (dataa[SUBSTAGE_LATENCY][0], GND);
+						END GENERATE;
+						lsb_bit.clk = clock;
+						IF USED(clken) GENERATE
+							lsb_bit.ena = clken;
+						END GENERATE;
+						IF USED(aclr) GENERATE
+							lsb_bit.aclr = aclr;
+						END GENERATE;
+						result[RESULT_WIDTH - ADDER_WIDTH - 1] = lsb_bit.regout;
+					ELSE GENERATE
+						IF DROP_BIT_ROUTE_NUMBER > 0 GENERATE
+							result[RIGHT_OVERHANG - 1..RIGHT_OVERHANG - DROP_BIT_ROUTE_NUMBER] = drop_bit_cells[].regout;
+						END GENERATE;
+						
+						IF RIGHT_OVERHANG > DROP_BIT_ROUTE_NUMBER GENERATE
+							result[RIGHT_OVERHANG - DROP_BIT_ROUTE_NUMBER - 1..0] = dffpipe	(
+																								.d[] = right_subtree.result[RIGHT_OVERHANG - DROP_BIT_ROUTE_NUMBER - 1..0],
+																								.clock = clock,
+																								.ena = clken,
+																								.clrn = !aclr
+																							)
+																							WITH
+																							(
+																								WIDTH = RIGHT_OVERHANG - DROP_BIT_ROUTE_NUMBER,
+																								DELAY = (LEVEL == 0) ? 0 : 1
+																							)
+																							RETURNS
+																							(
+																								.q[]
+																							);
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+			ELSE GENERATE
+				IF LEVEL == 0 GENERATE
+					-- this is the last stage so nothing should be leaving on the dedicated multiplier outputs
+					IF PIPELINE == 0 GENERATE
+						result[RESULT_WIDTH - 1..RESULT_WIDTH - ADDER_WIDTH] = adder_cells[].combout;
+					ELSE GENERATE
+						-- guarantee that all the outputs get registers if they can
+						FOR i IN ADDER_WIDTH - 1 TO 0 GENERATE
+							IF ADDER_CELL_MULTIPLIER_OUTPUT(i) == "TRUE" GENERATE
+								adder_cells[i].clk = clock;
+								IF USED(clken) GENERATE
+									adder_cells[i].ena = clken;
+								END GENERATE;
+								IF USED(aclr) GENERATE
+									adder_cells[i].aclr = aclr;
+								END GENERATE;
+								result[RESULT_WIDTH - i - 1] = adder_cells[ADDER_WIDTH - i - 1].regout;
+							ELSE GENERATE
+								result[RESULT_WIDTH - i - 1] = adder_cells[ADDER_WIDTH - i - 1].combout;
+							END GENERATE;
+						END GENERATE;
+					END GENERATE;
+
+					IF RIGHT_TREE_VAL == 1 GENERATE
+						IF PIPELINE == 0 GENERATE
+							result[RIGHT_OVERHANG - 1..0] = lsb_bit.combout;
+						ELSE GENERATE
+							lsb_bit.clk = clock;
+							IF USED(clken) GENERATE
+								lsb_bit.ena = clken;
+							END GENERATE;
+							IF USED(aclr) GENERATE
+								lsb_bit.aclr = aclr;
+							END GENERATE;
+
+							result[RIGHT_OVERHANG - 1..0] = lsb_bit.regout;
+						END GENERATE;
+					ELSE GENERATE
+						result[RIGHT_OVERHANG - 1..0] = right_subtree.result[RIGHT_OVERHANG - 1..0];
+					END GENERATE;
+				ELSE GENERATE
+					IF RIGHTMOST == 1 GENERATE
+						FOR i IN ADDER_WIDTH - 1 TO 0 GENERATE
+							IF ADDER_CELL_MULTIPLIER_OUTPUT(i) == "FALSE" GENERATE
+								result[RESULT_WIDTH - ADDER_WIDTH + i] = adder_cells[i].multout;
+							ELSE GENERATE
+								IF PIPELINE <= 0 GENERATE
+									result[RESULT_WIDTH - ADDER_WIDTH + i] = adder_cells[i].combout;
+								ELSE GENERATE
+									adder_cells[i].clk = clock;
+									IF USED(clken) GENERATE
+										adder_cells[i].ena = clken;
+									END GENERATE;
+									IF USED(aclr) GENERATE
+										adder_cells[i].aclr = aclr;
+									END GENERATE;
+									result[RESULT_WIDTH - ADDER_WIDTH + i] = adder_cells[i].regout;
+								END GENERATE;
+							END GENERATE;
+						END GENERATE;
+					ELSE GENERATE
+						result[RESULT_WIDTH - 1..RESULT_WIDTH - ADDER_WIDTH] = adder_cells[].multout;
+					END GENERATE;
+					IF RIGHT_TREE_VAL == 1 GENERATE
+						IF RIGHTMOST != 1 GENERATE
+							result[RESULT_WIDTH - ADDER_WIDTH - 1] = lsb_bit.multout;
+						ELSE GENERATE
+							IF PIPELINE <= 0 GENERATE
+								result[RESULT_WIDTH - ADDER_WIDTH - 1] = lsb_bit.combout;
+							ELSE GENERATE
+								lsb_bit.clk = clock;
+								IF USED(clken) GENERATE
+									lsb_bit.ena = clken;
+								END GENERATE;
+								IF USED(aclr) GENERATE
+									lsb_bit.aclr = aclr;
+								END GENERATE;
+								result[RESULT_WIDTH - ADDER_WIDTH - 1] = lsb_bit.regout;
+							END GENERATE;
+						END GENERATE;
+					END GENERATE;
+					IF DROP_BIT_ROUTE_NUMBER > 0 GENERATE
+						IF RIGHTMOST != 1 GENERATE
+							result[RESULT_WIDTH - ADDER_WIDTH - 1..RESULT_WIDTH - ADDER_WIDTH - DROP_BIT_ROUTE_NUMBER] =
+								drop_bit_cells[].multout;
+						ELSE GENERATE
+							IF PIPELINE <= 0 GENERATE
+								result[RESULT_WIDTH - ADDER_WIDTH - 1..RESULT_WIDTH - ADDER_WIDTH - DROP_BIT_ROUTE_NUMBER] =
+									drop_bit_cells[].combout;
+							ELSE GENERATE
+								drop_bit_cells[].clk = clock;
+								IF USED(clken) GENERATE
+									drop_bit_cells[].ena = clken;
+								END GENERATE;
+								IF USED(aclr) GENERATE
+									drop_bit_cells[].aclr = aclr;
+								END GENERATE;
+								result[RESULT_WIDTH - ADDER_WIDTH - 1..RESULT_WIDTH - ADDER_WIDTH - DROP_BIT_ROUTE_NUMBER] =
+									drop_bit_cells[].regout;
+							END GENERATE;
+						END GENERATE;
+					ELSE GENERATE
+						IF RIGHT_OVERHANG > 1 GENERATE
+							result[RIGHT_OVERHANG - 1..0] = dffpipe	(
+																		.d[] = right_subtree.result[RIGHT_OVERHANG - 1..0],
+																		.clock = clock,
+																		.ena = clken,
+																		.clrn = !aclr
+																	)
+																	WITH
+																	(
+																		WIDTH = RIGHT_OVERHANG,
+																		DELAY = PUT_STAGE_HERE(PIPE_INDEX) ? 1 : 0
+																	)
+																	RETURNS
+																	(
+																		.q[]
+																	);
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+
+			-- allow parent of this tree node access to the cout
+			IF USED(msb) GENERATE
+				msb = adder_cells[ADDER_WIDTH - 1].cout;
+			ELSE GENERATE
+				msb = VCC;
+			END GENERATE;
+		ELSE GENERATE	-- this is a signed 2
+			IF SIGN_EXTENSION_SUPPRESSION != "YES" GENERATE
+				adder_cells[].dataa = (dataa[SIGNED_TWO_LATENCY][WIDTH_A - 1], dataa[SIGNED_TWO_LATENCY][WIDTH_A - 1], dataa[SIGNED_TWO_LATENCY][]);
+				adder_cells[].datab = (!dataa[SIGNED_TWO_LATENCY][WIDTH_A - 1], !dataa[SIGNED_TWO_LATENCY][], VCC);
+			ELSE GENERATE
+				adder_cells[].dataa = (GND, GND, dataa[SIGNED_TWO_LATENCY][]);
+				adder_cells[].datab = (VCC, !dataa[SIGNED_TWO_LATENCY][], VCC);
+			END GENERATE;
+
+			adder_cells[].multsela = datab[SIGNED_TWO_LATENCY][0];
+			adder_cells[].multselb = datab[SIGNED_TWO_LATENCY][1];
+
+			IF PIPELINE > 1 GENERATE
+				adder_cells[].clk = clock;
+				IF USED(clken) GENERATE
+					adder_cells[].ena = clken;
+				END GENERATE;
+				IF USED(aclr) GENERATE
+					adder_cells[].aclr = aclr;
+				END GENERATE;
+				incrementor[].dataa = adder_cells[].regout;
+			ELSE GENERATE
+				incrementor[].dataa = adder_cells[].multout;
+			END GENERATE;
+
+			adder_cells[WIDTH_A + 1..1].cin = adder_cells[WIDTH_A..0].cout;
+			incrementor[WIDTH_A + 1..1].cin = incrementor[WIDTH_A..0].cout;
+
+			incrementor[].multsela = VCC;
+			incrementor[].multselb = VCC;
+			incrementor[].datab = datab[PIPELINE > 1 ? PIPELINE - 1 : 0][1];
+
+			IF PIPELINE > 0 GENERATE
+				incrementor[].clk = clock;
+				IF USED(clken) GENERATE
+					incrementor[].ena = clken;
+				END GENERATE;
+				IF USED(aclr) GENERATE
+					incrementor[].aclr = aclr;
+				END GENERATE;
+				result[] = incrementor[].regout;
+			ELSE GENERATE
+				IF PIPELINE == 0 GENERATE
+					result[] = incrementor[].combout;
+				ELSE GENERATE
+					result[] = incrementor[].combout;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+	ELSE GENERATE
+		-- connect clock signals
+		IF USED(clock) GENERATE
+			(left_mult.clock, right_mult.clock) = clock;
+			
+			IF USED(clken) GENERATE
+				(left_mult.clken, right_mult.clken) = clken;
+			END GENERATE;
+			IF USED(aclr) GENERATE
+				(left_mult.aclr, right_mult.aclr) = aclr;
+			END GENERATE;
+
+			IF PUT_STAGE_HERE(PIPE_INDEX) GENERATE
+				nc_adder.(clock, clken, aclr) = (clock, clken, aclr);
+			END GENERATE;
+		END GENERATE;
+
+		IF SPLIT_A_STAGE() GENERATE
+			left_mult.dataa[][] = dataa[][WIDTH_A - 1..RIGHT_SPLIT];
+			right_mult.dataa[][] = dataa[][RIGHT_SPLIT - 1..0];
+
+			IF MAKE_EVEN(B_PASSDOWN_VALUE_LEFT) == B_PASSDOWN_VALUE_LEFT GENERATE
+				left_mult.datab[][] = datab[][];
+			ELSE GENERATE
+				IF B_REP == "SIGNED" GENERATE
+					left_mult.datab[][WIDTH_B - 1..0] = datab[][];
+					left_mult.datab[][WIDTH_B] = datab[][WIDTH_B - 1];
+				ELSE GENERATE
+					left_mult.datab[][] = GND;
+					left_mult.datab[][WIDTH_B - 1..0] = datab[][];
+				END GENERATE;
+			END GENERATE;
+
+			IF MAKE_EVEN(B_PASSDOWN_VALUE_RIGHT) == B_PASSDOWN_VALUE_RIGHT GENERATE
+				right_mult.datab[][] = datab[][];
+			ELSE GENERATE
+				right_mult.datab[][] = GND;
+				right_mult.datab[][WIDTH_B - 1..0] = datab[][WIDTH_B - 1..0];
+			END GENERATE;
+		ELSE GENERATE
+			left_mult.dataa[][] = dataa[][];
+			right_mult.dataa[][] = dataa[][];
+
+			IF MAKE_EVEN(B_PASSDOWN_VALUE_LEFT) == B_PASSDOWN_VALUE_LEFT GENERATE
+				left_mult.datab[][] = datab[][WIDTH_B - 1..RIGHT_SPLIT];
+			ELSE GENERATE
+				IF B_REP == "SIGNED" GENERATE
+					left_mult.datab[][] = datab[][];
+					left_mult.datab[][LEFT_SPLIT] = datab[][WIDTH_B - 1];
+				ELSE GENERATE
+					left_mult.datab[][] = GND;
+					left_mult.datab[][LEFT_SPLIT - 1..0] = datab[][WIDTH_B - 1..RIGHT_SPLIT];
+				END GENERATE;
+			END GENERATE;
+	
+			IF MAKE_EVEN(B_PASSDOWN_VALUE_RIGHT) == B_PASSDOWN_VALUE_RIGHT GENERATE
+				right_mult.datab[][] = datab[][RIGHT_SPLIT - 1..0];
+			ELSE GENERATE
+				right_mult.datab[][] = GND;
+				right_mult.datab[][RIGHT_SPLIT - 1..0] = datab[][RIGHT_SPLIT - 1..0];
+			END GENERATE;
+		END GENERATE;
+
+		-- stitch the blocks together with an addition
+		IF (SPLIT_A_STAGE() # A_REP == "UNSIGNED") & (SPLIT_B_STAGE() # B_REP == "UNSIGNED") GENERATE
+			nc_adder.dataa[CONST_ADDER_WIDTH + NON_CONST_ADDER_WIDTH - 1..NON_CONST_ADDER_WIDTH] = GND;
+		ELSE GENERATE
+			nc_adder.dataa[CONST_ADDER_WIDTH + NON_CONST_ADDER_WIDTH - 1..NON_CONST_ADDER_WIDTH] = right_mult.result[RIGHT_MULT_WIDTH - 1];
+		END GENERATE;
+		nc_adder.datab[CONST_ADDER_WIDTH + NON_CONST_ADDER_WIDTH - 1..NON_CONST_ADDER_WIDTH] = left_mult.result[LEFT_MULT_WIDTH - 1..LEFT_MULT_WIDTH - CONST_ADDER_WIDTH];
+
+		
+		nc_adder.dataa[NON_CONST_ADDER_WIDTH - 1..0] = right_mult.result[RIGHT_MULT_WIDTH - 1..RIGHT_MULT_WIDTH - NON_CONST_ADDER_WIDTH];
+		nc_adder.datab[NON_CONST_ADDER_WIDTH - 1..0] = left_mult.result[NON_CONST_ADDER_WIDTH - 1..0];
+
+		-- collect the results
+		result[RESULT_WIDTH - 1..RESULT_WIDTH - CONST_ADDER_WIDTH] = nc_adder.result[CONST_ADDER_WIDTH + NON_CONST_ADDER_WIDTH - 1..NON_CONST_ADDER_WIDTH];
+		result[RESULT_WIDTH - CONST_ADDER_WIDTH - 1..ADDER_DROP_BITS] = nc_adder.result[NON_CONST_ADDER_WIDTH - 1..0];
+		result[ADDER_DROP_BITS - 1..0] = dffpipe	(
+														.d[] = right_mult.result[ADDER_DROP_BITS - 1..0],
+														.clock = clock,
+														.ena = clken,
+														.clrn = !aclr
+													)
+													WITH
+													(
+														WIDTH = ADDER_DROP_BITS,
+														DELAY = PUT_STAGE_HERE(PIPE_INDEX) ? 1 : 0
+													)
+													RETURNS
+													(
+														.q[]
+													);
+	END GENERATE;
+	IF !USED(msb) GENERATE
+		msb = GND;
+	END GENERATE;
+	IF !USED(db_a) GENERATE
+		db_a = GND;
+	END GENERATE;
+	IF !USED(db_b) GENERATE
+		db_b = GND;
+	END GENERATE;
+	IF !USED(result) GENERATE
+		result[] = GND;
+	END GENERATE;
+END;

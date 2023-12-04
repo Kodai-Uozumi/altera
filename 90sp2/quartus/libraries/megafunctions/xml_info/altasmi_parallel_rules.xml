@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+<ROOT>
+	
+	<!-- macros -->
+	<MACROS>
+		<MACRO NAME="read_sid_used"  DEFINITION="is_used(read_sid)" />
+		<MACRO NAME="read_status_used"  DEFINITION="is_used(read_status)" />
+		<MACRO NAME="read_rdid_enabled"  DEFINITION="EPCS_TYPE == EPCS16 OR EPCS_TYPE == EPCS64 OR EPCS_TYPE == EPCS128" />
+		<MACRO NAME="read_rdid_used"  DEFINITION="is_used(read_rdid) AND read_rdid_enabled" />
+		<MACRO NAME="write_used"  DEFINITION="is_used(write)" />
+		<MACRO NAME="bulk_erase_used"  DEFINITION="is_used(bulk_erase)" />
+		<MACRO NAME="sector_erase_used"  DEFINITION="is_used(sector_erase)" />
+		<MACRO NAME="read_address_used"  DEFINITION="is_used(read_address)" />
+	</MACROS>
+	
+	<PARAMETERS>
+		<PARAMETER NAME="EPCS_TYPE" VALUE="EPCS1|EPCS4|EPCS16|EPCS64|EPCS128" DEFAULT_VALUE_INDEX="1" />
+		<PARAMETER NAME="PAGE_SIZE" DEFAULT_VALUE="1" >
+			<FORCE_RANGE MIN="1" MAX="256" />
+		</PARAMETER>
+		<PARAMETER NAME="USE_EAB" VALUE="ON|OFF" DEFAULT_VALUE_INDEX="0" />
+	</PARAMETERS>
+	
+	<PORTS>	
+		<!-- output ports -->
+		<PORT NAME="epcs_id" TYPE="OUTPUT" USAGE="VARIABLE" >
+			<STATE V="USED" WHEN="read_sid_used" />
+		</PORT>
+		<PORT NAME="status_out" TYPE="OUTPUT" USAGE="VARIABLE" >
+			<STATE V="USED" WHEN="read_status_used" />
+		</PORT>
+		<PORT NAME="rdid_out" TYPE="OUTPUT" USAGE="VARIABLE" >
+			<STATE V="USED" WHEN="read_rdid_used" />
+		</PORT>
+		<PORT NAME="illegal_write" TYPE="OUTPUT" USAGE="VARIABLE" >
+			<STATE V="USED" WHEN="write_used" />
+		</PORT>
+		<PORT NAME="illegal_erase" TYPE="OUTPUT" USAGE="VARIABLE" >
+			<STATE V="USED" WHEN="bulk_erase_used OR sector_erase_used" />
+		</PORT>
+		<PORT NAME="read_address" TYPE="OUTPUT" USAGE="VARIABLE" >
+			<STATE V="USED" WHEN="read_address_used" />
+		</PORT>
+	</PORTS>
+</ROOT>

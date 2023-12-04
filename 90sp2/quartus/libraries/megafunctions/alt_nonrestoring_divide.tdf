@@ -1,0 +1,335 @@
+CONSTANT SIGNED_REPRESENTATION = "SIGNED";
+CONSTANT UNSIGNED_REPRESENTATION = "UNSIGNED";
+
+INCLUDE "lpm_add_sub";
+INCLUDE "stratix_lcell";
+INCLUDE "dffpipe";
+
+PARAMETERS
+(
+	WIDTH_N,
+	WIDTH_D,
+	WIDTH_Q,
+	WIDTH_R,
+	REPRESENTATION_D = SIGNED_REPRESENTATION,
+	REPRESENTATION_N = SIGNED_REPRESENTATION,
+	LPM_PIPELINE = 0
+);
+
+DEFINE MIN(a, b) = (a <= b) ? a : b;
+DEFINE STAGE_SIZE(k) = WIDTH_D + 1;
+CONSTANT STAGES = WIDTH_N;
+CONSTANT STAGE = STAGES;
+DEFINE NUMERATOR_SIGNED() = REPRESENTATION_N == SIGNED_REPRESENTATION;
+DEFINE DENOMINATOR_SIGNED() = REPRESENTATION_D == SIGNED_REPRESENTATION;
+
+-- pipeline
+CONSTANT PSTAGES = STAGES + 1;
+CONSTANT NINTERNALDFF = MIN(PSTAGES, LPM_PIPELINE);
+CONSTANT NEXTERNALDFF = LPM_PIPELINE-NINTERNALDFF;
+
+CONSTANT PIPELINE_DELAY = CEIL(PSTAGES DIV 2);
+DEFINE STAGEVAL(k) = (k*NINTERNALDFF + PIPELINE_DELAY );
+DEFINE STAGENUM(k) = FLOOR(STAGEVAL(k) DIV PSTAGES);
+DEFINE STAGEREM(k) = STAGEVAL(k) MOD PSTAGES;
+DEFINE PUTSTAGEHERE(k) = (LPM_PIPELINE > 0) & (STAGEREM(k) >= STAGEREM(k + 1));
+
+DEFINE DELAY_COUNT(i) = DELAY_ASSIST(0, i, 0);
+DEFINE DELAY_ASSIST(i, seeking, count) = (i == seeking) ? count : DELAY_ASSIST(i + 1, seeking, count + (PUTSTAGEHERE(i) ? 1 : 0));
+SUBDESIGN alt_nonrestoring_divide
+(
+	numerator[WIDTH_N - 1..0] : INPUT;
+	denominator[WIDTH_D - 1..0] : INPUT;
+	clock : INPUT = VCC;
+	aclr : INPUT = GND;
+	clk_ena : INPUT = VCC;
+
+	quotient[WIDTH_Q - 1..0] : OUTPUT;
+	remainder[WIDTH_R - 1..0] : OUTPUT;
+	debug_remainder[WIDTH_N..0][WIDTH_D..0] : OUTPUT;
+)
+VARIABLE
+	denominator_in[STAGE..0][WIDTH_D..0] : NODE;
+	remainder_in[STAGE..0][WIDTH_D..0] : NODE;
+	remainder_out[STAGE..0][WIDTH_D..0] : NODE;
+	numerator_in[STAGE..0][WIDTH_N - 1..0] : NODE;
+	quotient_out[STAGE - 1..0][STAGE - 1..0] : NODE;
+	temp_quotient[STAGE - 1..0][STAGE - 1..0] : NODE;
+	encoded_quotient[STAGE - 1..0] : NODE;
+	decoded_quotient[STAGE..0] : NODE;
+	decoded_quotient_add_value[STAGE..0] : NODE;
+	final_quotient[STAGE..0] : NODE;
+	altered_remainder[WIDTH_D..0] : NODE;
+	altered_remainder_add_value[WIDTH_D..0] : NODE;
+	final_correction_stage_needed : NODE;
+	pre_remainder[WIDTH_D..0] : NODE;
+	numerator_sign : NODE;
+	denominator_sign : NODE;
+	top_bit_operation : NODE;
+	operation_selector[STAGE - 1..0] : stratix_lcell	WITH
+														(
+															OPERATION_MODE = "NORMAL",
+															SUM_LUTC_INPUT = "CIN",
+															LUT_MASK = "6969"
+														);
+	adders[STAGE - 1..0] : lpm_add_sub WITH ( LPM_WIDTH = WIDTH_D );
+	premainder[WIDTH_R - 1..0] : NODE;
+BEGIN
+	quotient_out[][] = GND;
+	IF DENOMINATOR_SIGNED() GENERATE
+		operation_selector[].dataa = denominator_in[STAGE - 1..0][WIDTH_D - 1];
+	ELSE GENERATE
+		operation_selector[].dataa = GND;
+	END GENERATE;
+	IF NUMERATOR_SIGNED() GENERATE
+		numerator_sign = numerator_in[0][WIDTH_N - 1];
+		remainder_in[0][] = numerator_in[0][WIDTH_N - 1];
+	ELSE GENERATE
+		numerator_sign = GND;
+		remainder_in[0][0] = numerator_in[0][WIDTH_N - 1];
+	END GENERATE;
+
+	-- pipeline information
+	IF NUMERATOR_SIGNED() GENERATE
+		remainder_in[0][0] = numerator_in[0][WIDTH_N - 1];
+		remainder_in[0][WIDTH_D..1] = numerator_in[0][WIDTH_N - 1];
+	ELSE GENERATE
+		remainder_in[0][0] = numerator_in[0][WIDTH_N - 1];
+		remainder_in[0][WIDTH_D..1] = GND;
+	END GENERATE;
+	remainder_out[0][] = remainder_in[0][];
+
+	IF DENOMINATOR_SIGNED() GENERATE
+		denominator_sign = denominator_in[0][WIDTH_D - 1];
+	ELSE GENERATE
+		denominator_sign = GND;
+	END GENERATE;
+
+	top_bit_operation = numerator_sign $ denominator_sign;
+
+
+	operation_selector[0].(datab, inverta) = top_bit_operation;
+	IF WIDTH_D > 1 GENERATE
+		FOR i IN WIDTH_D - 1 to 1 GENERATE
+			IF PUTSTAGEHERE(i - 1) GENERATE
+				operation_selector[i].(datab, inverta) = operation_selector[i - 1].regout;
+			ELSE GENERATE
+				operation_selector[i].(datab, inverta) = operation_selector[i - 1].combout;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+
+	-- Add in debug information
+	debug_remainder[][] = denominator_in[STAGE][]; --pre_remainder[]; --remainder_in[][];
+
+	numerator_in[0][] = numerator[];
+	IF DENOMINATOR_SIGNED() GENERATE
+		denominator_in[0][] = (denominator[WIDTH_D - 1], denominator[]);
+	ELSE GENERATE
+		denominator_in[0][] = (GND, denominator[]);
+	END GENERATE;
+
+	FOR i IN 0 TO STAGE - 1 GENERATE
+		adders[i].dataa[] = remainder_in[i][WIDTH_D - 1..0];
+		adders[i].datab[] = denominator_in[i][WIDTH_D - 1..0];
+		operation_selector[i].cin = adders[i].cout;
+		remainder_out[i + 1][WIDTH_D..1] = adders[i].result[];
+
+		remainder_in[i + 1][WIDTH_D..1] = dffpipe(
+													.d[] = remainder_out[i + 1][WIDTH_D..1],
+													.clock = clock,
+													.ena = clk_ena,
+													.clrn = !aclr
+												)
+												WITH
+												(
+													WIDTH = WIDTH_D,
+													DELAY = PUTSTAGEHERE(i) ? 1 : 0
+												)
+												RETURNS
+												(
+													.q[]
+												);
+		numerator_in[i + 1][] = dffpipe(
+										.d[] = numerator_in[i][],
+										.clock = clock,
+										.ena = clk_ena,
+										.clrn = !aclr
+										)
+										WITH
+										(
+											WIDTH = WIDTH_N,
+											DELAY = PUTSTAGEHERE(i) ? 1 : 0
+										)
+										RETURNS
+										(
+											.q[]
+										);
+		denominator_in[i + 1][] = dffpipe(
+											.d[] = denominator_in[i][],
+											.clock = clock,
+											.ena = clk_ena,
+											.clrn = !aclr
+										)
+										WITH
+										(
+											WIDTH = WIDTH_D + 1,
+											DELAY = PUTSTAGEHERE(i) ? 1 : 0
+										)
+										RETURNS
+										(
+											.q[]
+										);
+		IF i == 0 GENERATE
+			adders[i].add_sub = top_bit_operation;
+
+			IF PUTSTAGEHERE(i) GENERATE
+				temp_quotient[i][WIDTH_N - 1] = MGL_DFFE
+												(
+													.d = !top_bit_operation,
+													.clk = clock,
+													.ena = clk_ena,
+													.clrn = !aclr
+												)
+												RETURNS
+												(
+													.q
+												);
+			ELSE GENERATE
+				temp_quotient[i][WIDTH_N - 1] = !top_bit_operation;
+			END GENERATE;
+
+		ELSE GENERATE
+			IF PUTSTAGEHERE(i - 1) GENERATE
+				operation_selector[i - 1].(clk, ena, aclr) = (clock, clk_ena, aclr);
+				adders[i].add_sub = operation_selector[i - 1].regout;
+				temp_quotient[i][WIDTH_N - 1 - i] = !operation_selector[i - 1].regout;
+			ELSE GENERATE
+				adders[i].add_sub = operation_selector[i - 1].combout;
+				temp_quotient[i][WIDTH_N - 1 - i] = !operation_selector[i - 1].combout;
+			END GENERATE;
+				temp_quotient[i][WIDTH_N - 1..WIDTH_N - i] = quotient_out[i - 1][WIDTH_N - 1..WIDTH_N - i];
+				IF WIDTH_N - 1 - i > 0 GENERATE
+					temp_quotient[i][WIDTH_N - 2 - i..0] = quotient_out[i - 1][WIDTH_N - 2 - i..0];
+				END GENERATE;
+				quotient_out[i][] = dffpipe(
+												.d[] = temp_quotient[i][],
+												.clock = clock,
+												.ena = clk_ena,
+												.clrn = !aclr
+											)
+											WITH
+											(
+												WIDTH = WIDTH_N,
+												DELAY = PUTSTAGEHERE(i) ? 1 : 0
+											)
+											RETURNS
+											(
+												.q[]
+											);
+		END GENERATE;
+
+		IF i != STAGE - 1 GENERATE
+			remainder_in[i + 1][0] = numerator_in[i + 1][WIDTH_N - i - 2];
+		ELSE GENERATE
+			remainder_in[i + 1][0] = GND;
+		END GENERATE;
+	END GENERATE;
+
+	encoded_quotient[] = quotient_out[STAGE - 1][];
+	-- decode the quotient
+	decoded_quotient[0] = VCC;
+	decoded_quotient[STAGE] = !encoded_quotient[STAGE - 1];
+	IF STAGE > 1 GENERATE
+		decoded_quotient[STAGE - 1..1] = encoded_quotient[STAGE - 2..0];
+	END GENERATE;
+
+	IF PUTSTAGEHERE(STAGE - 1) GENERATE
+		final_correction_stage_needed = operation_selector[STAGE - 1].regout;
+		operation_selector.clock = clock;
+		operation_selector.aclr = aclr;
+		operation_selector.ena = clk_ena;
+	ELSE GENERATE
+		final_correction_stage_needed = operation_selector[STAGE - 1].combout;
+	END GENERATE;
+	altered_remainder_add_value[] = final_correction_stage_needed & denominator_in[STAGE][];
+
+	pre_remainder[WIDTH_D..0] = (remainder_in[STAGE][WIDTH_D], remainder_in[STAGE][WIDTH_D..1]);
+	altered_remainder[] =	lpm_add_sub
+						(
+							.dataa[] = pre_remainder[],
+							.datab[] = altered_remainder_add_value[]
+						)
+						WITH
+						(
+							LPM_WIDTH = WIDTH_D + 1,
+							LPM_DIRECTION = "ADD"
+						)
+						RETURNS
+						(
+							.result[]
+						);
+	
+	decoded_quotient_add_value[] = GND;
+	decoded_quotient_add_value[0] = final_correction_stage_needed;
+	final_quotient[] =	lpm_add_sub
+						(
+							.dataa[] = decoded_quotient[],
+							.datab[] = decoded_quotient_add_value[]
+						)
+						WITH
+						(
+							LPM_WIDTH = WIDTH_N + 1,
+							LPM_DIRECTION = "SUB"
+						)
+						RETURNS
+						(
+							.result[]
+						);
+	
+	-- Now adjust the output widths to match the users request
+	quotient[] = dffpipe (
+							.d[] = final_quotient[WIDTH_N - 1..0],
+							.clock = clock,
+							.ena = clk_ena,
+							.clrn = !aclr
+						)
+						WITH
+						(
+							WIDTH = WIDTH_N,
+							DELAY = NEXTERNALDFF
+						)
+						RETURNS
+						(
+							.q[]
+						);
+
+	IF WIDTH_R > WIDTH_D GENERATE
+		premainder[WIDTH_D - 1..0] = altered_remainder[WIDTH_D - 1..0];
+		remainder[WIDTH_R - 1..WIDTH_D] = altered_remainder[WIDTH_D];
+	ELSE GENERATE
+		premainder[] = altered_remainder[WIDTH_R - 1..0];
+	END GENERATE;
+
+	remainder[] = dffpipe(
+						.d[] = premainder[],
+						.clock = clock,
+						.ena = clk_ena,
+						.clrn = !aclr
+						)
+						WITH
+						(
+							WIDTH = WIDTH_R,
+							DELAY = NEXTERNALDFF
+						)
+						RETURNS
+						(
+							.q[]
+						);
+	IF !USED(remainder) GENERATE
+		remainder[] = GND;
+	END GENERATE;
+	IF !USED(quotient) GENERATE
+		quotient[] = GND;
+	END GENERATE;
+END;

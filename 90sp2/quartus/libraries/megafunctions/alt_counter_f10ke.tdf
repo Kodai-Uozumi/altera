@@ -1,0 +1,840 @@
+----------------------------------------------------------------------------------------------------
+-- ALT_COUNTER_F10KE parameterized Megafunction
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+-- This module implements the synchronous and asynchronous side of the counter
+-- This module is meant to only be called from LPM_COUNTER.  Use outside of LPM_COUNTER can lead
+-- to incorrect results (since assertions are being bypassed and several cases cannot be handled
+-- by this module correctly -> carry chains won't be disabled, enable will be implemented with
+-- carry chains, etc. )
+
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+-----------------------------------------------------------------------------------------------------
+
+-- declare the lcell's
+INCLUDE "flex10ke_lcell";
+
+-- lpm's which there is a dependancy on
+INCLUDE "lpm_constant";
+INCLUDE "lpm_compare";
+
+-- need global parameter information
+INCLUDE "aglobal90";
+
+PARAMETERS
+(
+	LPM_WIDTH,
+	LPM_DIRECTION			=	"DEFAULT",
+	LPM_MODULUS				=	0,
+	LPM_SVALUE				=	(2^LPM_WIDTH)-1,
+	LPM_AVALUE				=	(2^LPM_WIDTH)-1,
+	CARRY_CHAIN				=	"IGNORE",
+	CASCADE_CHAIN_LENGTH,						-- GLOBAL PARAMETER	--> For Altera internal use only
+	CARRY_CHAIN_LENGTH,							-- GLOBAL PARAMETER --> For Altera internal use only
+	DEVICE_FAMILY								-- GLOBAL PARAMETER --> For Altera internal use only
+);
+
+%**********%
+%* MACROS *%
+%**********%
+
+-- is this a non-trivial modulus (i.e. we cannot ignore it)
+DEFINE NON_TRIVIAL_MODULUS() = (USED(LPM_MODULUS) & (LPM_MODULUS != 0) & (LPM_MODULUS < (2^LPM_WIDTH)));
+
+-- is the counter the user specified capable of ever counting up?
+DEFINE CAPABLE_OF_UP() = USED(updown) # LPM_DIRECTION == "UP" # !USED(LPM_DIRECTION) # LPM_DIRECTION == "DEFAULT";
+
+-- is the counter the user specified capable of ever counting down?
+DEFINE CAPABLE_OF_DOWN() = USED(updown) # LPM_DIRECTION == "DOWN";
+
+-- Modulus for down counting counter
+DEFINE DOWN_MODULUS() = CAPABLE_OF_DOWN() & NON_TRIVIAL_MODULUS();
+
+-- is there a need for an extra cell to handle the cout?
+DEFINE NEED_HIGH_COUT() = USED(cout) # DOWN_MODULUS();
+
+-- do we need an equality check for an up count and a non-trivial modulus
+DEFINE NEED_EQUALITY_CHECK() = CAPABLE_OF_UP() & NON_TRIVIAL_MODULUS();
+
+-- will the sclr control of the lcell be used on any of the counter cells?
+DEFINE NEED_SCLR() = USED(sclr) # NEED_EQUALITY_CHECK();
+
+-- check whether aconst or aset is used
+DEFINE NEED_ASYNC_SET() = USED(aconst) # USED(aset);
+
+-- check whether sconst or sset is used
+DEFINE NEED_SYNC_SET() = USED(sconst) # USED(sset);
+
+DEFINE NEED_SLOAD() = USED(sload) # DOWN_MODULUS();
+
+-- do we need to use a pushback for asynch controls?
+DEFINE NEED_ASYNCH_PUSHBACK() = NEED_ASYNC_SET() & !USED(aclr);
+
+-- do we need to construct big asynch circuit?
+DEFINE NEED_BIG_ASYNCH_CIRCUIT() = NEED_ASYNC_SET() & USED(aclr);
+
+-- the value of the y-th bit of x  --> zero indexed
+DEFINE CONST_VAL(x, y) = y < LPM_WIDTH-1 ? 	( FLOOR(x DIV 2^y) - 2 * FLOOR(x DIV 2^(y + 1))) :
+									(y == LPM_WIDTH-1 ? FLOOR(x DIV 2^(LPM_WIDTH-1)) : 0);
+
+-- the value of the y-th bit of LPM_SVALUE --> zero indexed
+DEFINE CONST_SVAL(y) = SVALUE_ACTUAL() == 0 ? 0 : CONST_VAL(SVALUE_ACTUAL(), y); 
+
+-- the value of the y-th bit of LPM_AVALUE -- zero indexed
+DEFINE CONST_AVAL(y) = AVALUE_ACTUAL() == 0 ? 0 : CONST_VAL(AVALUE_ACTUAL(), y);
+
+-- will a not-gate-pushback be inserted at the a-th bit of the counter  --> zero indexed
+DEFINE INSERT_PUSHBACK(a) = NEED_ASYNCH_PUSHBACK() & CONST_AVAL(a);
+
+-- what is the actual AVALUE that will be implemented
+DEFINE AVALUE_ACTUAL() = USED(ASET) ? LPM_AVALUE : (2^LPM_WIDTH)-1;
+
+-- what is the actual SVALUE that will be implemented
+DEFINE SVALUE_ACTUAL() = NEED_SYNC_SET() ? LPM_SVALUE : (2^LPM_WIDTH)-1;
+
+-- the AVALUE the user entered is trivial and may be safely ignored
+DEFINE TRIVIAL_AVALUE() = !USED(LPM_AVALUE);
+
+-- the svalue the user entered is trivial and may be safely ignored
+DEFINE TRIVIAL_SVALUE() = !USED(LPM_SVALUE);
+
+-- need extra cell to handle CIN and CNT_EN?
+DEFINE NEED_LOW_STARTER() = USED(cin) & !SINGLE_INPUT_CASE();
+
+-- Case where no clk_en, updown, and sclr signals; cin or chain_starter can use
+-- the free dataa and datab port. For use in up/down counter mode only
+DEFINE SINGLE_INPUT_CASE() = !USED(clk_en) & !USED(updown) & !USED(sclr) & !USED(cnt_en) & !NEED_BIG_ASYNCH_CIRCUIT();
+
+-- any input connected to CIN port of the low bit cell from COUT of LOW_STARTER
+DEFINE HAS_CIN() = NEED_LOW_STARTER(); 
+
+-- number of cells on the chain that are before the counter cells
+DEFINE PRE_COUNT() = NEED_LOW_STARTER() ? 1 : 0;
+
+-- number of cells on the chain that are after the counter cells
+DEFINE POST_COUNT() = NEED_HIGH_COUT() ? 1 : 0;
+
+-- there are more stages after the x-th
+DEFINE NEED_MORE_STAGES(x) = x + 1 < LPM_WIDTH + POST_COUNT();
+
+-- recursive helper function which will calculate how many continuous carry hcains have passed before this one
+DEFINE CHAIN_SO_FAR(x) = x == 0 ? PRE_COUNT() : (((CHAIN_SO_FAR(x - 1) < CARRY_CHAIN_LENGTH & !NEED_MORE_STAGES(x))
+												# (CHAIN_SO_FAR(x - 1) + 1 < CARRY_CHAIN_LENGTH)) 
+													? CHAIN_SO_FAR(x - 1) + 1
+													: 0);
+
+-- do we need to break the chain here to meet the user specified carry chain limit
+-- x = index of counter bit
+DEFINE BREAK_CHAIN_HERE(x) = (x != 0) &
+							 ((PRE_COUNT() + x * LCELL_PER_WORKER()) MOD CARRY_CHAIN_LENGTH) < LCELL_PER_WORKER()
+							 & NEED_MORE_STAGES(x);
+
+-- recursive function to calculate the number of carry chain breaks in this counter
+DEFINE CARRY_BREAKS(x) = x == 0 ? 0 : CARRY_BREAKS(x) + (BREAK_CHAIN_HERE(x) ? 1 : 0);
+
+-- is counter forced to count up?
+DEFINE DOING_UP_COUNT() = LPM_DIRECTION == "UP" # LPM_DIRECTION == "DEFAULT";
+
+-- is counter locked at counting down?
+DEFINE DOING_DOWN_COUNT() = LPM_DIRECTION == "DOWN";
+
+-- return the number of lcell require to construct a worker cell
+DEFINE LCELL_PER_WORKER() = 1;
+
+-- return "TRUE" if used only clock enable, else return "FALSE"
+DEFINE CLK_EN_MODE() = USED(cnt_en)? "FALSE" : (USED(clk_en)? "TRUE" : "FALSE");
+
+
+%*******************************************************%
+--------------------------------------------------------
+-- LUT MASKS --> complete hand-wire of the counter chain
+--------------------------------------------------------
+%*******************************************************%
+-- BEGIN MASK DECLARATIONS
+
+	-- Starter for lower bit or start of chain
+	-------------------------------------------
+	CONSTANT LOW_CIN_STARTER_MODE = "ARITHMETIC";
+	CONSTANT LOW_CIN_STARTER   = "AAAA";
+
+
+	-- No clk_en, updown, sclr, and cnt_en signals. cin or 
+	-- chain_starter can use the free dataa and datab port. 
+	-- For use in up/down counter mode only
+	------------------------------
+	DEFINE F10KE_SINGLE_INPUT(i) = (LPM_DIRECTION != "DOWN"
+									? (INSERT_PUSHBACK(0) != 0
+										? "6644"
+										: "6688")
+									: (INSERT_PUSHBACK(0) != 0
+										? "6688"
+										: "6644"));
+
+
+	-- Cell for normal lowest bit or worker bit 
+	-------------------------------------------
+	DEFINE F10KE_LOW_OR_WORKER(i) = 
+				(i==0 & !NEED_LOW_STARTER()
+					? (USED(updown) # NEED_BIG_ASYNCH_CIRCUIT()
+						? (INSERT_PUSHBACK(i) != 0
+							? "6666"		-- LOW (ignore CIN) updown YES pushback
+							: "6699")		-- LOW (ignore CIN) updown NO pushback
+						: (LPM_DIRECTION != "DOWN"
+							? (INSERT_PUSHBACK(i) != 0
+								? "6655"	-- LOW (ignore CIN) sclr up YES pushback
+								: "66AA")	-- LOW (ignore CIN) sclr up NO pushback
+							: (INSERT_PUSHBACK(i) != 0
+								? "66AA"	-- LOW (ignore CIN) sclr down YES pushback
+								: "6655")))	-- LOW (ignore CIN) sclr down NO pushback
+					: (USED(updown) # NEED_BIG_ASYNCH_CIRCUIT()
+						? (INSERT_PUSHBACK(i) != 0
+							? "6C60"		-- LOW (with CIN) or WORKER updown YES pushback
+							: "6C90")		-- LOW (with CIN) or WORKER updown NO pushback
+						: (LPM_DIRECTION != "DOWN"
+							? (INSERT_PUSHBACK(i) != 0
+								? "6C50"	-- LOW (with CIN) or WORKER sclr up YES pushback
+								: "6CA0")	-- LOW (with CIN) or WORKER sclr up NO pushback
+							: (INSERT_PUSHBACK(i) != 0
+								? "6CA0"	-- LOW (with CIN) or WORKER sclr down YES pushback
+								: "6C50"))));	-- LOW (with CIN) or WORKER sclr down NO pushback
+	
+
+	-- Combined Low, Worker, Single Input, and Worker as Chain Starter in
+	-- one place
+	-------------------------------------------------------------------------------
+	DEFINE FLEX10KE_CELL_MODE(i) = (SINGLE_INPUT_CASE()
+									? ("UP_DN_CNTR")
+									: (USED(updown) # NEED_BIG_ASYNCH_CIRCUIT()
+										? "UP_DN_CNTR"
+										: "CLRB_CNTR"));
+
+
+	DEFINE FLEX10KE_CELL_MASK(i) = (SINGLE_INPUT_CASE()
+									? ((i == 0) # BREAK_CHAIN_HERE(i)
+										? F10KE_SINGLE_INPUT(i)	-- Chain Starter or special case Lower bit
+										: F10KE_LOW_OR_WORKER(i)) -- Normal counter operation
+									: F10KE_LOW_OR_WORKER(i));	-- Normal counter operation
+
+
+	-- CHAIN BREAKER
+	----------------
+	CONSTANT CHAIN_BREAKER_MODE = "ARITHMETIC";
+	CONSTANT CHAIN_BREAKER      = "F000";
+
+
+	-- CHAIN STARTER 
+	----------------
+	CONSTANT CHAIN_STARTER_MODE = "ARITHMETIC";
+	CONSTANT CHAIN_STARTER      = "AAAA";
+
+
+	-- COUT CELL: the cell that will receive the cout and send it out to probably output pin
+	-------------
+	CONSTANT COUT_CELL_MODE = "ARITHMETIC";
+	DEFINE COUT_CELL()      = (NEED_EQUALITY_CHECK()
+								? "F8F8"
+								: "F0F0"); -- turn off lut_mask for modulus triggering
+
+
+SUBDESIGN alt_counter_f10ke (
+	data[LPM_WIDTH - 1..0]	 	: INPUT = GND;
+	clock						: INPUT;
+	clk_en						: INPUT = VCC;
+	cnt_en						: INPUT = VCC;
+	updown						: INPUT = VCC;
+	cin							: INPUT;		-- no default value
+
+	-- synchronous input control signals
+	sload						: INPUT = GND;
+	sclr						: INPUT = GND;
+	sset						: INPUT = GND;
+	sconst						: INPUT = GND;
+
+	-- asynchronous input control signals
+	aload						: INPUT = GND;
+	aset						: INPUT = GND;
+	aconst						: INPUT = GND;
+	aclr						: INPUT = GND;
+
+	-- outputs
+	q[LPM_WIDTH - 1..0] 		: OUTPUT;
+	cout						: OUTPUT;
+
+)
+
+VARIABLE
+	IF ((FAMILY_FLEX10KE() == 1) # (FAMILY_FLEX10K() == 1)) GENERATE
+
+		sclr_node					: NODE;
+		sset_node					: NODE;
+		sload_node					: NODE;
+		aset_node					: NODE;
+		sset_path[LPM_WIDTH-1..0]	: NODE;
+		sload_path[LPM_WIDTH-1..0]	: NODE;
+		data_path[LPM_WIDTH-1..0]	: NODE;
+
+		IF NEED_EQUALITY_CHECK() GENERATE
+			compare_result			: NODE;
+			time_to_clear			: NODE;
+		END GENERATE;
+
+		IF SINGLE_INPUT_CASE() GENERATE
+			single_input[LPM_WIDTH-1..0]: NODE;
+		END GENERATE;
+
+		IF NON_TRIVIAL_MODULUS() GENERATE
+			modulus_bus[LPM_WIDTH-1..0] : NODE;
+		END GENERATE;
+		
+		IF DOWN_MODULUS() GENERATE
+			modulus_data_trigger		: NODE;
+		END GENERATE;
+
+		IF NEED_LOW_STARTER() GENERATE
+			low_starter : flex10ke_lcell WITH (
+							LUT_MASK = LOW_CIN_STARTER,
+							OPERATION_MODE = LOW_CIN_STARTER_MODE,
+							CLOCK_ENABLE_MODE = "FALSE");
+		END GENERATE;
+
+		counter_cell[LPM_WIDTH-1..0] :
+			FOR i IN (LPM_WIDTH-1) TO 0 GENERATE
+					flex10ke_lcell WITH (
+						LUT_MASK = FLEX10KE_CELL_MASK(i),
+						OPERATION_MODE = FLEX10KE_CELL_MODE(i),
+						CLOCK_ENABLE_MODE = CLK_EN_MODE())
+			END GENERATE;
+
+		IF NEED_HIGH_COUT() GENERATE
+			cout_bit : flex10ke_lcell WITH (
+						LUT_MASK = COUT_CELL(),
+						OPERATION_MODE = COUT_CELL_MODE,
+						CLOCK_ENABLE_MODE = "FALSE");
+		END GENERATE;
+
+		IF NEED_BIG_ASYNCH_CIRCUIT() GENERATE
+			a_val[LPM_WIDTH-1..0]				: NODE;
+			a_data[LPM_WIDTH-1..0]				: NODE;
+			effective_prn[LPM_WIDTH-1..0]		: NODE;
+			effective_clrn[LPM_WIDTH-1..0]		: NODE;
+			pre_latch_signal[LPM_WIDTH-1..0]	: NODE;
+			latch_signal[LPM_WIDTH-1..0] 		: NODE;
+			data_in[LPM_WIDTH-1..0]				: NODE;
+			pre_hazard[LPM_WIDTH-1..0]			: NODE;
+		END GENERATE;
+
+	END GENERATE;
+
+BEGIN
+	%**************************************%
+	%*	Beginning of the code block		  *%
+	%**************************************%
+	IF ((FAMILY_FLEX10KE() == 1) # (FAMILY_FLEX10K() == 1)) GENERATE
+
+		counter_cell[].clk = clock;
+
+
+		IF USED(sset) GENERATE
+			sset_node = sset;
+		ELSE GENERATE
+			IF USED(sconst) GENERATE
+				sset_node = sconst;
+			ELSE GENERATE
+				sset_node = GND;
+			END GENERATE;
+		END GENERATE;
+
+		IF USED(aset) GENERATE
+			aset_node = aset;
+		ELSE GENERATE
+			IF USED(aconst) GENERATE
+				aset_node = aconst;
+			ELSE GENERATE
+				aset_node = GND;
+			END GENERATE;
+		END GENERATE;
+
+		-- Non-trivial modulus situations
+		IF NON_TRIVIAL_MODULUS() GENERATE
+			modulus_bus[] = lpm_constant()	WITH (LPM_WIDTH = LPM_WIDTH,
+												  LPM_CVALUE = LPM_MODULUS-1)
+											RETURNS (.result[]);
+		END GENERATE;
+
+		-- modulus trigger for up counting counter and sclr signal
+		IF NEED_EQUALITY_CHECK() GENERATE
+			compare_result = lpm_compare ( .dataa[] = q[],
+										  .datab[] = modulus_bus[])
+										WITH (LPM_WIDTH = LPM_WIDTH,
+											  ONE_INPUT_IS_CONSTANT = "YES")
+										RETURNS	(.aeb);
+			IF USED(cin) GENERATE
+				time_to_clear = compare_result & cin;
+			ELSE GENERATE
+				time_to_clear = compare_result;
+			END GENERATE;
+			IF !USED(updown) GENERATE
+				sclr_node = sclr # (time_to_clear & !sset & !sload & cnt_en);
+			ELSE GENERATE
+				sclr_node = sclr # (updown & time_to_clear & !sset & !sload & cnt_en);
+			END GENERATE;
+		ELSE GENERATE  -- setting for DOWN counter
+			sclr_node = sclr;
+		END GENERATE;
+
+		-- sload connection or Modulus for down counting 
+		IF DOWN_MODULUS() GENERATE
+			IF USED(aload) & !NEED_BIG_ASYNCH_CIRCUIT() GENERATE
+				-- so that aload can overwrite modulus input
+				modulus_data_trigger = !aload & !sload & cout_bit.combout & cnt_en;
+			ELSE GENERATE
+				modulus_data_trigger = !sload & cout_bit.combout & cnt_en;
+			END GENERATE;
+			IF !USED(updown) GENERATE
+				IF USED(sload) GENERATE
+					sload_node = sload # (cout_bit.combout & cnt_en);
+				ELSE GENERATE
+					sload_node = cout_bit.combout & cnt_en;
+				END GENERATE;
+			ELSE GENERATE
+				IF USED(sload) GENERATE
+					sload_node = sload # (!updown & cout_bit.combout & cnt_en);
+				ELSE GENERATE
+					sload_node = !updown & cout_bit.combout & cnt_en;
+				END GENERATE;
+			END GENERATE;
+		ELSE GENERATE -- setting for UP counter
+			sload_node = sload;
+		END GENERATE;
+		
+		-- Inserting Low Starter and connecting port A and COUT of the Low Starter
+		IF NEED_LOW_STARTER() GENERATE
+			low_starter.dataa = cin;
+			counter_cell[0].cin = low_starter.cout;
+		END GENERATE;
+
+		-- Port A and Port B connection
+		IF SINGLE_INPUT_CASE() GENERATE
+			-- connecting port A and port B of low counter cell, leaving port A
+			-- and port B of higher counter cells floating 
+			IF USED(cin) GENERATE
+				single_input[0] = cin;
+			ELSE GENERATE
+				single_input[0] = VCC;
+			END GENERATE;
+			counter_cell[0].dataa = single_input[0];
+			counter_cell[0].datab = single_input[0];
+		ELSE GENERATE
+			-- universally connecting port A and port B of every counter bit
+			counter_cell[].dataa = clk_en & cnt_en;	-- used for freeze counting
+			IF USED(updown) GENERATE
+				IF NEED_BIG_ASYNCH_CIRCUIT() GENERATE
+					counter_cell[].datab = updown $ !latch_signal[];
+				ELSE GENERATE
+					counter_cell[].datab = updown;
+				END GENERATE;
+			ELSE GENERATE
+				IF NEED_BIG_ASYNCH_CIRCUIT() GENERATE	-- not using sclr port
+					IF (LPM_DIRECTION != "DOWN") GENERATE
+						counter_cell[].datab = latch_signal[];
+					ELSE GENERATE
+						counter_cell[].datab = !latch_signal[];
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+
+
+		-- Share modulus_bus[] with data[] for use on data port if needed
+		IF USED(updown) # LPM_DIRECTION == "DOWN" GENERATE
+			IF NON_TRIVIAL_MODULUS() GENERATE
+				IF USED(sload) # (USED(aload) & !NEED_BIG_ASYNCH_CIRCUIT())GENERATE
+					sload_path[] = (!modulus_data_trigger & data[]) # (modulus_data_trigger & modulus_bus[]);	
+				ELSE GENERATE
+					sload_path[] = modulus_bus[];
+				END GENERATE;
+			ELSE GENERATE
+				sload_path[] = data[];
+			END GENERATE; 
+		ELSE GENERATE  -- settings for UP counter
+			sload_path[] = data[];
+		END GENERATE;
+
+		-- Big asynch circuit
+		IF NEED_BIG_ASYNCH_CIRCUIT() GENERATE
+			ASSERT REPORT "Counter will power-up to an undefined state.  An asynchronous signal must be asserted before the counter will be at a known state." SEVERITY WARNING;
+
+			-- Redundancy codes to avoid "never used" warning
+			sset_path[] = sload_path[];
+			data_path[] = sset_path[];
+
+			-- generating the constants for AVALUE
+			IF !TRIVIAL_AVALUE() GENERATE
+				a_val[] = lpm_constant () WITH (
+								LPM_CVALUE	=	LPM_AVALUE,
+								LPM_WIDTH	=	LPM_WIDTH
+							)
+							RETURNS
+							(
+								.result[]
+							);
+			ELSE GENERATE
+				a_val[] = VCC;
+			END GENERATE;
+
+			a_data[] = (aset_node & a_val[]) # (!aset_node & data[]);
+			effective_clrn[] = !(aclr # ((aload # aset_node) & !a_data[]));
+			effective_prn[] = !((aload # aset_node) & a_data[]);
+			pre_latch_signal[] = effective_prn[] & latch_signal[];
+			latch_signal[] = !effective_clrn[] # pre_latch_signal[];
+
+			-- sset (or sconst), sload, and sclr share the use of data port
+			IF NEED_SCLR() # NEED_SYNC_SET() # NEED_SLOAD() GENERATE
+				IF USED(clk_en) GENERATE
+					counter_cell[].datad = (!sclr_node & !sset_node & !sload_node) #
+											!clk_en ;	-- sload port is low asserted
+				ELSE GENERATE
+					counter_cell[].datad = (!sclr_node & !sset_node & !sload_node);	-- sload port is low asserted
+				END GENERATE;
+			END GENERATE;
+
+			IF (LPM_WIDTH >= 1) GENERATE					
+				FOR i IN 0 to LPM_WIDTH-1 GENERATE
+					IF NEED_SCLR() # NEED_SYNC_SET() # NEED_SLOAD() GENERATE
+						IF CONST_SVAL(i) == 1 GENERATE
+							data_in[i] = !sclr_node & (sset_node # data_path[i]);
+						ELSE GENERATE
+							data_in[i] = (!sclr_node & !sset_node) & data_path[i];
+						END GENERATE;
+					ELSE GENERATE
+						data_in[i] = VCC;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+			IF NEED_SCLR() # NEED_SYNC_SET() # NEED_SLOAD() GENERATE
+				counter_cell[].datac = !latch_signal[] $ data_in[];
+			ELSE GENERATE
+				counter_cell[].datac = VCC;
+			END GENERATE;
+			counter_cell[].aclr = aclr # aset_node # aload;
+			pre_hazard[] = counter_cell[].regout;
+			q[] = (pre_hazard[] & latch_signal[] & effective_clrn[]) # 
+			      (!latch_signal[] & !pre_hazard[] & effective_clrn[]) #
+			      (!aclr & !effective_prn[]);
+			
+		ELSE GENERATE
+			-- not-gate pushback circuitry
+			IF NEED_ASYNCH_PUSHBACK() GENERATE
+			
+				-- Redundancy codes to avoid "never used" warning
+				sset_path[] = sload_path[];
+				data_path[] = sset_path[];
+				
+				-- not-gate pushback with updown signal, will try to make
+				-- sset (or sconst), sload, sclr, and aload share the use of data port
+				IF (USED(updown) # SINGLE_INPUT_CASE()) GENERATE
+					-- putting everything together for updown counter with not-gate pushback
+					IF NEED_SCLR() # NEED_SYNC_SET() # NEED_SLOAD() GENERATE
+						IF USED(clk_en) GENERATE
+							counter_cell[].datad = (!sclr_node & !sset_node & !sload_node) #
+													!clk_en;	-- sload port is low asserted
+						ELSE GENERATE
+							counter_cell[].datad = (!sclr_node & !sset_node & !sload_node);	-- sload port is low asserted
+						END GENERATE;
+					END GENERATE;
+					IF (LPM_WIDTH >= 1) GENERATE
+						FOR i IN 0 to LPM_WIDTH-1 GENERATE
+							IF CONST_AVAL(i) == 1 GENERATE
+								-- pre-inversion for not-gate pushback
+								IF USED(aload) # NEED_SCLR() # NEED_SYNC_SET() # NEED_SLOAD() GENERATE
+									IF CONST_SVAL(i) == 1 GENERATE
+										counter_cell[i].datac = !((aload # !sclr_node) &
+																((!aload & sset_node) # data_path[i]));
+									ELSE GENERATE
+										counter_cell[i].datac = !((aload # (!sclr_node & !sset_node)) &
+																data_path[i]);
+									END GENERATE;
+								END GENERATE;
+								q[i] = !(counter_cell[i].regout);  	-- post-inversion for not-gate pushback
+							ELSE GENERATE
+								IF USED(aload) # NEED_SCLR() # NEED_SYNC_SET() # NEED_SLOAD() GENERATE
+									IF CONST_SVAL(i) == 1 GENERATE
+										counter_cell[i].datac = (aload # !sclr_node) &
+																((!aload & sset_node) # data_path[i]);
+									ELSE GENERATE
+										counter_cell[i].datac = (aload # (!sclr_node & !sset_node)) &
+																data_path[i];
+									END GENERATE;
+								END GENERATE;
+								q[i] = counter_cell[i].regout;
+							END GENERATE;
+						END GENERATE;
+					END GENERATE;
+
+				-- pushback without updown signal
+				ELSE GENERATE 
+					-- putting everything together for clearable counter with not-gate pushback
+					-- trying to apply sset signal on sclr port if
+					-- LPM_AVALUE[i] == LPM_SVALUE[i] == '1' or
+					-- LPM_AVALUE[i] == LPM_SVALUE[i] == '0'
+					-- else will share sset signal with sload signal on sload port
+					IF (LPM_WIDTH >= 1) GENERATE
+						FOR i IN 0 to LPM_WIDTH-1 GENERATE
+							IF CONST_AVAL(i) == 1 GENERATE  -- not-gate pushback
+								IF CONST_SVAL(i) == 1 GENERATE
+									-- apply sset on sclr port (active low), make sure that
+									-- sclr have higher precedence than sset
+									IF NEED_SYNC_SET() GENERATE
+										IF USED(clk_en) GENERATE
+											counter_cell[i].datab = sclr_node # !clk_en # !sset_node;	-- sclr port is low asserted
+										ELSE GENERATE
+											counter_cell[i].datab = sclr_node # !sset_node;	-- sclr port is low asserted
+										END GENERATE;
+									ELSE GENERATE
+										counter_cell[i].datab = VCC;
+									END GENERATE;
+									IF NEED_SCLR() # NEED_SLOAD() GENERATE
+										IF USED(clk_en) GENERATE
+											counter_cell[i].datad = (!sclr_node & !sload_node) # !clk_en;	-- sload port is low asserted
+										ELSE GENERATE
+											counter_cell[i].datad = (!sclr_node & !sload_node);	-- sload port is low asserted
+										END GENERATE;
+									END GENERATE;
+									IF USED(aload) # NEED_SCLR() # NEED_SLOAD() GENERATE
+										counter_cell[i].datac = !((aload # !sclr_node) & data_path[i]); -- with pre-inversion
+									END GENERATE;
+								ELSE GENERATE
+									counter_cell[i].datab = VCC;	-- no connection is needed here
+									IF NEED_SCLR() # NEED_SYNC_SET() # NEED_SLOAD() GENERATE
+										IF NEED_SYNC_SET() GENERATE
+											IF USED(clk_en) GENERATE
+												counter_cell[i].datad = (!sclr_node & !sset_node & !sload_node) # 
+																		!clk_en;	-- sload port is low asserted
+											ELSE GENERATE
+												counter_cell[i].datad = (!sclr_node & !sset_node & !sload_node); -- sload port is low asserted
+											END GENERATE;
+										END GENERATE;
+									END GENERATE;
+									IF USED(aload) # NEED_SLOAD() # NEED_SYNC_SET() GENERATE
+										counter_cell[i].datac = !((aload # (!sclr_node & !sset_node)) & data_path[i]); -- with pre-inversion
+									END GENERATE;
+								END GENERATE;
+								q[i] = !(counter_cell[i].regout);  	-- post-inversion for not-gate pushback
+							ELSE GENERATE  -- no not-gate pushback
+								IF CONST_SVAL(i) == 1 GENERATE
+									IF NEED_SCLR() GENERATE
+										IF USED(clk_en) GENERATE
+											counter_cell[i].datab = !sclr_node # !clk_en;  -- sclr port is low asserted
+										ELSE GENERATE
+											counter_cell[i].datab = !sclr_node;	-- sclr port is low asserted
+										END GENERATE;
+									ELSE GENERATE
+										counter_cell[i].datab = VCC;
+									END GENERATE;
+									IF NEED_SYNC_SET() # NEED_SLOAD() GENERATE
+										IF USED(clk_en) GENERATE
+											counter_cell[i].datad = (!sset_node & !sload_node) # !clk_en;	-- sload port is low asserted
+										ELSE GENERATE
+											counter_cell[i].datad = (!sset_node & !sload_node);	-- sload port is low asserted
+										END GENERATE;
+									END GENERATE;
+									IF USED(aload) # NEED_SYNC_SET() # NEED_SLOAD() GENERATE
+										counter_cell[i].datac = (!aload & sset_node) # data_path[i];
+									END GENERATE;
+								ELSE GENERATE
+									-- apply sset signal on sclr port (active low)
+									IF NEED_SCLR() # NEED_SYNC_SET() GENERATE
+										IF USED(clk_en) GENERATE
+											counter_cell[i].datab = !((sclr_node # sset_node) & clk_en);	-- sclr port is low asserted
+										ELSE GENERATE
+											counter_cell[i].datab = sclr_node !# sset_node;	-- sclr port is low asserted
+										END GENERATE;
+									ELSE GENERATE
+										counter_cell[i].datab = VCC;
+									END GENERATE;
+									IF NEED_SLOAD() GENERATE
+										IF USED(clk_en) GENERATE
+											counter_cell[i].datad = !sload_node # !clk_en;	-- sload port is low asserted
+										ELSE GENERATE
+											counter_cell[i].datad = !sload_node;	-- sload port is low asserted
+										END GENERATE;
+									END GENERATE;
+									IF USED(aload) # NEED_SLOAD() GENERATE
+										counter_cell[i].datac = data_path[i];
+									END GENERATE;
+								END GENERATE;
+								q[i] = counter_cell[i].regout;
+							END GENERATE;
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+				IF USED(aload) GENERATE
+					counter_cell[].aload = aload;
+				END GENERATE;
+				IF NEED_ASYNC_SET() GENERATE
+					counter_cell[].aclr = aset_node;
+				END GENERATE;
+
+			-- !NEED_ASYNCH_PUSHBACK()
+			-- normal circuit not using not-gate pushback
+			ELSE GENERATE 
+				IF NEED_SYNC_SET() GENERATE
+					IF (LPM_WIDTH >= 1) GENERATE
+						FOR i IN 0 to LPM_WIDTH-1 GENERATE
+							IF CONST_SVAL(i) == 1 GENERATE
+								IF USED(aload) GENERATE
+									sset_path[i] = (!aload & sset_node) # sload_path[i];
+								ELSE GENERATE
+									sset_path[i] = sset_node # sload_path[i];
+								END GENERATE;
+							ELSE GENERATE
+								IF USED(aload) GENERATE
+									sset_path[i] = (aload # !sset_node) & sload_path[i];
+								ELSE GENERATE
+									sset_path[i] = !sset_node & sload_path[i];
+								END GENERATE;
+							END GENERATE;
+						END GENERATE;
+					END GENERATE;
+				ELSE GENERATE
+					sset_path[] = sload_path[];
+				END GENERATE;
+				IF (USED(updown) # SINGLE_INPUT_CASE()) GENERATE
+					IF USED(aload) GENERATE
+						-- aload can overwrite sclr (active high)
+						data_path[] = (aload # !sclr_node) & sset_path[];
+					ELSE GENERATE
+						data_path[] = !sclr_node & sset_path[];
+					END GENERATE;
+					IF NEED_SCLR() # NEED_SYNC_SET() # NEED_SLOAD() GENERATE
+						IF USED(clk_en) GENERATE
+							counter_cell[].datad = (!sclr_node & !sset_node & !sload_node) #
+													!clk_en;	-- sload port is low asserted
+						ELSE GENERATE
+							counter_cell[].datad = (!sclr_node & !sset_node & !sload_node);	-- sload port is low asserted
+						END GENERATE;
+					END GENERATE;
+				ELSE GENERATE
+					data_path[] = sset_path[];
+					-- no connection for sclr_node to sclr port is needed here. 
+					-- It has been done by earlier coding above
+					IF NEED_SCLR() GENERATE
+						IF USED(clk_en) GENERATE
+							counter_cell[].datab = !clk_en # !sclr_node;	-- sclr port is low asserted
+						ELSE GENERATE
+							counter_cell[].datab = !sclr_node;	-- sclr port is low asserted
+						END GENERATE;
+					ELSE GENERATE
+						counter_cell[].datab = VCC;
+					END GENERATE;
+					IF NEED_SYNC_SET() # NEED_SLOAD() GENERATE
+						IF USED(clk_en) GENERATE
+							counter_cell[].datad = (!sset_node & !sload_node) # 
+													!clk_en;	-- sload port is low asserted
+						ELSE GENERATE
+							counter_cell[].datad = (!sset_node & !sload_node);	-- sload port is low asserted					
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+				IF USED(aload) GENERATE
+					counter_cell[].aload = aload;
+				END GENERATE;
+				IF USED(aclr) GENERATE
+					counter_cell[].aclr = aclr;
+				END GENERATE;
+				counter_cell[].datac = data_path[];
+				q[] = counter_cell[].regout;
+			END GENERATE;
+		END GENERATE;
+
+		-- carry-in/carry-out chain construction with
+		-- consideration of chain breaking
+		IF (LPM_WIDTH > 1) GENERATE
+			FOR i IN 1 TO LPM_WIDTH-1 GENERATE
+				IF (!BREAK_CHAIN_HERE(i)) GENERATE			
+					counter_cell[i].cin = counter_cell[i-1].cout;
+					IF SINGLE_INPUT_CASE() GENERATE
+						single_input[i] = VCC;
+						counter_cell[i].dataa = single_input[i];
+						counter_cell[i].datab = single_input[i];
+					END GENERATE;
+				ELSE GENERATE
+					IF SINGLE_INPUT_CASE() GENERATE  -- start immediately, no need CHAIN_STARTER
+						(single_input[i]) = flex10ke_lcell (.cin = counter_cell[i-1].cout)
+													WITH (LUT_MASK = CHAIN_BREAKER,
+														OPERATION_MODE = CHAIN_BREAKER_MODE,
+														CLOCK_ENABLE_MODE = "FALSE")
+													RETURNS (.combout);
+						counter_cell[i].dataa = single_input[i];
+						counter_cell[i].datab = single_input[i];
+					ELSE GENERATE  -- need CHAIN_STARTER to restart the chain
+						(counter_cell[i].cin) = flex10ke_lcell (
+											.dataa	= flex10ke_lcell (.cin = counter_cell[i-1].cout)
+														WITH (LUT_MASK	= CHAIN_BREAKER,
+															OPERATION_MODE = CHAIN_BREAKER_MODE,
+															CLOCK_ENABLE_MODE = "FALSE")
+														RETURNS (.combout))
+											WITH (LUT_MASK = CHAIN_STARTER,
+												  OPERATION_MODE = CHAIN_STARTER_MODE,
+												  CLOCK_ENABLE_MODE = "FALSE")
+											RETURNS (.cout);
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+		
+		-- connecting COUT cell if needed
+		IF NEED_HIGH_COUT() GENERATE
+			cout_bit.cin = counter_cell[LPM_WIDTH-1].cout;
+			IF NEED_EQUALITY_CHECK() GENERATE
+				cout_bit.dataa = updown;
+				cout_bit.datab = time_to_clear;
+			END GENERATE;
+			-- make connection if user need COUT output
+			IF USED(cout) GENERATE
+				cout = cout_bit.combout;
+			END GENERATE;
+		END GENERATE;
+
+	END GENERATE;
+
+	ASSERT ((FAMILY_FLEX10KE() == 1) # (FAMILY_FLEX10K() == 1))
+		REPORT "Unexpected family -- % is not expected to be used on this megafunction"
+			DEVICE_FAMILY
+		SEVERITY ERROR;
+	IF !USED(cout) GENERATE
+		cout = GND;
+	END GENERATE;
+	IF !USED(q) GENERATE
+		q[] = GND;
+	END GENERATE;
+END;

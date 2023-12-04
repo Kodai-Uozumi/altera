@@ -1,0 +1,79 @@
+TITLE "Top-level file for the 81mux macrofunction.  Chooses a device-family optimized implementation."; 
+
+FUNCTION p81mux (d0, d1, d2, d3, d4, d5, d6, d7, a, b, c, gn)
+    RETURNS (wn, y);
+
+FUNCTION f81mux (d0, d1, d2, d3, d4, d5, d6, d7, a, b, c, gn)
+    RETURNS (wn, y);
+
+PARAMETERS
+(
+	DEVICE_FAMILY
+);
+INCLUDE "aglobal.inc";
+
+SUBDESIGN 81mux
+(
+	d0               : INPUT = GND;
+	d1               : INPUT = GND;
+	d2               : INPUT = GND;
+	d3               : INPUT = GND;
+	d4               : INPUT = GND;
+	d5               : INPUT = GND;
+	d6               : INPUT = GND;
+	d7               : INPUT = GND;
+	a                : INPUT = GND;
+	b                : INPUT = GND;
+	c                : INPUT = GND;
+	gn               : INPUT = GND;
+	wn               : OUTPUT;
+	y                : OUTPUT;
+)
+
+VARIABLE
+	IF (FAMILY_FLEX() == 1) GENERATE
+		sub  : f81mux;
+	ELSE GENERATE
+		sub  : p81mux;
+	END GENERATE;
+
+BEGIN
+	IF (USED(d0)) GENERATE
+		sub.d0 = d0;
+	END GENERATE;
+	IF (USED(d1)) GENERATE
+		sub.d1 = d1;
+	END GENERATE;
+	IF (USED(d2)) GENERATE
+		sub.d2 = d2;
+	END GENERATE;
+	IF (USED(d3)) GENERATE
+		sub.d3 = d3;
+	END GENERATE;
+	IF (USED(d4)) GENERATE
+		sub.d4 = d4;
+	END GENERATE;
+	IF (USED(d5)) GENERATE
+		sub.d5 = d5;
+	END GENERATE;
+	IF (USED(d6)) GENERATE
+		sub.d6 = d6;
+	END GENERATE;
+	IF (USED(d7)) GENERATE
+		sub.d7 = d7;
+	END GENERATE;
+	IF (USED(a)) GENERATE
+		sub.a = a;
+	END GENERATE;
+	IF (USED(b)) GENERATE
+		sub.b = b;
+	END GENERATE;
+	IF (USED(c)) GENERATE
+		sub.c = c;
+	END GENERATE;
+	IF (USED(gn)) GENERATE
+		sub.gn = gn;
+	END GENERATE;
+	wn = sub.wn;
+	y = sub.y;
+END;

@@ -1,0 +1,237 @@
+/*
+WARNING: Do NOT edit the input and output ports in this file in a text
+editor if you plan to continue editing the block that represents it in
+the Block Editor! File corruption is VERY likely to occur.
+*/
+/*
+Copyright (C) 1991-2007 Altera Corporation
+Your use of Altera Corporation's design tools, logic functions 
+and other software and tools, and its AMPP partner logic 
+functions, and any output files from any of the foregoing 
+(including device programming or simulation files), and any 
+associated documentation or information are expressly subject 
+to the terms and conditions of the Altera Program License 
+Subscription Agreement, Altera MegaCore Function License 
+Agreement, or other applicable license agreement, including, 
+without limitation, that your use is for the sole purpose of 
+programming logic devices manufactured by Altera and sold by 
+Altera or its authorized distributors.  Please refer to the 
+applicable agreement for further details.
+*/
+(header "symbol" (version "1.1"))
+(symbol
+	(rect 64 64 248 224)
+	(text "altlvds_tx" (rect 72 0 120 12)(font "Arial" ))
+	(text "inst" (rect 8 144 25 156)(font "Arial" ))
+	(port
+		(pt 0 32)
+		(input)
+		(text "tx_in[DESERIALIZATION_FACTOR*NUMBER_OF_CHANNELS-1..0]" (rect 24 24 395 38)(font "Arial" (font_size 8)))
+		(text "tx_in[]" (rect 24 24 58 38)(font "Arial" (font_size 8)))
+		(line (pt 0 32)(pt 16 32)(line_width 3))
+	)
+	(port
+		(pt 0 48)
+		(input)
+		(text "tx_inclock" (rect 24 48 80 62)(font "Arial" (font_size 8)))
+		(text "tx_inclock" (rect 24 40 80 54)(font "Arial" (font_size 8)))
+		(line (pt 0 48)(pt 16 48)(line_width 1))
+	)
+	(port
+		(pt 0 64)
+		(input)
+		(text "sync_inclock" (rect 24 56 98 70)(font "Arial" (font_size 8)))
+		(text "sync_inclock" (rect 24 56 98 70)(font "Arial" (font_size 8)))
+		(line (pt 0 64)(pt 16 64)(line_width 1))
+	)
+	(port
+		(pt 0 80)
+		(input)
+		(text "tx_pll_enable" (rect 24 72 98 86)(font "Arial" (font_size 8)))
+		(text "tx_pll_enable" (rect 24 72 98 86)(font "Arial" (font_size 8)))
+		(line (pt 0 80)(pt 16 80)(line_width 1))
+	)
+	(port
+		(pt 0 96)
+		(input)
+		(text "pll_areset" (rect 24 88 79 102)(font "Arial" (font_size 8)))
+		(text "pll_areset" (rect 24 88 79 102)(font "Arial" (font_size 8)))
+		(line (pt 0 96)(pt 16 96)(line_width 1))
+		(unused)
+	)
+	(port
+		(pt 0 112)
+		(input)
+		(text "tx_enable" (rect 24 104 79 118)(font "Arial" (font_size 8)))
+		(text "tx_enable" (rect 24 104 79 118)(font "Arial" (font_size 8)))
+		(line (pt 0 112)(pt 16 112)(line_width 1))
+	)
+	(port
+		(pt 0 128)
+		(input)
+		(text "tx_syncclock" (rect 24 120 99 134)(font "Arial" (font_size 8)))
+		(text "tx_syncclock" (rect 24 120 99 134)(font "Arial" (font_size 8)))
+		(line (pt 0 128)(pt 16 128)(line_width 1))
+	)
+	(port
+		(pt 184 32)
+		(output)
+		(text "tx_out[NUMBER_OF_CHANNELS-1..0]" (rect 136 24 349 38)(font "Arial" (font_size 8)))
+		(text "tx_out[]" (rect 125 24 167 38)(font "Arial" (font_size 8)))
+		(line (pt 184 32)(pt 168 32)(line_width 3))
+	)
+	(port
+		(pt 184 48)
+		(output)
+		(text "tx_outclock" (rect 136 40 200 54)(font "Arial" (font_size 8)))
+		(text "tx_outclock" (rect 106 40 170 54)(font "Arial" (font_size 8)))
+		(line (pt 184 48)(pt 168 48)(line_width 1))
+	)
+	(port
+		(pt 184 64)
+		(output)
+		(text "tx_locked" (rect 136 56 190 70)(font "Arial" (font_size 8)))
+		(text "tx_locked" (rect 112 56 166 70)(font "Arial" (font_size 8)))
+		(line (pt 184 64)(pt 168 64)(line_width 1))
+	)
+	(port
+		(pt 184 80)
+		(output)
+		(text "tx_coreclock" (rect 136 72 209 86)(font "Arial" (font_size 8)))
+		(text "tx_coreclock" (rect 96 72 169 86)(font "Arial" (font_size 8)))
+		(line (pt 184 80)(pt 168 80)(line_width 1))
+	)
+	(parameter
+		"NUMBER_OF_CHANNELS"
+		"16"
+		"Number of LVDS channels (wire pairs)"
+	)
+	(parameter
+		"DESERIALIZATION_FACTOR"
+		"4"
+		"Bit serial to parallel factor"
+		"4" "7" "8" 
+	)
+	(parameter
+		"REGISTERED_INPUT"
+		"\"ON\""
+		"Should input be registered?. Values are \"ON\" and \"OFF\" for other families. For Strtatix, Values are \"ON\", \"OFF\", \"TX_CLKIN\" (use rx_inclockfor registering inputs, same as IN) and \"TX_CORECLK\"( uses tx_coreclk for registering inputs)"
+		"\"ON\"" "\"OFF\"" 
+	)
+	(parameter
+		"MULTI_CLOCK"
+		"\"OFF\""
+		"Set to on to enable use of sync_inclock for input registering"
+		"\"ON\"" "\"OFF\"" 
+	)
+	(parameter
+		"INCLOCK_PERIOD"
+		""
+		"Input clock period in ps. Enter as an integer without units"
+	)
+	(parameter
+		"CLOCK_SETTING"
+		"\"UNUSED\""
+		"Name of clock assignment that gives clock details"
+	)
+	(parameter
+		"OUTCLOCK_DIVIDE_BY"
+		"4"
+		"Divide down tx_outclock output port frequency by this factor (Mercury device logic family, only)"
+	)
+	(parameter
+		"INCLOCK_BOOST"
+		"4"
+		"Clock rate increase factor (tx_inclock to pll clock)"
+	)
+	(parameter
+		"CENTER_ALIGN_MSB"
+		"\"OFF\""
+		"Determines the edge of serial clock on which transmitter will send output data Values are \"UNUSED\" (default), \"ON\", and \"OFF\""
+		"\"ON\"" "\"OFF\"" "\"UNUSED\"" 
+	)
+	(parameter
+		"USE_EXTERNAL_PLL"
+		"\"OFF\""
+		"Determines whether an internal PLL is instantiated in the megafunction to drive the SERDES or not.Values are \"ON\" and \"OFF\"(default)"
+		"\"ON\"" "\"OFF\"" 
+	)
+	(parameter
+		"OUTPUT_DATA_RATE"
+		"0"
+		"Output data rate of the LVDS transmitter in Mbps"
+	)
+	(parameter
+		"PREEMPHASIS_SETTING"
+		"0"
+		"Specifies the preemphasis on the transmitted differential signal"
+	)
+	(parameter
+		"VOD_SETTING"
+		"0"
+		"Specifies the preemphasis on the transmitted differential signal"
+	)
+	(parameter
+		"DIFFERENTIAL_DRIVE"
+		"0"
+		"Specifies the preemphasis on the transmitted differential signal"
+	)
+	(parameter
+		"INCLOCK_DATA_ALIGNMENT"
+		"\"EDGE_ALIGNED\""
+		"Indicates alignment of the input clock with the input data. Possible values are \"EDGE_ALIGNED\", \"45_DEGREES\", \"CENTER_ALIGNED\", \"135_DEGREES\", \"180_DEGREES\", \"225_DEGREES\", \"270_DEGREES\", \"315_DEGREES\""
+		"\"EDGE_ALIGNED\"" "\"45_DEGREES\"" "\"CENTER_ALIGNED\"" "\"135_DEGREES\"" "\"180_DEGREES\"" "\"225_DEGREES\"" "\"270_DEGREES\"" "\"315_DEGREES\"" 
+	)
+	(parameter
+		"OUTCLOCK_ALIGNMENT"
+		"\"EDGE_ALIGNED\""
+		"Indicates the alignment of tx_outclock. Possible values are \"EDGE_ALIGNED\", \"45_DEGREES\", \"CENTER_ALIGNED\", \"135_DEGREES\", \"180_DEGREES\", \"225_DEGREES\", \"270_DEGREES\", \"315_DEGREES\""
+		"\"EDGE_ALIGNED\"" "\"45_DEGREES\"" "\"CENTER_ALIGNED\"" "\"135_DEGREES\"" "\"180_DEGREES\"" "\"225_DEGREES\"" "\"270_DEGREES\"" "\"315_DEGREES\"" 
+	)
+	(parameter
+		"COMMON_RX_TX_PLL"
+		"\"ON\""
+		"Determines whether to use the same PLL for both receiver and transmitter LVDS. Values are \"ON\" and \"OFF\""
+		"\"ON\"" "\"OFF\"" 
+	)
+	(parameter
+		"OUTCLOCK_RESOURCE"
+		"\"AUTO\""
+		"Determines whether to treat the rx_outclock as a global clock or as a regional clock for routing. Values are \"AUTO\"(default), \"Global Clock\" and \"Regional Clock\""
+		"\"AUTO\"" "\"Global Clock\"" "\"Regional Clock\"" 
+	)
+	(parameter
+		"INCLOCK_PHASE_SHIFT"
+		"0"
+		"Indicates alignment of the input clock with the input data."
+	)
+	(parameter
+		"OUTCLOCK_PHASE_SHIFT"
+		"0"
+		"Indicates the alignment of tx_outclock."
+	)
+	(parameter
+		"CORECLOCK_DIVIDE_BY"
+		"2"
+		"Indicates the frequency of the coreclock (when IMPLEMENT_IN_LES = ON)"
+	)
+	(parameter
+		"OUTCLOCK_DUTY_CYCLE"
+		"50"
+		"Duty cycle of tx_outclock"
+	)
+	(parameter
+		"ENABLE_CLK_LATENCY"
+		"\"OFF\""
+		""
+	)
+	(parameter
+		"PLL_BANDWIDTH_TYPE"
+		"\"AUTO\""
+		""
+	)
+	(drawing
+		(rectangle (rect 16 16 168 144)(line_width 1))
+	)
+	(annotation_block (parameter)(rect 248 -232 488 120))
+)

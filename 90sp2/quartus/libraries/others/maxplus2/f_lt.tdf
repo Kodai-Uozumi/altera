@@ -1,0 +1,17 @@
+INCLUDE "lt_f.inc";
+SUBDESIGN f_lt 
+(
+     IN1,IN2,CI : INPUT = GND;
+     LT         : OUTPUT;
+)
+VARIABLE
+     	uflt:lt_f with ( IGNORE_SOFT_BUFFERS = "OFF" );
+begin
+
+	uflt.in1 = IN1;
+	uflt.in2 = IN2;
+	uflt.ci = CI;
+	LT = uflt.lt;	
+end;
+
+

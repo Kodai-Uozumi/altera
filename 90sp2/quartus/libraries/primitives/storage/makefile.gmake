@@ -1,0 +1,168 @@
+#//START_MODULE_HEADER/////////////////////////////////////////////////////////
+# 
+#  Filename:	makefile.mak
+# 
+#  Description: Gets symbol files for storage primitives out of PVCS.
+# 
+#  Authors:		Robert Romano
+# 
+#  Copyright (c)  Altera Corporation 1996 - 1999
+# 
+#  All rights reserved.
+# 
+# 
+#//END_MODULE_HEADER///////////////////////////////////////////////////////////
+
+#
+#  $Log:   /pvcs/quartus/libraries/primitives/storage/makefile.ma_  $
+#**	
+#**	   Rev 25.0   08 Jul 2007 04:05:38   max
+#**	Quartus II 8.0 
+#**	SJ, Sat Jul  7 09:05:38 2007
+#**	
+#**	   Rev 24.1   22 Mar 2007 04:19:30   dsundara
+#**	move base dir setting to very beginning 
+#**	SJ, Wed Mar 21 09:19:31 2007
+#**	
+#**	   Rev 24.0   11 Feb 2007 02:58:08   max
+#**	Quartus II 7.2 
+#**	SJ, Sat Feb 10 06:58:09 2007
+#**	
+#**	   Rev 23.0   10 Sep 2006 00:48:12   max
+#**	Quartus II 7.1 
+#**	SJ, Sat Sep  9 05:48:12 2006
+#**	
+#**	   Rev 22.0   05 Feb 2006 00:16:38   max
+#**	Quartus II 6.1 
+#**	SJ, Sat Feb  4 04:16:39 2006
+#**	
+#**	   Rev 21.0   07 Aug 2005 00:16:00   max
+#**	Quartus II 6.0 
+#**	SJ, Sat Aug  6 05:16:00 2005
+#**	
+#**	   Rev 20.0   06 Feb 2005 06:21:38   max
+#**	Quartus II 5.1 
+#**	SJ, Sat Feb  5 10:21:39 2005
+#**	
+#**	   Rev 19.1   04 Dec 2004 07:48:58   mluis
+#**	SPR 167077. Add DLATCH symbol. 
+#**	SJ, Fri Dec 03 11:48:58 2004
+#**	
+#**	   Rev 19.0   12 Sep 2004 04:16:34   max
+#**	Quartus II 5.0 
+#**	SJ, Sat Sep 11 09:16:33 2004
+#**	
+#**	   Rev 18.1   15 Jul 2004 06:58:08   mluis
+#**	SPR 156353. Add dffeas symbol. 
+#**	SJ, Wed Jul 14 11:57:33 2004
+#**	
+#**	   Rev 18.0   10 Apr 2004 04:37:14   max
+#**	Quartus II 4.2 
+#**	SJ, Fri Apr  9 09:37:14 2004
+#**	
+#**	   Rev 17.0   04 Oct 2003 19:09:56   max
+#**	Quartus II 4.1
+#**	SJ, Sat Oct 04 00:09:54 2003
+#**	
+#**	   Rev 16.0   05 Apr 2003 21:57:00   max
+#**	Quartus II 3.1
+#**	SJ, Sat Apr 05 01:57:00 2003
+#**	
+#**	   Rev 15.0   08 Sep 2002 07:08:30   max
+#**	Quartus II 3.0
+#**	SJ, Sat Sep 07 12:08:30 2002
+#**	
+#**	   Rev 14.0   21 Apr 2002 06:06:18   max
+#**	Quartus II 2.2
+#**	SJ, Sat Apr 20 11:06:18 2002
+#**	
+#**	   Rev 13.1   17 Feb 2002 13:31:50   barchell
+#**	Adding OWNED_FILES target
+#**	SJ, Sat Feb 16 17:31:48 2002
+#**	
+#**	   Rev 13.0   04 Nov 2001 15:14:12   max
+#**	Quartus II 2.1
+#**	SJ, Sat Nov 03 19:14:10 2001
+#**	
+#**	   Rev 12.1   05 Oct 2001 10:33:36   mluis
+#**	Remove lcell.bsf.
+#**	SJ, Thu Oct 04 15:33:32 2001
+#**	
+#**	   Rev 12.0   23 Apr 2001 02:34:00   max
+#**	Quartus II 1.2
+#**	SJ, Sun Apr 22 07:34:00 2001
+#**	
+#**	   Rev 11.0   25 Nov 2000 22:56:06   max
+#**	QuartusII 1.1
+#**	SJ, Sat Nov 25 02:56:06 2000
+#**	
+#**	   Rev 10.0   06 Aug 2000 09:53:36   max
+#**	2000.12
+#**	
+#**	   Rev 9.0   17 Feb 2000 02:21:26   max
+#**	2000.08
+#**	
+#**	   Rev 8.1   08 Feb 2000 14:53:54   mluis
+#**	Add DFFEA.
+#**	
+#**	   Rev 8.0   25 Nov 1999 03:03:46   max
+#**	2000.06
+#**	
+#**	   Rev 7.0   22 Jun 1999 03:18:36   max
+#**	1999.09
+#**	
+#**	   Rev 6.0   30 May 1999 02:47:20   max
+#**	1999.06
+#**	
+#**	   Rev 1.1   12 May 1999 14:18:42   rromano
+#**	SPR 56683
+#**	
+#**	   Rev 1.0   12 May 1999 13:54:14   rromano
+#**	Initial revision.
+#**	
+#
+
+###############################################################################
+# Set up the environment
+###############################################################################
+
+BASE_DIR = ../../..
+
+
+include $(BASE_DIR)/environ.gmake
+
+PVCS_DIR = $(PVCS_ROOT)/libraries/primitives/storage
+
+###############################################################################
+# Set target(s) and files used.
+###############################################################################
+
+OWNED_FILES = \
+	dff.bsf \
+	dffe.bsf \
+	dffea.bsf \
+	dffeas.bsf \
+	jkff.bsf \
+	jkffe.bsf \
+	latch.bsf \
+	dlatch.bsf \
+	srff.bsf \
+	srffe.bsf \
+	tff.bsf \
+	tffe.bsf
+
+###############################################################################
+# Builtins.mak
+###############################################################################
+
+
+include $(BASE_DIR)/builtins.gmake
+
+###############################################################################
+# Now the targets
+###############################################################################
+
+all : $(OWNED_FILES)
+
+clean : 
+	rm -f *.bsf

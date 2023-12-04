@@ -1,0 +1,86 @@
+--Include "carry_sum.inc";
+
+PARAMETERS
+(
+	WIDTH = 1,
+	NEED_CARRY = 0,
+	USE_CS_BUFFERS = 1
+);
+
+SUBDESIGN a_csnbuffer
+(
+	sin[WIDTH-1..0]		: INPUT;
+	cin[WIDTH-1..0]		: INPUT = GND;
+	clk					: INPUT = GND;
+	clrn				: INPUT = VCC;
+	ena					: INPUT = VCC;
+	sout[WIDTH-1..0]	: OUTPUT;
+	cout[WIDTH-1..0]	: OUTPUT;
+)
+
+VARIABLE
+
+	IF (NEED_CARRY == 1) GENERATE
+		IF (USE_CS_BUFFERS == 1) GENERATE
+			cs_buffer[WIDTH-1..0]		: CARRY_SUM;
+		ELSE GENERATE
+			carry_buffer[WIDTH-1..0]	: CARRY;
+			sum_node[WIDTH-1..0]		: NODE; 
+		END GENERATE;
+	END GENERATE;
+
+	IF USED(clk) GENERATE
+		IF USED(ena) GENERATE
+			sout_node[WIDTH-1..0] : DFFE;
+		ELSE GENERATE
+			sout_node[WIDTH-1..0] : DFF;
+		END GENERATE;
+	ELSE GENERATE
+		IF (NEED_CARRY == 1) GENERATE
+			sout_node[WIDTH-1..0] : NODE;
+		ELSE GENERATE
+			sout_node[WIDTH-1..0] : SOFT;
+		END GENERATE;
+	END GENERATE;
+
+
+BEGIN
+
+	IF (NEED_CARRY == 1) GENERATE
+		IF (USE_CS_BUFFERS == 1) GENERATE
+			cs_buffer[].cin = cin[];
+			cout[] = cs_buffer[].cout;
+	
+			sout_node[] = sin[];
+			cs_buffer[].sin = sout_node[];
+			sout[] = cs_buffer[].sout;
+		ELSE GENERATE
+			carry_buffer[] = cin[];
+			cout[] = carry_buffer[];
+			
+			sout_node[] = sin[];
+			sum_node[] = sout_node[];
+			sout[] = sum_node[];
+		END GENERATE;
+	ELSE GENERATE
+		sout_node[] = sin[];
+		sout[] = sout_node[];
+		cout[] = cin[];
+	END GENERATE;
+
+	IF USED(clk) GENERATE
+		sout_node[].clk = clk;
+		sout_node[].clrn = clrn;
+
+		IF USED(ena) GENERATE
+			sout_node[].ena = ena;
+		END GENERATE;
+	END GENERATE;
+	IF !USED(sout) GENERATE
+		sout[] = GND;
+	END GENERATE;
+	IF !USED(cout) GENERATE
+		cout[] = GND;
+	END GENERATE;
+END;
+

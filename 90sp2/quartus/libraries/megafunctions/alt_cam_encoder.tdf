@@ -1,0 +1,536 @@
+------------------------------------------------------------------------
+--	ALT_CAM_ENCODER.TDF
+--
+--	This module speeds up the cam for multiple match mode.
+--	It implements a Level-2 Block Lookahead algorithm for speeding up
+--	the priority encoder for large cams.
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+-- 
+------------------------------------------------------------------------
+
+PARAMETERS
+(
+	WIDTH,
+	DEVICE_FAMILY
+);
+
+INCLUDE "aglobal90";
+INCLUDE "apex20ke_lcell";
+INCLUDE "mercury_lcell";
+
+CONSTANT ARITHMETIC_MODE = "ARITHMETIC";
+CONSTANT NORMAL_MODE = "NORMAL";
+
+CONSTANT CASCADE_THRESHOLD = (FAMILY_MERCURY() == 1) ? 31 : 32;
+CONSTANT CASCADE_NUMBER = (FAMILY_MERCURY() == 1) ? 10 : 8;
+CONSTANT LEVEL_THREE_THRESHOLD = 32;
+CONSTANT PRIMARY_BUNDLES = CEIL(WIDTH DIV CASCADE_THRESHOLD);
+CONSTANT LEVEL_TWO_BUNDLES = CEIL(WIDTH DIV CASCADE_THRESHOLD) - 1;
+CONSTANT TOTAL_LEVEL_THREE_CELLS = (LEVEL_TWO_BUNDLES <= 2) ? 0 : FLOOR(LEVEL_TWO_BUNDLES DIV 2);
+CONSTANT LEVEL_THREE_BUNDLES = LEVEL_TWO_BUNDLES <= 2 ? 0 : CEIL(TOTAL_LEVEL_THREE_CELLS DIV LEVEL_THREE_THRESHOLD);
+CONSTANT PRIMARY_CARRY_FEEDERS = LEVEL_TWO_BUNDLES;
+
+DEFINE MIN(a, b) = a <= b ? a : b;
+DEFINE MAX(a, b) = a <= b ? b : a;
+DEFINE CASCADE_CELLS_NEEDED(inputs) = (FAMILY_MERCURY() == 1) ?  MAX(1, CEIL((inputs - 1) DIV 3)) : CEIL(inputs DIV 4);
+DEFINE LEVEL_ONE_BUNDLE_NUMBER(index) = (index < PRIMARY_BUNDLES - 1) ? CASCADE_THRESHOLD : ((WIDTH MOD CASCADE_THRESHOLD == 0) ? CASCADE_THRESHOLD : (WIDTH MOD CASCADE_THRESHOLD));
+DEFINE LEVEL_TWO_BUNDLE_NUMBER(index) = ((index < LEVEL_TWO_BUNDLES - 1) # (WIDTH MOD CASCADE_THRESHOLD == 0)) ? CASCADE_NUMBER : CASCADE_CELLS_NEEDED(WIDTH MOD CASCADE_THRESHOLD);
+DEFINE LEVEL_THREE_BUNDLE_NUMBER(index) = (index < LEVEL_THREE_BUNDLES - 1) # (LEVEL_THREE_BUNDLES MOD LEVEL_THREE_THRESHOLD == 0) ? LEVEL_THREE_THRESHOLD :  TOTAL_LEVEL_THREE_CELLS MOD LEVEL_THREE_THRESHOLD;
+---------------
+-- lut masks --
+---------------
+CONSTANT APEX_CASCADE_MASK = "0001";
+CONSTANT MERCURY_CASCADE_MASK = "0100";
+CONSTANT BOTTOM_CARRY_AND_MASK = "8888";
+CONSTANT MIDDLE_CARRY_AND_MASK = "8080";
+CONSTANT PRIMARY_STARTER_MASK = "5544";
+CONSTANT PRIMARY_MIDDLE_MASK = "1554";
+CONSTANT PRIMARY_CHAIN_STARTERS_MASK = "7777";
+CONSTANT CARRY_AND_START_MASK = "8888";
+CONSTANT CARRY_AND_MIDDLE_MASK = "8080";
+CONSTANT COMB_TO_CARRY = "CCCC";
+CONSTANT CARRY_TO_COMB = "F0F0";
+
+SUBDESIGN alt_cam_encoder
+(
+	data[WIDTH - 1..0]					: INPUT;
+	mstart_load							: INPUT;
+	clk									: INPUT;
+	ena									: INPUT = VCC;
+	aclr								: INPUT = GND;
+
+	result[WIDTH - 1..0]				: OUTPUT;
+)
+VARIABLE
+	----------------------------------
+	-- Make the last primary bundle --
+	----------------------------------
+	IF FAMILY_MERCURY() == 1 GENERATE
+		final_primary_bundle[LEVEL_ONE_BUNDLE_NUMBER(PRIMARY_BUNDLES - 1) - 1..0] :
+			FOR i IN LEVEL_ONE_BUNDLE_NUMBER(PRIMARY_BUNDLES - 1) - 1 TO 0 GENERATE
+				mercury_lcell WITH	(
+										LUT_MASK = ((i == 0) & (PRIMARY_BUNDLES == 1)) ? PRIMARY_STARTER_MASK : PRIMARY_MIDDLE_MASK,
+										OPERATION_MODE = ARITHMETIC_MODE
+									)
+			END GENERATE;	
+	ELSE GENERATE
+		final_primary_bundle[LEVEL_ONE_BUNDLE_NUMBER(PRIMARY_BUNDLES - 1) - 1..0] :
+			FOR i IN LEVEL_ONE_BUNDLE_NUMBER(PRIMARY_BUNDLES - 1) - 1 TO 0 GENERATE
+				apex20ke_lcell WITH	(
+										LUT_MASK = ((i == 0) & (PRIMARY_BUNDLES == 1)) ? PRIMARY_STARTER_MASK : PRIMARY_MIDDLE_MASK,
+										OPERATION_MODE = ARITHMETIC_MODE
+									)
+			END GENERATE;
+	END GENERATE;
+
+	-- make the other bundles if there are any
+	IF PRIMARY_BUNDLES > 1 GENERATE
+		IF FAMILY_MERCURY() == 1 GENERATE
+			primary_bundle[PRIMARY_BUNDLES - 2..0][CASCADE_THRESHOLD - 1..0] :
+				FOR i IN PRIMARY_BUNDLES - 2 TO 0 GENERATE
+					FOR j IN CASCADE_THRESHOLD - 1 TO 0 GENERATE
+						mercury_lcell WITH	(
+												LUT_MASK = ((i == 0) & (j == 0)) ? PRIMARY_STARTER_MASK : PRIMARY_MIDDLE_MASK,
+												OPERATION_MODE = ARITHMETIC_MODE
+											)
+					END GENERATE
+				END GENERATE;
+		ELSE GENERATE
+			primary_bundle[PRIMARY_BUNDLES - 2..0][CASCADE_THRESHOLD - 1..0] :
+				FOR i IN PRIMARY_BUNDLES - 2 TO 0 GENERATE
+					FOR j IN CASCADE_THRESHOLD - 1 TO 0 GENERATE
+						apex20ke_lcell WITH	(
+												LUT_MASK = ((i == 0) & (j == 0)) ? PRIMARY_STARTER_MASK : PRIMARY_MIDDLE_MASK,
+												OPERATION_MODE = ARITHMETIC_MODE
+											)
+					END GENERATE
+				END GENERATE;																				
+		END GENERATE;
+	END GENERATE;
+
+	----------------------------------
+	-- Primary Carry Chain Starters --
+	----------------------------------
+	-- These are for starting up the carry chains on the primary level
+	-- These will not be created for the first package of 32 cell on
+	-- the primary level
+	IF PRIMARY_BUNDLES > 1 GENERATE
+		IF FAMILY_MERCURY() == 1 GENERATE
+			primary_chain_starters[PRIMARY_BUNDLES - 1..1] : mercury_lcell WITH	(
+																					OPERATION_MODE = ARITHMETIC_MODE,
+																					LUT_MASK = PRIMARY_CHAIN_STARTERS_MASK
+																				);
+		ELSE GENERATE
+			primary_chain_starters[PRIMARY_BUNDLES - 1..1] : apex20ke_lcell WITH(
+																					OPERATION_MODE = ARITHMETIC_MODE,
+																					LUT_MASK = PRIMARY_CHAIN_STARTERS_MASK
+																				);
+		END GENERATE;
+	END GENERATE;
+
+	------------------------------
+	-- This is the second level --
+	------------------------------
+	IF LEVEL_TWO_BUNDLES > 0 GENERATE
+		IF FAMILY_MERCURY() == 1 GENERATE
+			final_secondary_bundle[LEVEL_TWO_BUNDLE_NUMBER(LEVEL_TWO_BUNDLES - 1) - 1..0] : 
+				FOR i IN LEVEL_TWO_BUNDLE_NUMBER(LEVEL_TWO_BUNDLES - 1) - 1 TO 0 GENERATE
+					mercury_lcell WITH	(
+											OPERATION_MODE = NORMAL_MODE,
+											LUT_MASK = (i == 0) ? APEX_CASCADE_MASK : MERCURY_CASCADE_MASK
+										)
+				END GENERATE;
+		ELSE GENERATE
+			final_secondary_bundle[LEVEL_TWO_BUNDLE_NUMBER(LEVEL_TWO_BUNDLES - 1) - 1..0] :
+				apex20ke_lcell WITH	(
+										OPERATION_MODE = NORMAL_MODE,
+										LUT_MASK = APEX_CASCADE_MASK
+									);
+		END GENERATE;
+	END GENERATE;
+
+	IF LEVEL_TWO_BUNDLES > 1 GENERATE
+		IF FAMILY_MERCURY() == 1 GENERATE
+			secondary_bundle[LEVEL_TWO_BUNDLES - 2..0][CASCADE_NUMBER - 1..0] :
+				FOR i IN LEVEL_TWO_BUNDLES - 2 TO 0 GENERATE
+					FOR j IN CASCADE_NUMBER - 1 TO 0 GENERATE
+						mercury_lcell WITH	(
+												OPERATION_MODE = NORMAL_MODE,
+												LUT_MASK = (j == 0) ? APEX_CASCADE_MASK : MERCURY_CASCADE_MASK
+											)
+					END GENERATE
+				END GENERATE;	
+		ELSE GENERATE
+			secondary_bundle[LEVEL_TWO_BUNDLES - 2..0][CASCADE_NUMBER - 1..0] :
+				apex20ke_lcell WITH	(
+										OPERATION_MODE = NORMAL_MODE,
+										LUT_MASK = APEX_CASCADE_MASK
+									);
+		END GENERATE;
+	END GENERATE;
+
+	-- to abstract the connections a little
+	IF LEVEL_TWO_BUNDLES > 0 GENERATE
+		secondary_bundle_nodes[LEVEL_TWO_BUNDLES - 1..0] : NODE;
+	END GENERATE;
+
+	-----------------------------
+	-- This is the third level --
+	-----------------------------
+	IF LEVEL_THREE_BUNDLES > 0 GENERATE
+		IF FAMILY_MERCURY() == 1 GENERATE
+			final_third_bundles[LEVEL_THREE_BUNDLE_NUMBER(LEVEL_THREE_BUNDLES - 1) - 1..0] :
+				FOR i IN LEVEL_THREE_BUNDLE_NUMBER(LEVEL_THREE_BUNDLES - 1) - 1 TO 0 GENERATE
+					mercury_lcell WITH	(
+											OPERATION_MODE = ARITHMETIC_MODE,
+											LUT_MASK = ((i == 0)% & (LEVEL_THREE_BUNDLES == 1)%) ? CARRY_AND_START_MASK : CARRY_AND_MIDDLE_MASK
+										)
+				END GENERATE;
+		ELSE GENERATE
+			final_third_bundles[LEVEL_THREE_BUNDLE_NUMBER(LEVEL_THREE_BUNDLES - 1) - 1..0] :
+				FOR i IN LEVEL_THREE_BUNDLE_NUMBER(LEVEL_THREE_BUNDLES - 1) - 1 TO 0 GENERATE
+					apex20ke_lcell WITH	(
+											OPERATION_MODE = ARITHMETIC_MODE,
+											LUT_MASK = ((i == 0) & (LEVEL_THREE_BUNDLES == 1)) ? CARRY_AND_START_MASK : CARRY_AND_MIDDLE_MASK
+										)
+				END GENERATE;
+		END GENERATE;
+	END GENERATE;
+
+	IF LEVEL_THREE_BUNDLES > 1 GENERATE
+		IF FAMILY_MERCURY() == 1 GENERATE
+			third_bundles[LEVEL_THREE_BUNDLES - 2..0][LEVEL_THREE_THRESHOLD - 1..0] :
+				FOR i IN LEVEL_THREE_BUNDLES - 2 TO 0 GENERATE
+					FOR j IN LEVEL_THREE_THRESHOLD - 1 TO 0 GENERATE
+						mercury_lcell WITH	(
+												OPERATION_MODE = ARITHMETIC_MODE,
+												LUT_MASK = ((i == 0) & (j == 0)) ? CARRY_AND_START_MASK : CARRY_AND_MIDDLE_MASK
+											)
+					END GENERATE
+				END GENERATE;
+		ELSE GENERATE
+			third_bundles[LEVEL_THREE_BUNDLES - 2..0][LEVEL_THREE_THRESHOLD - 1..0] :
+				FOR i IN LEVEL_THREE_BUNDLES - 2 TO 0 GENERATE
+					FOR j IN LEVEL_THREE_THRESHOLD - 1 TO 0 GENERATE
+						apex20ke_lcell WITH	(
+												OPERATION_MODE = ARITHMETIC_MODE,
+												LUT_MASK = ((i == 0) & (j == 0)) ? CARRY_AND_START_MASK : CARRY_AND_MIDDLE_MASK
+											)
+					END GENERATE
+				END GENERATE;
+		END GENERATE;
+	END GENERATE;
+
+	-- to abstract the connections a little
+	IF LEVEL_THREE_BUNDLES > 0 GENERATE
+		third_bundle_nodes[LEVEL_THREE_BUNDLES - 1..0] : NODE;
+		third_unwrapped_nodes[TOTAL_LEVEL_THREE_CELLS - 1..0] : NODE;
+	END GENERATE;
+
+	IF LEVEL_THREE_BUNDLES > 1 GENERATE
+		IF FAMILY_MERCURY() == 1 GENERATE
+			carry_comb_break[LEVEL_THREE_BUNDLES - 2..0] : mercury_lcell WITH	(
+																					OPERATION_MODE = ARITHMETIC_MODE,
+																					LUT_MASK = CARRY_TO_COMB
+																				);
+			comb_carry_break[LEVEL_THREE_BUNDLES - 2..0] : mercury_lcell WITH	(
+																					OPERATION_MODE = ARITHMETIC_MODE,
+																					LUT_MASK = COMB_TO_CARRY
+																				);
+		ELSE GENERATE
+			carry_comb_break[LEVEL_THREE_BUNDLES - 2..0] : apex20ke_lcell WITH	(
+																					OPERATION_MODE = ARITHMETIC_MODE,
+																					LUT_MASK = CARRY_TO_COMB
+																				);
+			comb_carry_break[LEVEL_THREE_BUNDLES - 2..0] : apex20ke_lcell WITH	(
+																					OPERATION_MODE = ARITHMETIC_MODE,
+																					LUT_MASK = COMB_TO_CARRY
+																				);
+		END GENERATE;
+	END GENERATE;
+BEGIN
+	-- set up the second and third cell layers
+	IF LEVEL_TWO_BUNDLES > 0 GENERATE
+		IF LEVEL_TWO_BUNDLES > 1 GENERATE
+			secondary_bundle_nodes[] = (final_secondary_bundle[LEVEL_TWO_BUNDLE_NUMBER(LEVEL_TWO_BUNDLES - 1) -1].combout, secondary_bundle[][CASCADE_NUMBER - 1].combout);
+		ELSE GENERATE
+			secondary_bundle_nodes[] = final_secondary_bundle[LEVEL_TWO_BUNDLE_NUMBER(LEVEL_TWO_BUNDLES - 1) - 1].combout;
+		END GENERATE;
+	END GENERATE;
+
+	-- construction of the level 2 chains
+	IF LEVEL_TWO_BUNDLES > 0 GENERATE
+		FOR i IN LEVEL_TWO_BUNDLES - 1 TO 0 GENERATE
+			FOR j IN LEVEL_TWO_BUNDLE_NUMBER(i) - 1 TO 0 GENERATE
+				IF FAMILY_MERCURY() == 1 GENERATE
+					IF i == LEVEL_TWO_BUNDLES - 1 GENERATE
+						IF j == 0 GENERATE
+							final_secondary_bundle[j].datad = data[CASCADE_THRESHOLD * i];
+							-- the alternation guard is to make sure that the data[] array is not jumped
+							IF CASCADE_THRESHOLD * i + 1 < WIDTH GENERATE
+								final_secondary_bundle[j].datac = data[(CASCADE_THRESHOLD * i) + 1];
+							ELSE GENERATE
+								final_secondary_bundle[j].datac = GND;
+							END GENERATE;
+							IF CASCADE_THRESHOLD * i + 2 < WIDTH GENERATE
+								final_secondary_bundle[j].datab = data[(CASCADE_THRESHOLD * i) + 2];
+							ELSE GENERATE
+								final_secondary_bundle[j].datab = GND;
+							END GENERATE;
+							IF CASCADE_THRESHOLD * i + 3 < WIDTH GENERATE
+								final_secondary_bundle[j].dataa = data[(CASCADE_THRESHOLD * i) + 3];
+							ELSE GENERATE
+								final_secondary_bundle[j].dataa = GND;
+							END GENERATE;
+						ELSE GENERATE
+							final_secondary_bundle[j].datad = final_secondary_bundle[j - 1].combout;
+							final_secondary_bundle[j].datac = data[(CASCADE_THRESHOLD * i) + (3 * j + 1)];
+							IF CASCADE_THRESHOLD * i + (3 * j + 1) + 1 < WIDTH GENERATE
+								final_secondary_bundle[j].datab = data[(CASCADE_THRESHOLD * i) + (3 * j + 1) + 1];
+							ELSE GENERATE
+								final_secondary_bundle[j].datab = GND;
+							END GENERATE;
+							IF CASCADE_THRESHOLD * i + (3 * j + 1) + 2 < WIDTH GENERATE
+								final_secondary_bundle[j].dataa = data[(CASCADE_THRESHOLD * i) + (3 * j + 1) + 2];
+							ELSE GENERATE
+								final_secondary_bundle[j].dataa = GND;
+							END GENERATE;
+						END GENERATE;
+					ELSE GENERATE
+						IF j == 0 GENERATE
+							secondary_bundle[i][j].datad = data[CASCADE_THRESHOLD * i];
+							-- the alternation guard is to make sure that the data[] array is not jumped
+							IF CASCADE_THRESHOLD * i + 1 < WIDTH GENERATE
+								secondary_bundle[i][j].datac = data[(CASCADE_THRESHOLD * i) + 1];
+							ELSE GENERATE
+								secondary_bundle[i][j].datac = GND;
+							END GENERATE;
+							IF CASCADE_THRESHOLD * i + 2 < WIDTH GENERATE
+								secondary_bundle[i][j].datab = data[(CASCADE_THRESHOLD * i) + 2];
+							ELSE GENERATE
+								secondary_bundle[i][j].datab = GND;
+							END GENERATE;
+							IF CASCADE_THRESHOLD * i + 3 < WIDTH GENERATE
+								secondary_bundle[i][j].dataa = data[(CASCADE_THRESHOLD * i) + 3];
+							ELSE GENERATE
+								secondary_bundle[i][j].dataa = GND;
+							END GENERATE;
+						ELSE GENERATE
+							secondary_bundle[i][j].datad = secondary_bundle[i][j - 1].combout;
+							secondary_bundle[i][j].datac = data[(CASCADE_THRESHOLD * i) + (3 * j + 1)];
+							IF CASCADE_THRESHOLD * i + (3 * j + 1) + 1 < WIDTH GENERATE
+								secondary_bundle[i][j].datab = data[(CASCADE_THRESHOLD * i) + (3 * j + 1) + 1];
+							ELSE GENERATE
+								secondary_bundle[i][j].datab = GND;
+							END GENERATE;
+							IF CASCADE_THRESHOLD * i + (3 * j + 1) + 2 < WIDTH GENERATE
+								secondary_bundle[i][j].dataa = data[(CASCADE_THRESHOLD * i) + (3 * j + 1) + 2];
+							ELSE GENERATE
+								secondary_bundle[i][j].dataa = GND;
+							END GENERATE;
+						END GENERATE;
+					END GENERATE;
+				ELSE GENERATE
+					-- this is Apex families
+					IF i == LEVEL_TWO_BUNDLES - 1 GENERATE
+						final_secondary_bundle[j].datad = data[(CASCADE_THRESHOLD * i) + j];
+						IF (CASCADE_THRESHOLD * i) + j + 1 < WIDTH GENERATE
+							final_secondary_bundle[j].datac = data[(CASCADE_THRESHOLD * i) + j + 1];
+						ELSE GENERATE
+							final_secondary_bundle[j].datac = GND;
+						END GENERATE;
+						IF (CASCADE_THRESHOLD * i) + j + 2 < WIDTH GENERATE
+							final_secondary_bundle[j].datab = data[(CASCADE_THRESHOLD * i) + j + 2];
+						ELSE GENERATE
+							final_secondary_bundle[j].datab = GND;
+						END GENERATE;
+						IF (CASCADE_THRESHOLD * i) + j + 3 < WIDTH GENERATE
+							final_secondary_bundle[j].dataa = data[(CASCADE_THRESHOLD * i) + j + 3];
+						ELSE GENERATE
+							final_secondary_bundle[j].dataa = GND;
+						END GENERATE;
+
+						-- connect the cascade chain
+						IF j > 0 GENERATE
+							final_secondary_bundle[j].cascin = final_secondary_bundle[j - 1].cascout;
+						END GENERATE;
+					ELSE GENERATE
+						secondary_bundle[i][j].datad = data[(CASCADE_THRESHOLD * i) + j];
+						IF (CASCADE_THRESHOLD * i) + j + 1 < WIDTH GENERATE
+							secondary_bundle[i][j].datac = data[(CASCADE_THRESHOLD * i) + j + 1];
+						ELSE GENERATE
+							secondary_bundle[i][j].datac = GND;
+						END GENERATE;
+						IF (CASCADE_THRESHOLD * i) + j + 2 < WIDTH GENERATE
+							secondary_bundle[i][j].datab = data[(CASCADE_THRESHOLD * i) + j + 2];
+						ELSE GENERATE
+							secondary_bundle[i][j].datab = GND;
+						END GENERATE;
+						IF (CASCADE_THRESHOLD * i) + j + 3 < WIDTH GENERATE
+							secondary_bundle[i][j].dataa = data[(CASCADE_THRESHOLD * i) + j + 3];
+						ELSE GENERATE
+							secondary_bundle[i][j].dataa = GND;
+						END GENERATE;
+
+						-- connect the cascade chain
+						IF j > 0 GENERATE
+							secondary_bundle[i][j].cascin = secondary_bundle[i][j - 1].cascout;
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+
+	IF LEVEL_THREE_BUNDLES > 0 GENERATE
+		IF LEVEL_THREE_BUNDLES > 1 GENERATE
+			third_bundle_nodes[] = (final_third_bundles[LEVEL_THREE_BUNDLE_NUMBER(LEVEL_THREE_BUNDLES - 1) - 1].combout, third_bundles[][LEVEL_THREE_THRESHOLD - 1].combout);
+			third_unwrapped_nodes[] = (final_third_bundles[].combout, third_bundles[][].combout);
+		ELSE GENERATE
+			third_bundle_nodes[] = final_third_bundles[LEVEL_THREE_BUNDLE_NUMBER(LEVEL_THREE_BUNDLES - 1) - 1].combout;
+			third_unwrapped_nodes[] = final_third_bundles[].combout;
+		END GENERATE;
+	END GENERATE;
+		
+	-- need to connect the carries between the level three nodes
+	IF LEVEL_THREE_BUNDLES > 1 GENERATE
+		carry_comb_break[].cin = third_bundles[][LEVEL_THREE_THRESHOLD - 1].cout;
+		comb_carry_break[].datab = carry_comb_break[].combout;
+	END GENERATE;
+
+	IF LEVEL_THREE_BUNDLES > 0 GENERATE
+		FOR i IN LEVEL_THREE_BUNDLES - 1 TO 0 GENERATE
+			FOR j IN LEVEL_THREE_BUNDLE_NUMBER(i) - 1 TO 0 GENERATE
+				IF i == LEVEL_THREE_BUNDLES - 1 GENERATE
+					-- add a cin if there is a previous stage
+					IF j == 0 GENERATE
+						IF (i != 0) GENERATE
+							final_third_bundles[j].cin = comb_carry_break[i - 1].cout;
+						END GENERATE;
+					ELSE GENERATE
+						final_third_bundles[j].cin = final_third_bundles[j - 1].cout;
+					END GENERATE;
+
+					final_third_bundles[j].datab = secondary_bundle_nodes[j * 2];
+					IF (j * 2) + 1 < LEVEL_TWO_BUNDLES GENERATE
+						final_third_bundles[j].dataa = secondary_bundle_nodes[(j * 2) + 1];
+					ELSE GENERATE
+						final_third_bundles[j].dataa = VCC;
+					END GENERATE;
+				ELSE GENERATE
+					-- add a cin if there is a previous stage
+					IF j == 0 GENERATE
+						IF (i != 0) GENERATE
+							third_bundles[i][j].cin = comb_carry_break[i - 1].cout;
+						END GENERATE;
+					ELSE GENERATE
+						third_bundles[i][j].cin = third_bundles[i][j - 1].cout;
+					END GENERATE;
+
+					third_bundles[i][j].datab = secondary_bundle_nodes[j * 2];
+					IF (j * 2) + 1 < LEVEL_TWO_BUNDLES GENERATE
+						third_bundles[i][j].dataa = secondary_bundle_nodes[(j * 2) + 1];
+					ELSE GENERATE
+						third_bundles[i][j].dataa = VCC;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+
+	IF PRIMARY_BUNDLES > 1 GENERATE
+		FOR i IN PRIMARY_BUNDLES - 1 TO 1 GENERATE
+			IF i <= 2 GENERATE
+				IF i == 1 GENERATE
+					primary_chain_starters[i].(dataa, datab) = (VCC, secondary_bundle_nodes[0]);
+				ELSE GENERATE
+					primary_chain_starters[i].(dataa, datab) = secondary_bundle_nodes[1..0];
+				END GENERATE;			
+			ELSE GENERATE
+				primary_chain_starters[i].datab = third_unwrapped_nodes[FLOOR(i DIV 2) - 1];
+				IF i MOD 2 != 0 GENERATE
+					primary_chain_starters[i].dataa = secondary_bundle_nodes[i - 1];
+				ELSE GENERATE
+					primary_chain_starters[i].dataa = VCC;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+	
+	--------------------------
+	-- Set up the primaries --
+	--------------------------
+	-- set up some common connections for all the primary cells
+	IF PRIMARY_BUNDLES > 1 GENERATE
+		(final_primary_bundle[], primary_bundle[][]).dataa = mstart_load;
+		(final_primary_bundle[], primary_bundle[][]).clk = clk;
+		IF USED(ena) GENERATE
+			(final_primary_bundle[], primary_bundle[][]).ena = ena;
+		END GENERATE;
+		IF USED(aclr) GENERATE
+			(final_primary_bundle[], primary_bundle[][]).aclr = aclr;
+		END GENERATE;
+	ELSE GENERATE
+		final_primary_bundle[].dataa = mstart_load;
+		final_primary_bundle[].clk = clk;
+		IF USED(ena) GENERATE
+			final_primary_bundle[].ena = ena;
+		END GENERATE;
+		IF USED(aclr) GENERATE
+			final_primary_bundle[].aclr = aclr;
+		END GENERATE;
+	END GENERATE;
+	
+	-- set the final primary
+	final_primary_bundle[].datab = data[WIDTH - 1..(PRIMARY_BUNDLES - 1) * CASCADE_THRESHOLD];
+	result[WIDTH - 1..(PRIMARY_BUNDLES - 1) * CASCADE_THRESHOLD] = final_primary_bundle[].regout;
+	IF PRIMARY_BUNDLES > 1 GENERATE
+		IF LEVEL_ONE_BUNDLE_NUMBER(PRIMARY_BUNDLES - 1) > 1 GENERATE
+			final_primary_bundle[].cin = (final_primary_bundle[LEVEL_ONE_BUNDLE_NUMBER(PRIMARY_BUNDLES - 1) - 2..0].cout, primary_chain_starters[PRIMARY_BUNDLES - 1].cout);
+		ELSE GENERATE
+			final_primary_bundle[].cin = primary_chain_starters[PRIMARY_BUNDLES - 1].cout;
+		END GENERATE;
+	ELSE GENERATE
+		IF LEVEL_ONE_BUNDLE_NUMBER(PRIMARY_BUNDLES - 1) > 1 GENERATE
+			final_primary_bundle[LEVEL_ONE_BUNDLE_NUMBER(PRIMARY_BUNDLES - 1) - 1..1].cin = final_primary_bundle[LEVEL_ONE_BUNDLE_NUMBER(PRIMARY_BUNDLES - 1) - 2..0].cout;
+--		ELSE GENERATE
+--			Do Nothing
+		END GENERATE;
+	END GENERATE;
+
+	-- these are non-terminal on the primary level
+	IF PRIMARY_BUNDLES > 1 GENERATE
+		FOR i IN PRIMARY_BUNDLES - 2 TO 0 GENERATE
+			primary_bundle[i][].datab = data[((i + 1) * CASCADE_THRESHOLD) - 1.. i * CASCADE_THRESHOLD];
+
+			-- hook up the lowest cin if necessary from the primary_chain_starters cells
+			IF i != 0 GENERATE
+				primary_bundle[i][0].cin = primary_chain_starters[i].cout;
+--			ELSE GENERATE
+--				Do Nothing
+			END GENERATE;
+			-- hook up the carries whithin this bundle
+			primary_bundle[i][LEVEL_ONE_BUNDLE_NUMBER(i) - 1..1].cin = primary_bundle[i][LEVEL_ONE_BUNDLE_NUMBER(i) - 2..0].cout;
+			-- finsih off the result
+			result[((i + 1) * CASCADE_THRESHOLD) - 1..(i * CASCADE_THRESHOLD)] = primary_bundle[i][].regout;
+		END GENERATE;
+	END GENERATE;
+	IF !USED(result) GENERATE
+		result[] = GND;
+	END GENERATE;
+END;

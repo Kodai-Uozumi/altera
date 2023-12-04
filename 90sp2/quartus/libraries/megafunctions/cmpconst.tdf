@@ -1,0 +1,66 @@
+--------------------------------------------------------------------
+--
+--	Compare to Constant Parameterized Megafunction
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 1.0
+--
+--------------------------------------------------------------------
+
+% This file is a subdesign of many LPM functions %
+
+PARAMETERS
+(
+	WIDTH,
+	CVALUE
+);
+
+SUBDESIGN cmpconst
+(
+	data[WIDTH-1..0]		: INPUT;
+	result					: OUTPUT;
+)
+
+VARIABLE
+	and_cascade[WIDTH-1..0]	: node;
+
+begin
+
+	ASSERT (WIDTH > 0)
+			REPORT "Value of WIDTH parameter must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID CMPCONST_WIDTH;
+
+	FOR ebit IN 0 TO WIDTH-1 GENERATE
+		IF ((2^ebit & CVALUE) == 0) GENERATE
+			IF (ebit == 0) GENERATE
+				and_cascade[ebit] = !data[ebit];
+			ELSE GENERATE
+				and_cascade[ebit] = !data[ebit] & and_cascade[ebit-1];
+			END GENERATE;
+		ELSE GENERATE
+			IF (ebit == 0) GENERATE
+				and_cascade[ebit] = data[ebit];
+			ELSE GENERATE
+				and_cascade[ebit] = data[ebit] & and_cascade[ebit-1];
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+	
+	result = and_cascade[WIDTH-1];
+end;

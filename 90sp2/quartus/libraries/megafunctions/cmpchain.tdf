@@ -1,0 +1,1030 @@
+-------------------------------------------------------------------------------------------------
+-- Name: cmpchain.tdf															
+-- Description: cmpchain implements a comparator with aeb and agb outputs. Its structure
+--				is a carry and/or cascade chain in the FLEX/FAST case, a tree of single LCells
+--				in the FLEX/NORMAL case, and a pterm-reduced chain (logic simplification of
+--				a chain structure with nodes substitued for carry and cascade primitives)
+--				for MAX cases.
+--
+--				cmpchain considers the combination of the following factors and generates
+--				a comparator optimized for that combination:
+--
+--					 i) device family (FLEX/MAX)
+--					ii) synthesis style (FAST/NORMAL)
+--				   iii) one input being constant  
+--					iv) the combination of outputs used (aeb only, agb only, aeb and agb)
+--					 v) the functional mode (ARITHMETIC/LOGICAL)
+--					vi) whether the outputs are registered or not 
+--						(cell insertion to prevent MLS chain breaking)
+-- 				   vii) max size of carry/cascade chain lengths specified by user 
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--------------------------------------------------------------------------------------------------
+
+INCLUDE "comptree";
+
+PARAMETERS
+(
+	LPM_WIDTH,
+	ONE_INPUT_CONSTANT,
+	MODE,
+	CARRY_CHAIN = "MANUAL",
+	CASCADE_CHAIN = "MANUAL",
+	CARRY_CHAIN_LENGTH = 32,
+	CASCADE_CHAIN_LENGTH = 2,
+	DEVICE_FAMILY
+);
+
+INCLUDE "aglobal90.inc";	% device definitions %
+
+-- These constants are used for 2 input pairs/cell cases.
+CONSTANT LAST2_BITS  = ((LPM_WIDTH MOD 2) ? 1 : 2);
+CONSTANT MID2_BLOCKS = ((LPM_WIDTH <= 4)  ? 0 : CEIL(LPM_WIDTH DIV 2) - 2); 
+
+-- These constants are used for 4 input pairs/cell cases.
+CONSTANT LAST4_BITS  = ((LPM_WIDTH MOD 4) ? (LPM_WIDTH MOD 4) : 4);
+CONSTANT MID4_BLOCKS = ((LPM_WIDTH <= 8)  ? 0 : CEIL(LPM_WIDTH DIV 4) - 2);  
+
+-- These constants are used for the "agb-only" with one input constant  
+-- case, becuase in this case the last LCell in the carry chain can have 3 inputs 
+-- besides the carry input.
+CONSTANT MID3_BLOCKS = ((LPM_WIDTH <= 5) ? 0 : CEIL((LPM_WIDTH-1) DIV 2) - 2);  
+CONSTANT LAST3_BITS  = ((LPM_WIDTH <= 4) ? LPM_WIDTH : LPM_WIDTH-2*(MID3_BLOCKS+1));	 
+
+-- encode the 3 possible cases of output usage. 
+DEFINE CODE() = -(USED(aeb)*2 + USED(agb));
+
+-- required carry/cascade chain sizes. To be compared with the user assigned carry/cascade 
+-- chain lengths, respectively.
+-- arithmetic cases
+CONSTANT A1_REQ_CARRY_LEN = ONE_INPUT_CONSTANT == 0 ? LPM_WIDTH :
+						    						 (LPM_WIDTH <= 4 ? 1 : (MID3_BLOCKS+2));
+CONSTANT A2_REQ_CASC_LEN = ONE_INPUT_CONSTANT == 0 ? (MID2_BLOCKS+2) :
+						    						 (LPM_WIDTH <= 4 ? 1 : (MID4_BLOCKS+2));
+CONSTANT A3_REQ_CARRY_LEN = ONE_INPUT_CONSTANT == 0 ? (LPM_WIDTH+1) :
+					    						 (LPM_WIDTH <= 4 ? 1 : (MID2_BLOCKS+1));
+-- logical cases					    						 
+CONSTANT L2_REQ_CASC_LEN = MID4_BLOCKS+2;
+CONSTANT L3_REQ_CARRY_LEN = LPM_WIDTH;
+
+
+SUBDESIGN cmpchain
+(
+	dataa[LPM_WIDTH-1..0]	: INPUT = GND;
+	datab[LPM_WIDTH-1..0]	: INPUT = GND;
+	clk 					: INPUT = GND;
+	aset					: INPUT = GND;
+	clken					: INPUT = VCC;
+	aeb, agb				: OUTPUT;
+)
+
+
+VARIABLE
+
+	IF MODE == 0 GENERATE
+		-------------------------------------
+		--    ARITHMETIC MODE DECLARATIONS   
+		-------------------------------------
+		IF (LPM_WIDTH <= 2) # ((ONE_INPUT_CONSTANT == 1) & (LPM_WIDTH <= 4)) GENERATE		
+			-- In this case, use a single cell to generate logic instead of 
+			-- instantiating a full tree logic.
+			IF USED(clk) GENERATE
+				aeb_out : DFFE;
+				agb_out : DFFE;
+			ELSE GENERATE
+				IF (FAMILY_FLEX() == 1) & (
+					(CODE() == 1 & USE_CARRY_CHAINS()) #
+					(CODE() == 2 & USE_CASCADE_CHAINS()) #
+					(CODE() == 3 & (USE_CARRY_CHAINS() & USE_CASCADE_CHAINS()))) GENERATE
+					
+					aeb_out : LCELL;
+					agb_out : LCELL;
+				ELSE GENERATE
+					aeb_out : SOFT;
+					agb_out : SOFT;
+				END GENERATE;
+			END GENERATE;
+		
+		ELSE GENERATE
+
+			IF (FAMILY_FLEX() == 1) GENERATE
+				IF  (CODE() == 1 & !USE_CARRY_CHAINS()) #
+					(CODE() == 2 & !USE_CASCADE_CHAINS()) #
+					(CODE() == 3 & (!USE_CARRY_CHAINS() # !USE_CASCADE_CHAINS())) GENERATE
+					---------------------------------------------------------
+					--                   FLEX NORMAL CASES                    
+					---------------------------------------------------------
+	 				-- For FLEX/NORMAL case, comparator is a tree of chains of unity length.
+					-- Chains similar to the FLEX/FAST case will incur lower performance due to
+					-- full LCell delays, so we switch to a tree structure to parallelize 
+					-- comparisons of inputs. 
+						comp 	: comptree WITH (LPM_WIDTH = LPM_WIDTH,
+												 CHAIN_LENGTH = 1,
+											 	 ONE_INPUT_CONSTANT = ONE_INPUT_CONSTANT,
+											 	 OUTPUTS_CLOCKED = 1,
+											 	 BURRIED_CLOCKED = 0,
+									  			 MODE = 0);
+
+						aeb_out : NODE;	
+						agb_out : NODE;
+		
+				ELSE GENERATE
+					---------------------------------------------------------
+					--                   FLEX FAST CASES                      
+					---------------------------------------------------------
+					IF (CODE() == 2) GENERATE
+						IF (A2_REQ_CASC_LEN > CASCADE_CHAIN_LENGTH) GENERATE			
+						
+							comp 	: comptree WITH (LPM_WIDTH = LPM_WIDTH,
+													 CHAIN_LENGTH = CASCADE_CHAIN_LENGTH,
+												 	 ONE_INPUT_CONSTANT = ONE_INPUT_CONSTANT,
+												 	 OUTPUTS_CLOCKED = 1,
+												 	 BURRIED_CLOCKED = 0,
+												  	 MODE = 0);
+							aeb_out : NODE;	
+							agb_out : NODE;
+							
+						ELSE GENERATE
+							IF USED(clk) GENERATE
+								aeb_out : DFFE;
+								agb_out : DFFE;
+							ELSE GENERATE			
+								aeb_out : LCELL;
+								agb_out : LCELL;
+							END GENERATE;
+
+							IF ONE_INPUT_CONSTANT == 0 GENERATE
+ 		 						ecasc	[MID2_BLOCKS..0]	: CASCADE;
+							ELSE GENERATE
+	 	 						ecasc	[MID4_BLOCKS..0]	: CASCADE;
+							END GENERATE;
+
+						END GENERATE;
+	
+					ELSE GENERATE
+			     		IF CODE() == 1 GENERATE
+			     			IF (A1_REQ_CARRY_LEN > CARRY_CHAIN_LENGTH) GENERATE
+								comp 	: comptree WITH (LPM_WIDTH = LPM_WIDTH,
+														 CHAIN_LENGTH = CARRY_CHAIN_LENGTH-1,
+												 		 ONE_INPUT_CONSTANT = ONE_INPUT_CONSTANT,
+												 		 OUTPUTS_CLOCKED = 1,
+												 		 BURRIED_CLOCKED = 0,
+												  		 MODE = 0);
+
+								aeb_out : NODE;	
+								agb_out : NODE;
+								
+							ELSE GENERATE
+								IF USED(clk) GENERATE
+									aeb_out : DFFE;
+									agb_out : DFFE;
+								ELSE GENERATE			
+									aeb_out : LCELL;
+									agb_out : LCELL;
+								END GENERATE;
+
+								IF ONE_INPUT_CONSTANT == 0 GENERATE
+				 					lcarry	[LPM_WIDTH-2..0]	: CARRY;
+								ELSE GENERATE
+ 									lcarry	[MID3_BLOCKS..0]	: CARRY;
+								END GENERATE;
+											 				
+								agb_out_node : NODE;
+
+							END GENERATE;
+			 				
+			
+						ELSE GENERATE  --- CODE() == 3
+				     		IF A3_REQ_CARRY_LEN > CARRY_CHAIN_LENGTH GENERATE 
+								comp 	: comptree WITH (LPM_WIDTH = LPM_WIDTH,
+														 CHAIN_LENGTH = CARRY_CHAIN_LENGTH-1,
+												 		 ONE_INPUT_CONSTANT = ONE_INPUT_CONSTANT,
+												 		 OUTPUTS_CLOCKED = 1,
+												 	 	 BURRIED_CLOCKED = 0,
+											  			 MODE = 0);
+								aeb_out : NODE;	
+								agb_out : NODE;
+										
+							ELSE GENERATE
+								IF USED(clk) GENERATE
+									aeb_out : DFFE;
+									agb_out : DFFE;
+								ELSE GENERATE			
+									aeb_out : LCELL;
+									agb_out : LCELL;
+								END GENERATE;
+			
+								IF ONE_INPUT_CONSTANT == 0 GENERATE
+									lcarry	[LPM_WIDTH-1..0]	: CARRY;
+									ecasc	[LPM_WIDTH-2..0]	: CASCADE;
+									
+								ELSE GENERATE
+									lcarry	[MID2_BLOCKS+1..0]	: CARRY;
+									ecasc	[MID2_BLOCKS..0]	: CASCADE;
+								END GENERATE;							  		 
+							END GENERATE;
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+				
+			ELSE GENERATE
+				----------------------------------
+				--  	Non-FLEX devices
+				----------------------------------
+				IF USED(clk) GENERATE
+					aeb_out : DFFE;
+					agb_out : DFFE;
+				ELSE GENERATE			
+					aeb_out : SOFT; -- <-- last change
+					agb_out : SOFT;
+				END GENERATE;
+				
+				IF CODE() == 2 GENERATE			
+					IF ONE_INPUT_CONSTANT == 0 GENERATE
+			 			ecasc	[MID2_BLOCKS..0]	: NODE;
+					ELSE GENERATE
+ 						ecasc	[MID4_BLOCKS..0]	: NODE;
+					END GENERATE;
+					
+	 			ELSE GENERATE
+					IF CODE() == 1 GENERATE
+						IF ONE_INPUT_CONSTANT == 0 GENERATE
+				 			lcarry	[LPM_WIDTH-2..0]	: NODE;
+						ELSE GENERATE
+ 							lcarry	[MID3_BLOCKS..0]	: NODE;
+						END GENERATE;
+ 								
+ 						agb_out_node : NODE;
+							
+			 		ELSE GENERATE
+						IF ONE_INPUT_CONSTANT == 0 GENERATE
+							lcarry	[LPM_WIDTH-2..0]	: NODE;
+						 	ecasc	[LPM_WIDTH-2..0]	: NODE;
+						 	
+			 			ELSE GENERATE
+							lcarry	[MID2_BLOCKS..0]	: NODE;
+						 	ecasc	[MID2_BLOCKS..0]	: NODE;
+						END GENERATE; 
+	 				END GENERATE;
+	 			END GENERATE;
+	 			
+	 		END GENERATE;
+		END GENERATE;
+
+	ELSE GENERATE
+					
+		----------------------------------
+		--    LOGICAL MODE DECLARATIONS     
+		----------------------------------
+		IF LPM_WIDTH == 1 GENERATE
+			IF USED(clk) GENERATE
+				aeb_out : DFFE;
+				agb_out : DFFE;
+			ELSE GENERATE
+				-- In this case, the inputs are connected directly to outputs, 
+				-- so bypass LCells, otherwise we will generate 
+				-- LCElls with trivial logic of output = input.
+				aeb_out : NODE;
+				agb_out : NODE;
+			END GENERATE;
+			
+		ELSE GENERATE
+			IF LPM_WIDTH == 2 GENERATE		
+				IF USED(clk) GENERATE
+					aeb_out : DFFE;
+					agb_out : DFFE;
+				ELSE GENERATE
+					IF (FAMILY_FLEX() == 1) & (
+						(CODE() == 1 & USE_CARRY_CHAINS()) #
+						(CODE() == 2 & USE_CASCADE_CHAINS()) #
+						(CODE() == 3 & (USE_CARRY_CHAINS() & USE_CASCADE_CHAINS()))) GENERATE
+					
+						aeb_out : LCELL;
+						agb_out : LCELL;
+					ELSE GENERATE
+						aeb_out : SOFT;
+						agb_out : SOFT;
+					END GENERATE;
+				END GENERATE;
+			
+			ELSE GENERATE
+				IF (FAMILY_FLEX() == 1) GENERATE 
+				   IF ((CODE() != 2) & USE_CARRY_CHAINS()) # 
+					  ((CODE() == 2) & USE_CASCADE_CHAINS()) GENERATE				
+						---------------------------------------------------------
+						--                   FLEX FAST CASES                    
+						---------------------------------------------------------
+						IF (CODE() == 2) GENERATE
+							IF (L2_REQ_CASC_LEN > CASCADE_CHAIN_LENGTH) GENERATE			
+						
+								comp 	: comptree WITH (LPM_WIDTH = LPM_WIDTH,
+														 CHAIN_LENGTH = CASCADE_CHAIN_LENGTH,
+													 	 ONE_INPUT_CONSTANT = 0,
+													 	 OUTPUTS_CLOCKED = 1,
+													 	 BURRIED_CLOCKED = 0,
+													  	 MODE = 1);
+								aeb_out : NODE;	
+								agb_out : NODE;
+
+							ELSE GENERATE
+								IF USED(clk) GENERATE
+									aeb_out : DFFE;
+									agb_out : DFFE;
+								ELSE GENERATE
+									aeb_out : LCELL;
+									agb_out : LCELL;
+								END GENERATE;
+							
+								ecasc	[MID4_BLOCKS..0]	: CASCADE;
+
+							END GENERATE;
+
+						ELSE GENERATE				
+							IF (L3_REQ_CARRY_LEN > CARRY_CHAIN_LENGTH) GENERATE			
+						
+								comp 	: comptree WITH (LPM_WIDTH = LPM_WIDTH,
+														 CHAIN_LENGTH = CARRY_CHAIN_LENGTH-1,
+													 	 ONE_INPUT_CONSTANT = 0,
+													 	 OUTPUTS_CLOCKED = 1,
+													 	 BURRIED_CLOCKED = 0,
+													  	 MODE = 1);
+								aeb_out : NODE;	
+								agb_out : NODE;
+
+							ELSE GENERATE
+								IF USED(clk) GENERATE
+									aeb_out : DFFE;
+									agb_out : DFFE;
+								ELSE GENERATE
+									aeb_out : LCELL;
+									agb_out : LCELL;
+								END GENERATE;			
+						
+								lcarry	[LPM_WIDTH-2..0]	: CARRY;
+								IF LPM_WIDTH > 4 GENERATE
+									ecasc	[MID4_BLOCKS..0]	: CASCADE;
+								END GENERATE;
+							END GENERATE;
+						END GENERATE;
+					ELSE GENERATE
+						---------------------------------------------------------
+						--                   FLEX NORMAL CASES                     
+						---------------------------------------------------------				 
+					 	IF LPM_WIDTH <= 4 GENERATE
+					 		IF USED(clk) GENERATE
+								aeb_out : DFFE;
+								agb_out : DFFE;
+							ELSE GENERATE
+								aeb_out : NODE;   --- <-- last change
+								agb_out : NODE;
+							END GENERATE;
+
+					 	ELSE GENERATE
+					 
+		 					-- For FLEX/NORMAL case, comparator is a tree of chains of unity length.
+							-- Chains similar to the FLEX/FAST case will incur lower performance due to
+							-- full LCell delays, so we switch to a tree structure to parallelize 
+							-- comparisons of inputs. 
+							comp 	: comptree WITH (LPM_WIDTH = LPM_WIDTH,
+													 CHAIN_LENGTH = 1,
+												 	 ONE_INPUT_CONSTANT = 0,
+												 	 OUTPUTS_CLOCKED = 1,
+												 	 BURRIED_CLOCKED = 0,
+												  	 MODE = 1);
+
+							aeb_out : NODE;	
+							agb_out : NODE;
+						END GENERATE;
+					END GENERATE;
+				ELSE GENERATE
+					----------------------------------
+					--  	Non-FLEX devices
+					----------------------------------
+					IF USED(clk) GENERATE
+						aeb_out : DFFE;
+						agb_out : DFFE;
+					ELSE GENERATE
+						aeb_out : SOFT;
+						agb_out : SOFT;
+					END GENERATE;			
+								
+					IF CODE() == 2 GENERATE
+						ecasc	[MID4_BLOCKS..0]	: NODE;
+					ELSE GENERATE										
+						IF CODE() != 2 GENERATE
+							lcarry	[LPM_WIDTH-2..0]	: NODE;
+							IF LPM_WIDTH > 4 GENERATE
+								ecasc	[MID4_BLOCKS..0]	: NODE;
+							END GENERATE;
+						END GENERATE;
+ 					END GENERATE;				
+			 	END GENERATE;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+
+BEGIN
+
+IF MODE == 0 GENERATE
+	----------------------------------
+	--      ARITHMETIC MODE SECTION     
+	----------------------------------
+
+	IF (LPM_WIDTH == 1) GENERATE
+		aeb_out = dataa0 !$ datab0;
+		agb_out = dataa0 & !datab0;
+					
+		IF USED(clk) GENERATE
+			aeb_out.(clk, clrn) = (clk, !aset);
+			agb_out.(clk, clrn) = (clk, !aset);
+			IF USED(clken) GENERATE
+				aeb_out.ena = clken;
+				agb_out.ena = clken;
+			END GENERATE;
+		END GENERATE;			
+
+	ELSE GENERATE
+		IF (LPM_WIDTH == 2) GENERATE
+			aeb_out = (dataa0 !$ datab0) & (dataa1 !$ datab1);
+			agb_out = (dataa1 & !datab1) # ((dataa1 !$ datab1) & (dataa0 & !datab0));
+		
+			IF USED(clk) GENERATE
+				aeb_out.(clk, clrn) = (clk, !aset);
+				agb_out.(clk, clrn) = (clk, !aset);
+				IF USED(clken) GENERATE
+					aeb_out.ena = clken;
+					agb_out.ena = clken;
+				END GENERATE;
+			END GENERATE;			
+	
+		ELSE GENERATE
+			IF (ONE_INPUT_CONSTANT == 1) & LPM_WIDTH <= 4 GENERATE
+
+				IF LPM_WIDTH == 3 GENERATE
+					aeb_out = (dataa0 !$ datab0) & (dataa1 !$ datab1) &
+							  (dataa2 !$ datab2);
+										  
+					agb_out = (dataa2 & !datab2) # (dataa2 !$ datab2) &
+							  ((dataa1 & !datab1) # (dataa1 !$ datab1) &
+							   (dataa0 & !datab0));
+				ELSE GENERATE
+					IF LPM_WIDTH == 4 GENERATE
+						aeb_out = (dataa0 !$ datab0) & (dataa1 !$ datab1) &
+								  (dataa2 !$ datab2) & (dataa3 !$ datab3);
+											  
+						agb_out = (dataa3 & !datab3) # (dataa3 !$ datab3) &
+							  	 ((dataa2 & !datab2) # (dataa2 !$ datab2) &
+							  	 ((dataa1 & !datab1) # (dataa1 !$ datab1) &
+							      (dataa0 & !datab0)));  								
+					END GENERATE;
+				END GENERATE;
+						
+				IF USED(clk) GENERATE
+					agb_out.(clk, clrn) = (clk, !aset);
+					aeb_out.(clk, clrn) = (clk, !aset);
+
+					IF USED(clken) GENERATE
+						aeb_out.ena = clken;
+						agb_out.ena = clken;
+					END GENERATE;
+				END GENERATE;
+
+			ELSE GENERATE
+				IF CODE() == 2 GENERATE
+					-----------------------------------------
+					-- case where only aeb output is needed 
+					-----------------------------------------
+					IF (FAMILY_FLEX() == 1) & 
+						((!USE_CASCADE_CHAINS()) # (A2_REQ_CASC_LEN > CASCADE_CHAIN_LENGTH)) GENERATE
+						
+						comp.dataa[] = dataa[];
+						comp.datab[] = datab[];
+						aeb_out = comp.aeb;
+						agb_out = GND;
+						
+						IF USED(clk) GENERATE
+							comp.(clk, aset) = (clk, aset);
+							IF USED(clken) GENERATE
+								comp.clken = clken;
+							END GENERATE;
+						END GENERATE;
+					
+					ELSE GENERATE
+						-- case where one input is not constant (2 pairs/cell)
+						IF ONE_INPUT_CONSTANT == 0 GENERATE
+							ecasc[0] = (dataa[1] !$ datab[1]) & (dataa[0] !$ datab[0]);
+						
+							IF MID2_BLOCKS > 0 GENERATE
+								FOR I IN 1 TO MID2_BLOCKS GENERATE
+									ecasc[I] = (dataa[2*I+1] !$ datab[2*I+1]) &
+								  			   (dataa[2*I] !$ datab[2*I]) & ecasc[I-1];
+								END GENERATE;
+							END GENERATE;
+					
+							IF (LAST2_BITS == 1) GENERATE
+								aeb_out = (dataa[LPM_WIDTH-1] !$ datab[LPM_WIDTH-1]) &
+					  					   ecasc[MID2_BLOCKS];
+							ELSE GENERATE
+								aeb_out = (dataa[LPM_WIDTH-1] !$ datab[LPM_WIDTH-1]) &
+									  	  (dataa[LPM_WIDTH-2] !$ datab[LPM_WIDTH-2]) &
+				   				   		   ecasc[MID2_BLOCKS];
+							END GENERATE;	
+				
+					 	ELSE GENERATE
+							-- case where one input is constant (4 pairs/cell)
+							ecasc[0] = (dataa[3] !$ datab[3]) & (dataa[2] !$ datab[2]) & 
+									   (dataa[1] !$ datab[1]) & (dataa[0] !$ datab[0]);
+									   
+							IF MID4_BLOCKS > 0 GENERATE
+								FOR I IN 1 TO MID4_BLOCKS GENERATE
+									ecasc[I] = (dataa[4*I+3] !$ datab[4*I+3]) & 
+											   (dataa[4*I+2] !$ datab[4*I+2]) &
+											   (dataa[4*I+1] !$ datab[4*I+1]) &
+											   (dataa[4*I] !$ datab[4*I]) & ecasc[I-1];
+								END GENERATE;
+							END GENERATE;
+					
+							IF (LAST4_BITS == 1) GENERATE
+								aeb_out = (dataa[LPM_WIDTH-1] !$ datab[LPM_WIDTH-1]) & ecasc[MID4_BLOCKS];
+							ELSE GENERATE
+								IF (LAST4_BITS == 2) GENERATE
+									aeb_out = (dataa[LPM_WIDTH-1] !$ datab[LPM_WIDTH-1]) &
+										  	  (dataa[LPM_WIDTH-2] !$ datab[LPM_WIDTH-2]) &
+										   	   ecasc[MID4_BLOCKS];
+								ELSE GENERATE
+									IF (LAST4_BITS == 3) GENERATE
+										aeb_out = (dataa[LPM_WIDTH-1] !$ datab[LPM_WIDTH-1]) &
+										  	      (dataa[LPM_WIDTH-2] !$ datab[LPM_WIDTH-2]) &
+										 	      (dataa[LPM_WIDTH-3] !$ datab[LPM_WIDTH-3]) &
+										  	       ecasc[MID4_BLOCKS];
+									ELSE GENERATE
+										aeb_out = (dataa[LPM_WIDTH-1] !$ datab[LPM_WIDTH-1]) &
+										  	      (dataa[LPM_WIDTH-2] !$ datab[LPM_WIDTH-2]) &
+										  	      (dataa[LPM_WIDTH-3] !$ datab[LPM_WIDTH-3]) &
+									  		      (dataa[LPM_WIDTH-4] !$ datab[LPM_WIDTH-4]) &
+										   	       ecasc[MID4_BLOCKS];
+									END GENERATE;
+								END GENERATE;
+							END GENERATE;
+						END GENERATE;
+				
+						agb_out = GND;	
+						IF USED(clk) GENERATE
+							aeb_out.(clk, clrn) = (clk, !aset);
+							agb_out.(clk, clrn) = (clk, !aset);
+							IF USED(clken) GENERATE
+								aeb_out.ena = clken;
+								agb_out.ena = clken;
+							END GENERATE;
+						END GENERATE;			
+					END GENERATE;
+								
+				ELSE GENERATE
+					IF CODE() == 1 GENERATE	
+						------------------------------------------
+						-- case where only agb output is needed 
+						------------------------------------------
+						IF (FAMILY_FLEX() == 1) & 
+							((!USE_CARRY_CHAINS()) # (A1_REQ_CARRY_LEN > CARRY_CHAIN_LENGTH)) GENERATE
+							
+							comp.dataa[] = dataa[];
+							comp.datab[] = datab[];
+							agb_out = comp.agb;
+							aeb_out = GND;
+						
+							IF USED(clk) GENERATE
+								comp.(clk, aset) = (clk, aset);
+								IF USED(clken) GENERATE
+									comp.clken = clken;
+								END GENERATE;
+							END GENERATE;
+						
+						ELSE GENERATE
+							IF ONE_INPUT_CONSTANT == 0 GENERATE				
+								-- case where one input is not constant (1 pair/cell)
+								lcarry[0] = (dataa0 & !datab0);		
+								lcarry[LPM_WIDTH-2..1] = (dataa[LPM_WIDTH-2..1] & !datab[LPM_WIDTH-2..1]) #
+														 (dataa[LPM_WIDTH-2..1] !$ datab[LPM_WIDTH-2..1]) &
+														  lcarry[LPM_WIDTH-3..0];
+			 					
+			 					agb_out_node = (dataa[LPM_WIDTH-1] & !datab[LPM_WIDTH-1]) #
+				  				 		  	   (dataa[LPM_WIDTH-1] !$ datab[LPM_WIDTH-1]) & lcarry[LPM_WIDTH-2];
+						
+
+							ELSE GENERATE	  
+								-- case where one input is constant (2 pairs/cell)
+								lcarry[0] = (dataa[1] & !datab[1]) # 
+											(dataa[1] !$ datab[1]) & (dataa[0] & !datab[0]);
+												
+								IF MID3_BLOCKS > 0 GENERATE
+									FOR I IN 1 TO MID3_BLOCKS GENERATE
+										lcarry[I] = (dataa[2*I+1] & !datab[2*I+1]) #
+						  				   			(dataa[2*I+1] !$ datab[2*I+1]) & 
+					  					   			((dataa[2*I] & !datab[2*I]) #
+					  				   				 (dataa[2*I] !$ datab[2*I]) & lcarry[I-1]);
+						  			END GENERATE;
+						  		END GENERATE;
+						  										
+								IF (LAST3_BITS == 1) GENERATE
+									agb_out_node = (dataa[LPM_WIDTH-1] & !datab[LPM_WIDTH-1]) # 
+									 	  	 	   (dataa[LPM_WIDTH-1] !$ datab[LPM_WIDTH-1]) &
+				 	   				 	  	   		lcarry[MID3_BLOCKS];
+								ELSE GENERATE
+									IF (LAST3_BITS == 2) GENERATE
+										agb_out_node = (dataa[LPM_WIDTH-1] & !datab[LPM_WIDTH-1]) # 
+											       	   (dataa[LPM_WIDTH-1] !$ datab[LPM_WIDTH-1]) &
+												      ((dataa[LPM_WIDTH-2] & !datab[LPM_WIDTH-2]) #
+							  					       (dataa[LPM_WIDTH-2] !$ datab[LPM_WIDTH-2]) &
+					 		   	    				    lcarry[MID3_BLOCKS]);
+								 	ELSE GENERATE
+										IF (LAST3_BITS == 3) GENERATE
+											agb_out_node = (dataa[LPM_WIDTH-1] & !datab[LPM_WIDTH-1]) # 
+													  	   (dataa[LPM_WIDTH-1] !$ datab[LPM_WIDTH-1]) &
+												 	 	  ((dataa[LPM_WIDTH-2] & !datab[LPM_WIDTH-2]) #
+											   			   (dataa[LPM_WIDTH-2] !$ datab[LPM_WIDTH-2]) &
+											   			  ((dataa[LPM_WIDTH-3] & !datab[LPM_WIDTH-3]) #
+												      	   (dataa[LPM_WIDTH-3] !$ datab[LPM_WIDTH-3]) &
+						 					    	   	   lcarry[MID3_BLOCKS]));
+						 				ELSE GENERATE
+											agb_out_node = (dataa[LPM_WIDTH-1] & !datab[LPM_WIDTH-1]) # 
+													  	   (dataa[LPM_WIDTH-1] !$ datab[LPM_WIDTH-1]) &
+												 	 	  ((dataa[LPM_WIDTH-2] & !datab[LPM_WIDTH-2]) #
+												   		   (dataa[LPM_WIDTH-2] !$ datab[LPM_WIDTH-2]) &
+												   		  ((dataa[LPM_WIDTH-3] & !datab[LPM_WIDTH-3]) #
+												      	   (dataa[LPM_WIDTH-3] !$ datab[LPM_WIDTH-3]) &
+												   		  ((dataa[LPM_WIDTH-4] & !datab[LPM_WIDTH-4]) #
+												      	   (dataa[LPM_WIDTH-4] !$ datab[LPM_WIDTH-4]) &
+					 						    	   	   lcarry[MID3_BLOCKS])));
+						 				END GENERATE;
+								 	END GENERATE;
+								END GENERATE;				
+							END GENERATE;
+							
+							IF !( USED(clk) & (FAMILY_FLEX() == 1) & 
+									(USE_CARRY_CHAINS()) ) GENERATE
+								agb_out = agb_out_node;
+					  		ELSE GENERATE
+				 				agb_out = LCELL(agb_out_node);	
+				  			END GENERATE;
+					
+							aeb_out = GND;
+							IF USED(clk) GENERATE
+								aeb_out.(clk, clrn) = (clk, !aset);
+								agb_out.(clk, clrn) = (clk, !aset);
+								IF USED(clken) GENERATE
+									aeb_out.ena = clken;
+									agb_out.ena = clken;
+								END GENERATE;
+							END GENERATE;			
+						END GENERATE;
+					
+					ELSE GENERATE
+						----------------------------------------------
+						-- case where both agb and aeb outputs are used 
+						----------------------------------------------
+						IF (FAMILY_FLEX() == 1) & 
+								((!USE_CARRY_CHAINS() # !USE_CASCADE_CHAINS()) #
+								 (A3_REQ_CARRY_LEN > CARRY_CHAIN_LENGTH)) GENERATE 
+
+							comp.dataa[] = dataa[];
+							comp.datab[] = datab[];
+							aeb_out = comp.aeb;
+							agb_out = comp.agb;
+					
+							IF USED(clk) GENERATE
+								comp.(clk, aset) = (clk, aset);
+								IF USED(clken) GENERATE
+									comp.clken = clken;
+								END GENERATE;
+							END GENERATE;
+						
+						ELSE GENERATE
+							IF ONE_INPUT_CONSTANT == 0 GENERATE				
+								-- case where one input is not constant (1 pair/cell)
+								-- cascade connections 
+								ecasc[0] = dataa[0] !$ datab[0];
+								ecasc[LPM_WIDTH-2..1] = (dataa[LPM_WIDTH-2..1] !$ datab[LPM_WIDTH-2..1]) &
+														 ecasc[LPM_WIDTH-3..0];						
+								aeb_out = (dataa[LPM_WIDTH-1] !$ datab[LPM_WIDTH-1]) & ecasc[LPM_WIDTH-2];
+	
+	
+								-- carry connections					
+								lcarry[0] = dataa[0] & !datab[0];	
+								
+								IF ((FAMILY_FLEX() == 1) & 
+									(USE_CARRY_CHAINS() & USE_CASCADE_CHAINS())) GENERATE
+									lcarry[LPM_WIDTH-1..1] = (dataa[LPM_WIDTH-1..1] & !datab[LPM_WIDTH-1..1]) #
+															 (dataa[LPM_WIDTH-1..1] !$ datab[LPM_WIDTH-1..1]) &
+															  lcarry[LPM_WIDTH-2..0];							
+							
+									agb_out = lcarry[LPM_WIDTH-1];
+								
+								ELSE GENERATE
+									lcarry[LPM_WIDTH-2..1] = (dataa[LPM_WIDTH-2..1] & !datab[LPM_WIDTH-2..1]) #
+															 (dataa[LPM_WIDTH-2..1] !$ datab[LPM_WIDTH-2..1]) &
+															  lcarry[LPM_WIDTH-3..0];							
+													  
+									agb_out = (dataa[LPM_WIDTH-1] & !datab[LPM_WIDTH-1]) #
+											  (dataa[LPM_WIDTH-1] !$ datab[LPM_WIDTH-1]) &
+											   lcarry[LPM_WIDTH-2];							
+								END GENERATE;
+													
+								IF USED(clk) GENERATE
+									aeb_out.(clk, clrn) = (clk, !aset);
+									agb_out.(clk, clrn) = (clk, !aset);
+									IF USED(clken) GENERATE
+										aeb_out.ena = clken;
+										agb_out.ena = clken;
+									END GENERATE;
+								END GENERATE;			
+	
+							ELSE GENERATE
+								-- case where one input is constant (2 pairs/cell)
+ 								IF USED(clk) GENERATE
+									aeb_out.(clk, clrn) = (clk, !aset);
+									agb_out.(clk, clrn) = (clk, !aset);
+									IF USED(clken) GENERATE
+										aeb_out.ena = clken;
+										agb_out.ena = clken;
+									END GENERATE;
+								END GENERATE;
+									
+								-- cascade connections
+								ecasc[0] = (dataa[1] !$ datab[1]) & (dataa[0] !$ datab[0]);
+								IF MID2_BLOCKS > 0 GENERATE
+									FOR I IN 1 TO MID2_BLOCKS GENERATE
+										 ecasc[I] = (dataa[2*I+1] !$ datab[2*I+1]) &
+									 					(dataa[2*I] !$ datab[2*I]) & ecasc[I-1];
+								 	END GENERATE;
+								END GENERATE;
+																
+								IF (LAST2_BITS == 1) GENERATE
+									aeb_out = (dataa[LPM_WIDTH-1] !$ datab[LPM_WIDTH-1]) &
+										       ecasc[MID2_BLOCKS];
+								ELSE GENERATE
+									aeb_out = (dataa[LPM_WIDTH-1] !$ datab[LPM_WIDTH-1]) &
+										      (dataa[LPM_WIDTH-2] !$ datab[LPM_WIDTH-2]) &
+								 		       ecasc[MID2_BLOCKS];
+								END GENERATE;						 	       
+								
+								-- carry connections
+								lcarry[0] = (dataa[1] & !datab[1]) # 
+											(dataa[1] !$ datab[1]) & (dataa[0] & !datab[0]);
+											
+								IF MID2_BLOCKS > 0 GENERATE
+									FOR I IN 1 TO MID2_BLOCKS GENERATE
+	 									lcarry[I] = (dataa[2*I+1] & !datab[2*I+1]) #
+							   						(dataa[2*I+1] !$ datab[2*I+1]) & 
+				   									((dataa[2*I] & !datab[2*I]) #
+				   						 			(dataa[2*I] !$ datab[2*I]) & lcarry[I-1]);
+		  							END GENERATE;
+		  						END GENERATE;
+
+								IF ((FAMILY_FLEX() == 1) & 
+									(USE_CARRY_CHAINS() & USE_CASCADE_CHAINS())) GENERATE
+									
+									IF (LAST2_BITS == 1) GENERATE
+										lcarry[MID2_BLOCKS+1] = (dataa[LPM_WIDTH-1] & !datab[LPM_WIDTH-1]) # 
+						 		 				  				(dataa[LPM_WIDTH-1] !$ datab[LPM_WIDTH-1]) &
+								  	   	   						 lcarry[MID2_BLOCKS];
+									ELSE GENERATE
+										lcarry[MID2_BLOCKS+1] = (dataa[LPM_WIDTH-1] & !datab[LPM_WIDTH-1]) # 
+											  				  	(dataa[LPM_WIDTH-1] !$ datab[LPM_WIDTH-1]) &
+															    ((dataa[LPM_WIDTH-2] & !datab[LPM_WIDTH-2]) #
+										   						(dataa[LPM_WIDTH-2] !$ datab[LPM_WIDTH-2]) &
+						  										 lcarry[MID2_BLOCKS]);
+								 	END GENERATE;
+									agb_out = lcarry[MID2_BLOCKS+1];			 
+												 
+								ELSE GENERATE
+									IF (LAST2_BITS == 1) GENERATE
+										agb_out = (dataa[LPM_WIDTH-1] & !datab[LPM_WIDTH-1]) # 
+						 	  					  (dataa[LPM_WIDTH-1] !$ datab[LPM_WIDTH-1]) &
+							 	   	   			   lcarry[MID2_BLOCKS];  	   	   
+									ELSE GENERATE
+										agb_out = (dataa[LPM_WIDTH-1] & !datab[LPM_WIDTH-1]) # 
+								  				  (dataa[LPM_WIDTH-1] !$ datab[LPM_WIDTH-1]) &
+									  			  ((dataa[LPM_WIDTH-2] & !datab[LPM_WIDTH-2]) #
+										   		   (dataa[LPM_WIDTH-2] !$ datab[LPM_WIDTH-2]) &
+							   						lcarry[MID2_BLOCKS]);
+	
+									END GENERATE;
+ 								END GENERATE;	
+							END GENERATE;
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+		
+ELSE GENERATE
+	----------------------------------
+	--       LOGICAL MODE SECTION	    
+	----------------------------------
+	IF (LPM_WIDTH == 1) GENERATE
+		aeb_out = dataa0;
+		agb_out = datab0;	
+
+		IF USED(clk) GENERATE
+			agb_out.(clk, clrn) = (clk, !aset);
+			aeb_out.(clk, clrn) = (clk, !aset);
+			IF USED(clken) GENERATE
+				aeb_out.ena = clken;
+				agb_out.ena = clken;
+			END GENERATE;
+		END GENERATE;			
+		
+	ELSE GENERATE
+		IF (LPM_WIDTH == 2) GENERATE
+			aeb_out = dataa0 & dataa1;
+			agb_out = datab1 # (dataa1 & datab0);
+			
+			IF USED(clk) GENERATE
+				agb_out.(clk, clrn) = (clk, !aset);
+				aeb_out.(clk, clrn) = (clk, !aset);
+				IF USED(clken) GENERATE
+					aeb_out.ena = clken;
+					agb_out.ena = clken;
+				END GENERATE;
+			END GENERATE;			
+						
+		ELSE GENERATE
+			IF ((FAMILY_FLEX() == 1) & 
+			   (((CODE() != 2) & USE_CARRY_CHAINS()) # 
+				((CODE() == 2) & USE_CASCADE_CHAINS()))) GENERATE
+		
+				IF (CODE() == 2) & (USE_CASCADE_CHAINS()) & 
+				   (L2_REQ_CASC_LEN > CASCADE_CHAIN_LENGTH) GENERATE
+							
+					comp.dataa[] = dataa[];
+					comp.datab[] = datab[];
+					aeb_out = comp.aeb;
+					agb_out = GND;
+					
+					IF USED(clk) GENERATE
+						comp.(clk, aset) = (clk, aset);
+						IF USED(clken) GENERATE
+							comp.clken = clken;
+						END GENERATE;
+					END GENERATE;						
+					
+				ELSE GENERATE
+					IF (CODE() != 2 & (USE_CARRY_CHAINS()) &
+				       (L3_REQ_CARRY_LEN > CARRY_CHAIN_LENGTH)) GENERATE			
+							
+						comp.dataa[] = dataa[];
+						comp.datab[] = datab[];
+						agb_out = comp.agb;
+						aeb_out = comp.aeb;
+					
+						IF USED(clk) GENERATE
+							comp.(clk, aset) = (clk, aset);
+							IF USED(clken) GENERATE
+								comp.clken = clken;
+							END GENERATE;
+						END GENERATE;
+					
+					ELSE GENERATE
+						IF USED(clk) GENERATE
+							agb_out.(clk, clrn) = (clk, !aset);
+							aeb_out.(clk, clrn) = (clk, !aset);
+							IF USED(clken) GENERATE
+								aeb_out.ena = clken;
+								agb_out.ena = clken;
+							END GENERATE;
+
+						END GENERATE;			
+		
+						-- cascade connections (4 pairs/cell)
+						IF LPM_WIDTH > 4 GENERATE
+							ecasc[0] = dataa[3] & dataa[2] & dataa[1] & dataa[0];
+										  
+							IF MID4_BLOCKS > 0 GENERATE
+								FOR I IN 1 TO MID4_BLOCKS GENERATE
+									ecasc[I] = dataa[4*I+3] & dataa[4*I+2]  &
+											   dataa[4*I+1] & dataa[4*I] & ecasc[I-1];
+								END GENERATE;
+							END GENERATE;
+					
+							IF (LAST4_BITS == 1) GENERATE
+								aeb_out = dataa[LPM_WIDTH-1] & ecasc[MID4_BLOCKS];
+							ELSE GENERATE
+								IF (LAST4_BITS == 2) GENERATE
+									aeb_out = dataa[LPM_WIDTH-1] & dataa[LPM_WIDTH-2] & ecasc[MID4_BLOCKS];
+								ELSE GENERATE
+									IF (LAST4_BITS == 3) GENERATE
+										aeb_out = dataa[LPM_WIDTH-1] & dataa[LPM_WIDTH-2] &
+										 	      dataa[LPM_WIDTH-3] & ecasc[MID4_BLOCKS];
+									ELSE GENERATE
+										aeb_out = dataa[LPM_WIDTH-1] & dataa[LPM_WIDTH-2] &
+										  	      dataa[LPM_WIDTH-3] & dataa[LPM_WIDTH-4] &
+					   						      ecasc[MID4_BLOCKS];
+						   			END GENERATE;
+								END GENERATE;
+							END GENERATE;
+						
+						ELSE GENERATE
+							IF LPM_WIDTH == 4 GENERATE
+								aeb_out = dataa[3] & dataa[2] & dataa[1] & dataa[0];
+							ELSE GENERATE
+								aeb_out = dataa[2] & dataa[1] & dataa[0];
+							END GENERATE;
+						END GENERATE;
+					
+						IF CODE() != 2 GENERATE
+							-- carry connections
+							lcarry[0] = datab[0];								
+							lcarry[LPM_WIDTH-2..1] = datab[LPM_WIDTH-2..1] #
+													 dataa[LPM_WIDTH-2..1] & lcarry[LPM_WIDTH-3..0];							
+							
+							agb_out = datab[LPM_WIDTH-1] # dataa[LPM_WIDTH-1] & lcarry[LPM_WIDTH-2];	
+						ELSE GENERATE
+							agb_out = GND;				
+						END GENERATE;
+					END GENERATE;						
+				END GENERATE;
+			ELSE GENERATE
+				IF LPM_WIDTH == 4 GENERATE
+					IF USED(clk) GENERATE
+						agb_out.(clk, clrn) = (clk, !aset);
+						aeb_out.(clk, clrn) = (clk, !aset);
+						IF USED(clken) GENERATE
+							aeb_out.ena = clken;
+							agb_out.ena = clken;
+						END GENERATE;
+					END GENERATE;			
+
+					aeb_out = dataa[3] & dataa[2] & dataa[1] & dataa[0];
+					agb_out = datab[3] # dataa[3] & 
+							 (datab[2] # dataa[2] &
+							 (datab[1] # dataa[1] & datab[0]));
+							  
+				ELSE GENERATE
+					IF LPM_WIDTH == 3 GENERATE
+						aeb_out = dataa[2] & dataa[1] & dataa[0];
+						agb_out = datab[2] # dataa[2] &
+							     (datab[1] # dataa[1] & datab[0]);
+					
+						IF USED(clk) GENERATE
+							agb_out.(clk, clrn) = (clk, !aset);
+							aeb_out.(clk, clrn) = (clk, !aset);
+							
+							IF USED(clken) GENERATE
+								aeb_out.ena = clken;
+								agb_out.ena = clken;
+							END GENERATE;
+						END GENERATE;
+
+					ELSE GENERATE					
+						comp.dataa[] = dataa[];
+						comp.datab[] = datab[];
+						aeb_out = comp.aeb;
+						
+						IF CODE() != 2 GENERATE
+							agb_out = comp.agb;
+						ELSE GENERATE
+							agb_node = GND;
+						END GENERATE;
+				
+						IF USED(clk) GENERATE
+							comp.(clk, aset) = (clk, aset);
+							IF USED(clken) GENERATE
+								comp.clken = clken;
+							END GENERATE;
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+END GENERATE;
+
+aeb = aeb_out;
+agb = agb_out;
+
+	IF !USED(agb) GENERATE
+		agb = GND;
+	END GENERATE;
+	IF !USED(aeb) GENERATE
+		aeb = GND;
+	END GENERATE;
+END;
+
+
+

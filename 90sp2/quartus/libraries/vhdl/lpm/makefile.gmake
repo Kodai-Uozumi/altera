@@ -1,0 +1,93 @@
+#//START_MODULE_HEADER/////////////////////////////////////////////////////////
+# 
+#  Filename:	makefile.mak
+# 
+#  Description: Gets VHDL library files out of PVCS.
+# 
+#  Authors:		Thiagaraja Gopalsamy
+# 
+#  Copyright (c)  Altera Corporation 1996 - 1999
+# 
+#  All rights reserved.
+# 
+# 
+#//END_MODULE_HEADER///////////////////////////////////////////////////////////
+
+#
+#  $Log:   /pvcs/quartus/libraries/vhdl/lpm/makefile.ma_  $
+#**	
+#**	   Rev 25.0   08 Jul 2007 04:07:08   max
+#**	Quartus II 8.0 
+#**	SJ, Sat Jul  7 09:07:08 2007
+#**	
+#**	   Rev 24.1   22 Mar 2007 04:19:48   dsundara
+#**	move base dir setting to very beginning 
+#**	SJ, Wed Mar 21 09:19:48 2007
+#**	
+#**	   Rev 24.0   11 Feb 2007 02:59:34   max
+#**	Quartus II 7.2 
+#**	SJ, Sat Feb 10 06:59:34 2007
+#**	
+#**	   Rev 23.0   10 Sep 2006 00:49:50   max
+#**	Quartus II 7.1 
+#**	SJ, Sat Sep  9 05:49:51 2006
+#**	
+#**	   Rev 22.0   05 Feb 2006 00:17:58   max
+#**	Quartus II 6.1 
+#**	SJ, Sat Feb  4 04:17:58 2006
+#**	
+#**	   Rev 21.0   07 Aug 2005 00:17:18   max
+#**	Quartus II 6.0 
+#**	SJ, Sat Aug  6 05:17:19 2005
+#**	
+#**	   Rev 20.0   06 Feb 2005 06:24:08   max
+#**	Quartus II 5.1 
+#**	SJ, Sat Feb  5 10:24:07 2005
+#**	
+#**	   Rev 19.0   12 Sep 2004 04:18:50   max
+#**	Quartus II 5.0 
+#**	SJ, Sat Sep 11 09:18:50 2004
+#**	
+#**	   Rev 18.0   10 Apr 2004 04:40:08   max
+#**	Quartus II 4.2 
+#**	SJ, Fri Apr  9 09:40:08 2004
+#**	
+#**	   Rev 1.0   24 Mar 2004 06:20:20   tgopalsa
+#**	  
+#**	SJ, Tue Mar 23 10:20:04 2004
+
+#
+
+###############################################################################
+# Set up the environment
+###############################################################################
+
+BASE_DIR = ../../..
+
+
+include $(BASE_DIR)/environ.gmake
+
+PVCS_DIR = $(PVCS_ROOT)/libraries/vhdl/lpm
+
+###############################################################################
+# Set target(s) and files used.
+###############################################################################
+
+OWNED_FILES = \
+	lpm_pack.vhd
+
+###############################################################################
+# Builtins.mak
+###############################################################################
+
+
+include $(BASE_DIR)/builtins.gmake
+
+###############################################################################
+# Now the targets
+###############################################################################
+
+all : get_owned_files
+
+clean : 
+	rm -f *.vhd

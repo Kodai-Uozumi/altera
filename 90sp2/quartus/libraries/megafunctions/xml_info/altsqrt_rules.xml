@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<ROOT>
+	<INCLUDE FILE="mfam_family_macros.xml" />
+
+	<MACROS>
+		<MACRO NAME="CeilDiv2" DEFINITION="((WIDTH + (WIDTH % 2)) div 2)" ARGUMENTS="WIDTH" />
+	</MACROS>
+
+	<PORT_RULES>
+		<!-- radical is the data input, and must always be used -->
+		<PORT NAME="radical" USAGE="USED" />
+		<PORT NAME="clk" IS_CLOCK_PORT="TRUE">
+			<STATE V="USED" WHEN="PIPELINE > 0" ELSE="UNUSED"/>
+		</PORT>
+		<PORT NAME="aclr" USAGE="VARIABLE" >
+			<STATE V="UNUSED" WHEN="PIPELINE == 0" />
+		</PORT>
+		<PORT NAME="ena" USAGE="VARIABLE" >
+			<STATE V="UNUSED" WHEN="PIPELINE == 0" />
+		</PORT>
+	</PORT_RULES>
+
+	<!-- parameters -->
+	<PARAMETER_RULES>
+		<PARAMETER NAME="Q_PORT_WIDTH">
+			<FORCE_VALUE TO="CeilDiv2(WIDTH)" />
+		</PARAMETER>
+		<PARAMETER NAME="R_PORT_WIDTH">
+			<FORCE_VALUE TO="CeilDiv2(WIDTH) + 1" />
+		</PARAMETER>
+	</PARAMETER_RULES>
+</ROOT>

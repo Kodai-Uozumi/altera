@@ -1,0 +1,217 @@
+/*
+WARNING: Do NOT edit the input and output ports in this file in a text
+editor if you plan to continue editing the block that represents it in the
+Block Editor! File corruption is VERY likely to occur.
+*/
+/*
+Copyright (C) 1991-2000 Altera Corporation
+Any megafunction design, and related net list (encrypted or decrypted),
+support information, device programming or simulation file, and any other
+associated documentation or information provided by Altera or a partner
+under Altera's Megafunction Partnership Program may be used only to
+program PLD devices (but not masked PLD devices) from Altera.  Any other
+use of such megafunction design, net list, support information, device
+programming or simulation file, or any other related documentation or
+information is prohibited for any other purpose, including, but not
+limited to modification, reverse engineering, de-compiling, or use with
+any other silicon devices, unless such use is explicitly licensed under
+a separate agreement with Altera or a megafunction partner.  Title to
+the intellectual property, including patents, copyrights, trademarks,
+trade secrets, or maskworks, embodied in any such megafunction design,
+net list, support information, device programming or simulation file, or
+any other related documentation or information provided by Altera or a
+megafunction partner, remains with Altera, the megafunction partner, or
+their respective licensors.  No other licenses, including any licenses
+needed under any third party's intellectual property, are provided herein.
+*/
+(header "symbol" (version "1.1"))
+(symbol
+	(rect 64 64 208 192)
+	(text "altclklock" (rect 56 0 95 12)(font "Arial" ))
+	(text "inst" (rect 8 112 23 124)(font "Arial" ))
+	(port
+		(pt 0 32)
+		(input)
+		(text "inclock" (rect 24 24 57 38)(font "Arial" (font_size 8)))
+		(text "inclock" (rect 24 24 57 38)(font "Arial" (font_size 8)))
+		(line (pt 0 32)(pt 16 32))
+	)
+	(port
+		(pt 0 48)
+		(input)
+		(text "inclocken" (rect 24 40 69 54)(font "Arial" (font_size 8)))
+		(text "inclocken" (rect 24 40 69 54)(font "Arial" (font_size 8)))
+		(line (pt 0 48)(pt 16 48))
+	)
+	(port
+		(pt 0 64)
+		(input)
+		(text "fbin" (rect 24 56 42 70)(font "Arial" (font_size 8)))
+		(text "fbin" (rect 24 56 42 70)(font "Arial" (font_size 8)))
+		(line (pt 0 64)(pt 16 64))
+	)
+	(port
+		(pt 144 32)
+		(output)
+		(text "clock0" (rect 96 16 127 30)(font "Arial" (font_size 8)))
+		(text "clock0" (rect 96 24 127 38)(font "Arial" (font_size 8)))
+		(line (pt 144 32)(pt 128 32))
+	)
+	(port
+		(pt 144 48)
+		(output)
+		(text "clock1" (rect 96 40 127 54)(font "Arial" (font_size 8)))
+		(text "clock1" (rect 96 40 127 54)(font "Arial" (font_size 8)))
+		(line (pt 144 48)(pt 128 48))
+	)
+	(port
+		(pt 144 64)
+		(output)
+		(text "locked" (rect 96 56 127 70)(font "Arial" (font_size 8)))
+		(text "locked" (rect 96 56 127 70)(font "Arial" (font_size 8)))
+		(line (pt 144 64)(pt 128 64))
+	)
+	(port
+		(pt 144 80)
+		(output)
+		(text "clock2" (rect 96 72 127 86)(font "Arial" (font_size 8)))
+		(text "clock2" (rect 96 72 127 86)(font "Arial" (font_size 8)))
+		(line (pt 144 80)(pt 128 80))
+	)
+	(port
+		(pt 144 96)
+		(output)
+		(text "clock_ext" (rect 96 88 142 102)(font "Arial" (font_size 8)))
+		(text "clock_ext" (rect 80 88 126 102)(font "Arial" (font_size 8)))
+		(line (pt 144 96)(pt 128 96))
+	)
+	(parameter
+		"INCLOCK_PERIOD"
+		""
+		"inclock period or frequency, e.g. \"20ns\" or \"50MHz\".  Default unit is \"ps\"."
+	)
+	(parameter
+		"INCLOCK_SETTINGS"
+		"\"UNUSED\""
+		"Name of logic option with inclock settings (optional)"
+	)
+	(parameter
+		"VALID_LOCK_CYCLES"
+		"1"
+		"Number of valid half cycles before PLL is considered to be locked.  Use MegaWizard plug-in to calculate."
+		"1" "5" 
+	)
+	(parameter
+		"INVALID_LOCK_CYCLES"
+		"1"
+		"Number of invalid half cycles before lock is lost.  Use MegaWizard plug-in to calculate."
+		"1" "5" 
+	)
+	(parameter
+		"VALID_LOCK_MULTIPLIER"
+		"1"
+		"Multiplier for VALID_LOCK_CYCLES.  Must be 1 or 5."
+		"1" "5" 
+	)
+	(parameter
+		"INVALID_LOCK_MULTIPLIER"
+		"1"
+		"Multiplier for INVALID_LOCK_CYCLES.  Must be 1 or 5."
+		"1" "5" 
+	)
+	(parameter
+		"OPERATION_MODE"
+		"\"NORMAL\""
+		"Defines whether fbin is used to offset external delays"
+		"\"NORMAL\"" "\"ZERO_DELAY_BUFFER\"" "\"EXTERNAL_FEEDBACK\""
+	)
+	(parameter
+		"CLOCK0_BOOST"
+		"1"
+		"Frequency multiplier, must be 1, 2, or 4 for Apex20K, or > 0 for Apex20KE"
+	)
+	(parameter
+		"CLOCK0_DIVIDE"
+		"1"
+		"Frequency divide factor, must be 1 for Apex20K, or > 0 for Apex20KE"
+	)
+	(parameter
+		"CLOCK0_SETTINGS"
+		"\"UNUSED\""
+		"Name of logic option with clock0 settings (optional)"
+	)
+	(parameter
+		"CLOCK0_TIME_DELAY"
+		"\"0\""
+		"Time delay for clock0.  This is specified as a string in ps.  Legal values are between -2000 and 2000 in step of 250."
+	)
+	(parameter
+		"CLOCK1_BOOST"
+		"1"
+		"Frequency multiplier, must be 1, 2, or 4 for Apex20K, or > 0 for Apex20KE"
+	)
+	(parameter
+		"CLOCK1_DIVIDE"
+		"1"
+		"Frequency divide factor, must be 1 for Apex20K, or > 0 for Apex20KE"
+	)
+	(parameter
+		"CLOCK1_SETTINGS"
+		"\"UNUSED\""
+		"Name of logic option with clock1 settings (optional)"
+	)
+	(parameter
+		"CLOCK1_TIME_DELAY"
+		"\"0\""
+		"Time delay for clock1.  This is specified as a string in ps.  Legal values are between -2000 and 2000 in step of 250."
+	)
+	(parameter
+		"CLOCK2_BOOST"
+		"1"
+		"Frequency multiplier, must be 1, 2, or 4 for Apex20K, or > 0 for Apex20KE"
+	)
+	(parameter
+		"CLOCK2_DIVIDE"
+		"1"
+		"Frequency divide factor, must be 1 for Apex20K, or > 0 for Apex20KE"
+	)
+	(parameter
+		"CLOCK2_SETTINGS"
+		"\"UNUSED\""
+		"Name of logic option with clock2 settings (optional)"
+	)
+	(parameter
+		"CLOCK2_TIME_DELAY"
+		"\"0\""
+		"Time delay for clock2.  This is specified as a string in ps.  Legal values are between -2000 and 2000 in step of 250."
+	)
+	(parameter
+		"CLOCK_EXT_BOOST"
+		"1"
+		"Frequency multiplier, must be 1, 2, or 4 for Apex20K, or > 0 for Apex20KE"
+	)
+	(parameter
+		"CLOCK_EXT_DIVIDE"
+		"1"
+		"Frequency divide factor, must be 1 for Apex20K, or > 0 for Apex20KE"
+	)
+	(parameter
+		"CLOCK_EXT_SETTINGS"
+		"\"UNUSED\""
+		"Name of logic option with clock_ext settings (optional)"
+	)
+	(parameter
+		"CLOCK_EXT_TIME_DELAY"
+		"\"0\""
+		"Time delay for clock_ext.  This is specified as a string in ps.  Legal values are between -2000 and 2000 in step of 250."
+	)
+	(parameter
+		"OUTCLOCK_PHASE_SHIFT"
+		"0"
+		"Phase shift of output clocks relative to inclock, e.g. \"10ns\".  Default unit is \"ps\"."
+	)
+	(drawing
+		(rectangle (rect 16 16 128 112)(line_width 1))
+	)
+	(annotation_block (parameter)(rect 208 -152 408 64))
+)

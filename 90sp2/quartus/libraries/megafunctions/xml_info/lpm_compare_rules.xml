@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+<ROOT>
+	<!-- macros -->
+	<MACROS>
+		<MACRO NAME="is_non_aeb_port_used"  DEFINITION="!is_used(agb) and !is_used(ageb) and !is_used(alb) and !is_used(aleb) and !is_used(aneb)" />
+		<MACRO NAME="is_lpm_pipeline_zero" DEFINITION="LPM_PIPELINE == 0" />
+	</MACROS>
+	
+	<!-- ports -->
+	<PORT_RULES>
+		<!-- input ports -->
+		<PORT NAME="dataa" TYPE="INPUT" WIDTH="LPM_WIDTH" USAGE="USED" />
+		<PORT NAME="datab" TYPE="INPUT" WIDTH="LPM_WIDTH" DEFAULT_VALUE="0" USAGE="VARIABLE" >
+			<STATE V="UNUSED" WHEN="ONE_INPUT_IS_CONSTANT==YES" ELSE="USED"/>
+		</PORT>
+		<PORT NAME="clock" TYPE="INPUT" DEFAULT_VALUE="0" IS_CLOCK_PORT="TRUE" CLOCK_PERIOD="10" USAGE="VARIABLE">
+			<STATE V="USED" WHEN="!is_lpm_pipeline_zero"/>
+			<STATE V="UNUSED" WHEN="is_lpm_pipeline_zero "/>
+		</PORT>
+		<PORT NAME="clken" TYPE="INPUT" DEFAULT_VALUE="1" HIGH_PROBABILITY="90" USAGE="VARIABLE">
+			<STATE V="UNUSED" WHEN="is_lpm_pipeline_zero "/>
+		</PORT>
+		<PORT NAME="aclr" TYPE="INPUT" DEFAULT_VALUE="0" HIGH_PROBABILITY="10" USAGE="VARIABLE">
+			<STATE V="UNUSED" WHEN="is_lpm_pipeline_zero"/>
+		</PORT>
+	
+		<!-- output ports -->
+		<PORT NAME="aeb" TYPE="OUTPUT" USAGE="VARIABLE">
+			<STATE V="USED" WHEN="is_non_aeb_port_used" />
+		</PORT>
+		<PORT NAME="agb" TYPE="OUTPUT" USAGE="VARIABLE" />
+		<PORT NAME="ageb" TYPE="OUTPUT" USAGE="VARIABLE" />
+		<PORT NAME="alb" TYPE="OUTPUT" USAGE="VARIABLE" />
+		<PORT NAME="aleb" TYPE="OUTPUT" USAGE="VARIABLE" />
+		<PORT NAME="aneb" TYPE="OUTPUT" USAGE="VARIABLE" />
+	</PORT_RULES>
+	
+	<PARAMETERS>
+		<!-- from the wizard -->
+		<PARAMETER NAME="LPM_WIDTH" TYPE="INTEGER">
+			<FORCE_RANGE MIN="1" MAX="256"/>
+		</PARAMETER>
+	</PARAMETERS>
+
+</ROOT>

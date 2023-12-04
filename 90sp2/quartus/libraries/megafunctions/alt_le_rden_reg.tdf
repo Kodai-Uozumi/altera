@@ -1,0 +1,119 @@
+--------------------------------------------------------------------
+--
+--	ALT_LE_RDEN_REG Parameterized Megafunction
+--
+--	This function creates a race-free circuit to emulate the read-enable latch
+--	found in some RAM blocks.  This circuit is intended to emulate an external
+--	latch for an array of RAM blocks that do not have internal latches.  An
+--	array of RAM blocks with internal latches should use the A_RDENREG
+--	megafunction.
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 1.0
+--
+--------------------------------------------------------------------
+
+INCLUDE "lpm_mux";
+INCLUDE "a_hdffe";
+
+PARAMETERS
+(
+	DATA_WIDTH
+);
+
+DEFINE mux_size() = USED(aclr) ? 4 : 2;
+DEFINE mux_widths() = USED(aclr) ? 2 : 1;
+
+SUBDESIGN alt_le_rden_reg
+(
+	mux_value[DATA_WIDTH - 1..0]	:	INPUT;
+	rden							:	INPUT;
+
+	clock							:	INPUT;
+	ena								:	INPUT = VCC;	-- clock enable
+	aclr							:	INPUT = GND;
+
+	q[DATA_WIDTH - 1..0]			:	OUTPUT;
+)
+VARIABLE
+	IF (USED(aclr)) GENERATE
+		clear_reg						: DFF;
+		rden_reg						: DFFE;
+		power_up_reg					: DFF;
+		clearing_latch[DATA_WIDTH-1..0]	: LATCH;
+		clr_latch_out[DATA_WIDTH-1..0]	: LCELL;
+		aclr_happened : NODE;
+	ELSE GENERATE
+		rden_reg						: a_hdffe;
+	END GENERATE;
+	qfb_reg[DATA_WIDTH-1..0]		: DFF;
+	
+	latch_mux						: lpm_mux WITH	(
+														LPM_WIDTH = DATA_WIDTH,
+														LPM_SIZE = mux_size(),
+														LPM_WIDTHS = mux_widths(),
+														LPM_PIPELINE = 0
+													);
+
+BEGIN
+	-- register inputs
+	(rden_reg, qfb_reg[]).clk = clock;
+	IF (USED(aclr)) GENERATE
+		(clear_reg, power_up_reg).clk = clock;
+		clear_reg.clrn = !aclr;
+	END GENERATE;
+	rden_reg.ena = ena;
+	rden_reg.clrn = !aclr;
+
+	-- data inputs to the registers
+	IF (USED(aclr)) GENERATE
+		clear_reg.d = VCC;
+		power_up_reg.d = VCC;
+	END GENERATE;
+	rden_reg.d = rden;
+	qfb_reg[].d = latch_mux.result[];
+	
+	-- Extra logic that is needed if rden is async clearable
+	IF (USED(aclr)) GENERATE
+		-- Signal that goes high if aclr asserted since last rising clock edge
+		aclr_happened = clear_reg $ power_up_reg;
+
+		-- clearing latch inputs
+		clearing_latch[].d = latch_mux.result[];
+		clearing_latch[].ena = !aclr_happened & !aclr;
+		
+		-- make sure the latch is preserved
+		clr_latch_out[] = clearing_latch[].q;
+
+		-- set up the mux inputs
+		latch_mux.data[2][] = clr_latch_out[];
+		latch_mux.data[3][] = clr_latch_out[];
+		latch_mux.sel[1] = aclr_happened;
+	END GENERATE;
+	
+	-- set up the common mux inputs
+	latch_mux.data[0][] = qfb_reg[].q;
+	latch_mux.data[1][] = mux_value[];
+	latch_mux.sel[0] = rden_reg.q;
+
+	-- actual output
+	q[] = latch_mux.result[];
+	IF !USED(q) GENERATE
+		q[] = GND;
+	END GENERATE;
+END;

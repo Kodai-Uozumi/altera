@@ -1,0 +1,247 @@
+------------------------------------------------------------------------------------------------------
+-- abs_divider
+--
+-- Version 1.0
+-- Description: Called by LPM_DIVIDE to handle the remainder not always positive case.  The 
+-- 				circuit simply does an absolute value, sends inputs to the unsigned divider, 
+--				and possibly inverts the outputs.
+--
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+------------------------------------------------------------------------------------------------------
+PARAMETERS(
+	WIDTH_N,								-- bit number of numerator
+	WIDTH_D,								-- bit number of denominator
+	NUM_REPRESENTATION = "SIGNED",			-- representation of numerator
+	DEN_REPRESENTATION = "SIGNED",			-- representation of denominator
+	LPM_PIPELINE = 0,						-- latency
+	MAXIMIZE_SPEED = 5,						-- speed factor
+	CARRY_CHAIN = "IGNORE"					-- inherit carry chain information
+);
+
+INCLUDE "alt_u_div";							-- unsigned divider
+INCLUDE "lpm_abs";							-- absolute value module
+
+-- need to find out if carry chains are in use
+INCLUDE "aglobal90.inc";
+
+-- handy access to MSB
+CONSTANT NUM_TOP = WIDTH_N - 1;
+CONSTANT DEN_TOP = WIDTH_D - 1;
+
+-- pipeline information
+CONSTANT MAX_INT_STAGES = WIDTH_N;
+
+-- a handly macro
+DEFINE MIN(a,b) = (a < b) ? a : b;
+
+-- pipeline information
+CONSTANT N_INTERNAL_STAGES = MIN(MAX_INT_STAGES, LPM_PIPELINE);
+CONSTANT N_EXTERNAL_STAGES = LPM_PIPELINE - N_INTERNAL_STAGES;
+
+SUBDESIGN abs_divider(
+	numerator[NUM_TOP..0] : INPUT;
+	denominator[DEN_TOP..0] : INPUT;
+	
+	-- pipelined signals
+	clock, aclr : INPUT = GND;
+	clk_en : INPUT = VCC;
+
+	quotient[NUM_TOP..0] : OUTPUT;
+	remainder[DEN_TOP..0] : OUTPUT;
+)
+VARIABLE
+	-- prevent synthesis for carry chains
+	IF USE_CARRY_CHAINS() GENERATE
+		norm_num[NUM_TOP..0] : LCELL;
+		norm_den[DEN_TOP..0] : LCELL;
+		protect_quotient[NUM_TOP..0] : LCELL;
+	ELSE GENERATE
+		norm_num[NUM_TOP..0] : NODE;
+		norm_den[DEN_TOP..0] : NODE;
+		protect_quotient[NUM_TOP..0] : NODE;
+	END GENERATE;
+	
+	protect_remainder[DEN_TOP..0] : NODE;
+	neg_quot[NUM_TOP..0] : NODE;
+	neg_rem[DEN_TOP..0] : NODE;
+	
+	diff_signs : NODE;
+	num_sign : NODE;
+	
+	divider : alt_u_div WITH (WIDTH_N = WIDTH_N, WIDTH_D = WIDTH_D, WIDTH_Q = WIDTH_N, WIDTH_R = WIDTH_D,
+						   LPM_PIPELINE = N_INTERNAL_STAGES, MAXIMIZE_SPEED = MAXIMIZE_SPEED);
+	
+	IF N_EXTERNAL_STAGES > 0 GENERATE
+		DFF_Numerator[NUM_TOP..0] : DFFE;
+		DFF_Denominator[DEN_TOP..0] : DFFE;
+	END GENERATE;
+	
+	IF N_EXTERNAL_STAGES > 1 GENERATE
+		DFF_Quotient[N_EXTERNAL_STAGES - 2..0][NUM_TOP..0] : DFFE;
+		DFF_Remainder[N_EXTERNAL_STAGES - 2..0][DEN_TOP..0] : DFFE;
+	END GENERATE;
+	
+	IF LPM_PIPELINE > 0 GENERATE
+		DFF_num_sign[LPM_PIPELINE - 1..0] : DFFE;
+		DFF_diff_signs[LPM_PIPELINE - 1..0] : DFFE;
+	END GENERATE;
+BEGIN		
+	-- keep track if the numerator and denominator have different signs
+	IF (NUM_REPRESENTATION == "SIGNED") & (DEN_REPRESENTATION == "SIGNED") GENERATE 
+		diff_signs = numerator[NUM_TOP] $ denominator[DEN_TOP];
+	ELSE GENERATE
+		IF (NUM_REPRESENTATION == "SIGNED") & (DEN_REPRESENTATION == "UNSIGNED") GENERATE
+			diff_signs = numerator[NUM_TOP];
+		ELSE  GENERATE -- (NUM_REPRESENTAION == "UNSIGNED") & (DEN_REPRESENTATION == "SIGNED")
+			diff_signs = denominator[DEN_TOP];
+		END GENERATE;
+	END GENERATE;
+	
+	-- initialize the sign data
+	IF NUM_REPRESENTATION == "SIGNED" GENERATE
+		num_sign = numerator[NUM_TOP];
+	ELSE GENERATE
+		num_sign = GND;
+	END GENERATE;
+	
+	-- set up absolute value
+	IF NUM_REPRESENTATION == "SIGNED" GENERATE
+		(norm_num[]) = lpm_abs(.data[] = numerator[]) WITH (LPM_WIDTH = WIDTH_N)
+								RETURNS (.result[]);
+	ELSE GENERATE	-- unsigned representation
+		norm_num[] = numerator[];
+	END GENERATE;
+	
+	IF DEN_REPRESENTATION == "SIGNED" GENERATE
+		(norm_den[]) = lpm_abs(.data[] = denominator[]) WITH (LPM_WIDTH = WIDTH_D)
+								RETURNS (.result[]);
+	ELSE GENERATE -- unsigned representation
+		norm_den[] = denominator[];
+	END GENERATE;
+	
+	-- hook up the divider
+	IF LPM_PIPELINE > 0 GENERATE
+			IF USED(clock) GENERATE
+				divider.clock = clock;
+			END GENERATE;
+			
+			IF USED(aclr) GENERATE
+				divider.aclr = aclr;
+			END GENERATE;
+			
+			IF USED(clk_en) GENERATE
+				divider.clk_en = clk_en;
+			END GENERATE;
+	END GENERATE;
+	
+	IF N_EXTERNAL_STAGES == 0 GENERATE
+		divider.numerator[] = norm_num[];
+		divider.denominator[] = norm_den[];
+	ELSE GENERATE
+		-- hook up control signals for DFF
+		(DFF_Numerator[], DFF_Denominator[]).clk = clock;
+		(DFF_Numerator[], DFF_Denominator[]).ena = clk_en;
+		(DFF_Numerator[], DFF_Denominator[]).clrn = !aclr;
+		
+		IF N_EXTERNAL_STAGES > 1 GENERATE
+			(DFF_Quotient[][], DFF_Remainder[][]).clk = clock;
+			(DFF_Quotient[][], DFF_Remainder[][]).ena = clk_en;
+			(DFF_Quotient[][], DFF_Remainder[][]).clrn = !aclr;
+		END GENERATE;
+		
+		-- set up DFF inputs
+		DFF_Numerator[] = norm_num[];
+		DFF_Denominator[] = norm_den[];
+		
+		-- connect latches to divider
+		divider.numerator[] = DFF_Numerator[];
+		divider.denominator[] = DFF_Denominator[];
+	END GENERATE;
+	
+	-- need to keep track of signs if pipelined
+	IF LPM_PIPELINE > 0 GENERATE
+		(DFF_num_sign[], DFF_diff_signs[]).clk = clock;
+		(DFF_num_sign[], DFF_diff_signs[]).ena = clk_en;
+		(DFF_num_sign[], DFF_diff_signs[]).clrn = !aclr;
+		
+		-- connect the pipeline
+		IF LPM_PIPELINE == 1 GENERATE
+			DFF_num_sign[0] = num_sign;
+			DFF_diff_signs[0] = diff_signs;
+		ELSE GENERATE
+			DFF_num_sign[LPM_PIPELINE-1..0] = (num_sign, DFF_num_sign[LPM_PIPELINE-1..1]);
+			DFF_diff_signs[LPM_PIPELINE-1..0] = (diff_signs, DFF_diff_signs[LPM_PIPELINE-1..1]);
+		END GENERATE;
+	END GENERATE;
+	
+	-- get out divider results
+	protect_quotient[] = divider.quotient[];
+	protect_remainder[] = divider.remainder[];
+	
+	IF N_EXTERNAL_STAGES <= 1 GENERATE
+		IF WIDTH_N == 1 GENERATE				-- pathological case
+			neg_quot[] = protect_quotient[];
+		ELSE GENERATE
+			neg_quot[] = -protect_quotient[];
+		END GENERATE;
+		IF WIDTH_D == 1 GENERATE
+			neg_rem[] = protect_remainder[];	-- pathological case
+		ELSE GENERATE
+			neg_rem[] = -protect_remainder[];
+		END GENERATE;
+	ELSE GENERATE
+		-- set up final stage pipeline
+		IF N_EXTERNAL_STAGES - 2 == 0 GENERATE
+			DFF_Quotient[0][] = protect_quotient[];
+			DFF_Remainder[0][] = protect_remainder[];
+		ELSE GENERATE
+			DFF_Quotient[N_EXTERNAL_STAGES-2..0][] = (protect_quotient[], DFF_Quotient[N_EXTERNAL_STAGES-2..1][]);
+			DFF_Remainder[N_EXTERNAL_STAGES-2..0][] = (protect_remainder[], DFF_Remainder[N_EXTERNAL_STAGES-2..1][]);
+		END GENERATE;
+		IF WIDTH_N == 1 GENERATE
+			neg_quot[] = DFF_Quotient[0][];
+		ELSE GENERATE
+			neg_quot[] = -DFF_Quotient[0][];
+		END GENERATE;
+		IF WIDTH_D == 1 GENERATE
+			neg_rem[] = DFF_Remainder[0][];
+		ELSE GENERATE
+			neg_rem[] = -DFF_Remainder[0][];
+		END GENERATE;
+	END GENERATE;
+	
+	IF N_EXTERNAL_STAGES <= 1 GENERATE
+		IF LPM_PIPELINE == 0 GENERATE
+			quotient[] = (protect_quotient[] & !diff_signs) # (neg_quot[] & diff_signs);
+			remainder[] = (protect_remainder[] & !num_sign) # (neg_rem[] & num_sign);
+		ELSE GENERATE
+			quotient[] = (protect_quotient[] & !DFF_diff_signs[0]) # (neg_quot[] & DFF_diff_signs[0]);
+			remainder[] = (protect_remainder[] & !DFF_num_sign[0]) # (neg_rem[] & DFF_num_sign[0]);
+		END GENERATE;
+	ELSE % IF N_EXTERNAL_STAGES > 1 % GENERATE
+		quotient[] = (DFF_Quotient[0][] & !DFF_diff_signs[0]) # (neg_quot[] & DFF_diff_signs[0]);
+		remainder[] = (DFF_Remainder[0][] & !DFF_num_sign[0]) # (neg_rem[] & DFF_num_sign[0]);
+	END GENERATE;
+	IF !USED(remainder) GENERATE
+		remainder[] = GND;
+	END GENERATE;
+	IF !USED(quotient) GENERATE
+		quotient[] = GND;
+	END GENERATE;
+END;

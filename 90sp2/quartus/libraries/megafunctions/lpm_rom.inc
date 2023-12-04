@@ -1,0 +1,5 @@
+FUNCTION lpm_rom(address[LPM_WIDTHAD-1..0],
+		inclock, outclock, memenab)
+	WITH (LPM_WIDTH, LPM_WIDTHAD, LPM_NUMWORDS, LPM_FILE,
+		LPM_ADDRESS_CONTROL, LPM_OUTDATA)
+	RETURNS (q[LPM_WIDTH-1..0]);

@@ -1,0 +1,14 @@
+# Add ::quartus::partition_planner to the table of packages
+lappend quartus(package_table) {partition_planner quartus_cdb hidden}
+
+if {[lsearch -exact [list quartus quartus_cdb] $quartus(nameofexecutable)] != -1} {
+
+    # Make ::quartus::partition_planner available to load
+    set qpkg_script_auto [file join [file dirname [info script]] partition_planner.tcl]
+    if {[file exist $qpkg_script_auto]} {
+       source $qpkg_script_auto
+    }
+    unset qpkg_script_auto
+
+}
+

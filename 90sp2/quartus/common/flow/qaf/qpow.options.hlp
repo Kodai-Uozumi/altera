@@ -1,0 +1,453 @@
+<DEFAULT_READ_ASSIGNMENT>
+--------
+Overview
+--------
+
+Option to read the assignments from the Quartus II Settings 
+File (.qsf) and override assignments obtained from the 
+database. All options that pass from the command line 
+still override any conflicting assignments found in the 
+QSF.
+
+By default, assignments are read from the QSF unless you 
+specify "--read_settings_files=off".
+
+---------------------------
+Command-Line Option Details
+---------------------------
+
+Command-line options are provided for making many common
+global project settings and performing common tasks. You
+can use either of two methods to make assignments to an
+individual entity. If the project exists, open the project
+in the Quartus II GUI, change the assignment, and close the
+project. The changed assignment is updated in the QSF. Any 
+command-line executables you run after this update use the 
+updated assignment. See "Option Precedence" below for more 
+information. You can also make assignments using the 
+Quartus II Tcl scripting API. To completely script the 
+creation of a Quartus II project, choose this method.
+
+-----------------
+Option Precedence
+-----------------
+
+If you are using the command-line executables, you need to
+be aware of the precedence of various project assignments
+and how to control the precedence. Assignments for a
+particular project exist in the QSF for the project.
+Assignments for a project can also be made by using
+command-line options, as described earlier. Project
+assignments are reflected in compiler database files that
+hold intermediate compilation results and reflect assignments
+made in the previous project compilation.
+
+All command-line options override any conflicting assignments
+found in the QSF or the compiler database files. There are
+two command-line options to specify whether QSF or compiler
+database files take precedence for any assignments not
+specified as command-line options.
+
+Note: Any assignment not specified as a command-line option
+or found in the QSF or compiler database files is set to its
+Quartus II software default value.
+
+The file precedence command-line options are
+--read_settings_files and --write_settings_files. By default,
+the --read_settings_files and --write_settings_files options
+are turned on. Turning on the --read_settings_files option
+causes a command-line executable to read assignments from
+the QSF instead of from the compiler database files. Turning
+on the --write_settings_files option causes a command-line
+executable to update the QSF to reflect any specified options,
+as happens when closing a project in the Quartus II GUI.
+
+Table 1 lists the precedence for reading assignments
+depending on the value of the --read_settings_files option.
+
+
+* Table 1. Precedence for Reading Assignments
+
+Option Specified                      Precedence for Reading Assignments
+------------------------------------  ----------------------------------
+--import_settings_files=on (Default)  1. Command-line options
+                                      2. Quartus II Settings File (.qsf)
+                                      3. Compiler database (db directory, if it exists)
+                                      4. Quartus II software defaults
+
+--import_settings_files=off           1. Quartus II Settings File (.qsf)
+                                      2. Compiler database (db directory, if it exists)
+                                      3. Quartus II software defaults
+
+
+Table 2 lists the locations to which assignments are
+written, depending on the value of the --write_settings_files
+command-line option.
+
+
+* Table 2. Location for Writing Assignments
+
+Option Specified                      Location for Writing Assignments
+------------------------------------  --------------------------------
+--export_settings_files=on (Default)  1. Quartus II Settings File (.qsf) and
+                                      2. Compiler database
+
+--export_settings_files=off           1. Compiler database
+
+
+The following example assumes that a project named fir_filter
+exists, and that the Analysis & Synthesis step has been
+performed (using the quartus_map executable).
+
+quartus_fit fir_filter --fmax=80MHz
+quartus_tan fir_filter
+quartus_tan fir_filter --fmax=100MHz --tao=timing_result-100.tao --write_settings_files=off
+
+The first command, quartus_fit fir_filter --fmax=80MHz, runs
+the Quartus II Fitter and specifies a global fMAX requirement
+of 80 MHz.
+
+The second command, quartus_tan fir_filter, runs Quartus II
+Timing Analyzer for the results of the previous fit.
+
+The third command reruns Quartus II Timing Analyzer with a
+global Fmax requirement of 100 MHz and saves the result in
+a file called timing_result-100.tao. By specifying the
+--write_settings_files=off option, the command-line executable
+does not update the QSF to reflect the changed Fmax requirement.
+The compiler database files reflect the changed Fmax requirement.
+If the --write_settings_files=off option is not specified, the
+command-line executable updates the .qsf to reflect the 100 MHz
+global fMAX requirement.
+
+Use the --read_settings_files=off and --write_settings_files=off
+options (where appropriate) to optimize the way that the
+Quartus II software reads and updates the QSF. The following
+example shows how to avoid unnecessary QSF reading and writing.
+
+quartus_map filtref --source=filtref --part=ep1s10f780c5
+quartus_fit filtref --fmax=100MHz --read_settings_files=off
+quartus_tan filtref --read_settings_files=off --write_settings_files=off
+quartus_asm filtref --read_settings_files=off --write_settings_files=off
+
+The quartus_tan and quartus_asm executables do not need to
+read or write settings files because they do not change any
+settings in the project.
+</DEFAULT_READ_ASSIGNMENT>
+
+<DEFAULT_WRITE_ASSIGNMENT>
+--------
+Overview
+--------
+
+Option to write out the settings obtained from command-line 
+options to the Quartus II Settings File (.qsf). 
+
+By default, assignments are written to the QSF unless you 
+specify "--write_settings_files=off".
+
+---------------------------
+Command-Line Option Details
+---------------------------
+
+Command-line options are provided for making many common
+global project settings and performing common tasks. You
+can use either of two methods to make assignments to an
+individual entity. If the project exists, open the project
+in the Quartus II GUI, change the assignment, and close the
+project. The changed assignment is updated in the QSF. Any
+command-line executables that are run after this update use
+the updated assignment. See "Option Precedence" below for
+more information. You can also make assignments using the
+Quartus II Tcl scripting API. To completely script the 
+creation of a Quartus II project, choose this method.
+
+-----------------
+Option Precedence
+-----------------
+
+If you are using the command-line executables, you need to
+be aware of the precedence of various project assignments
+and how to control the precedence. You can find ssignments 
+for a particular project exist in the QSF for the project.
+You can also make assignments for a project by using
+command-line options, as described earlier. Project
+assignments are reflected in compiler database files that
+hold intermediate compilation results and reflect assignments
+made in the previous project compilation.
+
+All command-line options override any conflicting assignments
+found in the QSF or the compiler database files. There are
+two command-line options to specify whether QSF or compiler
+database files take precedence for any assignments not
+specified as command-line options.
+
+Note: Any assignment not specified as a command-line option
+or found in the QSF or compiler database files is set to its
+Quartus II software default value.
+
+The file precedence command-line options are
+--read_settings_files and --write_settings_files. By default,
+the --read_settings_files and --write_settings_files options
+are turned on. Turning on the --read_settings_files option
+causes a command-line executable to read assignments from
+the QSF instead of from the compiler database files. Turning
+on the --write_settings_files option causes a command-line
+executable to update the QSF to reflect any specified options,
+as happens when closing a project in the Quartus II GUI.
+
+Table 1 lists the precedence for reading assignments
+depending on the value of the --read_settings_files option.
+
+
+* Table 1. Precedence for Reading Assignments
+
+Option Specified                      Precedence for Reading Assignments
+------------------------------------  ----------------------------------
+--import_settings_files=on (Default)  1. Command-line options
+                                      2. Quartus II Settings File (QSF)
+                                      3. Compiler database (db directory, if it exists)
+                                      4. Quartus II software defaults
+
+--import_settings_files=off           1. Quartus II Settings File (QSF)
+                                      2. Compiler database (db directory, if it exists)
+                                      3. Quartus II software defaults
+
+
+Table 2 lists the locations to which assignments are
+written, depending on the value of the --write_settings_files
+command-line option.
+
+
+* Table 2. Location for Writing Assignments
+
+Option Specified                      Location for Writing Assignments
+------------------------------------  --------------------------------
+--export_settings_files=on (Default)  1. Quartus II Settings File (.qsf) and
+                                      2. Compiler database
+
+--export_settings_files=off           1. Compiler database
+
+
+The following example assumes that a project named fir_filter
+exists, and that the Analysis & Synthesis step has been
+performed (using the quartus_map executable).
+
+quartus_fit fir_filter --fmax=80MHz
+quartus_tan fir_filter
+quartus_tan fir_filter --fmax=100MHz --tao=timing_result-100.tao --write_settings_files=off
+
+The first command, quartus_fit fir_filter --fmax=80MHz, runs
+the Quartus II Fitter and specifies a global fMAX requirement
+of 80 MHz.
+
+The second command, quartus_tan fir_filter, runs Quartus II
+Timing Analyzer for the results of the previous fit.
+
+The third command reruns Quartus II Timing Analyzer with a
+global Fmax requirement of 100 MHz and saves the result in
+a file called timing_result-100.tao. By specifying the
+--write_settings_files=off option, the command-line executable
+does not update the QSF to reflect the changed Fmax requirement.
+The compiler database files reflect the changed Fmax requirement.
+If the --write_settings_files=off option is not specified, the
+command-line executable updates the QSF to reflect the 100 MHz
+global fMAX requirement.
+
+Use the --read_settings_files=off and --write_settings_files=off
+options (where appropriate) to optimize the way that the
+Quartus II software reads and updates the QSF. The following
+example shows how to avoid unnecessary QSF reading and writing.
+
+quartus_map filtref --source=filtref --part=ep1s10f780c5
+quartus_fit filtref --fmax=100MHz --read_settings_files=off
+quartus_tan filtref --read_settings_files=off --write_settings_files=off
+quartus_asm filtref --read_settings_files=off --write_settings_files=off
+
+The quartus_tan and quartus_asm executables do not need to
+read or write settings files because they do not change any
+settings in the project.
+</DEFAULT_WRITE_ASSIGNMENT>
+
+<ESTIMATE_POWER_ID>
+Option to specify whether a power estimate should be produced.
+
+Specifying a value of "off" reduces processing time.  For
+example, specify the value "off" for this option if the only
+desired action is to process a Value Change Dump (VCD) file 
+to produce a Signal Activity File (SAF).
+
+By default, a power estimate is produced.
+</ESTIMATE_POWER_ID>
+
+<NO_INPUT_FILE_ID>
+Option to instruct the Power Analyzer not to use an input file
+to initialize the toggle rates and static probabilities for
+output signals in the design.
+
+The no_input_file option should not be used if either the
+input_saf or input_vcd option is specified. If neither
+the no_input_file, input_saf or input_vcd option is 
+specified, then the settings in the Quartus II Settings File
+(.qsf) are used to determine the behavior of the Power
+Analyzer.
+</NO_INPUT_FILE_ID>
+
+<INPUT_SAF_ID>
+Option to use the specified Signal Activity File (.saf) as input. 
+The SAF contains toggle rates and static probabilities for
+output signals in the design. If no filename is specified then
+the filename stored in the Quartus II Settings File (.qsf) is
+used or if no filename exists in thethe QSF, then <revision name>.saf 
+is used. This command line option can only appear once.
+
+The input_saf option should not be used if either the
+no_input_file or input_vcd option is specified. If neither
+the no_input_file, input_saf or input_vcd option is 
+specified, then the settings in the QSF are used to determine 
+the behavior of the Power Analyzer.
+</INPUT_SAF_ID>
+
+<INPUT_VCD_ID>
+Option to use the specified VCD File (.vcd) as input. If 
+no filenames are specified then the filenames stored in the 
+Quartus II Settings File (.qsf) are used or if no 
+filenames exist in the QSF, then <revision name>.vcd 
+will be used. This command line option can appear multiple 
+times in the case that multiple VCD files are required.
+
+The input_vcd option should not be used if either the
+no_input_file or input_saf option is specified. If none of
+the no_input_file, input_saf or input_vcd option is 
+specified, then the settings in the QSF are used to determine 
+the behavior of the Power Analyzer.
+</INPUT_VCD_ID>
+
+<VCD_FILTER_GLITCHES_ID>
+Option to use glitch filtering when reading VCD Files (.vcd)
+as input. This command line option can only appear once. 
+If this command line option is not used, the value stored in 
+the Quartus II Settings File (.qsf) is used to determine 
+whether or not glitch filtering is used when reading VCD Files.
+This option has no effect if the "input_vcd" option is not used.
+</VCD_FILTER_GLITCHES_ID>
+
+<OUTPUT_SAF_ID>
+Option to write out the toggle rates and static probabilities
+used by the Power Analyzer during the power analysis to the
+specified Signal Activity File (.saf). This command line option
+can only appear once.
+</OUTPUT_SAF_ID>
+
+<OUTPUT_EPE_ID>
+Option to write an Early Power Estimation file, summarizing the 
+resources used by the design.  The file can be used to import 
+design information into the PowerPlay Early Power Estimator
+spreadsheet available from the Altera website.
+
+The design must be compiled before the Early Power Estimator
+file can be written.
+
+This command line option may only appear once.
+</OUTPUT_EPE_ID>
+
+<DEFAULT_INPUT_IO_TOGGLE_RATE_ID>
+
+Option to specify a default toggle rate to be used on input I/O pin
+signals during power analysis. This value is used if an input I/O
+pin's toggle rate is not specified by some other mean such as an input
+file or user assignment. To specify a default toggle rate for all
+other signals in the design use the --default_toggle_rate command line
+option.
+
+This value can be specified as a percenatge or an absolute value.
+If specified as an absolute value, the unit is transitions/s.
+
+---------
+Examples:
+---------
+
+--default_input_io_toggle_rate=12.5%
+--default_input_io_toggle_rate=150000transitions/s
+--default_input_io_toggle_rate="150000 transitions/s"
+
+This command line option can only appear once. If this command line
+option is not used, then the value stored in the Quartus II Settings
+File (.qsf) is used to determine the default input I/O pin toggle
+rate.
+
+Note: The default static probability value used by the PowerPlay Power 
+Analyzer is 0.5.
+</DEFAULT_INPUT_IO_TOGGLE_RATE_ID>
+
+<USE_VECTORLESS_ESTIMATION_ID>
+Option to specify whether or not vectorless estimation should be used
+to calculate unspecified toggle rates and static probabilities for
+the output signals in the design. If set to "on" then vectorless 
+estimation is used by the PowerPlay Power Analyzer and the 
+--default_toggle_rate command line option or the value stored in the
+Quartus II Settings File (.qsf) will be ignored. If set to "off" then 
+the PowerPlay Power Analyzer uses the value specified by the command 
+line option --default_toggle_rate or the value stored in the Quartus II 
+Settings File (.qsf) as the default toggle rate.
+
+This command line option can only appear once. If this command line
+option is not used, then the value stored in the Quartus II Settings 
+File (.qsf) is used to determine whether or not vectorless estimation
+is used. This command line option only applies to the Stratix II 
+and MAX II families and is ignored for all other families. For all
+other families the behaviour is equivalent to this command line
+option being set to "off".
+
+Note: Regardless of the setting of this option, all unspecified toggle
+rates for input I/O pin signals use the default toggle rate specified
+by either the command line option --default_input_io_toggle_rate or
+the value stored in the Quartus II Settings File (.qsf).
+
+The default static probability value used by the PowerPlay Power
+Analyzer is 0.5.
+</USE_VECTORLESS_ESTIMATION_ID>
+
+<DEFAULT_TOGGLE_RATE_ID>
+Option to specify a default toggle rate to be used for all output 
+signals except input I/O pin signals during power analysis. This 
+value is used if a signal's toggle rate is not specified by 
+some other mean such as an input file or user assignment and 
+vectorless estimation should not be used.
+
+This value is specified as a percenatge or as an absolute value.
+If specified as an absolute value, the unit is transitions/s.
+
+---------
+Examples:
+---------
+
+--default_toggle_rate=12.5%
+--default_toggle_rate=150000transitions/s
+--default_toggle_rate="150000 transitions/s"
+
+This command line option can only appear once. If this command line
+option is not used, then the value stored in the Quartus II Settings 
+File (.qsf) is used to determine the default toggle rate. 
+
+Note:
+
+1. The default static probability value used by the PowerPlay Power 
+   Analyzer is 0.5.
+</DEFAULT_TOGGLE_RATE_ID>
+
+<VOLTAGE>
+Option to specify the device voltage (mV) when running the PowerPlay
+Power Analyzer.
+</VOLTAGE>
+
+<APP_DESCRIPTION_ID>
+    The Quartus(R) II PowerPlay Power Analyzer estimates the thermal
+dynamic power and the thermal static power consumed by the design.
+For newer families such as Stratix II and MAX II, the current drawn
+from each power supply is also estimated.
+
+Quartus II Analysis & Synthesis and the Fitter must be run
+successfully before running the PowerPlay Power Analyzer.
+</APP_DESCRIPTION_ID>
+

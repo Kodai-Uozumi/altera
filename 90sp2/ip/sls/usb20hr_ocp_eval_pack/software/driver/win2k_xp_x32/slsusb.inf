@@ -1,0 +1,75 @@
+; Installation inf for the slsusb driver installation file
+;
+; (c) Copyright 2005 sls
+;
+
+[Version]
+Signature="$CHICAGO$"
+Class=USB
+ClassGUID={36FC9E60-C465-11CF-8056-444553540000}
+provider=%SLS%
+DriverVer=07/06/2005
+
+[SourceDisksNames]
+1="slsusb driver Installation Disk",,,
+
+[SourceDisksFiles]
+slsusb.sys = 1
+slsusb.inf = 1
+
+[Manufacturer]
+%MfgName%=sls
+
+[sls]
+%USB\VID_1772&PID_0002.DeviceDesc%=slsusb.Dev, USB\VID_1772&PID_0002
+%USB\VID_1772&PID_0001.DeviceDesc%=slsusb.Dev, USB\VID_1772&PID_0001
+
+;[PreCopySection]
+;HKR,,NoSetupUI,,1
+
+[DestinationDirs]
+slsusb.Files.Ext = 10,System32\Drivers
+slsusb.Files.Inf = 10,INF
+
+[slsusb.Dev]
+CopyFiles=slsusb.Files.Ext, slsusb.Files.Inf
+AddReg=slsusb.AddReg
+
+[slsusb.Dev.NT]
+CopyFiles=slsusb.Files.Ext, slsusb.Files.Inf
+AddReg=slsusb.AddReg
+
+[slsusb.Dev.NT.Services]
+Addservice = slsusb, 0x00000002, slsusb.AddService
+
+[slsusb.AddService]
+DisplayName    = %slsusb.SvcDesc%
+ServiceType    = 1                  ; SERVICE_KERNEL_DRIVER
+StartType      = 3                  ; SERVICE_DEMAND_START
+ErrorControl   = 1                  ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %10%\System32\Drivers\slsusb.sys
+LoadOrderGroup = Base
+
+[slsusb.AddReg]
+HKR,,DevLoader,,*ntkern
+HKR,,NTMPDriver,,slsusb.sys
+HKLM,"System\Currentcontrolset\Services\slsusb\Parameters","MaximumTransferSize",0x10001,4096
+HKLM,"System\Currentcontrolset\Services\slsusb\Parameters","DebugLevel",0x10001,2
+HKLM,"System\Currentcontrolset\services\slsusb\Parameters","SLSUsbEnable",0x10001,1
+
+[slsusb.Files.Ext]
+slsusb.sys
+
+[slsusb.Files.Inf]
+slsusb.Inf
+
+
+;---------------------------------------------------------------;
+
+[Strings]
+MSFT="SLS"
+MfgName="System Level Solutions"
+USB\VID_1772&PID_0002.DeviceDesc="slsusb2.0 device"
+USB\VID_1772&PID_0001.DeviceDesc="slsusb1.1 device"
+slsusb.SvcDesc="slsusb device driver"
+

@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<template name="alt_sys_init.c">
+
+    <call gtf="%GTF_DIR%/check_version.gtf"/>
+
+    <call gtf="%GTF_DIR%/XPATHs.gtf"/>
+
+    <call gtf="%GTF_DIR%/CPU.gtf"/>
+
+    <set_variable variable="FILE_DESCRIPTION" to="- HAL initialisation source"/>
+    <export variable="FILE_DESCRIPTION"/>
+    <call gtf="%GTF_DIR%/file_heading.h.gtf"/>
+
+    <include source="%GTF_DIR%/warning.h"/>
+
+    <include source="%GTF_DIR%/license.h"/>
+
+    <text>
+
+#include "system.h"
+#include "sys/alt_sys_init.h"
+<![CDATA[
+#include <stddef.h>
+]]>
+/*
+ * device headers
+ *
+ */
+
+    </text>
+
+    <call gtf="%GTF_DIR%/COMPONENT_LIST.gtf"/>
+
+    <set_variable variable="HAL_COMPONENT_LIST" to=""/> <!-- build this for the loops below -->
+
+    <for_each variable="MODULE" ptf_path="SYSTEM/MODULE">
+        <if condition="and( ptf_module_is_mastered_by( %MODULE%, %CPU% ), ne( %MODULE%, %CPU% ) )">
+            <set_variable variable="MODULE_CLASS"
+                          ptf_path="SYSTEM/MODULE %MODULE%/class"/>
+	    <if condition="eq( %MODULE_CLASS%, no_legacy_module )">
+                <set_variable variable="MODULE_CLASS"
+                        ptf_path="SYSTEM/MODULE %MODULE%/gtf_class_name"/>
+	    </if>
+            <set_variable variable="COMPONENT_LIST_INDEX"
+                          to="list_index_of( %COMPONENT_LIST%, %MODULE_CLASS%, 0 )"/>
+            <if condition="ge( %COMPONENT_LIST_INDEX%, 0 )">
+                <!-- assert here that MODULE_CLASS equals the component name (list_get( list_get( %COMPONENT_LIST%, %COMPONENT_LIST_INDEX% ), 0 )) -->
+                <set_variable variable="COMPONENT_DIR"
+                              to="list_get( list_get( %COMPONENT_LIST%, %COMPONENT_LIST_INDEX% ), 1 )"/>
+                <if condition="file_exists( %COMPONENT_DIR%/HAL/inc/%MODULE_CLASS%.h )">
+                    <!-- did we already add it to HAL_COMPONENT_LIST? (we don't want duplicate #includes) -->
+                    <if condition="lt( list_index_of( %HAL_COMPONENT_LIST%, %MODULE_CLASS% ), 0 )">
+                        <text>
+#include "%MODULE_CLASS%.h"
+                        </text>
+                        <set_variable variable="HAL_COMPONENT_LIST"
+                                      to="list_add( %HAL_COMPONENT_LIST%, %MODULE_CLASS% )"/>
+                    </if>
+                </if>
+            </if>
+        </if>
+    </for_each>
+
+    <!-- create a list of software components -->
+    <!-- TODO - is this code duplicated elsewhere? (in generated_all.mk.gtf?) -->
+    <set_variable variable="COMPONENTS_DIR"
+                  to="%SOPC_KIT_NIOS2_DIR%/components"/>
+    <set_variable variable="SW_COMPONENT_LIST" to=""/>
+    <for_each variable="SW_COMPONENT_XPATH" xpath="%OS_SPEC_XPATH%/sw_component" file="%STF_NAME%">
+        <set_variable variable="SOPC_COMPONENT_DIR"
+                      to='xpath( %STF_NAME%, "normalize-space(%SW_COMPONENT_XPATH%/@sopc_component_dir)" )'/>
+        <if condition="file_exists( %COMPONENTS_DIR%/%SOPC_COMPONENT_DIR%/HAL/inc/%SOPC_COMPONENT_DIR%.h )">
+            <text>
+#include "%SOPC_COMPONENT_DIR%.h"
+            </text>
+            <set_variable variable="SW_COMPONENT_LIST"
+                          to="list_add( %SW_COMPONENT_LIST%, %SOPC_COMPONENT_DIR% )"/>
+        </if>
+    </for_each>
+
+    <text>
+
+/* 
+ * Allocate the device storage
+ *
+ */
+
+    </text>
+
+    <for_each variable="MODULE" ptf_path="SYSTEM/MODULE">
+        <if condition="and( ptf_module_is_mastered_by( %MODULE%, %CPU% ), ne( %MODULE%, %CPU% ) )">
+            <set_variable variable="MODULE_CLASS"
+                          ptf_path="SYSTEM/MODULE %MODULE%/class"/>
+	    <if condition="eq( %MODULE_CLASS%, no_legacy_module )">
+                <set_variable variable="MODULE_CLASS"
+                        ptf_path="SYSTEM/MODULE %MODULE%/gtf_class_name"/>
+	    </if>
+            <if condition="list_contains( %HAL_COMPONENT_LIST%, %MODULE_CLASS% )">
+                <set_variable variable="MODULE_CLASS_UPPER"
+                              to="uppercase( %MODULE_CLASS% )"/>
+                <set_variable variable="MODULE_UPPER"
+                              to="uppercase( %MODULE% )"/>
+                <set_variable variable="MODULE_LOWER"
+                              to="lowercase( %MODULE% )"/>
+                <text>
+%MODULE_CLASS_UPPER%_INSTANCE( %MODULE_UPPER%, %MODULE_LOWER% );
+                </text>
+            </if>
+        </if>
+    </for_each>
+    <for_each variable="SW_COMPONENT" list="%SW_COMPONENT_LIST%">
+        <set_variable variable="SW_COMPONENT_UPPER"
+                      to="uppercase( %SW_COMPONENT% )"/>
+        <text>
+%SW_COMPONENT_UPPER%_INSTANCE( %SW_COMPONENT_UPPER%, %SW_COMPONENT% );
+        </text>
+    </for_each>
+
+    <text>
+
+/*
+ * Initialise the devices
+ *
+ */
+
+void alt_sys_init( void )
+{
+    </text>
+
+    <set_variable variable="CONDITION_CLASS" to="altera_avalon_timer"/>
+    <export variable="CONDITION_CLASS"/>
+
+    <set_variable variable="CONDITION" to="eq"/>
+    <export variable="CONDITION"/>
+    <call gtf="%GTF_DIR%/output_alt_sys_init_function_contents.gtf"/>
+
+    <set_variable variable="CONDITION" to="ne"/>
+    <export variable="CONDITION"/>
+    <call gtf="%GTF_DIR%/output_alt_sys_init_function_contents.gtf"/>
+
+    <for_each variable="SW_COMPONENT" list="%SW_COMPONENT_LIST%">
+        <set_variable variable="SW_COMPONENT_UPPER"
+                      to="uppercase( %SW_COMPONENT% )"/>
+        <text>
+    %SW_COMPONENT_UPPER%_INIT( %SW_COMPONENT_UPPER%, %SW_COMPONENT% );
+        </text>
+    </for_each>
+   
+    <text>
+}
+    </text>
+
+</template>

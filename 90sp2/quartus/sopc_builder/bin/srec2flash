@@ -1,0 +1,533 @@
+#!/bin/sh
+perl - $@ <<\ENDOFPERL
+#!perl
+
+
+
+# | srec2flash
+# |
+# | A utility for turning a Nios s-record binary into
+# | a self-copying image to run from flash
+# |
+# | ex:set tabstop=4:
+# | ex:set shiftwidth=4:
+# | ex:set expandtab:
+
+    use strict;
+	use format_conversion_utils;
+
+
+my $g_copier_size = 0x0100;     # bigger of the two copiers,
+                                # distance from flash-start to code
+
+
+
+sub oh_do_command($)
+    {
+    my ($cmd) = (@_);
+    fcu_print_command($cmd);
+    system($cmd);
+    }
+
+
+
+
+
+
+
+
+
+# +-------------------------------------------------------
+# | First, a template for the copy software we shall emit
+# | For first generation Nios
+# |
+
+my $copy_program = <<EOP;
+; file: <file_name>
+;
+; This is a copy routine to copy code
+; from flash to RAM, and then run it.
+;
+; CPU Architecture: <cpu_architecture>
+;
+; Flash source address: <flash_address>
+; RAM destination address: <ram_address>
+; Size to copy: <copy_size>
+
+	.include "nios.s"
+	.global _start
+
+	.equ	flash_address,<flash_address>
+	.equ	ram_address,<ram_address>
+	.equ	copy_size,<copy_size>
+
+	.org	0
+	MOVIA	%r0,(flash_address+0x10)/2
+	JMP	%r0
+	NOP
+
+	.org	0x0c
+	.byte   'N','i','o','s'
+
+	.org	0x10
+_start:
+
+.ifdef na_seven_seg_pio
+	MOVIP	%L0,na_seven_seg_pio
+	MOVIP	%L1,0xb7b7
+	ST	[%L0],%L1
+.endif
+
+        ; %L0 will be the source
+        ; %L1 will be the dest
+        ; %l2 will be the size
+
+        MOVIP   %L0,flash_address+$g_copier_size
+        MOVIP   %L1,ram_address
+        MOV     %L3,%L1
+        MOVIP   %L2,copy_size
+
+loop:
+        LD      %L5,[%L0]
+        EXT8d   %L5,%L0
+        FILL8   %r0,%L5
+        ST8d    [%L1],%r0
+        ADDI    %L0,1
+        SUBI    %L2,1
+        IFRnz   %L2
+         BR     loop
+        ADDI    %L1,1   ; (delay slot)
+
+.ifdef na_seven_seg_pio
+	MOVIP	%L0,na_seven_seg_pio
+	MOVIP	%L1,0xeded
+	ST	[%L0],%L1
+.endif
+
+        LSRI    %L3,1
+        JMP     %L3
+        NOP
+
+;end
+EOP
+
+
+
+
+
+# +-------------------------------------------------
+# | Copy program for Nios II:
+# |
+
+
+my $nios2_copy_program = <<EOP;
+# file: <file_name>
+#
+# This is a copy routine to copy code
+# from flash to RAM, and then run it.
+#
+# CPU Architecture: <cpu_architecture>
+#
+# Flash source address: <flash_address>
+# RAM destination address: <ram_address>
+# Size to copy: <copy_size>
+
+	.include "excalibur.s"
+	.global _start
+
+	.equ	flash_address,<flash_address>
+	.equ	ram_address,<ram_address>
+	.equ	copy_size,<copy_size>
+
+    .text
+_start:
+
+# |
+# | Note the signature that appears exactly
+# | four bytes into the code. It is intentionally
+# | different in the first two bytes from the
+# | first generation Nios signature.
+# |
+
+    BR      _past_nios2_signature
+    .byte   'N','2','o','s'
+_past_nios2_signature:
+
+# |
+# | include our boilerplate cache initialization code
+# |
+
+    .include "nios2_tiny_initcache.s"
+
+# |
+# | and get on with our copying
+# |
+
+        # r10 will be the source
+        # r11 will be the dest
+        # r12 will be the size
+        # r13 remembers the first address
+        # r15 is the byte-in-motion
+        # r20 is na_seven_seg_pio
+
+.ifdef na_seven_seg_pio
+        MOVIK32 r20,na_seven_seg_pio
+        MOVI    r2,0xfffff18f
+        STWIO   r2,0(r20)
+.endif
+
+
+        MOVIK32 r10,flash_address+$g_copier_size
+        MOVIK32 r11,ram_address
+        MOVIK32 r12,copy_size
+
+        MOV     r13,r11
+
+loop:
+        LDBUIO  r15,0(r10)      # read a byte
+        STBIO   r15,0(r11)      # write a byte
+
+        ADDI    r10,r10,1       # bump source
+        ADDI    r11,r11,1       # bump dest
+        SUBI    r12,r12,1       # decrement size
+
+        BNE     r0,r12,loop     # if not zero, do more
+
+.ifdef na_seven_seg_pio
+        MOVI32  r2,0xffffcef8
+        STWIO   r2,0(r20)
+.endif
+
+        JMP     r13             # and jump to the first address we loaded.
+
+#end
+EOP
+
+
+# +------------------------------------------------------
+
+
+
+
+
+
+
+
+# +-------------------------------
+# | substitute_text
+# | given a string and a hashref,
+# | swap in all keys from the hashref
+# | as "<key>" in the text. return the
+# | text string
+
+sub substitute_text
+	{
+	my ($s,$subref) = (@_);
+	my $key;
+
+	foreach $key (sort(keys(%$subref)))
+		{
+		if($$subref{$key} ne "")
+			{
+			$s =~ s/<$key>/$$subref{$key}/gs;
+			}
+		}
+	
+	return $s;
+	}
+
+
+
+
+
+
+# Emit the flash loader code, which goes at location
+# flash_address, after erasing the flash at that
+# location, of course.
+
+sub usage
+    {
+    print <<EOP;
+
+        nios2-srec2flash <filename>.srec [options...]
+
+    --flash_address=x     Where in flash to store the copier & program,
+                          (defaults to 0x140000)
+    --ram_address=x       Where in RAM to copy the program to, and execute
+                          (defaults to 0x40000)
+    --copy_size=x         How many bytes to copy from flash to RAM
+                          (defaults to 0x40000)
+    --sdk_directory=<dir> Specify an sdk directory
+
+"srec2flash"
+
+The Nios development board's Germs monitor looks
+for code in flash memory. The srec2flash utility
+takes code targeted for program memory and
+prepends a copying routine to copy itself from
+flash memory to program memory. It also prepends
+the necessary Germs monitor commands to write
+the file into flash.
+
+The output, <filename>.flash, can be burnt to
+flash by using nios-run:
+
+       [bash] nios-run -x <filename>.flash
+
+(Only works over serial; nios-run over jtag
+does not support this feature.)
+
+EOP
+    exit;
+
+    }
+
+# ----------------------------------
+# FlashAFile
+#
+# Convert one file to its .flash-like aspect
+#
+
+sub FlashAFile
+	{
+	my ($addies_ref,$sourceFile,$sdk_settings_ref,$sdkdir) = (@_);
+	my $flash_address = shift;
+	my $resultFile;
+
+    $$addies_ref{cpu_architecture} =
+            $$sdk_settings_ref{CPU_ARCHITECTURE};
+
+    my $is_nios2 = $$sdk_settings_ref{CPU_ARCHITECTURE} eq "nios2";
+
+    $sdkdir = "--sdk_directory=$sdkdir" if $sdkdir;
+
+    # |
+    # | use format_conversion_utils to determine the
+    # | extent of the S-Record file
+    # |
+    # | So we dont erase more flash than we need, nor copy more
+    # | RAM and startup time than we need
+    # |
+
+        {
+        my $f = fcu_read_file($sourceFile);
+        my $bytes_ref = fcu_text_to_hash($f,"srec");
+        my ($a_low,$a_high) = fcu_get_hash_range($bytes_ref);
+
+        $a_high += 1;  # fcu_get_hash_range returns a yucky inclusive range
+
+        $$addies_ref{copy_size} = $a_high - $a_low;
+
+        printf("%s spans from 0x%08x to 0x%08x (0x%08x bytes)\n",
+                $sourceFile,$a_low,$a_high,$a_high - $a_low);
+        }
+
+	my $copier_name = $sourceFile . ".copier.s";
+	my $copier_srec = $sourceFile . ".copier.srec";
+
+	my $copier_code = $is_nios2
+            ? $nios2_copy_program
+            : $copy_program;
+
+	$copier_code = substitute_text($copier_code,$addies_ref);
+
+	fcu_write_file($copier_name,$copier_code);
+
+    my $NIOS_BUILD = $is_nios2 ? "nios2-build" : "nios-build";
+
+    my $copier_entry = $is_nios2
+            ? "--start=$copier_name" : $copier_name;
+
+	print "Building $copier_srec\n";
+	oh_do_command("rm -f $copier_srec");
+	oh_do_command("$NIOS_BUILD $sdkdir -np -b $$addies_ref{flash_address} $copier_entry -o $copier_srec");
+
+	# Erase 64k at a time
+	my $germs_erase_command;
+	my $w = $$addies_ref{flash_address};
+	while($w < $$addies_ref{flash_address} + $$addies_ref{copy_size} + $g_copier_size)
+		{
+		$germs_erase_command .= sprintf("e%08x\n",$w);
+		$w += 0x10000;
+		}
+	chop($germs_erase_command); # kill last <CR>
+
+	my $germs_relocate_command = sprintf("r%08x-%08x",
+			$$addies_ref{ram_address},
+			$$addies_ref{flash_address} + $g_copier_size);
+
+
+	$resultFile = $sourceFile. ".flash";
+	if($resultFile =~ /^(.*).srec.flash$/)
+		{
+		$resultFile = $1. ".flash";
+		}
+
+    my $ranges_text;
+	$ranges_text .= sprintf "# flash address: 0x%08x\n",$$addies_ref{flash_address};
+	$ranges_text .= sprintf "#   ram address: 0x%08x\n",$$addies_ref{ram_address};
+	$ranges_text .= sprintf "#     copy size: 0x%08x",$$addies_ref{copy_size};
+
+    my $dt = fcu_date_time
+
+	open (SOURCEFILE,$sourceFile) or die "Couldn't read from $sourceFile";
+	open (RESULTFILE,">$resultFile") or die "Couldn't write to $resultFile";
+
+	print RESULTFILE <<EOP;
+# file: $resultFile
+#
+# This file generated by srec2flash, an SOPC
+# Builder utility. This file contains a short
+# program to run out of flash memory which
+# copies the main program down to RAM, and
+# executes it there.
+#
+# Original file: $sourceFile
+#   System name: $$sdk_settings_ref{NIOS_SYSTEM_NAME}
+#     Generated: $dt
+#
+$ranges_text
+#
+# Loader program
+r0
+#
+# Erase enough flash sectors
+#
+$germs_erase_command
+#
+EOP
+	# |
+	# | write out the copy-routine that we just compiled
+	# |
+
+	open (COPYFILE,$copier_srec) or die "Couldn't read from $copier_srec";
+	while(my $line = <COPYFILE>)
+		{
+		# don't print out the 'go' record
+		if(! ($line =~ /^S[789]/))
+			{
+			print RESULTFILE $line;
+			}
+		}
+	close COPYFILE;
+
+
+	print RESULTFILE <<EOP;
+#
+# Main program
+#
+$germs_relocate_command
+EOP
+
+	while(my $line = <SOURCEFILE>)
+		{
+		# don't print out the 'go' record
+		if(! ($line =~ /^S[789]/))
+			{
+			print RESULTFILE $line;
+			}
+		}
+	close SOURCEFILE;
+
+	# end relocation in monitor
+	
+	print RESULTFILE "r0\n";
+	print RESULTFILE "# End of file.\n";
+	close RESULTFILE;
+
+	print "Converted $sourceFile to $resultFile.\n";
+	return;
+	}
+
+
+sub maybe_settings
+    {
+    my ($variable_ref,$sdk_settings_ref,$sdk_setting_name) = (@_);
+
+    if($sdk_settings_ref >= 0)
+        {
+        if($$sdk_settings_ref{$sdk_setting_name} ne "")
+            {
+            $$variable_ref = $$sdk_settings_ref{$sdk_setting_name};
+            }
+        }
+    }
+
+        
+# -------------------------------------
+# main
+
+sub main
+	{
+	my %switches = fcu_parse_args(@_);
+	my $sourceFile;
+
+    my $sdkdir = fcu_get_switch(\%switches,"sdk_directory");
+
+    my $sdk_settings_ref = fcu_get_sdk_settings($sdkdir);
+
+    my $flash_offset = 0x040000;  # no way to change this...
+                                  # but, do note that the --flash_address= option sets the base+offset
+
+	my $flash_base    = 0x100000;  # default value, if no cmd line or sdk settings
+	my $ram_address   = 0x040000;
+    my $ram_end       = 0x080000;
+
+    maybe_settings(\$flash_base,$sdk_settings_ref,"NASYS_MAIN_FLASH");
+    maybe_settings(\$ram_address,$sdk_settings_ref,"NASYS_PROGRAM_MEM");
+    maybe_settings(\$ram_end,$sdk_settings_ref,"NASYS_PROGRAM_MEM_END");
+
+	my $copy_size     = $ram_end - $ram_address;
+    my $flash_address = $flash_base + $flash_offset;
+
+	$flash_address = fcu_get_switch(\%switches,"flash_address",$flash_address,1);
+	$ram_address = fcu_get_switch(\%switches,"ram_address",$ram_address,1);
+	$copy_size = fcu_get_switch(\%switches,"copy_size",$copy_size,1);
+
+	my $addies_ref = {
+			flash_address => $flash_address,
+			ram_address => $ram_address,
+			copy_size => $copy_size,
+			};
+
+	
+	print "\n";
+	print "\n";
+	printf "flash address: 0x%08x\n",$flash_address;
+	printf "  ram address: 0x%08x\n",$ram_address;
+	printf "max copy size: 0x%08x\n",$copy_size;
+	print "\n";
+	print "\n";
+
+	my $i;
+
+	if( (fcu_get_switch(\%switches,"_argc") == 0)
+            or fcu_get_switch(\%switches,"h")
+            or fcu_get_switch(\%switches,"help") )
+		{
+		usage();
+		exit(0);
+		}
+
+    if($sdk_settings_ref < 0)
+        {
+        print "\n\n";
+        print "This tool must be run from within an SDK directory,\n";
+        print "or using the --sdk_directory=<dir> switch.\n";
+        print "\n\n";
+        exit 0;
+        }
+
+	for($i = 0; $i < $switches{_argc}; $i++)
+		{
+print "file $i: $switches{$i}\n";
+		FlashAFile($addies_ref,$switches{$i},$sdk_settings_ref,$sdkdir);
+		}
+
+	print "\n";
+	}
+
+
+main(@ARGV);
+
+#end of file

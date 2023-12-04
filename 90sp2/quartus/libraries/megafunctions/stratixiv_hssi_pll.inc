@@ -1,0 +1,78 @@
+------------------------------------------------------------------
+-- stratixiv_hssi_pll parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+
+FUNCTION stratixiv_hssi_pll(
+	areset,
+	datain,
+	dpriodisable,
+	dprioin[299..0],
+	earlyeios,
+	extra10gin[5..0],
+	inclk[9..0],
+	locktorefclk,
+	pfdfbclk,
+	powerdown,
+	rateswitch
+)
+WITH(
+	auto_settings,
+	bandwidth_type,
+	base_data_rate,
+	channel_num,
+	charge_pump_current_bits,
+	charge_pump_mode_bits,
+	charge_pump_test_enable,
+	dprio_config_mode,
+	effective_data_rate,
+	inclk0_input_period,
+	inclk1_input_period,
+	inclk2_input_period,
+	inclk3_input_period,
+	inclk4_input_period,
+	inclk5_input_period,
+	inclk6_input_period,
+	inclk7_input_period,
+	inclk8_input_period,
+	inclk9_input_period,
+	input_clock_frequency,
+	logical_channel_address,
+	logical_tx_pll_number,
+	loop_filter_c_bits,
+	loop_filter_r_bits,
+	lpm_type,
+	m,
+	n,
+	pd_charge_pump_current_bits,
+	pd_loop_filter_r_bits,
+	pfd_clk_select,
+	pfd_fb_select,
+	pll_type,
+	protocol_hint,
+	refclk_divide_by,
+	refclk_multiply_by,
+	sim_is_negative_ppm_drift,
+	sim_net_ppm_variation,
+	test_charge_pump_current_down,
+	test_charge_pump_current_up,
+	use_refclk_pin,
+	vco_data_rate,
+	vco_divide_by,
+	vco_multiply_by,
+	vco_post_scale,
+	vco_range,
+	vco_tuning_bits,
+	volt_reg_control_bits,
+	volt_reg_output_bits
+)
+RETURNS(
+	clk[3..0],
+	dataout[1..0],
+	dprioout[299..0],
+	freqlocked,
+	locked,
+	pfdfbclkout,
+	pfdrefclkout,
+	vcobypassout
+);

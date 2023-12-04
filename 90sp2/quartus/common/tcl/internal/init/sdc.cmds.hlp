@@ -1,0 +1,2445 @@
+<<<<versions>>>>
+1.5
+<<<</versions>>>>
+<<<<1.5>>>>
+<create_clock>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: create_clock [-h | -help] [-long_help] [-add] [-name <clock_name>] -period <value> [-waveform <edge_list>] [<targets>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -add: Adds clock to a node with an existing clock
+        -name <clock_name>: Clock name of the created clock
+        -period <value>: Speed of the clock in terms of clock period
+        -waveform <edge_list>: List of edge values
+        <targets>: List or collection of targets
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc 1.5
+
+------------
+Description:
+------------
+
+Defines a clock. If the -name option is not used, the clock name is
+the same as the first target in the list or collection. The clock name
+is used to refer to the clock in other commands.
+
+The -period option specifies the clock period. It is also possible to
+use this option to specify a frequency to define the clock period.
+This can be done by using -period option followed by either
+<frequency>MHz or "<frequency> MHz". However, this is a TimeQuest-only
+extension and makes the SDC syntax non-standard.
+
+The -waveform option specifies the rising and falling edges (duty
+cycle) of the clock, and is specified as a list of two time values:
+the first rising edge and the next falling edge. The rising edge must
+be within the range [0, period]. The falling edge must be within one
+clock period of the rising edge. The waveform defaults to (0,
+period/2).
+
+If a clock with the same name is already assigned to a given target,
+the create_clock command will overwrite the existing clock.  If a clock
+with a different name exists on the given target, the create_clock
+command will be ignored unless the -add option is used.  The -add 
+option can be used to assign multiple clocks to a pin or port.
+
+If the target of the clock is internal (i.e. not an input port), the
+source latency is zero by default.
+
+If a clock is on a path after another clock, then it blocks or
+overwrites the previous clock from that point forward.
+
+The value of the targets is either a collection or a Tcl list of
+wildcards used to create a collection of the appropriate type.  The
+values used must follow standard Tcl or TimeQuest-extension
+substitution rules.  See the help for use_timequest_style_escaping for
+details.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Create a simple 10ns with clock with a 60% duty cycle
+create_clock -period 10 -waveform {0 6} -name clk [get_ports clk]
+
+# Create a clock with a falling edge at 2ns, rising edge at 8ns,
+# falling at 12ns, etc.
+create_clock -period 10 -waveform {8 12} -name clk [get_ports clk]
+
+# Assign two clocks to an input port that are switched externally
+create_clock -period 10 -name clk100Mhz [get_ports clk]
+create_clock -period 6.667 -name clk150Mhz -add [get_ports clk]
+
+# Two ways to use MHz to define clock period (TimeQuest only)
+create_clock -period 250MHz -name clk250MHz [get_ports clk]
+create_clock -period "250 MHz" -name clk250MHz [get_ports clk]
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</create_clock>
+
+<create_generated_clock>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: create_generated_clock [-h | -help] [-long_help] [-add] [-divide_by <factor>] [-duty_cycle <percent>] [-edge_shift <shift_list>] [-edges <edge_list>] [-invert] [-master_clock <clock>] [-multiply_by <factor>] [-name <clock_name>] [-offset <time>] [-phase <degrees>] -source <clock_source> [<targets>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -add: Add clock to existing clock node
+        -divide_by <factor>: Division factor
+        -duty_cycle <percent>: Specifies the duty cycle as a percentage of the clock period--accepts floating point values
+        -edge_shift <shift_list>: List of edge shifts
+        -edges <edge_list>: List of edge values
+        -invert: Invert the clock waveform
+        -master_clock <clock>: Specifies clock of the source node
+        -multiply_by <factor>: Multiplication factor
+        -name <clock_name>: Name of generated clock
+        -offset <time>: Specifies the offset as an absolute time shift
+        -phase <degrees>: Specifies the phase shift in degrees
+        -source <clock_source>: Source node for the generated clock
+        <targets>: List or collection of targets
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc 1.5
+
+------------
+Description:
+------------
+
+Defines an internally generated clock. If -name is not specified, 
+the clock name is the same as the first target in the list or
+collection. The clock name is used to refer to the clock in other
+commands.
+
+If a clock with the same name is already assigned to a given target,
+the create_generated_clock command will overwrite the existing clock.  
+If a clock with a different name exists on the given target, the 
+create_generated_clock	command will be ignored unless the -add 
+option is used.  The -add option can be used to assign multiple clocks 
+to a pin or port, and is recommended be used with -master_clock 
+option.
+
+The source of the generated clock, specified by -source, is a port,
+pin, register, or net in the design. All waveform modifications are
+relative to this point. If more than one clock feeds the source node,
+the -master_clock option must be used to specify which clock to modify.
+
+The source latency of the generated clock is based on the clock
+network of the generated clock, and not the clock network of the node
+specified using -source. This latency is added to any source latency
+of the master clock.
+
+The -divide_by, -multiply_by, -invert, -duty_cycle, -edges, and
+-edge_shift options modify the waveform relative to the waveform at
+the source node.
+
+Clock division and multiplication, using -divide_by and -multiply_by,
+is performed relative to the first rising edge. Clock division is
+based on edges in the master clock waveform, and scaled if the
+division is an odd number. Use the -duty_cycle option to specify the
+new duty cycle for clock multiplication. Use the -phase option to
+specify any phase shift relative to the new clock period. Use the
+-offset option to specify an arbitrary offset or time shift. Use the
+-invert option to invert the waveform.
+
+Clock generation can also be specified with the -edges and -edge_shift
+options. The -edges option accepts a list of three numbers specifying
+the master clock edges to use for the first rising edge, the next
+falling edge, and next rising edge. Edges of the master clock are
+labeled according to the first rising edge (1), next falling edge (2),
+next rising edge (3), etc. For example, a basic clock divider can be
+specified equivalently with -divide_by 2 or -edges {1 3 5}. The
+-edge_shift option accepts a list of three time values, the amount to
+shift each of the three edges.
+
+The value of the targets is either a collection or a Tcl list of
+wildcards used to create a collection of the appropriate type. The
+values used must follow standard Tcl or TimeQuest-extension
+substitution rules.  See the help for use_timequest_style_escaping for
+details.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Create a clock and a divide-by-2 generated clock
+create_clock -period 10 [get_ports clk]
+create_generated_clock -divide_by 2 -source [get_ports clk] -name clkdiv [get_registers clkdiv]
+
+# An equivalent generated clock
+create_generated_clock -edges {1 3 5} -source [get_ports clk] -name clkdiv [get_registers clkdiv]
+
+# Specify a clock multipler with a 60% duty cycle
+create_generated_clock -multiply_by 2 -duty_cycle 60 [get_pins clkmult|combout]
+
+# Specify an inverted divide-by-2 clock relative to the output of the source clock
+create_generated_clock -divide_by 2 -invert -source [get_ports clk] -name nclkdiv [get_registers clkdiv]
+
+# Specify a divide-by-2 clock with a 90-degree phase shift
+create_generated_clock -divide_by 2 -phase 90 -source [get_ports clk] -name clkdiv [get_registers clkdiv]
+
+# Assign two clocks to an input port that are switched externally,
+# along with an internal clock divider.
+create_clock -period 10 -name clk100Mhz [get_ports clk]
+create_clock -period 6.667 -name clk150Mhz -add [get_ports clk]
+create_generated_clock -divide_by 2 -name clk50Mhz -source [get_ports clk] -master_clock clk100Mhz -add [get_registers clkdiv]
+create_generated_clock -divide_by 2 -name clk75Mhz -source [get_ports clk] -master_clock clk150Mhz -add [get_registers clkdiv]
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</create_generated_clock>
+
+<set_clock_groups>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: set_clock_groups [-h | -help] [-long_help] [-asynchronous] [-exclusive] -group <names>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -asynchronous: Specify mutually exclusive clocks (same as the -exclusive option).  Exists for compatibility. 
+        -exclusive: Specify mutually exclusive clocks
+        -group <names>: Valid destinations (string patterns are matched using Tcl string matching)
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc 1.5
+
+------------
+Description:
+------------
+
+Clock groups provide a quick and convenient way to specify which
+clocks are not related.  Asynchronous clocks are those that are
+completely unrelated (e.g., have different ideal clock sources).
+Exclusive clocks are those that are not active at the same time (e.g.,
+multiplexed clocks). TimeQuest treats both options, "-exclusive" and
+"-asynchronous", as if they were the same.
+
+The result of set_clock_groups is that all clocks in any group are cut
+from all clocks in every other group.  This command is equivalent to
+calling set_false_path from each clock in every group to each clock in
+every other group and vice versa, making set_clock_groups easier to
+specify for cutting clock domains. The use of a single -group option
+tells TimeQuest to cut this group of clocks from all other clocks in
+the design, including clocks that are created in the future.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open top
+create_timing_netlist
+create_clock -period 10.000 -name clkA [get_ports sysclk[0]]
+create_clock -period 10.000 -name clkB [get_ports sysclk[1]]
+
+# Set clkA and clkB to be mutually exclusive clocks.
+set_clock_groups -exclusive -group {clkA} -group {clkB}
+
+# The previous line is equivalent to the following two commands.
+set_false_path -from [get_clocks clkA] -to [get_clocks clkB]
+set_false_path -from [get_clocks clkB] -to [get_clocks clkA]
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</set_clock_groups>
+
+<remove_clock_groups>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: remove_clock_groups [-h | -help] [-long_help] -all
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -all: Specify remove all clock group settings
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc 1.5
+
+------------
+Description:
+------------
+
+Remove all clock group assignments. This command removes
+any clock groups that have been previously set. There is no
+way to remove specific groups.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open top
+create_timing_netlist
+create_clock -period 10.000 -name clkA [get_ports sysclk[0]]
+create_clock -period 10.000 -name clkB [get_ports sysclk[1]]
+
+# Set clkA and clkB to be mutually exclusive clocks.
+set_clock_groups -exclusive -group {clkA} -group {clkB}
+set_clock_groups -exclusive -group {clkC} -group {clkD}
+
+# Remove clock groups A, B, C, and D. Result is that there
+# are no longer any mutually exclusive clocks.
+remove_clock_groups -all
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</remove_clock_groups>
+
+<set_clock_latency>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: set_clock_latency [-h | -help] [-long_help] [-clock <clock_list>] [-early] [-fall] [-late] [-rise] -source <delay> <targets>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -clock <clock_list>: Valid clock destinations (string patterns are matched using Tcl string matching)
+        -early: Specifies the early clock latency
+        -fall: Specifies the falling transition clock latency
+        -late: Specifies the late clock latency
+        -rise: Specifies the rising transition clock latency
+        -source: Specifies the source clock latency
+        <delay>: Latency delay value
+        <targets>: Valid destinations (string patterns are matched using Tcl string matching)
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc 1.5
+
+------------
+Description:
+------------
+
+Specifies clock latency for a given clock or clock target.
+
+There are two types of latency: network and source. Network latency is
+the clock network delay between the clock and register clock pins.
+Source latency is the clock network delay between the clock and its
+source (e.g., the system clock or base clock of a generated clock).
+
+The TimeQuest Timing Analyzer automatically computes network latencies
+for all register and generated clocks. Overriding clock network
+latencies is not supported by the TimeQuest analyzer. Therefore, the
+-source option must always be specified.
+
+You can apply clock latency to a clock, which affects all targets of
+the clock, or to a specific clock target. If you specify a specific
+clock target that is driven by more than one clock, use the -clock
+option to specify which clock to use. Latencies assigned to a clock
+target override any latencies assigned to a clock.
+
+Different clock latencies can be specified for early (-early) and late
+(-late) latencies, as well as for rising edges (-rise) and falling
+edges (-fall).  If only some combinations are specified, the other
+combinations are used by default.  For example, if only a -rise -early
+latency and a -fall -early latency are specified, then the -rise -late
+latency is assumed to be the same as the -rise -early latency and the
+-fall -late latency is assumed to be the same as the -fall -early
+latency.  If neither -rise nor -fall are used or neither -early nor
+-fall are used, then the latency applies to both conditions.
+
+Source latency can also be assigned to generated clocks. This may be
+useful for specifying board level delays from a clock output port to a
+clock input port when the clock input port is acting as a feedback
+clock.
+
+The value of the targets is either a collection or a Tcl list of
+wildcards used to create a collection of the appropriate type.  The
+values used must follow standard Tcl or TimeQuest-extension
+substitution rules. See help for the use_timequest_style_escaping
+command for details.  
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+create_clock -name SYSCLK -period 10.000 [get_ports inclk]
+create_generated_clock -name OUTCLK -divide_by 1 -source [get_ports inclk] [get_ports outclk]
+create_generated_clock -name FDBKCLK -divide_by 1 -source [get_ports outclk] [get_ports fdbkclk]
+
+# Apply a simple 2.000 ns source latency to the system clock.
+set_clock_latency -source 2.000 [get_clocks SYSCLK]
+
+# Specify feedback clock latencies between output port outclk
+# and the output port fdbkclk.
+set_clock_latency -source -late -rise 0.800 [get_clocks FDBKCLK]
+set_clock_latency -source -late -fall 0.750 [get_clocks FDBKCLK]
+set_clock_latency -source -early -rise 0.500 [get_clocks FDBKCLK]
+set_clock_latency -source -early -fall 0.460 [get_clocks FDBKCLK]
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</set_clock_latency>
+
+<remove_clock_latency>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: remove_clock_latency [-h | -help] [-long_help] -source <targets>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -source: Specifies the source clock latency
+        <targets>: Valid destinations (string patterns are matched using Tcl string matching)
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc 1.5
+
+------------
+Description:
+------------
+
+Removes clock latency for a given clock or clock target.
+
+There are two types of latency: network and source.  Network latency
+is the clock network delay between the clock and register clock pins.
+Source latency is the clock network delay between the clock and its
+source (e.g., a system clock or a base clock of a generated clock).
+
+The TimeQuest Timing Analyzer automatically computes network latencies
+for all register and generated clocks. Overriding clock network
+latencies is not supported by the TimeQuest analyzer. Therefore, the
+-source option must always be specified. Remove_clock_latency requires
+this option as well.
+
+You can apply clock latency to a clock, which affects all targets of
+the clock, or to a specific clock target. Therefore, you can remove
+clock latency from a collection of clocks, or from a collection of
+target nodes. remove_clock_latency removes all latencies from a clock
+or node, so removing a node's clock latency with respect to a
+particular clock, or removing only latencies with particular
+conditions is not supported.
+
+The value of the targets is either a collection or a Tcl list of
+wildcards used to create a collection of the appropriate type.  The
+values used must follow standard Tcl or TimeQuest-extension
+substitution rules.  See the help for use_timequest_style_escaping for
+details.  
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+create_clock -name SYSCLK -period 10.000 [get_ports inclk]
+create_generated_clock -name OUTCLK -divide_by 1 -source [get_ports inclk] [get_ports outclk]
+create_generated_clock -name FDBKCLK -divide_by 1 -source [get_ports outclk] [get_ports fdbkclk]
+
+# Apply a simple 2.000 ns source latency to the system clock.
+set_clock_latency -source 2.000 [get_clocks SYSCLK]
+
+# Specify feedback clock latencies between output port outclk
+# and the output port fdbkclk.
+set_clock_latency -source -late -rise 0.800 [get_clocks FDBKCLK]
+set_clock_latency -source -late -fall 0.750 [get_clocks FDBKCLK]
+set_clock_latency -source -early -rise 0.500 [get_clocks FDBKCLK]
+set_clock_latency -source -early -fall 0.460 [get_clocks FDBKCLK]
+
+# Remove all clock latency from FDBKCLK
+remove_clock_latency -source [get_clocks FDBKCLK]
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</remove_clock_latency>
+
+<set_clock_uncertainty>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: set_clock_uncertainty [-h | -help] [-long_help] [-add] [-fall_from <fall_from_clock>] [-fall_to <fall_to_clock>] [-from <from_clock>] [-hold] [-rise_from <rise_from_clock>] [-rise_to <rise_to_clock>] [-setup] [-to <to_clock>] <uncertainty>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -add: Specifies that this assignment is an addition to the clock uncertainty derived by derive_clock_uncertainty call
+        -fall_from <fall_from_clock>: Valid destinations (string patterns are matched using Tcl string matching)
+        -fall_to <fall_to_clock>: Valid destinations (string patterns are matched using Tcl string matching)
+        -from <from_clock>: Valid destinations (string patterns are matched using Tcl string matching)
+        -hold: Specifies the uncertainty value (applies to clock hold or removal checks)
+        -rise_from <rise_from_clock>: Valid destinations (string patterns are matched using Tcl string matching)
+        -rise_to <rise_to_clock>: Valid destinations (string patterns are matched using Tcl string matching)
+        -setup: Specifies the uncertainty value (applies to clock setup or recovery checks) (default)
+        -to <to_clock>: Valid destinations (string patterns are matched using Tcl string matching)
+        <uncertainty>: Uncertainty
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc 1.5
+
+------------
+Description:
+------------
+
+Specifies clock uncertainty or skew for clocks or clock-to-clock
+transfers. You can specify uncertainty separately for setup and hold,
+and can specify separate rising and falling clock transitions.  The
+setup uncertainty is subtracted from the data required time for each
+applicable path, and the hold uncertainty is added to the data
+required time for each applicable path.
+
+The values for the -from, -to, and similar options are either
+collections or a Tcl list of wildcards used to create collections of
+appropriate types. The values used must follow standard Tcl or
+TimeQuest-extension substitution rules.  See the help for
+use_timequest_style_escaping for details.
+
+When -add option is used, clock uncertainty assignment is treated
+as an addition to the value calculted by derive_clock_uncertainty 
+command for a particular clock transfer. Note that when -add 
+option is not used and derive_clock_uncertainty is called, user 
+specified clock uncertainty assignment will take priority. When
+derive_clock_uncertainty command is not used, specifying -add 
+option to set_clock_uncertainty command will not have any effect.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+set_clock_uncertainty -setup -rise_from clk1 -fall_to clk2 200ps
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</set_clock_uncertainty>
+
+<remove_clock_uncertainty>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: remove_clock_uncertainty [-h | -help] [-long_help] -from <from_clock> -to <to_clock>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -from <from_clock>: Valid destinations (string patterns are matched using Tcl string matching)
+        -to <to_clock>: Valid destinations (string patterns are matched using Tcl string matching)
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc 1.5
+
+------------
+Description:
+------------
+
+Removes clock uncertainty from a collection of clocks to a collection
+of clocks. The source and destination clocks can be any arbitrary
+collection of clocks. This command removes all uncertainty between two
+clocks. If there does not exist uncertainty between two clocks
+specified in remove_clock_uncertainty, the command does nothing for
+those two clocks but continues to attempt to remove uncertainty
+between other clocks specified.
+
+The values of the -from and -to options are either collections or a
+Tcl list of wildcards used to create collections of appropriate types.
+The values used must follow standard Tcl or TimeQuest-extension
+substitution rules.  See the help for use_timequest_style_escaping for
+details.  
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+set_clock_uncertainty -setup -rise_from {clk1 clk2} -fall_to {clk3 clk4} 200ps
+set_clock_uncertainty -from {clk5 clk6} -to {clk7 clk8} 300ps
+remove_clock_uncertainty -from {clk3 clk5} -to {clk4 clk7}
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</remove_clock_uncertainty>
+
+<all_clocks>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: all_clocks [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc 1.5
+
+------------
+Description:
+------------
+
+Returns a collection of all clocks in the design.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open chiptrip
+create_timing_netlist
+foreach_in_collection clk [all_clocks] {
+	puts [get_clock_info -name $clk]
+}
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</all_clocks>
+
+<all_inputs>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: all_inputs [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc 1.5
+
+------------
+Description:
+------------
+
+Returns a collection of all input ports in the design.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open chiptrip
+create_timing_netlist
+foreach_in_collection in [all_inputs] {
+    puts [get_port_info -name $in]
+}
+set_input_delay -clock clock1 2.0 [all_inputs]
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</all_inputs>
+
+<all_outputs>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: all_outputs [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc 1.5
+
+------------
+Description:
+------------
+
+Returns a collection of all output ports in the design.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open chiptrip
+create_timing_netlist
+foreach_in_collection out [all_outputs] {
+    puts [get_port_info -name $out]
+}
+set_output_delay -clock clock1 2.0 [all_outputs]
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</all_outputs>
+
+<all_registers>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: all_registers [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc 1.5
+
+------------
+Description:
+------------
+
+Returns a collection of all regisers in the design.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open chiptrip
+create_timing_netlist
+foreach_in_collection reg [all_registers] {
+    puts [get_register_info -name $reg]
+}
+report_timig -from [all_regisers] -to [all_registers]
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</all_registers>
+
+<get_clocks>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_clocks [-h | -help] [-long_help] [-nocase] [-nowarn] [<filter>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -nocase: Specifies the matching of node names to be case-insensitive
+        -nowarn: Do not issue warnings messages about unmatched patterns
+        <filter>: Valid destinations (string patterns are matched using Tcl string matching)
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc 1.5
+
+------------
+Description:
+------------
+
+Returns a collection of clocks in the design. When used as an argument
+to another command, such as the -from or -to options of
+set_multicycle_path, each node in the clock represents all nodes
+driven by the clocks in the collection.
+
+# The following multicycle constraint applies to all paths ending at registers
+# driven by clk
+set_multicycle_path -to [get_clocks clk] 2
+
+The filter for the collection is a Tcl list of wildcards, and must
+follow standard Tcl or TimeQuest-extension substitution rules.  See
+the help for use_timequest_style_escaping for details.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open chiptrip
+create_timing_netlist
+read_sdc
+update_timing_netlist
+set clocks [get_clocks c* -nocase]
+foreach_in_collection clk $clocks {
+    set name [get_clock_info -name $clk]
+    set period [get_clock_info -period $clk]
+    puts "$name: $period"
+}
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_clocks>
+
+<get_ports>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_ports [-h | -help] [-long_help] [-nocase] [-nowarn] [<filter>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -nocase: Specifies case-insensitive node name matching
+        -nowarn: Do not issue warnings messages about unmatched patterns
+        <filter>: Valid destinations (string patterns are matched using Tcl string matching)
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc 1.5
+
+------------
+Description:
+------------
+
+Returns a collection of ports (design inputs and outputs) in the
+design.
+
+The filter for the collection is a Tcl list of wildcards, and must
+follow standard Tcl or TimeQuest-extension substitution rules. See
+help for the use_timequest_style_escaping command for details.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open chiptrip
+create_timing_netlist
+
+# Get all ports starting with "In".
+set ports [get_ports In*]
+foreach_in_collection port $ports {
+    puts [get_port_info -name $port]
+}
+
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_ports>
+
+<get_pins>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_pins [-h | -help] [-long_help] [-compatibility_mode] [-hierarchical] [-no_duplicates] [-nocase] [-nowarn] [<filter>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -compatibility_mode: Use simple Tcl matching (Classic Timing Analyzer style)
+        -hierarchical: Specifies use of a hierarchical searching method
+        -no_duplicates: Do not match duplicated pin names
+        -nocase: Specifies case-insensitive node name matching
+        -nowarn: Do not issue warnings messages about unmatched patterns
+        <filter>: Valid destinations (string patterns are matched using Tcl string matching)
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc 1.5
+
+------------
+Description:
+------------
+
+Returns a collection of pins in the design. All pin names in the
+collection match the specified pattern. Wildcards can be used to
+select multiple pins at once.
+ 
+There are three Tcl string matching schemes available with this
+command: the default method, the -hierarchical option, and the
+-compatibility_mode option.
+
+By default, pipe characters are used to separate one hierarchy level
+from the next. They are treated as special characters and are taken
+into account when string matching with wildcards is performed. When
+the default matching scheme is enabled, the specified pattern is
+matched against absolute pin names: the names that include the entire
+hierarchical path. All hierarchy levels in the pattern are matched
+level by level. Pin names of the form <absolute full cell name>|<pin
+suffix> are used for matching. Note that a full cell name can contain
+multiple pipe characters in it to reflect the hierarchy. Any included
+wildcards refer to only one hierarchical level. For example, "*|*" and
+"*|*|*" produce different collections since they refer to the highest
+hierarchical level and second highest hierarchical level respectively.
+
+When uisng the -hierarchical matching scheme, pipe characters are
+treated as special characters and are taken into account when string
+matching with wildcards is performed. This matching scheme forces the
+search to proceed recursively through the hierarchy. The specified
+pattern is matched against the relative pin names: the immediate names
+that do not include any of the hierarchy information.  Pin names of
+the form <relative short cell name>|<pin suffix> are used for
+matching. Note that a short cell name cannot contain pipe
+characters. Any included wildcards are expanded to match the relative
+pin names.  For example, "*" and "*|*" match exactly the same pins
+since the former is expanded into the latter.
+
+The -compatibility_mode matching scheme mimics the string matching
+behavior of the Classic timing analyzer for full, absolute pin
+names. Pipe characters are not treated as special characters when used
+with wildcards.
+
+The default matching scheme returns not only pins whose names match
+the specified filter, but also pins duplicated from these pins (refers
+to pins are automatically generated by Quartus from the pins).  Use
+-no_duplicates option to not include duplicated pins.
+
+The filter for the collection is a Tcl list of wildcards, and must
+follow standard Tcl or TimeQuest-extension substitution rules. See 
+help for the use_timequest_style_escaping command for details.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Get regout pin of "reg" cell
+get_pins -nocase reg|regout
+# Create a collection of all pins of "reg" cell
+get_pins reg|*
+# Create a collection of all pins on the highest hierarachical level
+set mycollection [get_pins *]
+# Output pin names.
+foreach_in_collection pin $mycollection {
+    puts [get_pin_info -name $pin]
+}
+# Create a collection of all pins in the design
+set fullcollection [get_pins -hierarchical *]
+# Output pin IDs and names.
+foreach_in_collection pin $fullcollection {
+    puts -nonewline $pin
+    puts -nonewline ": "
+    puts [get_pin_info -name $pin]
+}
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_pins>
+
+<get_cells>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_cells [-h | -help] [-long_help] [-compatibility_mode] [-hierarchical] [-no_duplicates] [-nocase] [-nowarn] [<filter>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -compatibility_mode: Use simple Tcl matching (Classic Timing Analyzer style)
+        -hierarchical: Specifies use of a hierarchical searching method
+        -no_duplicates: Do not match duplicated cell names
+        -nocase: Specifies case insensitive node name matching
+        -nowarn: Do not issue warnings messages about unmatched patterns
+        <filter>: Valid destinations (string patterns are matched using Tcl string matching)
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc 1.5
+
+------------
+Description:
+------------
+
+Returns a collection of cells in the design. All cell names in the
+collection match the specified pattern. Wildcards can be used to
+select multiple cells at once.
+
+There are three Tcl string matching schemes available with this
+command: the default method, the -hierarchical option, and the
+-compatibility_mode option.
+
+When you use the default matching scheme, use pipe characters to
+separate one hierarchy level from the next. They are treated as
+special characters and are taken into account when string matching
+with wildcards is performed. When this matching scheme is enabled, the
+specified pattern is matched against absolute cell names: the names
+that include the entire hierarchical path. A full cell name can
+contain multiple pipe characters in it to reflect the hierarchy. All
+hierarchy levels in the pattern are matched level by level. Any
+included wildcards refer to only one hierarchical level. For example,
+"*" and "*|*" produce different collections since they refer to the
+highest hierarchical level and second highest hierarchical level
+respectively.
+
+When using the -hierarchical matching scheme, pipe characters are
+treated as special characters and are taken into account when string
+matching with wildcards is performed. This matching scheme forces the
+search to proceed recursively down the hierarchy. The specified
+pattern is matched against the relative cell names: the immediate
+names that do not include any of the hierarchy information. Note that
+a short cell name cannot contain pipe characters in it. Any included
+wildcards are expanded to match the relative pin names.
+ 
+The -compatibility_mode matching scheme mimics the string matching
+behavior of the Classic Timing Analyzer. The simple Tcl string
+matching on full, absolute cell names is used. Pipe characters are not
+treated as special characters when used with wildcards.
+
+The default matching scheme returns cells whose names match the
+specified filter and also cells automatically generated by the Quartus
+II software from these cells). Use -no_duplicates option to not
+include duplicated cells.
+
+The filter for the collection is a Tcl list of wildcards, and must
+follow standard Tcl or TimeQuest-extension substitution rules. See 
+help for the use_timequest_style_escaping command for details.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Find a cell called "reg" using case insensitive search
+get_cells -nocase reg
+# Create a collection of all cells whose names start with "reg"
+get_cells reg*
+# Create a collection of all cells on the highest hierarachical level
+set mycollection [get_cells *]
+# Create a collection of all cells in the design
+# Output cell names.
+foreach_in_collection cell $mycollection {
+    puts [get_cell_info -name $cell]
+}
+set fullcollection [get_cells -hierarchical *]
+# Output cell IDs and names.
+foreach_in_collection cell $fullcollection {
+    puts -nonewline $cell
+    puts -nonewline ": "
+    puts [get_cell_info -name $cell]
+}
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_cells>
+
+<get_nets>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_nets [-h | -help] [-long_help] [-no_duplicates] [-nocase] [-nowarn] [<filter>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -no_duplicates: Do not match duplicated net names
+        -nocase: Specifies case-insensitive node name matching
+        -nowarn: Do not issue warnings messages about unmatched patterns
+        <filter>: Valid destinations (string patterns are matched using Tcl string matching)
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc 1.5
+
+------------
+Description:
+------------
+
+		Returns a collection of nets in the design. All net names in the
+		collection match the specified pattern. Wildcards can be used to
+		select multiple nets at once.
+
+		The default matching scheme returns nets whose names match the
+		specified filter and nets that are automatically generated by the
+		Quartus II software from these nets. Use the -no_duplicates option to
+		exclude duplicated nets.
+
+		The filter for the collection is a Tcl list of wildcards, and must
+		follow standard Tcl or TimeQuest-extension substitution rules.  See
+		help for the use_timequest_style_escaping command for details.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Find a net called "reg" using case insensitive search
+get_nets -nocase reg
+# Create a collection of all nets whose names start with "reg"
+get_nets reg*
+# Create a collection of all nets in the design
+set mycollection [get_nets *]
+# Output net names.
+foreach_in_collection net $mycollection {
+    puts [get_net_info -name $net]
+}
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_nets>
+
+<reset_design>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: reset_design [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc 1.5
+
+------------
+Description:
+------------
+
+Removes all assignments from the design. This includes clocks,
+generated clocks, derived clocks, input delays, output delays, clock
+latency, clock uncertainty, clock groups, false paths, multicycle
+paths, min delays, and max delays. After reset_design is called, the
+design should be in the same state as it would be if
+create_timing_netlist was just called.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Constrain design
+create_clock -name clk -period 4.000 -waveform { 0.000 2.000 } [get_ports clk]
+set_input_delay -clock clk2 1.5 [get_ports in*]
+set_output_delay -clock clk 1.6 [get_ports out*]
+set_false_path -from [get_keepers in] -through [get_nets r1] -to [get_keepers out]
+
+# Reset the design to the state that it was in before any constraints were entered
+reset_design
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</reset_design>
+
+<set_input_delay>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: set_input_delay [-h | -help] [-long_help] [-add_delay] -clock <name> [-clock_fall] [-fall] [-max] [-min] [-reference_pin <name>] [-rise] [-source_latency_included] <delay> <targets>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -add_delay: Add to existing delays instead of overriding them
+        -clock <name>: Clock name
+        -clock_fall: Specifies that input delay is relative to the falling edge of the clock
+        -fall: Specifies the falling input delay at the port
+        -max: Applies value as maximum data arrival time
+        -min: Applies value as minimum data arrival time
+        -reference_pin <name>: Specifies a port in the design to which the input delay is relative
+        -rise: Specifies the rising input delay at the port
+        -source_latency_included: Specifies that input delay includes added source latency
+        <delay>: Time value
+        <targets>: List of input port type objects
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc 1.5
+
+------------
+Description:
+------------
+
+Specifies the data arrival times at the specified input ports relative
+the clock specified by the -clock option. The clock must refer to a
+clock name in the design.
+
+Input delays can be specified relative to the rising edge (default) or
+falling edge (-clock_fall) of the clock.
+
+If the input delay is specified relative to a simple generated clock
+(a generated clock with a single target), the clock arrival times to
+the generated clock are added to the data arrival time.
+
+Input delays can be specified relative to a port (-reference_pin) in
+the clock network. Clock arrival times to the reference port are added
+to data arrival times. Non-port reference pins are not supported.
+
+Input delays can already include clock source latency. By default the
+clock source latency of the related clock is added to the input delay
+value, but when the -source_latency_included option is specified, the
+clock source latency is not added because it was factored into the
+input delay value.
+
+The maximum input delay (-max) is used for clock setup checks or
+recovery checks and the minimum input delay (-min) is used for clock
+hold checks or removal checks. If only -min or -max (or neither) is
+specified for a given port, the same value is used for both.
+
+Separate rising (-rise) and falling (-fall) arrival times at the port
+can be specified. If only one of -rise and -fall are specified for a
+given port, the same value is used for both.
+
+By default, set_input_delay removes any other input delays to the port
+except for those with the same -clock, -clock_fall, and -reference_pin
+combination. Multiple input delays relative to different clocks, clock
+edges, or reference pins can be specified using the -add_delay option.
+
+The value of the targets is either a collection or a Tcl list of
+wildcards used to create a collection of the appropriate type.  The
+values used must follow standard Tcl or TimeQuest-extension
+substitution rules. See help for the use_timequest_style_escaping
+command for details.  
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Simple input delay with the same value for min/max and rise/fall:
+# 1) set on ports with names of the form myin*
+set_input_delay -clock clk 1.5 [get_ports myin*]
+# 2) set on all input ports
+set_input_delay -clock clk 1.5 [all_inputs]
+
+# Input delay with respect to the falling edge of clock
+set_input_delay -clock clk -clock_fall 1.5 [get_ports myin*]
+
+# Input delays for different min/max and rise/fall combinations
+set_input_delay -clock clk -max -rise 1.4 [get_ports myin*]
+set_input_delay -clock clk -max -fall 1.5 [get_ports myin*]
+set_input_delay -clock clk -min -rise 0.7 [get_ports myin*]
+set_input_delay -clock clk -min -fall 0.8 [get_ports myin*]
+
+# Adding multiple input delays with respect to more than one clock
+set_input_delay -clock clkA -min 1.2 [get_ports myin*]
+set_input_delay -clock clkA -max 1.8 [get_ports myin*]
+set_input_delay -clock clkA -clock_fall 1.6 [get_ports myin*] -add_delay
+set_input_delay -clock clkB -min 2.1 [get_ports myin*] -add_delay
+set_input_delay -clock clkB -max 2.5 [get_ports myin*] -add_delay
+
+# Specifying an input delay relative to an external clock output port
+set_input_delay -clock clk -reference_pin [get_ports clkout] 0.8 [get_ports myin*]
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Incorrect collection type.  Expected a collection of type <string>.
+TCL_ERROR	1   	ERROR: Options -<string> and -<string> are mutually exclusive. Specify only one of the two options.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</set_input_delay>
+
+<remove_input_delay>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: remove_input_delay [-h | -help] [-long_help] <targets>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        <targets>: Collection or list of input ports
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc 1.5
+
+------------
+Description:
+------------
+
+Removes input delay from a port. For each input port specified,
+removes all input delays for that port. This means that rise, fall,
+max, and min delays for each clock and reference pin on the input port
+are all removed.
+
+The value of the targets is either a collection or a Tcl list of
+wildcards used to create a collection of the appropriate type.  The
+values used must follow standard Tcl or TimeQuest-extension
+substitution rules.  See help for the use_timequest_style_escaping
+command for details.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Simple input delay with the same value for min/max and rise/fall
+set_input_delay -clock clk 1.5 [get_ports {in1 in2}]
+set_input_delay -clock clk2 1.5 [get_ports {in1 in2}]
+set_input_delay -clock clk 1.6 [get_ports {in3 in4}]
+
+# Remove input delay on ports in1 and in4,
+# for all flags and reference ports and flags
+remove_input_delay [get_ports {in1 in4}]
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Incorrect collection type.  Expected a collection of type <string>.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</remove_input_delay>
+
+<set_output_delay>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: set_output_delay [-h | -help] [-long_help] [-add_delay] -clock <name> [-clock_fall] [-fall] [-max] [-min] [-reference_pin <name>] [-rise] [-source_latency_included] <delay> <targets>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -add_delay: Add to existing delays instead of overriding them
+        -clock <name>: Clock name
+        -clock_fall: Specifies output delay relative to the falling edge of the clock
+        -fall: Specifies the falling output delay at the port
+        -max: Applies value as maximum data required time
+        -min: Applies value as minimum data required time
+        -reference_pin <name>: Specifies a port in the design to which the output delay is relative
+        -rise: Specifies the rising output delay at the port
+        -source_latency_included: Specifies input delay already includes added source latency
+        <delay>: Time value
+        <targets>: Collection or list of output ports
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc 1.5
+
+------------
+Description:
+------------
+
+Specifies the data required times at the specified output ports
+relative the clock specified by the -clock option. The clock must
+refer to a clock name in the design.
+
+Output delays can be specified relative to the rising edge (default)
+or falling edge (-clock_fall) of the clock.
+
+If the output delay is specified relative to a simple generated clock
+(a generated clock with a single target), the clock arrival times to
+the generated clock are added to the data required time.
+
+Output delays can be specified relative to a port (-reference_pin) in
+the clock network. Clock arrival times to the reference port are added
+to the data required time. Non-port reference pins are not supported.
+
+Output delays can include clock source latency. By default the clock
+source latency of the related clock is added to the output delay
+value, but when the -source_latency_included option is specified, the
+clock source latency is not added because it was factored into the
+output delay value.
+
+The maximum output delay (-max) is used for clock setup checks or
+recovery checks and the minimum output delay (-min) is used for clock
+hold checks or removal checks. If only one of -min and -max (or
+neither) is specified for a given port, the same value is used for
+both.
+
+Separate rising (-rise) and falling (-fall) required times at the port
+can be specified. If only one of -rise and -fall are specified for a
+given port, the same value is used for both.
+
+By default, set_output_delay removes any other output delays to the
+port except for those with the same -clock, -clock_fall, and
+-reference_pin combination. Multiple output delays relative to
+different clocks, clock edges, or reference pins can be specified
+using the -add_delay option.
+
+The value of the targets is either a collection or a Tcl list of
+wildcards used to create a collection of the appropriate type.
+The values used must follow standard Tcl or TimeQuest-extension
+substitution rules.  See help for the use_timequest_style_escaping 
+command for details.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Simple output delay with the same value for min/max and rise/fall:
+# 1) set on ports with names of the form myout*
+set_output_delay -clock clk 0.5 [get_ports myout*]
+# 2) set on all output ports
+set_output_delay -clock clk 0.5 [all_outputs]
+
+# Output delay with respect to the falling edge of clock
+set_output_delay -clock clk -clock_fall 0.5 [get_ports myout*]
+
+# Output delays for different min/max and rise/fall combinations
+set_output_delay -clock clk -max -rise 0.5 [get_ports myout*]
+set_output_delay -clock clk -max -fall 0.4 [get_ports myout*]
+set_output_delay -clock clk -min -rise 0.4 [get_ports myout*]
+set_output_delay -clock clk -min -fall 0.3 [get_ports myout*]
+
+# Adding multiple output delays with respect to more than one clock
+set_output_delay -clock clkA -min 0.2 [get_ports myout*]
+set_output_delay -clock clkA -max 0.8 [get_ports myout*]
+set_output_delay -clock clkA -clock_fall 0.6 [get_ports myout*] -add_delay
+set_output_delay -clock clkB -min 1.1 [get_ports myout*] -add_delay
+set_output_delay -clock clkB -max 1.5 [get_ports myout*] -add_delay
+
+# Specifying an output delay relative to an external clock output port
+set_output_delay -clock clk -reference_pin [get_ports clkout] 0.8 [get_ports myout*]
+
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Incorrect collection type.  Expected a collection of type <string>.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</set_output_delay>
+
+<remove_output_delay>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: remove_output_delay [-h | -help] [-long_help] <targets>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        <targets>: Collection or list of output ports
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc 1.5
+
+------------
+Description:
+------------
+
+Removes output delay from a port. For each output port specified,
+removes all output delays for that port. Rise, fall, max, and min
+delays for each clock and reference pin on the output port are all
+removed.
+
+The value of the targets is either a collection or a Tcl list of
+wildcards used to create a collection of the appropriate type.  The
+values used must follow standard Tcl or TimeQuest-extension
+substitution rules. See help for the use_timequest_style_escaping
+command for details. 
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Simple output delay with the same value for min/max and rise/fall
+set_output_delay -clock clk 1.5 [get_ports {out1 out2}]
+set_output_delay -clock clk2 1.5 [get_ports {out1 out2}]
+set_output_delay -clock clk 1.6 [get_ports {out3 out4}]
+
+# Remove input delay on ports out1 and out4,
+# for all flags and reference ports and flags
+remove_output_delay [get_ports {out1 out4}]
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Incorrect collection type.  Expected a collection of type <string>.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</remove_output_delay>
+
+<set_multicycle_path>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: set_multicycle_path [-h | -help] [-long_help] [-end] [-fall_from <names>] [-fall_to <names>] [-from <names>] [-hold] [-rise_from <names>] [-rise_to <names>] [-setup] [-start] [-through <names>] [-to <names>] <value>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -end: Specifies that the multicycle is relative to the destination clock waveform (default)
+        -fall_from <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+        -fall_to <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+        -from <names>: Valid sources (string patterns are matched using Tcl string matching)
+        -hold: Specifies that the multicycle value applies to clock hold or removal checks
+        -rise_from <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+        -rise_to <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+        -setup: Specifies that the multicycle value applies to clock setup or recovery checks (default)
+        -start: Specifies that the multicycle is relative to the source clock waveform
+        -through <names>: Valid through nodes (string patterns are matched using Tcl string matching)
+        -to <names>: Valid destinations (string patterns are matched using Tcl string matching)
+        <value>: Number of clock cycles
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc 1.5
+
+------------
+Description:
+------------
+
+Specifies a multicycle exception for a given set of paths.
+
+Multicycles can be specified relative to the source clock (-start) or
+destination clock (-end). This is useful when the source clock and
+destination clock are operating at different frequencies.  For
+example, if the source clock is twice as fast (half period) as the
+destination clock, a -start multicycle of 2 is usually required.
+
+Hold multicycles (-hold) are computed relative to setup multicycles
+(-setup).  The value of the hold multicycle represents the number
+clock edges away from the default hold multicycle. The default hold
+multicycle value is 0.
+
+The -from and -to values are collections of clocks, registers, ports,
+pins, or cells in the design. If the -from or -to values are not
+specified, the collection is converted automatically into [get_keepers
+*].  It is worth noting that if the counterpart of the unspecified
+collection is a clock collection, it is more efficient to explicitly
+specify this collection as a clock collection but only if the clock
+collection also generates the desired assignment.
+
+Applying exceptions between clocks applies the exception from all
+register or ports driven by the -from clock to all registers or ports
+driven by the -to clock.  Also, applying exceptions between a pair of
+clocks is more efficient than for specific node to node or node to
+clock paths.
+
+If pin names or collections are used, the -from value must be a clock
+pin and the -to value must be any non-clock input pin to a register.
+Assignments from clock pins or to and from cells applies to all
+registers in the cell or driven by the clock pin.
+
+The -through values are collections of pins or nets in the design. 
+An exception applied through a node in the design applies only to 
+paths through the specified node. 
+
+The -rise_from and -fall_from options can be used in place of the
+"-from" destination nodes. The rise or fall value of the option
+indicates that the "from" nodes are driven by the rising or falling
+edge of the clock that feeds this node taking into consideration any
+logical inversions along the clock path.  The "-from" option is the
+combination of both rising and falling "from" nodes.  If the "from"
+collection is a clock collection, the assignment applies to those
+nodes that are driven by the respective rising or falling clock edge.
+
+The -rise_to and -fall_to options behave similarly to the "from"
+options described previously.  These assignments restrict the given
+assignment to only those nodes or clocks that correspond to the
+specified rise or fall value taking into consideration any logical
+inversions that are along the clock path.
+
+The values of the -from, -to, -through, and similar options are either
+collections or a Tcl list of wildcards used to create collections of
+appropriate types. The values used must follow standard Tcl or
+TimeQuest-extension substitution rules. See help for the
+use_timequest_style_escaping command for details.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+create_clock -period 10.000 -name CLK [get_ports clk]
+create_generated_clock -divide_by 2 -source [get_ports clk] -name CLKDIV2 [get_registers clkdiv]
+
+# Apply a source multicycle of 2 with a hold multicycle of 1 for all
+# paths from the CLK domain to the CLKDIV2 domain.
+set_multicycle_path -start -setup -from [get_clocks CLK] -to [get_clocks CLKDIV2] 2
+set_multicycle_path -start -hold -from [get_clocks CLK] -to [get_clocks CLKDIV2] 1
+
+# Apply a multicycle constraint of 3 (with a default hold multicycle of 0) for a
+# specific path in the design.
+set_multicycle_path -end -setup -from [get_pins rega|clk] -to [get_pins regb|*] 3
+
+# Apply a multicycle constraint of 2 to a given cell, except for the reset pin.
+set_multicycle_path -end -setup -to [get_cells regb] 2
+set_multicycle_path -end -setup -to [get_pins regb|aclr] 1
+
+#Apply a multicycle constraint of 3 rising from a clock and falling to a node
+set_multicycle_path -end -setup -rise_from [get_clocks CLK] -fall_to [get_pins regb|datab] 3
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Option <string> has illegal value: <string>. Specify a legal option value.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</set_multicycle_path>
+
+<set_max_delay>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: set_max_delay [-h | -help] [-long_help] [-fall_from <names>] [-fall_to <names>] [-from <names>] [-rise_from <names>] [-rise_to <names>] [-through <names>] [-to <names>] <value>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -fall_from <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+        -fall_to <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+        -from <names>: Valid sources (string patterns are matched using Tcl string matching)
+        -rise_from <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+        -rise_to <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+        -through <names>: Valid through nodes (string patterns are matched using Tcl string matching)
+        -to <names>: Valid destinations (string patterns are matched using Tcl string matching)
+        <value>: Time Value
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc 1.5
+
+------------
+Description:
+------------
+
+Specifies a maximum delay exception for a given path.
+
+The maximum delay is similar to changing the setup relationship
+(latching clock edge - launching clock edge), except that it can be
+applied to input or output ports without input or output delays
+assigned to them.  Maximum delays are always relative to any clock
+network delays (if the source or destination is a register) or any
+input or output delays (if the source or destination is a port).
+Therefore, input delays and clock latencies are added to the data
+arrival times. Clock latencies also added to data required times and
+output delays are subtracted from data required times.
+
+The -from and -to values are collections of clocks, registers, ports,
+pins, or cells in the design.  If the -from or -to values are not
+specified, the collection is converted automatically into [get_keepers
+*].  It is worth noting that if the counterpart to the unspecified
+collection is a clock collection, it is more efficient to explicitly
+specify this collection as a clock collection but only if the clock
+collection also generates the desired assignment.
+
+Applying exceptions between clocks applies the exception from all
+register or ports driven by the -from clock to all registers or ports
+driven by the -to clock. Applying exceptions between a pair of clocks
+is more efficient than for specific node to node or node to clock
+paths.
+
+If pin names or collections are used, the -from value must be a clock
+pin and the -to value must be any non-clock input pin to a register.
+Assignments from clock pins or to and from cells applies to all
+registers in the cell or driven by the clock pin.
+
+The -through values are collections of pins or nets in the design.  An
+exception applied through a node in the design applies only to paths
+through the specified node.
+
+The -rise_from and -fall_from options can be used in place of the
+-from destination nodes.  The rise or fall value of the option
+indicates that the "from" nodes are driven by the rising or falling
+edge of the clock that feeds this node taking into consideration any
+logical inversions along the clock path.  The "-from" option is the
+combination of both rising and falling "from" nodes.  If the "from"
+collection is a clock collection, the assignment applies to those
+nodes that are driven by the respective rising or falling clock edge.
+
+The -rise_to and -fall_to options behave similarly to the "from1"
+options described previously.  These assignments restrict the given
+assignment to only those nodes or clocks that correspond to the
+specified rise or fall value taking into consideration any logical
+inversions that are along the clock path.
+
+The values of the -from, -to, -through, and other similar options are
+either collections or a Tcl list of wildcards used to create
+collections of appropriate types. The values used must follow standard
+Tcl or TimeQuest-extension substitution rules. See help for the
+use_timequest_style_escaping command for details.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Apply a 10ns max delay between two unrelated clocks
+set_max_delay -from [get_clocks clkA] -to [get_clocks clkB] 10.000
+
+# Apply a 2ns max delay for an input port (TSU)
+set_max_delay -from [get_ports in[*]] -to [get_registers *] 2.000
+
+# Apply a 2ns max delay for an output port (TCO)
+set_max_delay -from [get_registers *] -to [get_ports out[*]] 2.000
+
+# Apply a 2ns max delay for an input port to an output port (TPD)
+set_max_delay -from [get_ports in[*]] -to [get_ports out[*]] 2.000
+
+# Apply a 2ns max delay for an input port only to nodes driven by 
+# the rising edge of clock CLK
+set_max_delay -from [get_ports in[*]] -rise_to [get_clocks CLK] 2.000
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</set_max_delay>
+
+<set_min_delay>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: set_min_delay [-h | -help] [-long_help] [-fall_from <names>] [-fall_to <names>] [-from <names>] [-rise_from <names>] [-rise_to <names>] [-through <names>] [-to <names>] <value>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -fall_from <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+        -fall_to <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+        -from <names>: Valid sources (string patterns are matched using Tcl string matching)
+        -rise_from <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+        -rise_to <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+        -through <names>: Valid through nodes (string patterns are matched using Tcl string matching)
+        -to <names>: Valid destinations (string patterns are matched using Tcl string matching)
+        <value>: Time Value
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc 1.5
+
+------------
+Description:
+------------
+
+Specifies a minimum delay exception for a given path.
+
+The minimum delay is similar to changing the hold relationship
+(launching clock edge - latching clock edge), except that it can be
+applied to input or output ports without input or output delays
+assigned to them. Minimum delays are always relative to any clock
+network delays (if the source or destination is register) or any input
+or output delays (if the source or destination is a port). Therefore,
+input delays and clock latencies are added to the data arrival times.
+Clock latencies also added to data required times and output delays
+are subtracted from data required times.
+
+The -from and -to values are collections of clocks, registers, ports, 
+pins, or cells in the design. If the -from or -to values are not 
+specified, the collection is converted automatically into
+[get_keepers *]. It is worth noting that if the counterpart of the
+unspecified collection is a clock collection, it is more efficient 
+to explicitly specify this collection as a clock collection, but only 
+if the clock collection also generates the desired assignment.
+
+Applying exceptions between clocks applies the exception from all 
+register or ports driven by the -from clock to all registers or 
+ports driven by the -to clock. Also, applying exceptions between 
+a pair of clocks is more efficient than for specific node to node or
+node to clock paths.
+
+If pin names or collections are used, the -from value must be a
+clock pin and the -to value must be any non-clock input pin to 
+a register. Assignments from clock pins or to and from cells applies 
+to all registers in the cell or driven by the clock pin.
+
+The -through values are collections of pins or nets in the 
+design. An exception applied through a node in the design applies 
+only to paths through the specified node. 
+
+The -rise_from and -fall_from options can be used in place of the
+destination nodes specified using the -from option. The rise or fall
+value of the option indicates that the "from" nodes are driven by the
+rising or falling edge of the clock that feeds this node taking into
+consideration any logical inversions along the clock path.  The -from
+option is the combination of both rising and falling "from" nodes.  If
+the -from collection is a clock collection, the assignment applies to
+those nodes that are driven by the respective rising or falling clock
+edge.
+
+The -rise_to and -fall_to options behave similarly to the "from"
+options described previously.  These assignments restrict the given
+assignment to only those nodes or clocks that correspond to the
+specified rise or fall value taking into consideration any logical
+inversions that are along the clock path.
+
+The values of the -from, -to, -through, and other similar options are
+either collections or a Tcl list of wildcards used to create
+collections of appropriate types. The values used must follow standard
+Tcl or TimeQuest-extension substitution rules.  See help for the
+use_timequest_style_escaping command for details.  
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Apply a 0ns min delay between two unrelated clocks
+set_min_delay -from [get_clocks clkA] -to [get_clocks clkB] 0.000
+
+# Apply a 0ns min delay for an input port (TH)
+set_min_delay -from [get_ports in[*]] -to [get_registers *] -.000
+
+# Apply a 0.5ns min delay for an output port (MIN_TCO)
+set_min_delay -from [get_registers *] -to [get_ports out[*]] 0.500
+
+# Apply a 0.5ns min delay for an input port to an output port (MIN_TPD)
+set_min_delay -from [get_ports in[*]] -to [get_ports out[*]] 0.500
+
+# Apply a 0.5ns min delay for an input port only to nodes driven by 
+# the falling edge of clock CLK
+set_max_delay -from [get_ports in[*]] -fall_to [get_clocks CLK] 0.500
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</set_min_delay>
+
+<set_false_path>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: set_false_path [-h | -help] [-long_help] [-fall_from <names>] [-fall_to <names>] [-from <names>] [-hold] [-rise_from <names>] [-rise_to <names>] [-setup] [-through <names>] [-to <names>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -fall_from <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+        -fall_to <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+        -from <names>: Valid sources (string patterns are matched using Tcl string matching)
+        -hold: Specifies the false_path value (applies only to clock hold or removal checks)
+        -rise_from <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+        -rise_to <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+        -setup: Specifies the false_path value (applies only to clock setup or recovery checks)
+        -through <names>: Valid through nodes (string patterns are matched using Tcl string matching)
+        -to <names>: Valid destinations (string patterns are matched using Tcl string matching)
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc 1.5
+
+------------
+Description:
+------------
+
+Specifies a false-path exception, removing (or cutting) paths from
+timing analysis.
+
+The -from and -to values are collections of clocks, registers, ports,
+pins, or cells in the design.  If the -from or -to values are not
+specified, the collection is converted automatically into [get_keepers
+*].  It is worth noting that if the counterpart of the unspecified
+collection is a clock collection, it is more efficient to explicitly
+specify this collection as a clock collection only if the clock
+collection also generates the desired assignment.
+
+Applying exceptions between clocks applies the exception from all
+register or ports driven by the -from clock to all registers or ports
+driven by the -to clock. Applying exceptions between a pair of clocks
+is more efficient than for specific node to node or node to clock
+paths.
+
+If pin names or collections are used, the -from value must be a clock
+pin and the -to value must be any non-clock input pin to a
+register. Assignments from clock pins or to and from cells applies to
+all registers in the cell or driven by the clock pin.
+
+The -through values are collections of pins or nets in the design. An
+exception applied through a node in the design applies only to paths
+through the specified node.
+
+The -rise_from and -fall_from options can be used in place of the
+-from destination nodes. The rise or fall value of the option
+indicates that the "from" nodes are driven by the rising or falling
+edge of the clock that feeds this node, taking into consideration any
+logical inversions along the clock path.  The -from option is the
+combination of both rising and falling "from" nodes.  If the "from"
+collection is a clock collection, the assignment applies to those
+nodes that are driven by the respective rising or falling clock edge.
+
+The -rise_to and -fall_to options behave similarly to the "from"
+options described previously. These assignments restrict the given
+assignment to only those nodes or clocks that correspond to the
+specified rise or fall value, taking into consideration any logical
+inversions that are along the clock path.
+
+The -setup and -hold options allow the false path to only be applied
+to the corresponding setup/recovery or hold/removal checks. The
+default if neither value is specified is to apply the false path to
+both -setup and -hold.
+
+The values of the -from, -to, -through, and other similar options are
+either collections or a Tcl list of wildcards used to create
+collections of appropriate types. The values used must follow standard
+Tcl or TimeQuest-extension substitution rules.  See help for the
+use_timequest_style_escaping command for details.
+
+See help for the set_clock_groups command for information.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Set a false-path between two unrelated clocks
+# See also set_clock_groups
+set_false_path -from [get_clocks clkA] -to [get_clocks clkB]
+
+# Set a false-path for a specific path
+set_false_path -from [get_pins regA|clk] -to [get_pins regB|aclr]
+
+# Set a false-path from a node to a falling clock
+set_false_path -from [get_pins regA|clk] -fall_to [get_clocks clkB]
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</set_false_path>
+
+<derive_clocks>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: derive_clocks [-h | -help] [-long_help] -period <period_value> [-waveform <edge_list>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -period <period_value>: Speed of the default clock in terms of clock period
+        -waveform <edge_list>: List of edge values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc 1.5
+
+------------
+Description:
+------------
+
+Creates a clock on sources of clock pins in the design that do not
+already have at least one clock sourcing the clock pin. This command
+is equivalent to calling create_clock on each clock source in the
+design that does not already have a clock assigned to it.
+
+See the help for create_clock for more information.
+
+Altera does not recommend using this command during final sign-off
+analysis of a design. derive_clocks should only be used early in the
+design phase when the clocks are not completely known. When possible,
+create_clock and create_generated_clock should be used instead.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Automatically create a 10ns, 60% duty cycle clock on all
+# unconstrained clock sources
+derive_clocks -period 10 -waveform {0 6}
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</derive_clocks>
+
+<set_disable_timing>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: set_disable_timing [-h | -help] [-long_help] [-from <name>] [-to <name>] <cells>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -from <name>: Valid source pin suffix
+        -to <name>: Valid destination pin suffix
+        <cells>: List of cells
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc 1.5
+
+------------
+Description:
+------------
+
+Disables a timing edge (arc) from inside a given cell or cells.
+Disabling a timing edge prevents timing analysis through that edge.
+If either -from or -to (or both) are unspecified, the missing value or
+values are replaced by a "*" character.
+
+The values of the -from and -to are either collections or a Tcl list
+of wildcards used to create collections of appropriate types.
+The values used must follow standard Tcl or TimeQuest-extension
+substitution rules.  See the help for use_timequest_style_escaping for
+details.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+set_disable_timing -from datain -to combout A|B
+set_disable_timing -from carryin *
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</set_disable_timing>
+
+<remove_disable_timing>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: remove_disable_timing [-h | -help] [-long_help] [-from <name>] [-to <name>] <cells>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -from <name>: Valid source pin suffix
+        -to <name>: Valid destination pin suffix
+        <cells>: List of cells
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc 1.5
+
+------------
+Description:
+------------
+
+Adds a previously disabled edge (arc) back to a given cell(s). If no
+-from/-to value is specified, the missing value is substituted by a
+"*".
+
+The values of the -from and -to are either collections or a Tcl list
+of wildcards used to create collections of appropriate types.  The
+values used must follow standard Tcl or TimeQuest-extension
+substitution rules.  See the help for use_timequest_style_escaping for
+details.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+remove_disable_timing -from datain -to combout A|B
+remove_disable_timing -from carryin *
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</remove_disable_timing>
+
+<set_input_transition>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: set_input_transition [-h | -help] [-long_help] [-clock <name>] [-clock_fall] [-fall] [-max] [-min] [-rise] <transition> <ports>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -clock <name>: Clock name
+        -clock_fall: Specifies that input delay is relative to the falling edge of the clock
+        -fall: Specifies the falling output delay at the port
+        -max: Applies value as maximum data required time
+        -min: Applies value as minimum data required time
+        -rise: Specifies the rising output delay at the port
+        <transition>: Time value
+        <ports>: Collection or list of input or bidir ports
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc 1.5
+
+------------
+Description:
+------------
+
+This constraint does not affect calculations performed by
+TimeQuest. It only affects PrimeTime analysis or HardCopy II
+devices. If you set this constraint in TimeQuest the constraint is
+written out to the SDC file when you call write_sdc.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+This command currently contains no example usage.
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Incorrect collection type.  Expected a collection of type <string>.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</set_input_transition>
+
+<<<</1.5>>>>

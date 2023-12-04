@@ -1,0 +1,152 @@
+// iostream
+//
+// This header file is used when the Altera CusP compiler is compiling
+// your source code to hardware.
+
+// TODO: Implement those parts of this file which are necessary
+// TODO: Move classes etc to the correct files...
+
+#ifndef _IOSTREAM_HEADER
+#define _IOSTREAM_HEADER
+
+#include<c++io.h>
+
+
+namespace std
+{
+	template<typename _CharT, typename _Traits= char_traits<_CharT> > 
+	class basic_ios
+	{
+	public:
+		typedef int fmtflags;
+		
+    /// Insert/extract @c bool in alphabetic rather than numeric format.
+    static const fmtflags boolalpha =   fmtflags(__ios_flags::_S_boolalpha);
+
+    /// Converts integer input or generates integer output in decimal base.
+    static const fmtflags dec =         fmtflags(__ios_flags::_S_dec);
+
+    /// Generate floating-point output in fixed-point notation.
+    static const fmtflags fixed =       fmtflags(__ios_flags::_S_fixed);
+
+    /// Converts integer input or generates integer output in hexadecimal base.
+    static const fmtflags hex =         fmtflags(__ios_flags::_S_hex);
+
+    /// Adds fill characters at a designated internal point in certain
+    /// generated output, or identical to @c right if no such point is
+    /// designated.
+    static const fmtflags internal =    fmtflags(__ios_flags::_S_internal);
+
+    /// Adds fill characters on the right (final positions) of certain
+    /// generated output.  (I.e., the thing you print is flush left.)
+    static const fmtflags left =        fmtflags(__ios_flags::_S_left);
+
+    /// Converts integer input or generates integer output in octal base.
+    static const fmtflags oct =         fmtflags(__ios_flags::_S_oct);
+
+    /// Adds fill characters on the left (initial positions) of certain
+    /// generated output.  (I.e., the thing you print is flush right.)
+    static const fmtflags right =       fmtflags(__ios_flags::_S_right);
+
+    /// Generates floating-point output in scientific notation.
+    static const fmtflags scientific =  fmtflags(__ios_flags::_S_scientific);
+
+    /// Generates a prefix indicating the numeric base of generated integer
+    /// output.
+    static const fmtflags showbase =    fmtflags(__ios_flags::_S_showbase);
+
+    /// Generates a decimal-point character unconditionally in generated
+    /// floating-point output.
+    static const fmtflags showpoint =   fmtflags(__ios_flags::_S_showpoint);
+
+    /// Generates a + sign in non-negative generated numeric output.
+    static const fmtflags showpos =     fmtflags(__ios_flags::_S_showpos);
+
+    /// Skips leading white space before certain input operations.
+    static const fmtflags skipws =      fmtflags(__ios_flags::_S_skipws);
+
+    /// Flushes output after each output operation.
+    static const fmtflags unitbuf =     fmtflags(__ios_flags::_S_unitbuf);
+
+    /// Replaces certain lowercase letters with their uppercase equivalents
+    /// in generated output.
+    static const fmtflags uppercase =   fmtflags(__ios_flags::_S_uppercase);
+
+    /// A mask of left|right|internal.  Useful for the 2-arg form of @c setf.
+    static const fmtflags adjustfield = fmtflags(__ios_flags::_S_adjustfield);
+
+    /// A mask of dec|oct|hex.  Useful for the 2-arg form of @c setf.
+    static const fmtflags basefield =   fmtflags(__ios_flags::_S_basefield);
+
+    /// A mask of scientific|fixed.  Useful for the 2-arg form of @c setf.
+    static const fmtflags floatfield =  fmtflags(__ios_flags::_S_floatfield);
+		
+		fmtflags flags();
+	
+	};
+	
+	template<typename _CharT, typename _Traits > class basic_istream : virtual public basic_ios<_CharT, _Traits>
+	{
+	};
+
+	template<typename _CharT, typename _Traits> class basic_ostream : virtual public basic_ios<_CharT, _Traits>
+	{
+	public:
+		typedef basic_ostream<_CharT, _Traits> __ostream_type;
+
+		__ostream_type & operator<<(bool __n);
+	    __ostream_type & operator<<(__omanip func) { return (*func)(*this); }
+	    
+	    
+	};
+
+    template<typename _CharT, typename _Traits> basic_ostream<_CharT, _Traits>& ends(basic_ostream<_CharT, _Traits>& __os)
+    {
+    };
+
+	template<typename _CharT, typename _Traits> class basic_iostream : public basic_istream<_CharT, _Traits>, basic_ostream<_CharT, _Traits>
+	{
+	};
+
+	class strstream;
+	class strstreambuf;
+	class istrstream;
+	class ostrstream;
+
+//	class streambuf;
+	class streampos;
+	class streamsize;
+
+	class flush;
+	class dec;
+	class hex;
+	class oct;
+	
+	typedef basic_ios<char, char_traits<char> > 		ios;
+	typedef basic_istream<char, char_traits<char> >		istream;
+	typedef basic_ostream<char, char_traits<char> >		ostream;
+	typedef basic_iostream<char, char_traits<char> > 		iostream;
+	
+//    typedef basic_streambuf<char> 	streambuf;
+//    typedef basic_stringbuf<char> 	stringbuf;
+//    typedef basic_istringstream<char> 	istringstream;
+//    typedef basic_ostringstream<char> 	ostringstream;
+//    typedef basic_stringstream<char> 	stringstream;
+//    typedef basic_filebuf<char> 		filebuf;
+//    typedef basic_ifstream<char> 		ifstream;
+//    typedef basic_ofstream<char> 		ofstream;
+//    typedef basic_fstream<char> 		fstream;
+	
+	extern istream cin;
+	extern ostream cout;
+	extern ostream cerr;
+	extern ostream clog;
+
+	typedef ostream& (*__omanip)(ostream&);
+	extern ostream& endl(ostream& outs);
+	
+	bool ws();
+
+}
+
+#endif

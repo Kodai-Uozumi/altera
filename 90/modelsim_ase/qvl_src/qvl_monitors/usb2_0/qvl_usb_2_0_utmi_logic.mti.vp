@@ -1,0 +1,1008 @@
+//              Copyright 2006-2007 Mentor Graphics Corporation
+//                           All Rights Reserved.
+//
+//              THIS WORK CONTAINS TRADE SECRET AND PROPRIETARY
+//            INFORMATION WHICH IS THE PROPERTY OF MENTOR GRAPHICS
+//           CORPORATION OR ITS LICENSORS AND IS SUBJECT TO LICENSE
+//                                  TERMS.
+//
+//                   Questa Verification Library (QVL)
+//
+/*************************************************************************
+*
+* PURPOSE     This file is part of Questa Verification Library (QVL).
+*
+* DESCRIPTION This monitor checks the USB 2.0 UTMI interface for compliance 
+*             with UTMI specification and USB 2.0 specification and protocol.
+*
+* REFERENCES  Universal Serial Bus Specification, Revision 2.0, April 27,
+*             2000.
+*             Errata for USB 2.0 specification, May 28, 2002.
+*             Errata for USB 2.0 specification, December 7, 2000.
+*             USB 2.0 Transceiver Macrocell Interface Specification, 
+*             Revision 1.05, Mar 29, 2001.
+*
+* INPUTS      clock                   - Clock.
+*             reset                   - Synchronous reset, active high.
+*             areset                  - Asynchronous reset, active high.
+*
+*             tx_valid                - Transmit data valid signal.
+*             tx_valid_h              - Transmit data valid high signal.
+*             tx_ready                - Transmit data ready signal.
+*             data_in_low             - 8-Bit parallel USB data input.
+*             data_in_high            - 8-Bit parallel USB data input. This
+*                                       bus carries the high order byte
+*
+*             rx_valid                - Receive data valid signal.
+*             rx_valid_h              - Receive data valid high signal.
+*             data_out_low            - 8-Bit parallel USB data output.
+*             data_out_high           - 8-Bit parallel USB data output. This
+*                                       bus carries the high order byte.
+*             rx_active               - Receive active signal
+*             rx_error                - Receive error signal
+*             
+*             databus16_8             - Selects between 8 bit or 16 bit.
+*             line_state              - Signal which reflects current state
+*                                       of the USB bus.
+*             xcvr_select             - Selects between FS/HS transceivers.
+*             term_select             - Selects between FS/HS terminations.
+*             address                 - Device address.
+*             end_point_config        - End point configuration input.
+*
+*             // Signals to support Bi-Directional interfaces.
+*     
+*             data_low                - 8-Bit parallel USB input and output.
+*             data_high               - 8-Bit parallel USB input and output.
+*             valid_h                 - Valid high signal.
+*
+* NOTES
+*
+*        1. Bidirectional signals are required if the UTMI is bidirectional.
+*
+*        2. If the UTMI interface is 8 bit, then signals/ports related to 
+*           16 bit interface need not be hooked up.
+*
+*
+* MONITOR INSTANTIATION
+*
+*
+*  Monitor is instantiated in the Host to track the transactions of the
+*  downstream port of the host(Downstream port of root hub).
+*
+*       +----------------+                          +-----------------+
+*       |                |                          |                 |  
+*       | +-----------+  |                          |                 |  
+*       | | Monitor   |  |                          |                 |  
+*       | +-----------+  |     USB Bus              |     HUB or      |  
+*       |                |<------------------------>|                 |  
+*       |  HOST          |    Full speed or         |     FUNCTION    |
+*       |                |    High speed            |                 |  
+*       |                |                          |                 |  
+*       |                |                          |                 |  
+*       |                |                          |                 |  
+*       +----------------+                          +-----------------+
+*
+*  Monitor is instantiated in the Device to track the transactions of the
+*  upstream port of the Device. (Device can be Hub or Function)
+*
+*       +----------------+                          +-----------------+
+*       |                |                          |                 |  
+*       |                |                          | +-------------+ |
+*       |                |                          | | Monitor     | |
+*       |                |      USB Bus             | +-------------+ |
+*       |                |<------------------------>|     HUB or      |  
+*       |                |      Full speed or       |                 |  
+*       |  HOST          |      High speed          |    FUNCTION     |  
+*       |                |                          |                 |  
+*       |                |                          |                 |  
+*       |                |                          |                 |  
+*       +----------------+                          +-----------------+
+*
+*  Monitor is instantiated in the Hub to track the transactions of the
+*  downstream port of the Hub.
+*
+*        +----------------+                          +-----------------+
+*        |                |                          |                 | 
+*        | +-----------+  |                          |                 | 
+*        | | Monitor   |  |                          |                 | 
+*        | +-----------+  |     USB Bus              |     HUB or      | 
+*        |                |<------------------------>|                 | 
+*        |  HUB           |   Full or Low speed or   |   FUNCTION      | 
+*        |                |      High speed          |                 | 
+*        |                |                          |                 | 
+*        |                |                          |                 | 
+*        |                |                          |                 | 
+*        +----------------+                          +-----------------+
+*
+*
+***************************************************************************/
+
+`ifdef ZiCwDebug
+`define ZiCwDebugDelay1 #1
+`define ZiCwQuietIfNoCwDebug
+`else
+`define ZiCwDebugDelay1
+`define ZiCwQuietIfNoCwDebug -quiet
+`endif // ZiCwDebug
+
+`ifdef QVL_COVER_ON
+  `ifdef QVL_SV_COVERGROUP_OFF
+    // Do nothing
+  `else
+    `define QVL_SV_COVERGROUP
+  `endif
+  `ifdef QVL_MW_FINAL_COVER_OFF
+    // Do nothing
+  `else
+    `define QVL_MW_FINAL_COVER
+  `endif
+`endif
+
+`qvlmodule qvl_usb_2_0_utmi_logic (
+                                   clock,
+                                   reset,
+                                   areset,
+                              
+                                   // Transmit Interface
+
+                                   tx_valid,
+                                   data_in_low,
+                                   tx_valid_h,
+                                   data_in_high,
+                                   tx_ready,
+
+                                   // Receive Interface
+
+                                   rx_valid,
+                                   data_out_low,
+                                   rx_valid_h,
+                                   data_out_high,
+                                   rx_active,
+                                   rx_error,
+
+                                   // Control interface
+
+                                   databus16_8,
+                                   line_state, 
+                                   xcvr_select,
+                                   term_select,
+                                   op_mode,
+
+                                   // Bi directional 
+
+                                   data_low,
+                                   data_high,
+                                   valid_h,
+
+                                   // Configuration inputs
+ 
+                                   address,
+                                   end_point_config
+                                   );
+
+  // Parameter Constraints_Mode = 1 will configure some checks in this 
+  // monitor as constraints during 0-In Search.
+
+  parameter Constraints_Mode = 0; 
+  wire [31:0] pw_Constraints_Mode = Constraints_Mode;
+
+  // Parameter PORT_TYPE configures the port type which will be tracked by
+  // the monitor. PORT_TYPE = 0 configures the monitor to track the
+  // transactions of the downstream port of the Host. PORT_TYPE = 1
+  // configures the monitor to track the transactions of the upstream port
+  // of Hub. PORT_TYPE = 2 configures the monitor to track the transactions
+  // of the downstream port of Hub. PORT_TYPE = 3 configures the monitor to
+  // track transactions of upstream port of a function. This information,
+  // along with the value of parameter Constraints_Mode will decide the checks
+  // to be turned into constraints during 0-In Search.
+
+  parameter PORT_TYPE = 0;                             
+  wire [31:0] pw_PORT_TYPE = PORT_TYPE;
+
+  // Parameter UTMI_SIDE indicates on which side of the interface, monitor
+  // is instantiated. By default monitor is assumed to be instantiated on
+  // the SIE side of the interface. 
+
+  parameter UTMI_SIDE = 0;
+  wire [31:0] pw_UTMI_SIDE = UTMI_SIDE;
+
+  // Parameter BI_DIRECTIONAL configures the monitor to track the
+  // UTMI interface.
+
+  parameter BI_DIRECTIONAL = 0;
+  wire [31:0] pw_BI_DIRECTIONAL = BI_DIRECTIONAL;
+
+  // Parameter DEVICE_SPEED configures the monitor for FS/HS, FS only, LS only
+  // mode of operation. Set this parameter to 1 if the UTM is FS only, Set this
+  // parameter to 2 if the UTM is LS only. By default, monitor is configured to
+  // track FS/HS interface.
+
+  parameter DEVICE_SPEED = 0;
+  wire [31:0] pw_DEVICE_SPEED = DEVICE_SPEED;
+
+  // Parameter NUMBER_OF_ENDPOINTS configures the number of end points
+  // to be tracked by the monitor. By default, monitor is configured
+  // to track only one end point.
+
+  parameter NUMBER_OF_ENDPOINTS = 1;
+  wire [31:0] pw_NUMBER_OF_ENDPOINTS = NUMBER_OF_ENDPOINTS;
+ 
+  // Parameter FRAME_INTERVAL_COUNT indicates the number of clock cycles
+  // between two successive SOF packets (USB specification specifies
+  // an interval of 1ms between frames. This time duration needs to be mapped
+  // into number of clock cycles).
+
+  parameter FRAME_INTERVAL_COUNT = 7500;
+  wire [31:0] pw_FRAME_INTERVAL_COUNT = FRAME_INTERVAL_COUNT;
+
+  // Parameter SEQUENCE_BIT_TRACKING_ENABLE configures the monitor to
+  // track data toggle synchronization.
+
+  parameter SEQUENCE_BIT_TRACKING_ENABLE = 1;
+  wire [31:0] pw_SEQUENCE_BIT_TRACKING_ENABLE = SEQUENCE_BIT_TRACKING_ENABLE;
+ 
+  // Parameter PACKET_ISSUE_CHECK_ENABLE configures the monitor to fire
+  // for illegal issue of token, requests. By default monitor fires
+  // for above mentioned conditions. Example : If IN token is issued
+  // to OUT only end point then monitor check fires when this parameter
+  // is set to 1. Similarly if undefined requests other than standard
+  // requests, device class requests are issued then monitor checks
+  // fire when this parameter is set to 1.
+ 
+  parameter PACKET_ISSUE_CHECK_ENABLE = 1;
+  wire [31:0] pw_PACKET_ISSUE_CHECK_ENABLE = PACKET_ISSUE_CHECK_ENABLE;
+
+  // parameter RX_ACTIVE_DEASSERT_TO_TX_VALID_ASSERT_DELAY configures the
+  // delay between the deassertion of the RxActive and assertion of TxValid
+  // assertion
+
+  parameter RX_ACTIVE_DEASSERT_TO_TX_VALID_ASSERT_DELAY_MIN = 5;
+  wire [31:0] pw_RX_ACTIVE_DEASSERT_TO_TX_VALID_ASSERT_DELAY_MIN = 
+                       RX_ACTIVE_DEASSERT_TO_TX_VALID_ASSERT_DELAY_MIN;
+
+  parameter RX_ACTIVE_DEASSERT_TO_TX_VALID_ASSERT_DELAY_MAX = 24;
+  wire [31:0] pw_RX_ACTIVE_DEASSERT_TO_TX_VALID_ASSERT_DELAY_MAX = 
+                       RX_ACTIVE_DEASSERT_TO_TX_VALID_ASSERT_DELAY_MAX;
+
+  // parameter TX_VALID_DEASSERT_TO_RX_ACTIVE_ASSERT_DELAY configures the
+  // delay between the deassertion of the TxValid and assertion of
+  // RxActive.
+
+  parameter TX_VALID_DEASSERT_TO_RX_ACTIVE_ASSERT_DELAY_MIN = 6;
+  wire [31:0] pw_TX_VALID_DEASSERT_TO_RX_ACTIVE_ASSERT_DELAY_MIN = 
+                   TX_VALID_DEASSERT_TO_RX_ACTIVE_ASSERT_DELAY_MIN;
+
+  parameter TX_VALID_DEASSERT_TO_RX_ACTIVE_ASSERT_DELAY_MAX = 37;
+  wire [31:0] pw_TX_VALID_DEASSERT_TO_RX_ACTIVE_ASSERT_DELAY_MAX = 
+                   TX_VALID_DEASSERT_TO_RX_ACTIVE_ASSERT_DELAY_MAX;
+
+  // Parameter TIME_OUT_COUNT configures the number of clk cycles
+  // after which device or host is required to time out.
+
+  parameter TIME_OUT_COUNT = 800;
+  wire [31:0] pw_TIME_OUT_COUNT = TIME_OUT_COUNT;
+
+  // Parameter OTG_DEVICE configures the monitor to track OTG compliant
+  // USB devices. By default, non OTG compliant devices are tracked.
+
+  parameter OTG_DEVICE = 0;
+  wire [31:0] pw_OTG_DEVICE = OTG_DEVICE;
+
+  // Parameter HUB_TURNAR_TIMEOUT_16BIT configures the monitor to track 
+  // the turn around timeout period in case databus16_8 is set for 16 bit
+  
+  parameter HUB_TURNAR_TIMEOUT_16BIT = 45000;
+  wire [12:0] pw_HUB_TURNAR_TIMEOUT_16BIT = HUB_TURNAR_TIMEOUT_16BIT; 
+
+  // Parameter HUB_TURNAR_TIMEOUT_8BIT configures the monitor to track 
+  // the turn around timeout period in case databus16_8 is set for 8 bit
+  
+  parameter HUB_TURNAR_TIMEOUT_8BIT = 90000;
+  wire [12:0] pw_HUB_TURNAR_TIMEOUT_8BIT = HUB_TURNAR_TIMEOUT_8BIT; 
+
+  // Parameter HUB_CHIRP_TIMEOUT_16BIT configures the monitor to track
+  // the timeout period for a K or J chirp in 16 bit mode
+  
+  parameter HUB_CHIRP_TIMEOUT_16BIT = 1800;
+  wire [11:0] pw_HUB_CHIRP_TIMEOUT_16BIT = HUB_CHIRP_TIMEOUT_16BIT;	
+
+  // Parameter HUB_CHIRP_TIMEOUT_8BIT configures the monitor to track
+  // the timeout period for a K or J chirp in 8 bit mode
+  
+  parameter HUB_CHIRP_TIMEOUT_8BIT = 3600;
+  wire [11:0] pw_HUB_CHIRP_TIMEOUT_8BIT = HUB_CHIRP_TIMEOUT_8BIT;	
+  
+  // Parameter TERM_SEL_DEASS_AFTER_HS_DETECT_TIMEOUT_8BIT configures the 
+  // monitor to timeout when term_select signal does not deassert till 
+  // 500 us after HS has been detected.
+
+  parameter TERM_SEL_DEASS_AFTER_HS_DETECT_TIMEOUT_8BIT = 30000; 
+  wire [14:0] pw_TERM_SEL_DEASS_AFTER_HS_DETECT_TIMEOUT_8BIT = 
+                 TERM_SEL_DEASS_AFTER_HS_DETECT_TIMEOUT_8BIT;	
+
+  // Parameter TERM_SEL_DEASS_AFTER_HS_DETECT_TIMEOUT_16BIT configures the 
+  // monitor to timeout when term_select signal does not deassert till 
+  // 500 us after HS has been detected.
+
+  parameter TERM_SEL_DEASS_AFTER_HS_DETECT_TIMEOUT_16BIT = 15000; 
+  wire [14:0] pw_TERM_SEL_DEASS_AFTER_HS_DETECT_TIMEOUT_16BIT = 
+                 TERM_SEL_DEASS_AFTER_HS_DETECT_TIMEOUT_16BIT;	
+
+  // Parameters related to Inter PAcket delay, Max PAcket Size.
+
+  // Input port declarations.
+
+  input clock; // Active on the rising edge only.
+  input reset; // Active high. 
+  input areset; // Active high.
+
+  input tx_valid; // Transmit data 'data_in_low' is valid.
+  input [7:0] data_in_low; 
+
+  input tx_valid_h; // Transmit data 'data_in_high' is valid.
+  input [7:0] data_in_high;
+ 
+  input tx_ready; // Transmit ready signal
+
+  input rx_valid; // Receive data 'data_out_low' is valid.
+  input [7:0] data_out_low; 
+
+  input rx_valid_h; // Receive data 'data_out_high' is valid.
+  input [7:0] data_out_high;
+  input rx_active;
+  input rx_error;
+
+  input databus16_8; // 1 - 16 bit, 0 - 8 bit interface.
+  input [1:0] line_state; // Line status signal.
+  input xcvr_select; // Selects between FS and HS transceiver
+  input term_select; // Selects between FS and HS termination
+  input [1:0] op_mode; // Selects between normal and disable NRZI and bit stuffing 
+
+  input [7:0] data_low; // Bidirectional data
+  input [7:0] data_high; // Bidirectional data
+  input valid_h; // 'data_high' is valid.
+
+  input [6:0] address; // Address of the device.
+  input [NUMBER_OF_ENDPOINTS * 21 - 1:0] end_point_config; // End point info.
+
+  parameter MAC_LAYER_CONSTRAINT = (UTMI_SIDE == 0 && Constraints_Mode);
+  parameter PHY_LAYER_CONSTRAINT = (UTMI_SIDE == 1 && Constraints_Mode);
+
+  parameter ZI_HOST_SIDE_CONSTRAINT = (Constraints_Mode &&
+                                       (PORT_TYPE == 0 || PORT_TYPE == 2));
+  parameter ZI_DEVICE_SIDE_CONSTRAINT = (Constraints_Mode &&
+                       (PORT_TYPE == 1 || PORT_TYPE == 3));
+
+  // Internal parameter declarations.
+
+  parameter ZI_SE0_STATE = 0;
+  parameter ZI_K_STATE = 2;
+  parameter ZI_J_STATE = 1;
+
+  // parameter declarations for states
+
+  parameter ZI_TX_IDLE_STATE = 0;
+  parameter ZI_TX_SYNC_STATE = 1;
+  parameter ZI_TX_DATA_STATE = 2;
+  parameter ZI_TX_DATA_WAIT_STATE = 3;
+  parameter ZI_TX_WAIT_DEV_CHIRP = 4;
+  parameter ZI_TX_CHIRP_DEV_STATE = 5;
+  parameter ZI_TX_WAIT_HUB_CHIRP = 6;
+  parameter ZI_TX_CHIRP_K_STATE = 7;
+  parameter ZI_TX_CHIRP_J_STATE = 8;
+  parameter ZI_TX_HS_DETECTED_STATE = 9;
+  parameter ZI_TX_UNKN_STATE = 10; 
+
+  parameter ZI_RX_IDLE_STATE = 0;
+  parameter ZI_RX_SYNC_STATE = 1;
+  parameter ZI_RX_DATA_STATE = 2;
+  parameter ZI_RX_DATA_WAIT_STATE = 3;
+  parameter ZI_RX_ERROR_STATE = 4;
+  parameter ZI_RX_ABORT_STATE = 5;
+
+  // Register declarations
+
+  reg [3:0] present_state_transmit;
+  reg [3:0] next_state_transmit;
+
+  reg [16*8 :1] present_state_transmit_string;
+  reg [16*8 :1] next_state_transmit_string;
+
+  reg [2:0] present_state_receive;
+  reg [2:0] next_state_receive;
+
+  reg [6*8 :1] present_state_receive_string;
+  reg [6*8 :1] next_state_receive_string;
+
+  reg r_tx_valid;
+  reg r_rx_active;
+  reg [15:0] r_tx_data;
+  reg r_tx_new_data;
+  reg r_tx_ready;
+  reg r_rx_valid;
+  reg latch_tx_last_byte_transferred;
+  reg latch_rx_last_byte_transferred;
+  reg r_rx_error;
+  reg latched_databus16_8; // Latches the databus16_8 input
+  reg enable_inter_pkt_delay_count_1; // Receive and Transmit
+  reg enable_inter_pkt_delay_count_2; // Transmit and Receive
+  reg [7:0] inter_pkt_delay_count; 
+  reg [9:0] response_timer;
+  reg first_clock_after_reset; // Asserted for one clock 
+  reg r_host_is_transmitting;
+  reg r_device_is_transmitting;
+  reg sof_pkt_received_from_device;
+
+  // Counters to check out timeout conditions during chirping 
+  // sequence
+  
+  reg [16:0] turnaround_timeout; 
+  reg [11:0] hub_chirp_timeout;
+  reg [14:0] term_sel_deass_after_hs_detect_timeout; 
+
+  // Counter to check the nuumber of K state and J state 
+  // transitions being equal to 6 before deciding the device speed
+
+  reg [2:0] chirp_count;
+  reg r_disable_nrzi_bit_stuff;
+
+  // Wire declarations
+
+  wire [1:0] speed;
+  wire [10:0] time_out_count;
+  wire tx_start_of_pkt;
+  wire rx_start_of_pkt;
+  wire tx_end_of_pkt;
+  wire rx_end_of_pkt;
+  wire tx_data_valid;
+  wire rx_data_valid;
+  wire [15:0] tx_data; // Data into the UTM
+  wire [15:0] rx_data; // Data out from the UTM
+  wire [15:0] muxed_parallel_data; // Mux between Tx and Rx
+  wire time_out; // Asserted when device or host times out.
+  wire tx_last_byte_transferred; // Asserted when last byte
+  wire rx_last_byte_transferred; // is transferred
+
+  wire tx_new_data; // Asserted whenever 
+  wire pkt_size_error;
+
+  // Signals driven from packet monitor
+
+  wire host_is_waiting;
+  wire device_is_waiting;
+  wire waiting_for_timeout;
+  wire tkn_pid_received;
+  wire split_tkn_received;
+  wire handshake_pid_received;
+  wire [10:0] pkt_byte_count;
+
+  // Signals driven and not used in the monitor
+
+  wire transfer_complete;
+  wire transfer_incomplete;
+  wire transfer_aborted;
+  wire data_pid_received;
+  wire pre_pid_received;
+  wire sof_pkt_received;
+  wire host_is_responding;
+  wire device_is_responding;
+  wire enable_low_speed_port;
+  wire pkt_received;
+
+  // Violations
+
+  wire rx_valid_without_rx_active;
+  wire rx_vald_h_without_rx_valid;
+  wire illegal_rx_error_assertion;
+  wire tx_vald_h_without_tx_valid;
+  wire rx_valid_not_deasserted;
+  wire tx_more_data_transfer_after_tx_valid_h;
+  wire rx_more_data_transfer_after_rx_valid_h;
+  wire tx_data_changed_before_sampling;
+  wire tx_ready_more_than_one_clock;
+  wire rx_valid_more_than_one_clock;
+
+  // Packet size violations
+
+  wire tkn_pkt_size_err;
+  wire split_tkn_pkt_size_err;
+  wire handshake_pkt_size_err;
+
+  // Inter Packet delay violations
+
+  wire receive_to_transmit_delay_violation_min;
+  wire receive_to_transmit_delay_violation_max;
+  wire transmit_to_receive_delay_violation_min;
+  wire transmit_to_receive_delay_violation_max;
+
+  // Chirping related violations
+   
+  wire invalid_chirp_sequence;
+  wire chirp_kj_duration_timeout;
+  wire device_j_state_during_chirping; 
+  wire device_initiated_with_j_during_chirp; 
+  wire term_sel_deassert_timeout; 
+
+  // Wire declarations for supporting bi directional 
+  // interface.
+
+  wire [7:0] data_in_low_actual;
+  wire [7:0] data_in_high_actual;
+  wire tx_valid_h_actual;
+  wire rx_valid_h_actual;
+  wire [7:0] data_out_low_actual;
+  wire [7:0] data_out_high_actual;
+  wire [7:0] data_out_low_int;
+  wire [7:0] data_in_low_int;
+  wire [7:0] data_out_high_int;
+  wire [7:0] data_in_high_int;
+  wire tx_valid_h_int;
+  wire rx_valid_h_int;
+
+  wire host_is_transmitting;
+  wire device_is_transmitting;
+  wire back_to_back_transfer;
+  wire disable_nrzi_bit_stuff;
+  wire normal_phi_operation;
+  wire term_sel_xcvr_sel_same;
+  wire [14:0] term_sel_timeout_value; 
+
+
+`protected
+
+    MTI!#hwjJ[#]3-<n+{g2T$Ex!s#*k~+n$EK^o#uk]a[B!B<7*[[A12-ww^l7l-p[%1<emn9GCH>7
+    K,RGip2JO\@-*XDk[#]=Y/6I'2DH]]gl*{>$\{Bwwll18KG==Y|.^B22B;m$m,$G<qecz1?}][1z
+    cQ=p!-lJ[1p'CN8RXO~p3aj;RlE21Z!xG;7'!+aj;@QDXno~->p'vU;GOj{BHvKDIICG$s@!xwmQ
+    *YVzjv[]X]#U<7l~j!J67pRiEs2z?w=G!7xj7m]T$?Q]u_^7!++kBo+jjuyir*Yzv@Xlkazp^\Bf
+    J*>]X'VNh#sQTno,~\9/*_;uE+oICnnB-suk4^>1wh7,-QzI<'Y,Rkk\eKo@2v,}s#COop8-A5i<
+    e@e2nHAD{a^T]'so_Uo)mC>aAG-=oQxU*D*_c1Qv[~CZE7,rOaIz=:!RQm!XlZr*n$uL0W]l2[{n
+    QhA7eQ[@JDE+XDJelEO@Tx!]@Z$BoKvRozWHrmUj{Di9'<s]aUD#\{Hv;wQ{{R}OKU\VwH3K[Q?a
+    _k7\?r_i'Bkvjs\A;zE},Gr_]I3IEX{3-C]]C';D,7!\,-E^Q;1pp*s#w*T~Edo+~J~5=!5]?Wzs
+    {_Yl=>!+,Js#o@n1z;UEYjH+[a?|c~[vr$xuG\37_uQZw+T!_{+~+lTmXmo{;xBw^qer@,3z@kPO
+    {{!IW[-OY\p7HwOK*'^iD#TK|e_3$=?I5Y,i}=GJs=0Zok2jWK^#o_^,1>x~w2<1*![m7?rQD{V(
+    F1JzVu[jxADX[C_av5E<\>}urj}+v|YU[^<<}i.QR=]H{ej,=!5**!G=uoBDpoAqoRG[!XwuU{BR
+    =HU~In=IDITzJDT+1ZU5I{aW7#'_o3KkC{CDan_mv?A*'ok+#'aO9QjPqM9ApOQC+-kvQr-}5e2?
+    T7DeTT2-\>sT7H+>5ml7{+Ex-pi.7X^~kaQIFx$Bj$BkZ^mm}g3j[Q*[xTQew_NEsGxoURo{YmKX
+    -K;v~Q**I\As,3wClWo>lau@{mKo?AQ5N=7Qnjrx]l*XYn[^u_zZuWR!lK'R-pxTmv=@UaY{p,@H
+    HHUrp@'<ZYDCv}-*#N}:TEZr!Y^pMaouA$ma]!>}f^QlO7*\W>EiAE^ens#=O*p3Q!YkKq-ER!@x
+    AT=usHQxzRW1Ia!nO'RB*iq1nZsq4[<7^[zaJx@7I[V\=Xj?TywI@~{r{Opx[B@=a'~OVm]FI^Gn
+    Xj}C\>2~j_W_$'A}5=Ii)'#';UlI!iriIKz?Y$OT$?{,x-tAs0F*]=Es\Ks
+`endprotected
+
+  //---------------------------------------------------------------------
+
+  // Multiplex signals based on whether the interface is bi-directional
+  // or uni directional
+
+  assign speed = (DEVICE_SPEED == 2) ? 2'b00 :
+                 ((DEVICE_SPEED == 1) ? 2'b01 :
+                 ((DEVICE_SPEED == 0 && xcvr_select === 1'b0 &&
+                   term_select === 1'b0) ? 2'b11 : 2'b01));
+
+  assign time_out_count = TIME_OUT_COUNT;
+
+  assign disable_nrzi_bit_stuff = (op_mode === 2'b10);
+  assign normal_phi_operation = (op_mode === 2'b00);
+
+  assign host_is_transmitting = 
+	   (sof_pkt_received_from_device === 1'b0) ?
+	     (((tx_valid === 1'b1 && PORT_TYPE === 0)
+               || (tx_valid === 1'b1 && PORT_TYPE === 2)
+               || (rx_active === 1'b1 && PORT_TYPE === 1)
+               || (rx_active === 1'b1 && PORT_TYPE === 3))
+	       && !disable_nrzi_bit_stuff) :
+             (((tx_valid === 1'b1 && PORT_TYPE === 1)
+	       || (tx_valid === 1'b1 && PORT_TYPE === 3)
+	       || (rx_active === 1'b1 && PORT_TYPE === 0)
+	       || (rx_active === 1'b1 && PORT_TYPE === 2))
+	       && !disable_nrzi_bit_stuff);
+
+  assign device_is_transmitting = 
+            (sof_pkt_received_from_device === 1'b0) ?  
+              (((rx_active === 1'b1 && PORT_TYPE === 0)
+                || (rx_active === 1'b1 && PORT_TYPE === 2)
+                || (tx_valid === 1'b1 && PORT_TYPE === 1)
+                || (tx_valid === 1'b1 && PORT_TYPE === 3))
+	        && !disable_nrzi_bit_stuff) :
+              (((rx_active === 1'b1 && PORT_TYPE === 1)
+		|| (rx_active === 1'b1 && PORT_TYPE === 3)
+		|| (tx_valid === 1'b1 && PORT_TYPE === 0)
+		|| (tx_valid === 1'b1 && PORT_TYPE === 2))
+		&& !disable_nrzi_bit_stuff);
+
+  assign data_in_low_actual = (BI_DIRECTIONAL) ? data_in_low_int :
+			       data_in_low;
+
+  assign data_in_high_actual = (BI_DIRECTIONAL) ? data_in_high_int :
+			       data_in_high;
+
+  assign data_out_low_actual = (BI_DIRECTIONAL) ? data_out_low_int :
+			       data_out_low;
+
+  assign data_out_high_actual = (BI_DIRECTIONAL) ? data_out_high_int :
+			       data_out_high;
+
+  assign tx_valid_h_actual = (BI_DIRECTIONAL) ? tx_valid_h_int :
+			       tx_valid_h;
+
+  assign rx_valid_h_actual = (BI_DIRECTIONAL) ? rx_valid_h_int :
+			       rx_valid_h;
+
+  assign tx_start_of_pkt = (r_tx_valid === 1'b0 && tx_valid === 1'b1);
+  assign tx_end_of_pkt = (r_tx_valid === 1'b1 && tx_valid === 1'b0);
+  assign rx_start_of_pkt = (r_rx_active === 1'b0 && rx_active === 1'b1);
+  assign rx_end_of_pkt = (r_rx_active === 1'b1 && rx_active === 1'b0);
+
+  // Sample the Tx data only when TxReady and TxValid signals are asserted.
+
+  assign tx_data_valid = (tx_ready === 1'b1 && tx_valid === 1'b1);
+
+  // Sample the Rx data only when the RxActive and RxValid signals are 
+  // asserted.
+
+  assign rx_data_valid = (rx_active === 1'b1 && rx_valid === 1'b1);
+
+  // Assign tx_data based on databus16_8  
+
+  assign tx_data = (latched_databus16_8) ? 
+		   {data_in_high_actual, data_in_low_actual} :
+		   {8'b0, data_in_low_actual};
+
+  // Assign rx_data based on databus16_8
+
+  assign rx_data = (latched_databus16_8) ? 
+		   {data_out_high_actual, data_out_low_actual} :
+		   {8'b0, data_out_low_actual};
+
+  // Data to the packet monitor is either tx_data or rx_data.
+  // This is due to the fact that usb bus is half duplex.
+
+  assign muxed_parallel_data = (tx_valid) ? tx_data : rx_data;
+
+  assign time_out = (response_timer == TIME_OUT_COUNT);
+
+  assign tx_last_byte_transferred = 
+	      (tx_valid === 1'b1 && tx_ready === 1'b1 && 
+	       tx_valid_h_actual === 1'b0 && latched_databus16_8 === 1'b1 &&
+	       (present_state_transmit === ZI_TX_DATA_STATE ||
+               present_state_transmit === ZI_TX_DATA_WAIT_STATE));
+
+  assign rx_last_byte_transferred =
+              (rx_valid === 1'b1 && rx_active === 1'b1 &&
+               rx_valid_h_actual === 1'b0 && latched_databus16_8 === 1'b1 &&
+               (present_state_receive === ZI_RX_DATA_STATE ||
+                present_state_receive === ZI_RX_DATA_WAIT_STATE));
+
+  assign tx_new_data = (((r_tx_data !== tx_data) || tx_start_of_pkt) &&
+			  tx_valid);
+
+  //----------------------------------------------------------------------
+  // Glue logic for providing the bi directional interface.
+  //----------------------------------------------------------------------
+
+  assign data_out_low_int = (tx_valid === 1'b0) ?
+			      data_low : 8'b00;
+
+  assign data_in_low_int = (tx_valid === 1'b1) ?
+			      data_low : 8'b00;
+
+  assign tx_valid_h_int = (tx_valid === 1'b1 && databus16_8 === 1'b1) ?
+			      valid_h : 1'b0;
+
+  assign rx_valid_h_int = (tx_valid === 1'b0 && databus16_8 === 1'b1) ?
+			      valid_h : 1'b0;
+
+  assign data_out_high_int = (tx_valid === 1'b0 && databus16_8 === 1'b1) ?
+			      data_high : 8'b0;
+
+  assign data_in_high_int = (tx_valid === 1'b1 && databus16_8 === 1'b1) ?
+			      data_high : 8'b0;
+
+  //----------------------------------------------------------------------
+
+  // UTMI rules
+
+  // rx_valid signal should not be asserted without asserting rx_active
+
+  assign rx_valid_without_rx_active = (rx_valid === 1'b1 && rx_active === 1'b0);
+
+  // rx_valid_h signal should always be asserted together with rx_valid 
+  // signal. This is applicable for 16 bit interface only.
+
+  assign rx_vald_h_without_rx_valid = 
+		(rx_valid === 1'b0 && rx_valid_h_actual === 1'b1);
+
+  // rx_error signal should be asserted only when the packet/data is being
+  // received. 
+
+  assign illegal_rx_error_assertion = (rx_error === 1'b1 && 
+              (rx_active === 1'b0 || 
+	      (rx_active === 1'b1 && rx_valid === 1'b0))); 
+
+  // tx_valid_h signal should always be asserted together with tx_valid 
+  // signal. This is applicable for 16 bit interface only. 
+
+  assign tx_vald_h_without_tx_valid = 
+		  (tx_valid === 1'b0 && tx_valid_h_actual === 1'b1);
+
+  // rx_valid signal should be deasserted after sampling rx_error signal
+  // is deasserted.
+
+  assign rx_valid_not_deasserted =
+	    (present_state_receive === ZI_RX_ERROR_STATE && 
+	     next_state_receive !== ZI_RX_ABORT_STATE && 
+	     next_state_receive !== ZI_RX_IDLE_STATE);
+
+  // Maximum of one byte should be transferred after the deassertion of 
+  // tx_valid_h signal.
+
+  assign tx_more_data_transfer_after_tx_valid_h = 
+           (latch_tx_last_byte_transferred === 1'b1 && tx_valid === 1'b1 
+            && tx_ready === 1'b1);
+
+  // Maximum of one byte should be transferred after the deassertion of 
+  // rx_valid_h signal.
+
+  assign rx_more_data_transfer_after_rx_valid_h = 
+           (latch_rx_last_byte_transferred === 1'b1 && rx_valid === 1'b1 
+            && rx_active === 1'b1);
+
+  // Data to be transmitted should not change until it is sampled
+  // by the UTM. Applicable only in FS, FS Only, LS only.
+
+  assign tx_data_changed_before_sampling =
+            (r_tx_new_data === 1'b1 && tx_new_data === 1'b1 &&
+             tx_valid === 1'b1);
+
+  // In case of FS, FS Only, LS Only implementations, tx_ready
+  // signal should not be asserted for more than one clock.
+
+  assign tx_ready_more_than_one_clock =
+            (r_tx_ready === 1'b1 && tx_ready === 1'b1);
+
+  // In case of FS, FS Only, LS Only implementations, rx_valid
+  // signal should not be asserted for more than one clock.
+
+  assign rx_valid_more_than_one_clock =
+            (r_rx_valid === 1'b1 && rx_valid === 1'b1);
+
+  // Packet size violations
+
+  // Asserted whenever end of packet is not received after 24 bits.
+  // bit counter is incremented on every valid data bit sampled.
+
+  assign tkn_pkt_size_err = (tkn_pid_received === 1'b1 &&
+                       (pkt_byte_count > 2'b11 ||
+		(pkt_byte_count !== 2'b11 && 
+		(tx_end_of_pkt | rx_end_of_pkt))));
+
+  // Asserted whenever end of packet is not received after 32 bits.   
+ 
+  assign split_tkn_pkt_size_err = (split_tkn_received === 1'b1 && 
+                       (pkt_byte_count > 3'b100 ||
+			(pkt_byte_count !== 3'b100 && 
+		 (tx_end_of_pkt | rx_end_of_pkt))));
+
+  // Wire handshake_pkt_size_err is asserted whenever end of packet is
+  // not received after 8 bits.
+
+  assign handshake_pkt_size_err = (handshake_pid_received === 1'b1 &&
+          pkt_byte_count > 1);
+
+  assign pkt_size_error = (tkn_pkt_size_err |
+                           split_tkn_pkt_size_err |
+                           handshake_pkt_size_err);
+
+  // Inter Packet delay violations
+
+  assign transmit_to_receive_delay_violation_min = 
+            (r_rx_active === 1'b0 && rx_active === 1'b1 &&
+             enable_inter_pkt_delay_count_2 === 1'b1 &&
+             inter_pkt_delay_count < 
+             TX_VALID_DEASSERT_TO_RX_ACTIVE_ASSERT_DELAY_MIN);
+
+  assign transmit_to_receive_delay_violation_max = 
+            (enable_inter_pkt_delay_count_2 === 1'b1 &&
+             r_rx_active === 1'b0 && rx_active === 1'b0 &&
+             inter_pkt_delay_count >=
+             TX_VALID_DEASSERT_TO_RX_ACTIVE_ASSERT_DELAY_MAX);
+
+  assign receive_to_transmit_delay_violation_min = 
+           (enable_inter_pkt_delay_count_1 === 1'b1 &&
+            r_tx_valid === 1'b0 && tx_valid === 1'b1 &&
+            inter_pkt_delay_count <
+            RX_ACTIVE_DEASSERT_TO_TX_VALID_ASSERT_DELAY_MIN);
+
+  assign receive_to_transmit_delay_violation_max = 
+           (enable_inter_pkt_delay_count_1 === 1'b1 &&
+            r_tx_valid === 1'b0 && tx_valid === 1'b0 &&
+            inter_pkt_delay_count >=
+            RX_ACTIVE_DEASSERT_TO_TX_VALID_ASSERT_DELAY_MAX);
+
+  // Chirping sequence related violations
+  
+  assign invalid_chirp_sequence = 
+	    (present_state_transmit == ZI_TX_CHIRP_J_STATE) && 
+	    (next_state_transmit == ZI_TX_IDLE_STATE) && 
+	    (chirp_count < 5);
+
+  assign chirp_kj_duration_timeout = 
+	    ((databus16_8 === 1'b1) ?
+	      hub_chirp_timeout == HUB_CHIRP_TIMEOUT_16BIT :
+	      hub_chirp_timeout == HUB_CHIRP_TIMEOUT_8BIT) && 
+	   (((present_state_transmit == ZI_TX_CHIRP_J_STATE) &&
+	     (next_state_transmit == ZI_TX_UNKN_STATE)) ||
+	    ((present_state_transmit == ZI_TX_CHIRP_K_STATE) && 
+	     (next_state_transmit == ZI_TX_UNKN_STATE))); 
+	     
+  assign device_j_state_during_chirping =
+	    ((PORT_TYPE == 1) || (PORT_TYPE == 3)) &&
+	    ((present_state_transmit == ZI_TX_CHIRP_DEV_STATE) &&
+	     (next_state_transmit == ZI_TX_UNKN_STATE));
+
+  assign device_initiated_with_j_during_chirp = 
+	    ((PORT_TYPE == 1) || (PORT_TYPE == 3)) &&
+            ((present_state_transmit == ZI_TX_WAIT_DEV_CHIRP) &&
+             (next_state_transmit == ZI_TX_UNKN_STATE));
+
+  assign term_sel_deassert_timeout = 
+            ((PORT_TYPE == 1) || (PORT_TYPE == 3)) &&
+             (present_state_transmit == ZI_TX_HS_DETECTED_STATE) && 
+             (term_sel_deass_after_hs_detect_timeout == 
+              term_sel_timeout_value);
+ 
+  assign term_sel_xcvr_sel_same = 
+            ((term_select === 1'b0) && (xcvr_select === 1'b0)) || 
+            ((term_select === 1'b1) && (xcvr_select === 1'b1));
+
+  assign term_sel_timeout_value = 
+             (databus16_8 === 1'b1) ? 
+              TERM_SEL_DEASS_AFTER_HS_DETECT_TIMEOUT_16BIT :
+              TERM_SEL_DEASS_AFTER_HS_DETECT_TIMEOUT_8BIT;
+
+`protected
+
+    MTI!#p=G?TNU7=~ljYJO3aa3$!rUC#VC7I;^7k[CE\i0Y'UU1Ao[+1@-U,k=BaDo\?R#?VoB{5WR
+    xoTJWn}YeB-1!5-JH'#Bh[b}Z[12YQi#=?@IX{T8wpn@jR{[!{>~ArjCwD^[P!+{[2rxooA}!&Ff
+    "lRZ*G7CJqe6FqUrQzNDeB_EH[V~>;sa1kCQILCr]Izxr5mXuW3=D['EI?FB_]z#X1{TUCUYOX*b
+    s{A$sO$o^@x}5[IOBO<kB~D;!>p}wN$ZCj!<l@Hv_#5A!C\_}YGxzTK{Xr$_UXplE?oJXVQ!lG{_
+    I#A.j@'uk_Ozn1,-q]El>[DXDh[pH!+Y@!nXvEEe-l[C}!sQXWzuQzcDI*krJXKYVnZIE~BKwX3;
+    *iXBA2-eoT>4p33='>V$r-V_~XY<~>s}zu@!^RvXhejjJ:Yj_e9G^AvHwB>Z[,ZX1z<@$TzfQC+}
+    }Tje.Z\uJfA^Hu;_oK@n~m_?->QOo+#eADB~8#euwOi2Kf4OUTQnVjV/fji-XR;}[-I7^WITk,n!
+    z~DH-^>_\j-@,D#Ri7p\a@lVR0"nNun=vvQ{mAo~XVOB,d{=!$'eZjhila'>-!2GaJw@p;udq_iR
+    e5Tln}~5VjvX=_@Z}Y;mxM5Zo'#O\!1v5>xHJ#E2*r~lBB_r-+I>\r5<n7]$$pAjv}Iioz>e1^Ww
+    C-oTjv2^A3C$imMKzB<{Ar_$zOX[ja'oKAV=3DXkO>xRs*eI?I^ICY5[A,ZEnDlmG{z,Z}i3YRmo
+    ZZ7!]n^K_+*pAYir[JZv}AYoxpY]^H;f[*#5QN(z]nW>ewUQT\B>AWJ#O$YY~]vz+V'A^p}DTD,@
+    II+Dl'B<UXZ[se24ZVU#A=WKJC<o3AE^x[s?2-QAb7@E]Co+DXGH\E!2+1@TZ=K;]7^<+p;N#rR[
+    bYzj}\WeZ-UHEeYKk_@eJ*z?{N!IrCv!Q5%@YV@\2A<'CR{Jw1xXXn\+RI$*@;^$!\5[^i16?p=n
+    XD\_Ue^+RjJ1Gn=#>w>!3*XjK\-jl+*Kl<A#?{Y<<Q;H,,<zYj}^5[^$-_wx~T-3Q?U$cj,W~=Tn
+    =w+OB(,>Izko3_'KA#NmI+WR-2o^'oV*eYum7]#o?Eu!C=$#=}>eD<a5D@{<oA;,CX[X]Cuo?&w{
+    _GiBzXUY\^+n$U1+@Z5W;Hp(DlT[Brpz=El\@r<[$m<zrB\?XU++@l@s?'veEClp?eK3\HGB_W][
+    -[<2|*Z7@#Yw[s~x2~_{]Z{-rji_Jql,WmIXRoW1{B"<\$I=5az1]lYE;jz[u]evZ{WpF*xC!w5Y
+    GG'BR\,k#Pp{ppIB7\]wR1U*l'vCXpl'sno+Or:}21w7JD,'oT]~nfBCwZh^i;es*mZo<ID}%xYw
+    +4:B]u^KBX21>Vw$m5_#r-muDQpHRz~5\U?sQwYAp=J>6B^Y<xQrpcu[X-pW,srv^>X*2RrwCpBj
+    [EK5x$em$V)}ViTK$+Bf,i^5*e';bi5V$\jmjf|9>{OKpJm?]<;\=x#X<,}URn1[lDkk,HV-KQ5x
+    *0CXoE_$^~_<D2L+v*!msZky;l_sJG-^-G!Ge<=\w7{*awwUvWx+A+poFDWnImR;!w_H[Qz13_R_
+    ~DUV*l7!]oz#lvKT[Zaa+5pH!FW]Zwcv@QsH{mRW,D~D2O1A>3RE1D]}C++XQ1~[m'$"#O!xp}JG
+    ,o^^oW~><jQ]?C{*#^z}''e*C?JrHR1nok7$B_-+^-3RU_Rp^%t[5V+jG-w?lEUuza!P=<R^+<Q5
+    ]nQBkD}D^'H2Jr3[O!KW#=#k5*YWV7}rpQ(YQTJQOs31E*;wY'ERRX;D$XT5-m,OpR@xuOpHvC-r
+    =npoJG^4G$X'l$CGH+wk]vG~h)@']*,R_-YTnE?r{7E7n{t\+VoAlK3@N^V53~Qv~rBA#,IU{v=m
+    #eD*,VeQl(BTB\[*<a3=k[l+5\dv^K@V_l\C**a2XX]oI_seI7QG5RE\3[Y251ri^@=}_XAwlJ~~
+    $5BY#2[xn<GDrxHC\;,A_>BHYHQ'<}p-^Dk2]G3@<-?.<-V^.^x-UCBAV1uX\8Bv?-dET3~YVimW
+    AB1[\>G.h3oa^@rA]H*m~o#T1e+jr3zR^\s^>E<ev7Rr!]4-_zKouwI~D1w}e2A;Xp]+sIY~8?.Z
+    Tlv{ET1wQ5T_[!^O@x]}^Hx!RICVUCRvaZo17uV3C[}[^G'ZruvnH<+3EQ*v'T1_!^@[B>zmC}++
+    wsKK}R=HYzJ!,B^6wCi*eO@^\a<l5E*W4$p=i!^Q?*VKGBECazO5~]#]r_5HknY<>xoVmGVI$GIm
+    Gkvn$52srC_IH{eVC7Uv\PEo*'e}@5Ym;w,z{YT_}3{\u!i|:m=,D{\1]~1x<;+ZRRZUaUnO>^vs
+    TN{TJ_^'R^,+O7EjVT2VRzYG2o'XAC9%TeK<uCnCa[;\O$,n{ep~U<In$]ns>AAu\jp+[*ERJ]eO
+    {Cwol@omlxlvUnK'}=A?7~AI;rDAnnJ@V5~WGA,-1VU'1ImK2>Trj!!})Z+=iu_>Jvpkv$AjCz!\
+    ]}Gu@[U>5=IKWC,WOv,Tp@_sEnC'RP(?O*z@z,>@U>H7>XRB1}uV#3xI*X#m{2,{5npruCzwXxuz
+    T$Q>B1>xA$mKYT*J5w-ys~T^&:p+9x#X35$@nm>VXAR<K1GA7'W2QKA*U[J;T'ouu,+G2kv?k{oK
+    JYYx>}Zl\#{oA<7+wE-W<QHO7Z5,EB}#_vy\zspl3QRwvUjjswDlEuSuG3HA,CrMk<^k123rk]D#
+    .@j8c5kV?HjaB=DTY2'<vlBAHIS-xNC,p\*>+v=lX>O#lDIiuJlT5DeIQ-r-R~jja!NLH{X'~rWl
+    Ka1<Z^lxj}<EHTW1\X*eB+w<IC1u$:QsB!l[2TlK\RtzEGk(1,!B1~uK}I?[x*YZBvo}\i!BJwJH
+    !Yu7lBZ]vUvlI3IwT\rW71xo7UpaA[J>7B@#JGvTmX,U<QGUjYHCH_*QUa;K,seOean,ATj<rK['
+    C[W{]_IE3VjGz@]~aEjVQ11~8kYG:lMeeAUXYAB^s,zj_s[}[xr'^,!NliY}^T1\1)t=<j-UE~=l
+    vDJpY'*@C[@]m3~o<ATJ$?WooC#KwTG\Bm}3]Veu\5x$I7vAARGwEIT&;+<JV\}O8,xnEBe^D?GV
+    u1_AuW=_u\\ku'J_*E\E?HYxE#w\2]#Ikj<;\puDxwpaB~x#;HAzlomwv]vjmgJ[#uAenlW\$#ns
+    <QBWQ?2ee*}O'W&$G8Us5nc[7,UmoZeJr=ie;UUmG3-Nv5HObKN'W$3AYz'JHzaG#U\,{^Xdvj<>
+    eEj-Y?\G,2+eAe<[+7;[MWarH<5sIrKOj]+]XIjv?+Ek#]aesk7mXs1Gk[Tu'I,lp)=$-33L\n=\
+    K{au)'7n#d_=@Q$T,<mHn]E!'iXn\>[kT\;{'=1uZlV$$AlzYZe*J7[;5aKTY!;=,<>rT$EWHQ@j
+    K\u_C[u[u@K}*B\=3~>D-B2w>R!_<e=;JQOWj#,WenuB'a6Y<O~H8op7w[_Vw/A'kw~7Cp}-*iMe
+    z=\Lzj+pI#BnpYXD~7_C?aI2ROp@nIZ={{eTp$,alVwA8>C#~m,D~T1v{$E>$]-nn>p>1,-{xRXj
+    DX\pm|Q<Wjk9^5p<z!<$BE2Q~Bs@Y;U@B7JpKCR,jBpk[KT$][W[el+K[<-p[D?V}I{![HG_17+Z
+    G=x<}O#}RZu}I6;rZJ=}EQ|=?5?EpsRQkez]H5G1s[mO>AvW7\we?+]ae7~R,$;Y7]Bk*#pYs=UN
+    Y=COB~nG8mG_kBl^R/7opk:C7[YnYXB;Ve#X7{AW-K<*7~kI;Gxl<@[p5~egoGJm5Wor,QAU_jY=
+    YYZXE==<2_\Rpz43^Yrxr22E{$I#_~'[_BJ}C$z3<x@--,lnv]U7mO?WR,JsQX3_O[eF,}~AQ*?]
+    B,I<+o~=V'C>**-D#wzHIOiK'!KTAoB'K^VDp+z<pWZaO'i56w]>U1r;vB{3Vl[}uci*TXkS?T-J
+    'z+-^,_{G5z='Kn3DJGr8zD,oaCj\O?KK}KXCV3<j1~-WmVTsuz<{u+x>OcD!H7[!$Kx3v,^{+[a
+    1}aA]oQEaD~='<JCxzvSy;p=Jv>\A1GpkZGmGvB#easVmzAK=E7@ein{v=@2\e1HCx1GE-D}vlTC
+    EHQR@x]x]+{-!owA<Xoz^}'o#e~,QbroYILj;Vi:!$5sC_K1kO[u*gIa,ZOxz@>Cn?^p[7eaK+!s
+    nY~C2W(O'_Ji\ap}i1*L/dCVW\Z{+DFARcAp#D$<3l}Vzar<*]rs'];Ye<u1D\UN,mZ!}+72]i2H
+    &<E^K]Gl]7YAxio'KYwXRCED^QO;1A*Gp-515~CY=;{UEj!{r^'YU<=$oi{1u_op_l}A_Fo;]{r7
+    ,[,]TIn_E#alT$9?-HRLiEOk;VXz'1n>b_D{B!sHu)CiRzDC3p*@WpT5^-G^#@Y_GHTnYT{T=a(w
+    X[,QREJI?'DTj}OEOVUFRAeGisH[F@U7W,HwXeQCpazom=Ql13}7m\UZ1rx#C*pZvNY@YCC>C1dm
+    n}$EAvDa[3#y/1W7;DlC+-V'sExsQa=Bn[QTR5lXk8AR\oz}{I2rsR}~An]C>u1Rw_jXw#v,v\k}
+    V-,,\V^r~$GUnH}1K'(<R-['TxC@]"O#=*a5uTmXXX*]!2'-A{1IRZ5riem+_31m7!]B=n=op*GC
+    w2~IUl}~nH}<mlliBX^n~Gm[U@$HRuQiW3J]p[1<~\VE3W^keI;G'Q-qJn7EulXApVQBu+1=p!CY
+    ZR?U{jao7U,##+1@K-W]ZA[Q'z-<7u*OAY>TvBmjP<[ju$YiwGa;e1lnsw}AsA,>_WOQYYxH2RG#
+    wz,T]]*'Rjvza>IDV=xREJ'[no]W!?SU7{KK}/-nUn+H{7
+`endprotected
+
+  // Packet monitor instantiation
+
+  qvl_usb_2_0_packet_monitor #(
+	 /* Constraints_Mode */             Constraints_Mode,
+	 /* PORT_TYPE */                    PORT_TYPE,
+         /* DEVICE_SPEED */                 DEVICE_SPEED,
+	 /* NUMBER_OF_ENDPOINTS */          NUMBER_OF_ENDPOINTS,
+	 /* FRAME_INTERVAL_COUNT */         FRAME_INTERVAL_COUNT,
+	 /* SEQUENCE_BIT_TRACKING_ENABLE */ SEQUENCE_BIT_TRACKING_ENABLE,
+	 /* PACKET_ISSUE_CHECK_ENABLE */    PACKET_ISSUE_CHECK_ENABLE)
+	    PKT_MON (
+	 .reset                (reset),
+	 .areset               (areset),
+	 .clock                (clock),
+	 .speed                (speed),
+	 .address              (address),
+	 .end_point_config     (end_point_config),
+	 .start_of_pkt         (tx_start_of_pkt | rx_start_of_pkt),
+	 .end_of_pkt           (tx_end_of_pkt | rx_end_of_pkt),
+	 .parallel_data_valid  (tx_data_valid | rx_data_valid),
+	 .parallel_data        (muxed_parallel_data),
+	 .databus16_8          (latched_databus16_8),
+	 .bus_is_idle          (host_is_transmitting === 1'b0 && device_is_transmitting === 1'b0),
+	 .high_byte_valid      (tx_valid_h_actual | rx_valid_h_actual),
+	 .usb_2_0_compliant    (1'b1),
+	 .time_out_count       (time_out_count),
+	 .time_out             (time_out),
+	 .pkt_size_error       (pkt_size_error),
+	 .inter_pkt_dly_count  (inter_pkt_delay_count),
+         .data_k_state         (line_state === ZI_K_STATE),
+         .host_is_transmitting (host_is_transmitting | r_host_is_transmitting),
+         .device_is_transmitting (device_is_transmitting | r_device_is_transmitting),
+         .low_speed_enable (1'b0), // Serial monitor only
+	 .bit_stuff_error      (rx_error),
+         .op_mode              (op_mode),
+         .term_sel_xcvr_sel    (term_sel_xcvr_sel_same),
+
+         // Outputs
+
+	 .host_is_waiting      (host_is_waiting),
+	 .device_is_waiting    (device_is_waiting),
+	 .host_is_responding   (host_is_responding),
+	 .device_is_responding (device_is_responding),
+	 .sof_pkt_received     (sof_pkt_received),
+         .tkn_pid_received     (tkn_pid_received),
+         .split_tkn_received   (split_tkn_received),
+         .handshake_pid_received (handshake_pid_received),
+         .data_pid_received    (data_pid_received),
+         .pre_pid_received     (pre_pid_received),
+         .pkt_received         (pkt_received),
+         .enable_low_speed_port (enable_low_speed_port),
+         .waiting_for_timeout (waiting_for_timeout),
+         .transfer_complete (transfer_complete),
+         .transfer_incomplete (transfer_incomplete),
+         .transfer_aborted (transfer_aborted),
+         .pkt_byte_count (pkt_byte_count),
+         .utmi_mon(1'b1),
+	 .back_to_back_transfer(back_to_back_transfer)
+	 );
+
+  //--------------------------------------------------------------------------
+  // OVL SVA Assertions are included here
+  //--------------------------------------------------------------------------
+
+`include "qvl_usb_2_0_utmi_monitor_assertions.inc"
+
+`ifdef ZI_INLINED_PSL
+`include "0in_ac_inline_for_mod_zi_cw_usb_2_0_utmi_monitor.inc"
+`endif
+`ifdef ZI_INLINED_CHX
+`include "zi_cw_usb_2_0_utmi_monitor.zi_chx.inc"
+`else
+`ifdef ZI_INLINED_CHX_zi_cw_usb_2_0_utmi_monitor
+`include "zi_cw_usb_2_0_utmi_monitor.zi_chx.inc"
+`endif
+`endif
+
+`qvlendmodule // End of module qvl_usb_2_0_utmi_logic

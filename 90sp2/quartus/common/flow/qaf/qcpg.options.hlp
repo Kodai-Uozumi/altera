@@ -1,0 +1,451 @@
+<PGM_COF>
+Option to convert input file(s) to output file format.
+
+# To convert a .sof into a .pof, .jic, .rbf, .ttf or .hexout
+quartus_cpf -c [options or option_file] <input_sof_file> <output file type (pof | jic | rbf | ttf | hexout)> 
+
+# To convert multiple files into a .pof, .jic, .rbf, .ttf, or .hexout,
+# use a Conversion Setup File (.cof) created with the
+# Convert Programming Files dialog box in the UI
+quartus_cpf -c <input_cof_file>
+
+# To convert multiple files	into a .jam, .jbc, .svf or .isc,
+# use a Chain Description File (.cdf) created with the
+# Programmer tool in the UI
+quartus_cpf -c <input_cdf_file> <output file type (jam | jbc | svf | isc)> 
+</PGM_COF>
+
+<PGM_OPTION>
+Option to create the configuration device file using the 
+specified input option file. 
+
+You can create the option file using any text editor. Use the 
+strings and the values listed below or use the "quartus_cpf -w" 
+command to generate the strings in the text file automatically.
+
+Use the following format to specify string values:
+    <string>=<value>
+
+The following are valid strings and values for the option file:
+
+String                          Description
+------------------              --------------------------------
+compression=on|off              Turns the compression on or off 
+                                for enhanced configuration devices.
+
+clock_divisor=1 to 16|1.5|2.5   Specifies the value of the clock 
+                                divisor for enhanced configuration
+                                devices.
+
+clock_source=internal|external  Specifies the clock source for 
+                                enhanced configuration devices.
+
+clock_frequency                 Specifies the clock frequency for
+                                enhanced configuration devices.
+                                Internal values: 10|33|50|66 MHz
+                                External values: 1 Hz to 133.0 MHz
+
+jtag_usercode                   Specifies the JTAG user code value,  
+                                which must be stored as a hexadecimal  
+                                number, for example, 
+                                jtag_usercode=abcd1234.
+
+disable_pullups=on|off          Disables the nCS and OE internal 
+                                pull-ups on the configuration 
+                                device.
+
+memory_map_file=on|off          Turns the memory map file generation 
+                                on or off.
+
+auto_usercode=on|off            Turns the auto usercode option on  
+                                or off.
+
+auto_jtag_usercode_inc=on|off   Automatically increments JTAG user 
+                                code in the second and subsequent 
+                                configuration devices if the target
+                                device requires multiple configuration 
+                                devices.
+
+use_low_voltage=on|off          Allows an EPC1 configuration device 
+                                to operate in a 3.3-V environment.
+
+bitstream_compression=on|off    Turns the bitstream compression on 
+                                or off for a Cyclone(TM) device.
+                                
+background_programming=on|off   Enables background programming for
+                                MAX II devices.
+                                
+non_volatile_key=on|off         Creates an SVF file to program a
+                                non-volatile key into a device that
+                                supports design security
+                                
+</PGM_OPTION>
+
+<PGM_DEVICE>
+Option to specify the name for the configuration device.
+</PGM_DEVICE>
+
+<PGM_HLPR_DEVICE>
+Option to specify the serial flash loader device name. Only the 
+Cyclone(TM) device family supports serial flash loader.
+</PGM_HLPR_DEVICE>
+
+<PGM_WRITE>
+Option to write the option file for the configuration 
+device(s).
+</PGM_WRITE>
+
+<PGM_CONFIGURATION_MODE>
+Option to specify the configuration mode to be used.
+Use this option only if you want to generate a
+Raw Binary File (.rbf), Tabular Text File (.ttf) or
+a Hexadecimal (Intel-Format) Output File (.hexout).
+
+value   options
+-----   -------
+PS      Passive Serial
+AP      Active Parallel
+FPP     Fast Passive Parallel
+PPA     Passive Parallel Asynchronous
+PPS     Passive Parallel Synchronous
+</PGM_CONFIGURATION_MODE>
+
+<PGM_START_ADDRESS>
+Option to specify the start address for the Hexadecimal 
+(Intel-Format) Output File (.hexout). Use this option 
+only with the "-h" or "--hexout" option.
+</PGM_START_ADDRESS>
+
+<PGM_DIRECTION>
+Option to specify the direction for the address for the 
+Hexadecimal (Intel-Format) Output File (.hexout). Use this 
+option only with the "-h" or "--hexout" option.
+</PGM_DIRECTION>
+
+<PGM_SVF_FREQUENCY>
+Option to specify the JTAG TCK clock frequency. Use this 
+option only if you want to generate a Serial Vector Format 
+(.svf) for the output file.
+
+---------
+Example:
+---------
+
+# To create an SVF for programming with a 10MHz JTAG TCK clock frequency
+quartus_cpf -c -q 10.0MHz -n p <input_pof_file> <output_svf_file> 
+</PGM_SVF_FREQUENCY>
+
+<PGM_SVF_VOLTAGE>
+Option to specify the VCC level. Use this option only 
+if you want to generate a Serial Vector Format File (.svf) 
+for the output file.
+
+---------
+Example:
+---------
+
+# To create an SVF for programming with a 3.3V supply
+quartus_cpf -c -g 3.3 -n p <input_pof_file> <output_svf_file> 
+</PGM_SVF_VOLTAGE>
+
+<PGM_SVF_OPERATION>
+Option to specify the programming options. Use this option 
+only if you want to generate a Serial Vector Format File (.svf) 
+for the output file.
+
+value	options
+-----	-------
+p		program
+v		verify
+pb		program and blank check
+
+---------
+Example:
+---------
+
+# To create an SVF for programming
+quartus_cpf -c -n p <input_pof_file> <output_svf_file> 
+</PGM_SVF_OPERATION>
+
+<PGM_EKP_KEY>
+Option to specify a key (or keys) to be used for generating secured
+configuration bitstreams or the Encryption Key Programming File (.ekp).
+
+Use the following format to specify key values:
+	<keyfile>:<keyid>[:<keyid2>]
+
+where
+	keyfile is a valid Key File (.key)
+	keyid is a valid id for a key in the specified file
+	keyid2 is a valid id for a key in the specified file
+
+---------
+Examples:
+---------
+
+# To convert .sof to a secured configuration bitstream .rbf
+# using a single key file
+quartus_cpf --key <keyfile>:<keyid1>:<keyid2> <input_sof_file> <output_rbf_file>
+
+# To generate an Encryption Key Programming File (.ekp)
+# using two key files
+quartus_cpf --key <keyfile1>:<keyid1> --key <keyfile2>:<keyid2> <input_sof_file> <output_ekp_file>
+</PGM_EKP_KEY>
+
+<QCPF_SVF_ID>
+To generate a Serial Vector Format File (.svf), you must 
+use three arguments: "-q" ("--frequency") to specify the 
+JTAG TCK clock frequency, "-g" ("--voltage") to specify 
+the VCC level, and "-n" ("--operation") to specify the 
+programming operation.
+
+Make sure to specify the units for frequency and voltage. 
+
+Use a Chain Description File (.cdf) to generate the .svf 
+for a multi-device chain. 
+
+---------
+Examples:
+---------
+
+# To use 4.5 MHz TCK, 3.3V supply, and programming option
+quartus_cpf -c -q 4.5MHz -g 3.3 -n p <input_pof_file> <output_svf_file> 
+
+# To use 10 MHz TCK, 3.3V supply, and verify option
+quartus_cpf -c -q 10MHz -g 3.3 -n v <input_sof_file> <output_svf_file> 
+
+# To use 45 KHz TCK, 1.8V supply, and programming+blank_check option
+quartus_cpf -c -q 45KHz -g 1.8 -n pb <input_cdf_file> <output_svf_file> 
+</QCPF_SVF_ID>
+
+<QCPF_JAM_ID>
+To generate a JEDEC STAPL Format File (.jam), specify the 
+input file name and output file name. Make sure the file 
+extension of the output file is .jam. The input file must be
+either an SRAM Object File (.sof), a Programmer Object File 
+(.pof), or a Chain Description File (.cdf). Use the .cdf to 
+generate the .jam for a multi-device chain. 
+
+---------
+Examples:
+---------
+
+quartus_cpf -c <input_pof_file> <output_jam_file> 
+quartus_cpf -c <input_sof_file> <output_jam_file> 
+quartus_cpf -c <input_cdf_file> <output_jam_file> 
+</QCPF_JAM_ID>
+
+<QCPF_JBC_ID>
+To generate a Jam STAPL Byte Code 2.0 File (.jbc), specify 
+the input file name and output file name. Make sure the file 
+extension of the output file is .jbc. The input file must be
+either an SRAM Object File (.sof), a Programmer Object File 
+(.pof), or a Chain Description File (.cdf). Use a .cdf to 
+generate the .jbc for a multi-device chain.  
+
+---------
+Examples:
+---------
+
+quartus_cpf -c <input_pof_file> <output_jbc_file>
+quartus_cpf -c <input_sof_file> <output_jbc_file>
+quartus_cpf -c <input_cdf_file> <output_jbc_file>
+</QCPF_JBC_ID>
+
+<QCPF_ISC_ID>
+To generate an In System Configuration File (.isc), specify 
+the input file name and output file name. The ISC File is 
+generated for IEEE-1532 compliant or compatible devices. 
+Make sure the file extension of the output file is .isc. 
+The input file can be either a Programmer Object File (.pof) 
+or a Chain Description File (.cdf).
+
+---------
+Examples:
+---------
+
+quartus_cpf -c <input_pof_file> <output_isc_file>
+quartus_cpf -c <input_cdf_file> <output_isc_file> 
+</QCPF_ISC_ID>
+
+<QCPF_RBF_ID>
+To generate a Raw Binary File (.rbf), specify the input 
+file name and output file name. Make sure file extension 
+of the output file is .rbf. The input file can be only an 
+SRAM Object File (.sof).
+
+---------
+Examples:
+---------
+
+# To convert .sof to .rbf
+quartus_cpf -c <input_sof_file> <output_rbf_file> 
+
+# To use a Conversion Setup File (.cof) created with 
+# the Convert Programming Files dialog box in the UI
+quartus_cpf -c <input_cof_file>
+</QCPF_RBF_ID>
+
+<QCPF_TTF_ID>
+To generate a Tabular Text File (.ttf), specify the input 
+file name and output file name. Make sure the file extension 
+of the output file is .ttf. The input file can be only an 
+SRAM Object File (.sof). 
+
+---------
+Examples:
+---------
+
+# To convert .sof to .ttf
+quartus_cpf -c <input_sof_file> <output_ttf_file> 
+
+# To use a Conversion Setup File (.cof) created with 
+# the Convert Programming Files dialog box in the UI
+quartus_cpf -c <input_cof_file>
+</QCPF_TTF_ID>
+
+<QCPF_RPD_ID>
+To generate a Raw Programming Data File (.rpd), specify the input 
+file name and output file name. Make sure the file extension 
+of the output file is .rpd. The input file can be only a 
+Programmer Object File (.pof). 
+
+---------
+Examples:
+---------
+
+# To convert .pof to .rpd
+quartus_cpf -c <input_pof_file> <output_rpd_file> 
+
+# To use a Conversion Setup File (.cof) created with 
+# the Convert Programming Files dialog box in the UI
+quartus_cpf -c <input_cof_file>
+</QCPF_RPD_ID>
+
+<QCPF_HEXOUT_ID>
+To generate a Hexadecimal (Intel-Format) Output File (.hexout), 
+specify the input file name and output file name. Make sure 
+the file extension of the output file is .hexout. The input 
+file can be either an SRAM Object File (.sof) or a Programmer 
+Object File (.pof). 
+
+You can use optional arguments to specify the data start 
+address and count direction. These arguments are not legal 
+if you are trying to convert an enhanced configuration device 
+.pof to a .hexout.
+
+Optional arguments are as follows:
+
+-u | --count_dir        Specifies the count direction for 
+                        the data.
+
+-a | --start_address    Specifies the start address of the 
+                        data. Make sure to enter the address
+                        as a hexadecimal number.
+
+---------
+Examples:
+---------
+
+# To convert .sof to .hexout
+quartus_cpf -c <input_file> <output_hexout_file>
+
+#start address = 0x200, data count direction = up
+quartus_cpf -c -u up -a 0x200 <input_file> <output_hexout_file>
+
+#start address = 0x0fffff, data count direction = down
+quartus_cpf -c -u down -a 0x0fffff <input_file> <output_hexout_file>
+
+# To use a Conversion Setup File (.cof) created with 
+# the Convert Programming Files dialog box in the UI
+quartus_cpf -c <input_cof_file>
+</QCPF_HEXOUT_ID>
+
+<QCPF_POF_ID>
+To convert an SRAM Object File (.sof) to a Programmer Object 
+File (.pof), specify the input file name, configuration device 
+name and output file name. Make sure the file extension of the 
+output file is .pof. You can also generate a .pof using a 
+Conversion Setup File (.cof) created with the Convert 
+Programming Files dialog box in the UI. A .cof contains all 
+the options for the configuration device along with the 
+output .pof name.
+
+Alternatively, you can change configuration device options  
+using an ASCII text option file. Refer to the help for the 
+"-o" option for more information about the option file. 
+If you do not specify an option file and a .cof, default 
+values are used, or values are read from a .cof.
+
+---------
+Examples:
+---------
+
+# To convert .sof to .pof
+quartus_cpf -c -d <config_device_name> <input_sof_file> <output_pof_file>
+
+# To use option file
+quartus_cpf -c -o <option_file> -d <config_device_name> <input_sof_file> <output_pof_file>
+
+# To use .cof
+quartus_cpf -c <input_cof_file>
+</QCPF_POF_ID>
+
+<QCPF_PFL_ID>
+To convert an SRAM Object File (.sof) to a JTAG Indirect 
+Configuration Device Programming File (.jic), specify the 
+input file name, configuration device name, serial flash 
+loader device name, and output file name. Make sure the file 
+extension of the output file is .jic. You can also generate 
+a .jic using a Conversion Setup File (.cof) created with 
+the Convert Programming Files dialog box in the UI. A .cof 
+contains all the options for the configuration device along 
+with the output .jic name.
+
+The configuration device must be an Altera(R) serial configuration
+device and the serial flash loader device must be a Cyclone(TM)
+device.
+
+
+---------
+Examples:
+---------
+
+# To convert .sof to .jic
+quartus_cpf -c -d <config_device_name> -s <serial_flash_loader_device_name> 
+<input_sof_file> <output_jic_file> 
+
+# To use option file
+quartus_cpf -c -o <option_file> -d <config_device_name> 
+-s <serial_flash_loader_device_name> <input_sof_file> <output_jic_file> 
+
+# To use .cof
+quartus_cpf -c <input_cof_file>
+</QCPF_PFL_ID>
+
+<QCPF_DESIGN_SECURITY_ID>
+For families that support Design Security, use the 'key' option
+to specify the keys to be used for generating secured configuration
+bitstreams or the Encryption Key Programming File (.ekp).
+
+Use the following format to specify key values:
+	<keyfile>:<keyid>[:<keyid2>]
+
+where
+	keyfile is a valid Key File (.key)
+	keyid is a valid id for a key in the specified file
+	keyid2 is a valid id for a key in the specified file
+
+---------
+Examples:
+---------
+
+# To convert .sof to a secured configuration bitstream .rbf
+# using a single key file
+quartus_cpf --key <keyfile>:<keyid1>:<keyid2> <input_sof_file> <output_rbf_file>
+
+# To generate an Encryption Key Programming File (.ekp)
+# using two key files
+quartus_cpf --key <keyfile1>:<keyid1> --key <keyfile2>:<keyid2> <input_sof_file> <output_ekp_file>
+</QCPF_DESIGN_SECURITY_ID>
+

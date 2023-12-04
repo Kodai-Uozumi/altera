@@ -1,0 +1,1776 @@
+//              Copyright 2006-2008 Mentor Graphics Corporation
+//                           All Rights Reserved.
+//
+//              THIS WORK CONTAINS TRADE SECRET AND PROPRIETARY
+//            INFORMATION WHICH IS THE PROPERTY OF MENTOR GRAPHICS
+//           CORPORATION OR ITS LICENSORS AND IS SUBJECT TO LICENSE
+//                                  TERMS.
+//
+//                   Questa Verification Library (QVL)
+//
+/*************************************************************************
+ *
+ * PURPOSE      This file is part of 0-In CheckerWare.
+ *              It describes the DDR SDRAM monitor 
+ *
+ * REFERENCE    JEDEC Standard, Double Data Rate SDRAM Specification, JESD79C
+ *              JEDEC Solid State Technology Association, March 2003
+ *
+ *
+ * DESCRIPTION  This monitor checks the JEDEC compliant DDR SDRAM interface.
+ *
+ * INPUTS       clock         - Clock signal
+ *              clock_n       - Complementary clock signal
+ *              reset         - Reset signal
+ *              areset        - Asynchonous Reset signal
+ *              CKE	      - DDR SDRAM clock enable signal(s)
+ *              CS_n	      - DDR SDRAM chip select active low signal(s)
+ *              RAS_n	      - DDR SDRAM row address strobe active low signal
+ *              CAS_n	      - DDR SDRAM column address strobe active low 
+ *				signal
+ *              WE_n	      - DDR SDRAM write enable active low signal
+ *              BA	      - DDR SDRAM bank address signals
+ *              A	      - DDR SDRAM address signals
+ *              DM	      - DDR SDRAM data mask signal(s)
+ *		DQ	      - DDR SDRAM data signals
+ *		DQS	      - DDR SDRAM data strobe signal
+ *              mode_register - DDR SDRAM mode register input
+ *              extended_mode_register - DDR SDRAM extended mode register input
+ *              LDQS         - Data Strobe for port "LDQ".
+ *              LDM          - Data Mask for port "LDQ".
+ *              UDQS         - Data Strobe for port "UDQ".
+ *              UDM          - Data Mask for port "UDQ".
+ *
+ *
+ * PARAMETERS Constraints_Mode - Set this parameter to 0 if the checks in the  
+ *                               monitor are to be used as targets for formal
+ *                               analysis. The default value is 1.
+ *             CONTROLLER_SIDE - Set this parameter to 0, if the monitor is
+ *                               instantiated on the DDR SDRAM memory side.
+ *                               The default value is 1.
+ *             ADDR_WIDTH    - width of address bus signals
+ *             DATA_WIDTH    - width of data bus signals
+ *             TRC_OVERRIDE  - RAS# cycle time.
+ *                             Minimum time interval between successive ACTIVE
+ *                             commands to the same bank.
+ *                             JEDEC Spec. compliant value is 5.
+ *             TRAS_OVERRIDE - RAS# active time.
+ *                             Minimum time to precharge a bank after it was
+ *                             previously issued an ACTIVE command without
+ *                             losing read/write data.
+ *                             JEDEC Spec. compliant value is 4.
+ *             TRP_OVERRIDE  - RAS# precharge time.
+ *                             Minimum time to precharge a bank.
+ *                             JEDEC Spec. compliant value is 2.
+ *             TRCD_OVERRIDE - RAS# to CAS# delay.
+ *                             Minimum time to legally issue
+ *                             a READ or WRITE command to a row after opening
+ *                             it by issuing an ACTIVE command.
+ *                             JEDEC Spec. compliant value is 2
+ *             TRRD_OVERRIDE - RAS# to RAS# bank activate delay.
+ *                             Minimum time interval between successive ACTIVE
+ *                             commands to different banks.
+ *                             JEDEC Spec. compliant value is 1.
+ *             TMRD_OVERRIDE - MODE REGISTER SET command cycle time.
+ *                             Minimum time interval for any new command-issue
+ *                             after the MODE REGISTER SET command was
+ *                             previously issued.
+ *                             JEDEC Spec. compliant value is 2.
+ *             TRFC_OVERRIDE - AUTO REFRESH to ACTIVE command time. Minimum
+ *                             time between AUTO REFRESH command and an
+ *                             ACTIVE command to any bank.
+ *                             JEDEC Spec. compliant value is 6.
+ *            TXSNR_OVERRIDE - SELF REFRESH to non-READ command time. Minimum
+ *                             time interval between SELF REFRESH command to
+ *                             any non-READ command to any bank.
+ *                             JEDEC Spec. compliant value is 6.
+ *            TXSRD_OVERRIDE - SELF REFRESH to READ command time. Minimum
+ *                             time interval between SELF REFRESH command to
+ *                             a READ command to any bank.
+ *                             JEDEC Spec. compliant value is 200.
+ *              TWR_OVERRIDE - Write recovery time. Minimum time interval
+ *                             between last write data pair that was written
+ *                             into memory and the PRECHARGE command.
+ *                             JEDEC Spec. compliant value is 1.
+ *             TWTR_OVERRIDE - Write to Read delay timing value.
+ *                             Spec. compliant value is 1.
+ *             AUTOPRECHARGE_ENABLE_ADDRESS_BIT -
+ *                             Address bit number that is used to enable/
+ *                             disbale the Autoprecharge function.
+ *         COL_ADDRESS_WIDTH - Full Page Mode busrt address width.
+ *         READ_BEFORE_WRITE_CHECK_ENABLE -
+ *                             This parameter enables or disables read
+ *                             before write check.
+ *        CON_AUTO_PRECHARGE - Determines whether the device supports
+ *                             concurrent Auto Precharge feature.
+ *         ENABLE_WHY_PRECHARGE_AN_IDLE_BANK -
+ *                             This parameter enables or disables the
+ *                             "why_precharge_an_idle_bank" check.
+ *              BYPASS_INIT  - Indicates initialization sequence bypass.
+ *               NON_JEDEC   - This parameter is used to enable support of 
+ *                             non JEDEC values for Cas latency, burst length 
+ *                             and timing parameters. 
+ *    USE_PORTS_TO_CONFIGURE - This parameter enables or disables the timing
+ *                             parameters to be used from the inputports 
+ *
+ * Last modified date: 06 April 2006
+ *
+ **************************************************************************/
+
+`ifdef ZiCwDebug
+`define ZiCwDebugDelay1 #1
+`else
+`define ZiCwDebugDelay1
+`endif //ZiCwDebug
+
+`ifdef QVL_SVA_INTERFACE
+ `define qvlmodule interface
+ `define qvlendmodule endinterface
+`else
+ `define qvlmodule module
+ `define qvlendmodule endmodule
+`endif
+
+
+`ifdef QVL_ASSERT_ON
+ `define OVL_ASSERT_ON
+ `define OVL_SVA
+`endif 
+
+`ifdef QVL_COVER_ON
+  `ifdef QVL_SV_COVERGROUP_OFF
+    // Do nothing
+  `else
+    `define QVL_SV_COVERGROUP
+  `endif
+  `ifdef QVL_MW_FINAL_COVER_OFF
+    // Do nothing
+  `else
+    `define QVL_MW_FINAL_COVER
+  `endif
+`endif
+
+`ifndef QVL_DQS_DELAY 
+`define QVL_DQS_DELAY 2
+`endif
+
+`qvlmodule qvl_ddr_sdram_2_0_monitor(clock,
+			       clock_n,
+			       reset,
+			       areset,
+	                       CKE,
+			       CS_n,
+			       RAS_n,
+			       CAS_n,
+			       WE_n,
+			       BA,
+			       A,
+			       DM,
+			       DQ,
+			       DQS,
+			       mode_register,
+			       extended_mode_register,
+                               LDQS,
+                               LDM,
+                               UDQS,
+                               UDM,
+                               TRC,
+                               TRAS,
+                               TRP,
+                               TRCD,
+                               TRRD,
+                               TWR,
+                               TWTR, 
+                               TMRD,
+                               TRFC,
+                               TXSNR,
+                               TXSRD 
+                               );
+
+  parameter  Constraints_Mode = 0; // #0in constraint
+                            // Used to make a checker to be a constraint
+                            // or a search-goal during 0in-Search.
+ 
+  parameter  CONTROLLER_SIDE = 1;
+                            // To know if the monitor is instantiated on
+                            // the Controller side or Memory side.
+
+  parameter  ADDR_WIDTH = 12;
+  parameter  DATA_WIDTH = 8;
+  parameter  DLL_TRACKING_ENABLE = 1; 
+
+  parameter  TRC_OVERRIDE = 0;
+  wire [31:0] pw_TRC_OVERRIDE = TRC_OVERRIDE;
+  parameter  TRAS_OVERRIDE = 0;
+  wire [31:0] pw_TRAS_OVERRIDE = TRAS_OVERRIDE;
+  parameter  TRP_OVERRIDE = 0;
+  wire [31:0] pw_TRP_OVERRIDE = TRP_OVERRIDE;
+  parameter  TRCD_OVERRIDE = 0;
+  wire [31:0] pw_TRCD_OVERRIDE = TRCD_OVERRIDE;
+  parameter  TRRD_OVERRIDE = 0;
+  wire [31:0] pw_TRRD_OVERRIDE = TRRD_OVERRIDE;
+  parameter  TMRD_OVERRIDE = 0;
+  wire [31:0] pw_TMRD_OVERRIDE = TMRD_OVERRIDE;
+  parameter  TRFC_OVERRIDE = 0;
+  wire [31:0] pw_TRFC_OVERRIDE = TRFC_OVERRIDE;
+  parameter  TXSNR_OVERRIDE = 0;
+  wire [31:0] pw_TXSNR_OVERRIDE = TXSNR_OVERRIDE;
+  parameter  TXSRD_OVERRIDE = 0;
+  wire [31:0] pw_TXSRD_OVERRIDE = TXSRD_OVERRIDE;
+  parameter  TWR_OVERRIDE = 0;
+  wire [31:0] pw_TWR_OVERRIDE = TWR_OVERRIDE;
+  parameter  TWTR_OVERRIDE = 0;
+  wire [31:0] pw_TWTR_OVERRIDE = TWTR_OVERRIDE;
+
+  parameter  AUTOPRECHARGE_ENABLE_ADDRESS_BIT = 10;
+  wire [31:0] pw_AUTOPRECHARGE_ENABLE_ADDRESS_BIT = 
+	      AUTOPRECHARGE_ENABLE_ADDRESS_BIT;
+  parameter  COL_ADDRESS_WIDTH = 8;  
+  wire [31:0] pw_COL_ADDRESS_WIDTH = COL_ADDRESS_WIDTH;
+	       //Full Page Mode burst address width. Ex: For 256 length 
+	       //FPM burst, this value should be set to 8.
+
+  //The following parameter is used to enable/disable the
+  //read before write checker.
+
+  parameter  READ_BEFORE_WRITE_CHECK_ENABLE = 1;
+  wire [31:0] pw_READ_BEFORE_WRITE_CHECK_ENABLE = 
+              READ_BEFORE_WRITE_CHECK_ENABLE;
+
+  parameter  CON_AUTO_PRECHARGE = 0;
+  wire [31:0] pw_CON_AUTO_PRECHARGE = 
+              CON_AUTO_PRECHARGE;
+
+  // Following parameter is added to give the use control to enable
+  // the "why_precharge_an_idle_bank" check.
+
+  parameter  ENABLE_WHY_PRECHARGE_AN_IDLE_BANK = 0;
+  wire [31:0] pw_ENABLE_WHY_PRECHARGE_AN_IDLE_BANK = 
+	      ENABLE_WHY_PRECHARGE_AN_IDLE_BANK;
+
+  // The following parameter is to be used to enable initialization bypass
+  parameter  BYPASS_INIT = 0;
+  wire [31:0] pw_BYPASS_INIT = BYPASS_INIT;
+
+  // The following parameter is to be used to enable the usage of non JEDEC 
+  // values for the burst_length, cas_latency and timing parameters.
+  parameter NON_JEDEC = 0;
+  wire[31:0] pw_NON_JEDEC = NON_JEDEC;
+ 
+  // The following parameter is used to enable the monitor to infer the timing
+  // parameters from the input ports. 
+  parameter USE_PORTS_TO_CONFIGURE = 0;
+  wire[31:0] pw_USE_PORTS_TO_CONFIGURE = USE_PORTS_TO_CONFIGURE;
+  
+  // Use the following parameter to configure the monitor to support the new
+  // DDR SDRAM specification of March 2003
+  parameter ZI_DDR_SDRAM_2_0 = 1;
+  wire [31:0] pw_DDR_SDRAM_2_0 = ZI_DDR_SDRAM_2_0;
+
+  parameter  DM_WIDTH = 1;
+
+  parameter  ZI_DATA_PORT_SIZE = 8;
+  wire [31:0] pw_DATA_PORT_SIZE = ZI_DATA_PORT_SIZE;
+ 
+  // The following parameter defines the width of the mode register
+  parameter  ZI_MODE_REG_WIDTH = ADDR_WIDTH + 2; // Only 4 banks supported
+  wire [31:0] pw_MODE_REG_WIDTH = ZI_MODE_REG_WIDTH;
+ 
+  // The following parameter defines the width of the dm port, which is used
+  // only if the DM is used as a bus, in case of old version of the monitor.
+  parameter  ZI_DM_RDQS_WIDTH = (ZI_DDR_SDRAM_2_0 === 1) ? 1 : DM_WIDTH;
+
+  input clock;	
+  input clock_n;
+  input reset;	
+  input areset;	 
+  input CKE;
+  input CS_n;	 
+  input RAS_n;	 
+  input CAS_n;	 
+  input WE_n;	 
+  input [1:0] BA;	 
+  input [ADDR_WIDTH-1:0] A; 
+  input [ZI_DM_RDQS_WIDTH-1:0] DM;	 
+  input [DATA_WIDTH-1:0] DQ;
+  input DQS;
+  input [ADDR_WIDTH+1:0] mode_register; // width of mode registers equal the
+  input [ADDR_WIDTH+1:0] extended_mode_register; // address bus + bank address
+  input LDQS;
+  input LDM;
+  input UDQS;
+  input UDM;
+
+  input[31:0] TRC;
+  input[31:0] TRAS;
+  input[31:0] TRP;
+  input[31:0] TRCD;
+  input[31:0] TRRD;
+  input[31:0] TWR;
+  input[31:0] TWTR; 
+  input[31:0] TMRD;
+  input[31:0] TRFC;
+  input[31:0] TXSNR;
+  input[31:0] TXSRD;
+
+  parameter  ZI_EFFECTIVE_DM_WIDTH = (ZI_DDR_SDRAM_2_0 === 0) ? DM_WIDTH :
+			     (DATA_WIDTH <= 8) ? 1 : (DATA_WIDTH >> 3);
+  wire [31:0] pw_EFFECTIVE_DM_WIDTH = ZI_EFFECTIVE_DM_WIDTH;
+
+  //Following parameter is not used anywhere. Meant for future 
+  //expansion.
+
+  parameter  ZI_DLL_RST_BIT_A8_SELF_CLEARABLE = 1;
+  wire [31:0] pw_ZI_DLL_RST_BIT_A8_SELF_CLEARABLE = 
+                 ZI_DLL_RST_BIT_A8_SELF_CLEARABLE;
+
+  parameter  ZI_CONTROL_SIGNAL_LEVEL_CHECKS_ENABLE = 1;
+  wire [31:0] pw_CONTROL_SIGNAL_LEVEL_CHECKS_ENABLE =
+                  ZI_CONTROL_SIGNAL_LEVEL_CHECKS_ENABLE;
+
+  //Following parameter is not used anywhere. Meant for future
+  //expansion. 
+  parameter  ZI_MRS_EMRS_OPERATING_MODE_BITS_TRACKING = 1;
+  wire [31:0] pw_MRS_EMRS_OPERATING_MODE_BITS_TRACKING =
+              ZI_MRS_EMRS_OPERATING_MODE_BITS_TRACKING;
+
+  //The following parameter is used to enable/disable the 
+  //data checker. 
+  parameter  ZI_DATA_CHECK_ENABLE = 1;               
+  wire [31:0] pw_DATA_CHECK_ENABLE = ZI_DATA_CHECK_ENABLE; 
+
+ 
+  parameter  ZI_CONSTRAINTS_MODE_MEMORY_SIDE =
+               (Constraints_Mode === 1 && CONTROLLER_SIDE === 0);
+                           // Used to make a checker to be a constraint or
+                           // a search-goal.  It is used in checkers that are
+                           // connected on Memory inputs.
+  wire [31:0] pw_ZI_CONSTRAINTS_MODE_MEMORY_SIDE = 
+              ZI_CONSTRAINTS_MODE_MEMORY_SIDE;
+
+reg parameter_checks_active; //Ensures all parameter checks fire only once in 
+			     //the first clock edge after reset went inactive.
+			     //It is set to 1'b1 during reset, and it is 
+			     //set to 1'b0 in the first clock edge after reset 
+			     //became inactive. 
+
+  // Wires included as replacement for the ports ldq and udq
+  wire [ZI_DATA_PORT_SIZE-1:0] LDQ;
+  wire [ZI_DATA_PORT_SIZE-1:0] UDQ;
+
+//Following wires are declared to have checks on parameters. 
+//If checks are directly put on the parameters, and incidentally if
+//two parameter values are same, then 0in tool will give a 'redundant checkers'
+//warning. Hence all parameters are assigned to wires and the checks 
+//are put on them. 
+
+wire [31:0] tRC,tRAS,tRP,tRCD,tRRD,tWR,tWTR; 
+wire [31:0] tMRD,tRFC,tXSNR; 
+wire [31:0] tXSRD;
+wire [31:0] pw_Constraints_Mode = Constraints_Mode;
+wire [31:0] pw_CONTROLLER_SIDE = CONTROLLER_SIDE;
+wire [31:0] pw_ADDR_WIDTH = ADDR_WIDTH;
+wire [31:0] pw_DATA_WIDTH = DATA_WIDTH;
+wire [31:0] pw_DLL_TRACKING_ENABLE = DLL_TRACKING_ENABLE;
+
+`protected
+
+    MTI!#+U2oJ\-ZG{<zQ@@UHBZ=ERzAVo]^I+pT=mQjIr#=n^''eCA[sH7>BHEzx,uK~Qm1z+*DoeB
+    AQsR+W5Z!nEKSRe\VqZo[!2&^V#wY5_-e71T1[kBZ>]*I;-^Q_7A~'#'oeTs73KUy.%D\3B3\*_s
+    3D'{rY7man'&_^Wpg]Bj}'5[p4_#![zlAmm_[RdyY~CjB!BokEWRrVq;XCk6,+'2|Y@Y}G?[WsWp
+    OIe?^u=OA$IJ#R7WuDZom6I*'[y+-dI'H]En*p@[kYVHwTE+sxBXW~V5jnCIp>mnri*7{uT[XJ7?
+    3;pOvp=nDz!j#j::_[p!X<uYqaL_Dw~H}YIZs\lo;U>^+GWIK_5UC,x^nmsG\1[I>+<fECw+XQ{B
+    Rmxim}7vlIv7Y'<OU{u!>Yr}[)nB1^v][-~ae@\auxsaH3Lio\@4:+s,Qu*TGw]iVIA!W[g2r!>2
+    vkva-m}S_RB,~rw<;o$J3D$Y,7#}ez$j=~*,]Y2'*nm@CrM*D+{C~o'Xsx1[\J~O#K@Im*#5$u~2
+    zjTzK>1Y@~llDX7j~3ei'2,kD3Yo?{s*WHko@^C,LpHeETa=^kB]<Y{X2hQD2#hn^i**GT-$TpJ,
+    [s*I'#=A=\~l7>se3DW3s~C=Dr[L1Qen0QG+WV#n>7K,OiYR#[U-U7e\\N!o~rA[<K[kBUQ*wu2-
+    ^:}@>jjsGBBG\]L=1XUj-muuwAV-TJ~r?z#vJV*o;vxs+1xH5<Z7>e]a>RR=Z=<jK!5={*j_TW;}
+    ZTl5jpZw]i[/lu{?tC,]7YG*xLQuG;|_r{x+zK\?'\'O'liIkQU^X;ZEuRogMORB=l^x>)irHI=T
+    Zui]'BWCi<nDkp"#OE2Q+G3GjlKr#7Wfe'RA2z7w7;npI;Qw+_A5)^~$-@D$Im5snBVeYV}~~jjk
+    aj\,lTwOvRG?R,p}JVHGWEur7oo?K8}i\]T1[C5G#*;Al*fVp'Xxn{WnYmA=C,AV3VsLW{}2D*#Y
+    z?}TY?^-=@->AwCIk'A2nnrs${el[k!Gx2.]*B<,Us^N<<>HhjK1{I'YTOD,jWwp{i<7D#V~-]JO
+    RCT]As1z7[IQnPz5le>$JW7aOmTr$II:iswZlnTp-,$xz$$=OzH_%V-zu7!{vG~JjHz7=]UV{^Uq
+    rs+KnQZ!=\pk_iDC'BYHp=<@Dk2,S~V=2V,QG>n7AO=U!-7oAjbolIpTj'XxxLFAQ-BH-7+Cmwu?
+    zn^e&!9k^x\3v]Hn<<T,RA1yc^wD*'^7C_Ul!O<C$B^+lA^jm,xx;+\\,J<ZjxT^oz~wA2A>eouG
+    w7E;r5jWCeYBey{oEV'Yk'3>XD\Qj1_Al-s~v?^$,J2vmW*NGS*Rj?]\3a]hY<\o}]^=GB<z_TWx
+    rJQaxX<Enr+zh3sm{I<*2]YEQ+AAps+vvNCk<jn}x{H<Yoge>5Z}-Q?VCzzg']TnM5Q2Q,iWmQ-v
+    #$l$nC]{'!U\^o5~a[Gi;u}TUwITo-zn]nXwo4I$Oo="luR>D$oY_@7$.lvnJ7nK73}Tw@*<},rK
+    ][TH^Q;@RSU1[5*TYelu=JegFE~rVYT1l1-_KAr~-NQv3'=2*j^Yn}B3Q?xmHo?[]Ga]xE[!3$}H
+    >e]vm@z6BCA*BUB{Be!-kEl2I+$\7eJ_E8^@s?N!<[\qIX5*p!\7,zZI,GQ[;BVjUsJ{g#wQs_Rm
+    1E+~$.w]KrX}ap&'lDXaTC*jmvV4^^iT#CIs~BZUiw@w*=3reYeiGXJp}C!=(vko{r~&o?-D7Qn\
+    vpV1BeUs#B$]rKQ*BpRv?siB_>+pj*arp_7OfnrD{RW-lm*XpO#EA<p$?>vm^p<n#)E3^Y\'Yj~U
+    !+o>TG7l1uO1z-rkne;wXUp,k;D!G5!o-@=Zm?t?G?r'AGiIGOo#Tw^QDu!TDn'Xo]Y]*]#[jw-F
+    !I*2r7o@_KzkeiO!-e@][}~[h=o~[V!_-G~j'wl<~kXU[G#o'wOK~U<
+`endprotected
+
+//Internal signal declarations.
+
+//Check enable signals. Assigning with 1'b1 to these signals, 
+//the appropriate check can be enabled.
+ 
+wire incorrect_command_before_mode_reg_set = 1'b1; 
+wire violates_tRRD = 1'b1;
+wire invalid_mode_reg_value = 1'b1;
+wire mrs_emrs_operating_mode_bits_tracking = 1'b1;
+
+//Check fire signals.
+wire incorrect_command_before_mode_reg_set_fire;
+wire violates_tRRD_fire;
+wire invalid_burst_length_value_in_mode_reg_set_fire, 
+     invalid_cas_latency_value_in_mode_reg_set_fire,
+     invalid_operating_mode_bits_mrs_or_emrs_fire; 
+wire invalid_burst_length_fire;
+wire invalid_cas_latency_fire;
+wire invalid_operating_mode_fire;
+
+reg     [9:0]   mode_reg;
+wire            an_active_cmd;
+reg     [4:0]   counter_tRRD;
+wire            mrs_cmd;
+
+wire         collect_stats;
+
+reg [ADDR_WIDTH+1:0] input_mode_reg;
+reg [ADDR_WIDTH+1:0] input_ex_mode_reg;
+
+wire  [3:0]  burst_length; 
+wire         full_page_mode;
+wire  [2:0]  CAS_latency;
+wire         burst_type;
+ 
+integer requests;
+
+reg		CKE_delayed;
+reg             z_valid_clock_detected;
+wire  [3:0]     data_mask_window_flag;
+
+wire		cbr_refresh_cmd,
+		self_refresh_cmd,
+		self_refresh_exit,
+		power_down_cmd,
+		power_down_exit,
+		nop_cmd,
+		dsel_cmd,
+                extended_mrs_cmd,   
+                precharge_all_cmd;  
+
+wire		all_active_cmds,
+		all_write_cmds,
+		all_read_cmds,
+		all_pre_cmds,
+		all_burst_stop_cmds;
+
+reg		mode_register_set;
+reg             an_active_cmd_received;
+
+reg	[1:0]	BA_saved;
+
+wire		z_autoprecharge_enable; 
+		  //Used to decode autoprecharge enabled/disabled info. 
+                  //during read or write command.
+
+wire	[4:0]	next_state;
+
+`protected
+
+    MTI!#w[]j>HmkkvKYp?7VXsYH2}!D$'%5@$TF^mnW7"XB-rY^'HHwzv_]yIOnofmU}wl3-AYa5oR
+    -{Bk7'{{535Hs#YzZAB^U1a]K15M=#-WC'Cl+Tns[;J7)mUD[[@lWYZGp2>*;=K<RB>G+i*~mLX=
+    #nQ#@k%,UeB6?Yvo=X5v\x^QBI-pl$JxQH=+$+G~C!]O^wSO<[UOxxw7rJa]-}?}x*r|EmoVi-X!
+    X|Ls@6I?D}I1,+jnu,2rWup;Uz#5];xjErxp,}P*E_BvCjH*AI3U7@\}"?<C;<8]KnUBFF-wuCiw
+    Uo^zKYh-UvY--oazUXwsG=urxE_2Do5[JW>o@uu}<B$TCK?0ICEwuDxC#j}^HRm7U^RKD}wWDrQk
+    p3H^wX<,L~s^*.-=kmvGX~Ueo@Y!swBJA1eJEk\l5TjG,#CDBi=Ij[Qz#<AAj#CmZ<>v$V@H!{us
+    ^7g!j]{@*7XaE$T7H1T,E_'}@Be_k2ClE?'9<pDvl\J~[m\D\A5GYQRzd}KIWw-Bmel{J$op],i]
+    V6~}x;xWe_T_BwaRYoi]+$:+O!~}YZoQm^I@$AVI=sxd~5CJxs*oKV-j31,<}#H{dbyI7[#:lona
+    [YmZ@\!uev[1a1>W3{+]dZDUniz]1orJZJOaG$DwzC1,^Sl<K$=#p_nvw;lKZ*$l?7x(3+,>uww#
+    3R?~.Q;1,u\p<g4XaEpGD[^R?AQ,n-vEE?W2]AZO-nOIZ$!o1Iw]p$WpFG7=JpG]D=Z^eBwzvQS5
+    TooeuzHa*Q$}nx3Cap}#U^R1|xHlE$D_'IZ_7JQGWZ7JIM'kn^^Aa}V[ZjzUp\v+V-oGa}jkx3^k
+    *~Ezo;3,UK[A,'}D$-\;3ujXyB}o{ZDjBx$R~O=jG_/9@T2uq};ZUwCUYABXH-E$X@,RvzYBe;1A
+    [K]wa[3zXpERTJ7RTO;z+|}>U_kHExZ}{^jeOi)ksV{v-rmG3v@#}?s'\=vm_e-;${~o|p{7sN)-
+    sOsCYs;CCmnC\D-U{3jYZ{kbQQlpfEd7Zmp@j5Q03T[s)R,{[TTJX(7HeHG;EV2[is6$XJuuzG_1
+    -e*c[~*{|N5mg@5}[go;vU=Ao<G\GjTpjk1How'=Y,?C@T*Lo<^!~D,,_}Wu+9OmV3>[~~*k^k&o
+    z11pEEr@[[=RQjUp~,G<Bp\Y,}<_6^LP.i>RD*IkGNo+3nljm7-+!z#Hvu!n]op1e+o=,ZZ=wU<x
+    @[1K<!EI*;7{oomxz2/B]7}$IkjKUW!'sp}"rC{ODiVD_$#jQzv*D{lsYaGRqwBgv{-{'r1VOCQ@
+    ?$HlJViAJ{'~[nVvS=a[7572v{H*<2tL3^}[E#j;O3zT5sa'Qi3;\gIx!5=c+jeA4I,-\tZxZ;Gm
+    V<N[1x>H_7z+RlOlEk^u>o5o-mDW*mjR<na0sj^=zO2Usnwn?Il^{]pizp$@GvQJ6=E+C$=T$jHr
+    -?C-3D1~pv|wR<+,?~xRa>YSGBB<][e@\j<B8}>O>K-{vqw_u[oEUD:ral\$Ej37@^Q{_jrxRl*r
+    nXUHE]$[r>nsk*Gma']pT}Q~5HueX+'*We[Fa|pIpXzz$?B+x^K+*vG{nu^YH-s'}CUoIwrD>DXE
+    ]D-w]lE3Qv/<O2G^aT^/PuADK#ElHRojp<,!#~._3Eu,?X#[j~?E7[vErl*jZ;sG~pUFYlD\Bn'2
+    Z,QO<D~;o*_'QJY$-lUZ[+={jAVz,W1mls-nI_uRor^u'G7z=3urz3IOe+HWw+!WkzJEsup5X-Vi
+    Yom#Y:d#l1ir#CDo-B>e1C7<oo^G#+=>j5OY$]rQ~R-Yl{3NQxU,{<^O==xm_vnoFJzs\tgO+<we
+    iQQXTslEkVkH5x5g-+vTeJ;ZW7A=}p}J5vzTl}k$%{.J*{TslR>\Wp7Hesuz?IIsA-_}o'~rl7AI
+    QI?vCK=HEvD[\o~i*[x'YlJb'<\]WIEDwR^\GU+'!}5ijC!w<}oExwaXD&I_A$o,~$E*KC\xBs5{
+    D2[+z?w+w=RDr?waBl+xTCXUZ*Gs',BJ+^>5s;DC;[G}Qz|\nT]*UQ#{}zmQ'ww_iMJe\#emvu2o
+    E^Emx[a\YD!Yj@VuCK3^wl_~Un1iW\VW-'jXW@;ouv;<[#,or7<^$vP~E@DqiwE[aXA1jK5@E<X1
+    ,{szrzuO~O2>*bomIwm}_~na*$vuGi3U_[Y*[mV}sX;ezZ\;W[&7W@A[3']77R3'_5Op}GG*zI*K
+    ]AVZ}QuATuY{w1'*s?jR,B<#wWC"?Rj?zz#[E$vwfW*eXLE5Ilm1$[]JQrVR2oV!@vd<H*O!}pUB
+    53-,Hn36}U7euDKms=3kzvTGaA1iV/E~Dr7#v;,zBx?_>*QYK$aD7!573^@l+G]+Y[[QTe,!]]JV
+    ^@pZ_#ers*W*K~v~DT['Gv=kwJ~DWe'DA[Yu\kKTKnovx[i5H]=asV#wnxNrD+a<$]uAn7]RIs$]
+    3[+Yp@nA>Tu+U3X/s~B?NEZjl;VzQ01#vW='1TERlOuraQ?j^EAIZ$oGx\RJVZexlJ2Y]a?-v$:?
+    [7!l1l+pa+HI2T7GIQoea^B;HIp2}{#zjzuvml={,~5,5r7K,njG]$,kve!wlruo#va(*pt6E'ek
+    '+HX|XBs}UxW>'[e5mQO-Yn@anEsn3lZ,gDsVQV$;[G++?i5*-j=D7A7'kGX<<R}=GGlRIzr{Br~
+    A3O7I]?QsnwD+G}QCB@xelx\~jG<_OA{j*Ka+5mVYCWYT2fY+uTzZsn~rvxE}ja5E[aO~K2GXw~R
+    /bm<p3lXU~.F]CK3(%avoie-5li7e7_=a\K]vZr]CDg=f-7W#[p,e#rT@NI@zr#1\l"#[]?oI{O3
+    R;kGV!WkTV+'!1zG15H07u5s]zXQ1$J1:Bnu]GXrmjg]CoIEn@{upH^G%52]3EoVTi7?\=?w5m]^
+    jQ${n'7av\2B'CRsUT$oBkv2QsUm<*j$~Jwa+fH\pWvQ@Y~{m+B-\!QB_1}yd~5WC*-1o}YvzoY?
+    ~1k2u5E@\=asQ?OeQjZjv5i7G==J2,\*;;w>27{;uYJ>zxLa{$J#$Jzn*uox+j1mpZK0?-DwoITx
+    z@{r'PA,{$#Q_nloG7%@Uj<@Gp]5A7llX5[WOB3E!;#h#E\E.U}Z^+XZTC<yO_JE|L_UlR'Gk!2p
+    ^$?n2rs]eOg},$[#<n@c~e<a{xia}XTe1><CYDZ+m6aTriKn$ieGaX'[o7$WG\GoEu[pR2,@)uoU
+    r1X_rYJnJ@$ED{E]RQIv'Ys\i@H+~GV!-OU!lxnEmpJakm5,$G#'U#+CBKCzZF\l?jHsX$r[Q;zG
+    JZ[RD$!G;u9o[ZjlBoV1_ioi[BUATn>Zl~n<B#Hzji]}@x3,J[Hv)'<UzxwZC-C^YaOTWGIBidk*
+    vBEm3_x2AnYX^e^5p${YIXp#DuGHXn(UQD$snTZBOYJb,se2]mOAi+viVQTe,mz5Dw,J@[-*Kz<r
+    l4r}lUXjji%lDjj_Is,BIaoJ'o'XGKw}%x[$Y2]}xoO[VW]]iYkT2Qs7~,zzKLj*XK*Z<=L&hG-X
+    ~3s[l,eVOeVH[eGw;*T<ZrEuX6vV<R6$YvVZ1R]*[;VEB>A!}p2JO:U-wG-X$<[/ei>OP.HzEG#Y
+    I[B}uAl'lB29FrT6eT@u;pXKYET#3,iOC2-Wo2w,3}YmBUR!0AVi$R2rv#RG?472Q}lW\xc=VCiW
+    5~+oR,AJ5AU{x-T+xX7r>^QAC,]ZU~3-s#D]WKxmX[-K'pJm-D'eO>Rn$-#e&Oa>xNEpu~l;HX@p
+    xj[?p?ReGkKs$,!<TKG!2}>QOj=m]G>r*5E~n7N'>7]1m]A>T}V;AU{'xOmHYo#'[wI*;x!}p-$L
+    MoQw>D#;rVH\KC;B,O],xpi}>*E2m:CJ~CY$HIQewA\s},EZ3~mI,ie^AO!\Uw-}+wj*!2,Sp>I[
+    \EH35Ge$-\Z7Gwvp3]V=^23m]lQr[!AkU{IIvpXvZ,+C7eOI/UB+Y}3l>d_JAT^1VE>zHGuDl'z>
+    }<;rUH_A1^kQvV_XB[Wx-w$|jQTk|G~$URBp?Ii+VE!K[@q5b2e<G5T1ATG@;r$,YCE>E#IjsGaV
+    VEV^af5+n1FGAE$GAQUFGX7jTaCBN;V,UaDls2*RHz2$3[Q$VsHj<$~[*u}?mYG<kax]-UluQO[x
+    ^yo!uUlv@vlV73+G>U}5Xvw>=7Hl!oQ*v\;C'DSB*o\K5AB~Tj-5\mBluX<U1,!,BiwZ|mx-xqCa
+    DK>rvldRuAxKaCO#^s\,_Ww2zR2R2Ku=D1U2a^+j^~z)H$YBIe_jx3I,Q;T_Q?z3JCoCHnKEokji
+    ,CJ!]pvWV?@G}AIm2,zQ*ve!DpuB[krWg@7Tj9e;vj>5]e]~*,]!ACO+Xv*#Gmo^lYAE-?bW_?om
+    H{Xz5}GE}YmF7CTT];Zzur]5*\oI!\nr^zU>ezB\h<+r1=Z!$J<HE?e7TA=}Tlk1lD}#,r*kx*sZ
+    7zo_'Y>$~HV!5@-wR$JGJB^7o1H>3#<r*TaZAieon}#T>O~DT$V};sGDYHv{r'v<{X,OVDu\k7[w
+    ZMs"/w^Qas^??d70}~vY$CCiDR,A=+Wu)v,5?3w@I_!r<C}@#=eJ@U$p^s*?wzK!xa}OJIJ}-BIC
+    ^D~>5Q!RJ'=Ju$vl5GUD2e~BO{{eROECuvIp*z\pjRxw<'uCiYE<E,s-OZ<K#B=l7Ip_i2\ri=j[
+    <x+B^YEiO&?lE,SY;U{2O*roW1lh*TDko$Rmg_P^[{~5m1@'O!'(e->m$KV~jG+Hrp[sSc2R]-[K
+    GU}s@IlK};G!$?4,lX'RR-u-+J#U8TXmz!eoYWw}!j*_Y/AQnvpl,*ORAxv]w@ERvi{pE!,2Aj5e
+    O\,ux;t\1GD_;la5;e?roRwwIA\OY}<r\ss~,VZ|5'HHeWTXTBlKr~G{Z'HWzp!Q'YT<oVj58DnQ
+    ZuVu~<TrXtD$eO9rOa+No'}xzKrs$~<~~zuYE\>IE@u]}D[W[C2Q!+5'5o1\eX[O8_{'JB7lx5~p
+    ?mC]J_3v?QVkZ1B'JZv>RE2xTsj\_zav\:XQ>wO$nwnr5jw'XGareW'R7X(I3A?lkJjoAnrv#<>Y
+    o?;zYmH5wIZl3D_t,lC2AR,,u-=A\@_?I+2DQHOekDY>\lT-JjOrj(W^ZUVU7'JG!3;aXG~=OeDx
+    jmB>K,vBea]qVZp-8DE@ss5WCPsZ__Nq-}p$R%+[rsO+E=&]o]iR=7^H-<A'!Ak~z2UI*xpk1av@
+    o@*kO{DV';JIz}*o#l?==I}J=QEDj#s:o{5$gT5Q>Ce*u;YY<}oz;!G*\+wwY>-Www+Y$<*ll[RD
+    *~_2][p}<]+$_wG,JrjC[rDj2KjEZe^;HHO{Xr^{CzWAJDO[rk+p2^aWXA*C]REoW~>7kz[aQKpr
+    VwBYOpGu+VE={Ik{@w12uBOjY$sEvD+DK*l{V,R==,1W!zzkpV?U_vGBm&,Y#\:1a;$Xw,p{sRoC
+    Jx?~Tv\]!OnC7ms>+}rRlIK<=nj!]nB]>_#=Ba5l@J3uQ;7DVX\G)\\5n,D}ZEYsIsX}$5#DJ,>+
+    OKS$R]$oQV-Lw-Amf7OC*usJzW=~j?5w~eII]7Q_Jv>o*BCzap[i\\iQ;lD#GsB+2;U;QD~A_vWj
+    jnTrW~*sY-9I<ECv+aQ_KHRI,iB@7T;b=Ap5KnB[bY~*-lG^k$$k1\5Vm8El51'o{XQYBYmI>}sT
+    p\#|vTJvtCivBGInW/r\H'QQslKxH\5zw;\@W!z2*rQCG77$~D1!!Z73@L^$ir?OrO7*<u,5!pTr
+    ewB~'$Ex{W}_?1-1+@w[Xjh[\1GYDVz_~K;\WRjuY$Cp@[7LSaD]$wn'oHe+OVA=Y]Dr[>1QwUsm
+    {~B5zn>z'Q]R7O}Tu&V{YRfIX[wTV@O\_+ZzYeeOrYWfe]IJOOjrEZo1'oj~5EH}_HB3lzUU}p,H
+    1nGH^uU]DC;KJGi?m12~'uQ5a5B>aArR[+\EOlI+~OvUoex3DDl'@xX-3^+]|s[C^BOQVQm\v.B#
+    'BI;oW!Uv$9Mk$7YaoYQWjHvXVr2!*D}aQ^C2jU=VRU@Oir*W}JK_H^lXOGK5-vG5\53AC!;-D<T
+    G@_UQk=xVA=u'3WC_Y!e+T[C{\>\jrQHD<BYw7Tl!ETxFv_<I11lBn>>~B]xUx<HXwa{~}9_$\32
+    H=utKaV@4W<p{~eR\@TzwD+XnD<sV]pXOO}~Y>>-'gee>rjoO#+{pYu=?+@[=B}=iGj[WDx=~J42
+    H<e6IQwG'x-lO^{YV!QH{EQV*<QEIAX~~EO?JRRXdT*r$Rxv<+1z#*l3a{o\#{}"Y}=EWB[k
+`endprotected
+
+  //Data checker module instantiation code.
+
+  wire [DATA_WIDTH-1:0] write_data_rise;
+  wire [DATA_WIDTH-1:0] write_data_fall;
+  wire [DATA_WIDTH-1:0] read_data_rise;
+  wire [DATA_WIDTH-1:0] read_data_fall;
+  wire [ZI_EFFECTIVE_DM_WIDTH-1:0] write_data_mask_rise;
+  wire [ZI_EFFECTIVE_DM_WIDTH-1:0] write_data_mask_fall;
+
+  reg [DATA_WIDTH-1:0] write_data_rise_tmp_dq;
+  reg [DATA_WIDTH-1:0] write_data_rise_dq;
+  reg [DATA_WIDTH-1:0] write_data_fall_dq;
+
+  reg [ZI_DM_RDQS_WIDTH-1:0] write_data_mask_rise_tmp_dm;
+  reg [ZI_DM_RDQS_WIDTH-1:0] write_data_mask_rise_dm;
+  reg [ZI_DM_RDQS_WIDTH-1:0] write_data_mask_fall_dm;
+
+  reg [DATA_WIDTH-1:0] read_data_rise_tmp_dq;
+  reg [DATA_WIDTH-1:0] read_data_rise_dq;
+  reg [DATA_WIDTH-1:0] read_data_fall_tmp_dq;
+  reg [DATA_WIDTH-1:0] r_read_data_fall_tmp_dq;
+
+  reg [ZI_DATA_PORT_SIZE-1:0] write_data_rise_tmp_ldq;
+  reg [ZI_DATA_PORT_SIZE-1:0] write_data_rise_ldq;
+  reg [ZI_DATA_PORT_SIZE-1:0] write_data_fall_ldq;
+
+  reg write_data_mask_rise_tmp_ldm;
+  reg write_data_mask_rise_ldm;
+  reg write_data_mask_fall_ldm;
+
+  reg [ZI_DATA_PORT_SIZE-1:0] read_data_rise_tmp_ldq;
+  reg [ZI_DATA_PORT_SIZE-1:0] read_data_rise_ldq;
+  reg [ZI_DATA_PORT_SIZE-1:0] read_data_fall_tmp_ldq;
+  reg [ZI_DATA_PORT_SIZE-1:0] r_read_data_fall_tmp_ldq;
+
+  reg [ZI_DATA_PORT_SIZE-1:0] write_data_rise_tmp_udq;
+  reg [ZI_DATA_PORT_SIZE-1:0] write_data_rise_udq;
+  reg [ZI_DATA_PORT_SIZE-1:0] write_data_fall_udq;
+
+  reg write_data_mask_rise_tmp_udm;
+  reg write_data_mask_rise_udm;
+  reg write_data_mask_fall_udm;
+ 
+  reg [ZI_DATA_PORT_SIZE-1:0] read_data_rise_tmp_udq;
+  reg [ZI_DATA_PORT_SIZE-1:0] read_data_rise_udq;
+  reg [ZI_DATA_PORT_SIZE-1:0] read_data_fall_tmp_udq;
+  reg [ZI_DATA_PORT_SIZE-1:0] r_read_data_fall_tmp_udq;
+ 
+  wire read_dqs;
+  wire read_ldqs;
+  wire read_udqs;
+
+`ifdef ZI_FOR_SEARCH
+
+  wire [DATA_WIDTH-1:0] read_data_fall_dq;
+  wire [ZI_DATA_PORT_SIZE-1:0] read_data_fall_ldq;
+  wire [ZI_DATA_PORT_SIZE-1:0] read_data_fall_udq;
+
+`else
+
+  reg [DATA_WIDTH-1:0] read_data_fall_dq;
+  reg [ZI_DATA_PORT_SIZE-1:0] read_data_fall_ldq;
+  reg [ZI_DATA_PORT_SIZE-1:0] read_data_fall_udq;
+
+  initial
+    begin
+      #0;
+      read_data_fall_dq = 1'b0;
+      read_data_fall_ldq = 1'b0;
+      read_data_fall_udq = 1'b0;
+    end
+
+`endif
+
+`protected
+
+    MTI!#HY[>@{@DQ?H[lDax}Bup%ezGJffl#K;|*y}]#}rio[zGI_YHmX<=\aRBx[l-DZ[}7jA{\J@
+    =G[da<r7DIi>3$*,d6}55A[w*,ZeRWvs{@iQR^AC{mz*@!'Z][Zj*]x3T3;<D}'5K!}R^UiGl^Y^
+    VHoX+]T[=O<TB!iC$@>jBBU$si@-!OwH+1zTDudl}Io"s{1\>IW<V_wOZl\#?j}]Cz}WI{-_<RVC
+    0fU-$5<]C+^aKA%=<~o_z@v2REs\+!7o2!^uAVe}2<xO~A\f#}\Yu\v{8rPYx!n1}$?aDQD6e_$^
+    <wCnY1i\?}5jB{>3D5kJqB-TKK}*?5Cw>~>OvVvZoO{*EjBA#HAl>o[]^@Hea}mvGj1RE*,swA'p
+    ol^X};BZZ;E*a?XA\oKAdFB*pZ+TRJG'Qu=5,Q1+Hzh[3vIH]}=^%a>3eY[_Y$Aw2O!=AZ'<'1D?
+    !}7JAM_X+Bj5ju\RB,@Dk-g7\J}n1*[28H72Q]Gj!'uXO=iBx9]B[TDeJrvBW};wr'^s}u#xY52o
+    <W[\Je~BY@s5H<AB>D3}Da]{X3wj;]6}$i*>EBT&(a+PB3~Y)=Zm?Z7z^-5^7*1mTure[V**E2}*
+    @n1=\8I4H>!,9L'kRWx^#k7Mdo*3QEA]icoCO?e<JH;5VXrDUK4IZajApm[OmU],w2amhhQ@!ru$
+    EDZIrI$uHG7K^]]KYua-@_g:X-Hw-ajuO7YTn={^'wXeH_B;DVs1jlwrmj}=To-[f}m*YOA2G*-e
+    }]HI$1^E?Eo~#d[@mB[,wp*;HI}a+,v$#]E\EixwO5lul#~e[HnQ~[g^3{KQk2?N.jzp?377rF-G
+    uAlmnX~^]jus~13CCU#zHHxXGXGe_I2_={F]+K7#{Q[Y{Aoj}>Trsi>{oTo,TD3B}e;RXCKMvkYu
+    w>lpzTY+Q5e^TNz7c'5u^mCUngE:mpspW^ia1,Y;,D@aq_$eu<HAzl'7jT$3s!o2']F'mDjEA1B#
+    $+*;'a}CA>XDVeoHeBH\K;3$,H}.Du1r_2We3<=^JOim?5Z<VQze@,*pz>pnII!#C%EiZRXHJYzK
+    $[Ww$a[iruy#EEnOl!3us@Y{o,Or>G1[<B<No#Q1E$@UkjJ7lkKvKD3<7Lv^{xse+Cap>3BuRX^p
+    Ep|VZR}E@K!|9u=+jvHYT=Zvu3*\[g+aCe(KlTx5nrRYorEDku}>>^';5km^vjZC\ensQ<I~G'!.
+    HDHDe#p~pB}5EA-rH{Csx\w}o\kBj\}3]7]3O!AO#7z[E?X@1n3+M?xnYJUU-zDzmJ1n]<j!+xa=
+    ErsE[me{sxGu;Ks>C3U-\2VT!8^M+B>pEiba<Dl';N=_W<*=B-$s5jBWevAB\B\ZH5[Je'{z^'=2
+    Uv\[@5E'_ks_32J>};]m1vxW>BOOj~GTZ,SmnweY^JJsviRInxo{w[R,;s5OO${bHH*~Y#IK}Dsv
+    x3U1\EV<%U>TYnEJuVeo~C8k{!W#^K3Wx?j;}sY~rm5URZGVupBY;<Z&H*rpH>A^7=~O_pYrRz^]
+    =xn3x=!E:63=[UDEjwl~~ExT=DuAUR1W=;%<]\^jGJ!Vs5Hs=_]o~UJHH}iswB#mN^-CerrnCjV\
+    nx']A1HzJzw==5+nwrE@J@_nD"nwBWIK,?X}Ya!{xm3CYepNv]<lDeA~:;Rm_]K$\xID*>Tusp5>
+    Qn_@-7_G_@,K\fCoDCOz}GDo?>}=>WP]Tao8+V\s2CRwI*VkEG'~B^'I&CC}'z>_3@]U5]@oCa's
+    7'jCGXO=KPMY[_]ZGG_iD'{]YRQD*GUnO{s_aC7^Wveyp![YxlU2Ck7++=+RlRB_QrMVpA+-7\<J
+    -[Eenr?BDXIE?REGR[iZl}-mDlwz<E$YwT!O-qA7,+Eup>q3zVUJE]V>OTkjX;r5;}~]wsl$,H+,
+    w-DESlO32mGkBXr?X#Iu'q\sBKf"?X1B'^x1"UR5O5[Cm,;QxB>DiRTR~D+QJN=QU1|{$EiFD+mC
+    =2sonYXmD'_2DZ^,|-UGe=,Bz}irvJT}i7>C@}\l>aB+3To5X@jX_x'lJemm]cTGU~SvQ~j?Aw'u
+    ozjV!AE}+_7ozQOmjI[~^@23psEReKI"so~[}mR_~V}rO;nx7[EpT&Qk<C7m^{[s{OQaT+u$CTCA
+    Grr}Tn%r1KC_;ja$[jGU*J+RCC<n[kj?vleUzEZVmxCU]+aYCK[=n+?@e?3J7'A,'k_nQ5XvW7+1
+    3]zoElx7TZurVvo#R{jPc1a*a-{EjpxAQa'^[1aa]sx*>^zX$\1@U7<uwjkWI@ex!e]3+TlD#nUH
+    k;ol\ZEesB]{,Arp[ejr''-HnG2s+A[eOA};v->es=W\2v@@>7TKDQkYW#A>X2B\j>\i[@XxApav
+    2kH3eHI+,7,w?#s5VZpXv}Q^}61'$H#(_;'IJTWC7ZQn1e*H?};W6$v7o*-XU,v#,w-YAmlV*onQ
+    E3lQ*'1#aD'l+5OTaZxrVW]**VO<RyR}DDKoz'@{Q;{vk\3RETD~AVAn\rR^n'x!>uNCa=\Qu{-~
+    wm~YH[K!O5#RVQokD/_j7pFC2xTIClTx%OJ3!a'+1lYTHz5z#!p'ZDwGj3-vZDR]kJjxwn<XH_Q5
+    ze,?JQo\>cCj'=jj]5n_Qe1Blp9oKRRcDoXmwOE[_x>2RsOR$V7x<]]!WYKD,'X2p[<JBT*@]r[i
+    Ra1jA\WZ},,m}3IXs}uer!}@U<vCAY;Y6,[YZh_XEU>QRx^eC''x^!aw$R}2}vE\2vvAz-(7VI]6
+    Taw+BZA$JInBKAI'v#}@)JUIQ\#G*D>joQuhzs]],l^]*2RVEl]@Q;~1B+7_',}C5#{J3H>D#^DR
+    _G-X@H6n7,~9i-nTa^_KuAX~]n<JIv,Iq]W$r[;x7}~jBC5Xoe-R^->Oj)x1X25w1I+1YXTDE5xR
+    c~1H,sZwDaBl54zCXWe3pvY]7~s<X^fr+]vz22^PO'>Hlh2Ul^?rKJ/x<3_k'x~=5wroWRW,<j7^
+    kGeG~}H.zY^}Q3E~Z7*]&Y3~QD&ee;7&gtw[Y!=4;^QZl~p$IOA5C2vCM],=C=qppw'}>nIuAw@o
+    CAv)_?~Dj47nlJUI?X=Oils_U[N8?si7V>!@,{Tw,1=]U1]$lzDDF]~![7#Gswee_\}Q!#nuHHaG
+    ]*]Bvh,+Rv,${-Rwa='I[RJ*jj#CBeG[QvG1IA~$1J9mCn>\tC1{JA7*AiD7\X_OTU5oG{nnp>5,
+    ob]X$5mXsurA;VeDD'7s{owlV$#eUxD*mRUXeD[BUO!12Tz5C1V=ZWG^=G*Un{{o[+}-'^k^]=\>
+    pXi$1[Dj>IXe#7W$DDgV?YOrGlrvHDY_krndUYW,$\U1--a]~Rxp!lv7Q1>}uEl7e*<]2^a_Q3o5
+    #^kDFl<HkIkup-p@Q=AaroWmURj!s,ieAh{VWY~[X_"5GxDa{lBH+';D1~]JSmQ!'eROn1w-s1\[
+    #YC?JJ&Gi^3|7K*[iIT3OGT
+`endprotected
+
+//Check fire signals common for all 4 banks. These signals go high if any one 
+//of the bank-check fires.
+
+wire illegal_command_fire,
+     why_precharge_an_idle_bank_fire,
+     violates_tRC_fire,
+     violates_tRP_fire,
+     violates_tRCD_fire,
+     violates_tRAS_fire,
+     violates_tMRD_fire,
+     violates_tRFC_fire,
+     violates_tXSNR_fire,
+     violates_tXSRD_fire,
+     CKE_low_for_non_selfrefresh_or_powerdown_fire,
+     no_auto_refresh_fire,
+     no_dll_reset_fire,
+     violates_tdll_fire,
+     invalid_self_refresh_or_power_down_exit_fire,
+     bad_data_chk_fire,
+     read_before_write_chk_fire;
+
+//Check fire signals. Each signal is 4 bits wide, one bit for each bank. 
+wire [3:0] illegal_command_fire_wire,
+           why_precharge_an_idle_bank_fire_wire,
+           violates_tRC_fire_wire,
+           violates_tRP_fire_wire,
+           violates_tRCD_fire_wire,
+           violates_tRAS_fire_wire,
+           violates_tMRD_fire_wire,
+           violates_tRFC_fire_wire,
+           violates_tXSNR_fire_wire,
+           violates_tXSRD_fire_wire,
+           CKE_low_for_non_selfrefresh_or_powerdown_fire_wire,
+           no_auto_refresh_fire_wire,
+           no_dll_reset_fire_wire,
+           violates_tdll_fire_wire,
+	   invalid_self_refresh_or_power_down_exit_fire_wire,
+	   bad_data_chk_fire_wire,
+	   read_before_write_chk_fire_wire;
+
+//Check enable signals. Each signal enables the similar checks in all 
+//four banks.
+
+wire illegal_command = 1'b1;
+wire why_precharge_an_idle_bank = 
+     (ENABLE_WHY_PRECHARGE_AN_IDLE_BANK == 1) ? 1'b1 : 1'b0;
+wire violates_tRC = 1'b1;
+wire violates_tRP = 1'b1;
+wire violates_tRCD = 1'b1;
+wire violates_tRAS = 1'b1;
+wire violates_tMRD  = 1'b1;
+wire violates_tRFC  = 1'b1;
+wire violates_tXSNR = 1'b1;
+wire violates_tXSRD = 1'b1;
+wire CKE_low_for_non_selfrefresh_or_powerdown = 1'b1;
+wire no_auto_refresh = 1'b1;
+wire no_dll_reset = DLL_TRACKING_ENABLE;
+wire violates_tdll = DLL_TRACKING_ENABLE; 
+wire invalid_self_refresh_or_power_down_exit = 1'b1;
+wire bad_data_chk = ZI_DATA_CHECK_ENABLE;
+wire read_before_write_chk = READ_BEFORE_WRITE_CHECK_ENABLE;
+
+// Data mask signals to each bank - since this is used for
+// legal write burst termination, just the ANDed mask bits
+// of the appropriate DM pin will suffice.
+
+wire dm_to_bank;
+
+//Assignment of ORed check-fire signals of all four banks.
+
+`protected
+
+    MTI!#_nQlOa<3q_}oZITHCsQ[EXs3kEwpn/^oku$Xf9#>u$^,3eY*Ost*\+~s@aYBVv;J=#QAX\G
+    UXlu+=?j5Q!GEU7is2v,x1;x[07P35+JZ,<!CAIU'GTX<{*^=vTppV**?G2aKElCRmw!2aAj^?Zu
+    DA+Y83zTeJ=?rda]Isn]V],z7A5EnmSvkA{u$][K<!-B'+UZVA}7sOx1WB=C-Y=aE[_>1sQ]?\#<
+    QVic*1@OixHJB$T1-asB,TwJ_<Xwm+<j7n|^^?#AT-R13Kse!vOme=H_AKKlIl=!T*[P?RH>i7BI
+    !>w5c77;?]AU_^@>7OVErSU*zkJr1m{Xm7hHC~p[3m~q[!~,U^l{h}Z\lvJRV3[,e3^i^_dzC<_n
+    DoXGaoazER\V]KTr$AJ?$B$Q9Gi,O->']f}_AR;[@!bxrn[Q?,{aAO]3->QEG>-S57{po#Ysv<[+
+    ~XY#JX1jXas~?BC]j,1>Kxo<(9+5v~CKDCpm=>!G{kC5jk{SQ+uxf1TT\\llie~j*<^k[@_umQXo
+    5!$nu\>5Y2XK\l5O#IW[lOQ7pXHbO-Bal#V;:!CxIm^kB;wK5"1K~jO,B>TSTxKTT[Jp7^~$uC]i
+    DU]5'3J_]vzrzV'GQkU*N^@T?c{_I?]#\WBXB@'alo7GIB-eZT$~\U++{v52^U(B#7K\-Qrp3n<U
+    Ty<U}<'K!1E~-I"sWnT.l7k7\ilErG;1
+`endprotected
+
+//Bank module instantiations.
+qvl_ddr_sdram_bank_monitor
+	  #(ADDR_WIDTH,ZI_EFFECTIVE_DM_WIDTH,DATA_WIDTH,ZI_CONSTRAINTS_MODE_MEMORY_SIDE,
+	    AUTOPRECHARGE_ENABLE_ADDRESS_BIT, CON_AUTO_PRECHARGE, 
+            ZI_DLL_RST_BIT_A8_SELF_CLEARABLE, BYPASS_INIT, NON_JEDEC, 
+            COL_ADDRESS_WIDTH)
+	  bank0(clock,clock_n,areset,reset,
+        	mode_register_set,
+		burst_type,CAS_latency,burst_length,full_page_mode,
+		2'b00,CKE_delayed,
+                CKE,CS_n,RAS_n,CAS_n,WE_n,BA,A,dm_to_bank,
+                z_autoprecharge_enable,
+		write_data_fall,write_data_mask_fall,
+		write_data_rise,write_data_mask_rise,
+		read_data_fall,
+		read_data_rise,
+                tRC,tRAS,tRP,tRCD,tWR,tWTR,
+                tMRD,tRFC,tXSNR,tXSRD,
+		illegal_command,
+		why_precharge_an_idle_bank,
+		violates_tRC,
+		violates_tRP,
+		violates_tRCD,
+		violates_tRAS,
+                violates_tMRD,
+                violates_tRFC,
+                violates_tXSNR,
+                violates_tXSRD,
+                CKE_low_for_non_selfrefresh_or_powerdown,
+                no_auto_refresh, 
+                no_dll_reset, 
+                violates_tdll,
+		invalid_self_refresh_or_power_down_exit,
+		bad_data_chk,
+		read_before_write_chk,
+		data_mask_window_flag[0],
+		illegal_command_fire_wire[0],
+		why_precharge_an_idle_bank_fire_wire[0],
+		violates_tRC_fire_wire[0],
+		violates_tRP_fire_wire[0],
+		violates_tRCD_fire_wire[0],
+		violates_tRAS_fire_wire[0],
+                violates_tMRD_fire_wire[0],
+                violates_tRFC_fire_wire[0],
+                violates_tXSNR_fire_wire[0],
+                violates_tXSRD_fire_wire[0],
+                CKE_low_for_non_selfrefresh_or_powerdown_fire_wire[0],
+                no_auto_refresh_fire_wire[0],
+                no_dll_reset_fire_wire[0],
+                violates_tdll_fire_wire[0],
+		invalid_self_refresh_or_power_down_exit_fire_wire[0],
+		bad_data_chk_fire_wire[0],
+		read_before_write_chk_fire_wire[0]);
+
+qvl_ddr_sdram_bank_monitor
+	  #(ADDR_WIDTH,ZI_EFFECTIVE_DM_WIDTH,DATA_WIDTH,ZI_CONSTRAINTS_MODE_MEMORY_SIDE,
+	    AUTOPRECHARGE_ENABLE_ADDRESS_BIT, CON_AUTO_PRECHARGE,
+            ZI_DLL_RST_BIT_A8_SELF_CLEARABLE, BYPASS_INIT, NON_JEDEC, 
+            COL_ADDRESS_WIDTH)
+	  bank1(clock,clock_n,areset,reset,
+        	mode_register_set,
+		burst_type,CAS_latency,burst_length,full_page_mode,
+		2'b01,CKE_delayed,
+                CKE,CS_n,RAS_n,CAS_n,WE_n,BA,A,dm_to_bank,
+		z_autoprecharge_enable,
+		write_data_fall,write_data_mask_fall,
+		write_data_rise,write_data_mask_rise,
+		read_data_fall,
+		read_data_rise,
+                tRC,tRAS,tRP,tRCD,tWR,tWTR,
+                tMRD,tRFC,tXSNR,tXSRD,
+		illegal_command,
+		why_precharge_an_idle_bank,
+		violates_tRC,
+		violates_tRP,
+		violates_tRCD,
+		violates_tRAS,
+                violates_tMRD, 
+                violates_tRFC,
+                violates_tXSNR,
+                violates_tXSRD,
+                CKE_low_for_non_selfrefresh_or_powerdown,
+                no_auto_refresh,
+                no_dll_reset,
+                violates_tdll,
+		invalid_self_refresh_or_power_down_exit,
+                bad_data_chk,
+                read_before_write_chk,
+                data_mask_window_flag[1], 
+		illegal_command_fire_wire[1],
+		why_precharge_an_idle_bank_fire_wire[1],
+		violates_tRC_fire_wire[1],
+		violates_tRP_fire_wire[1],
+		violates_tRCD_fire_wire[1],
+		violates_tRAS_fire_wire[1],
+                violates_tMRD_fire_wire[1], 
+                violates_tRFC_fire_wire[1], 
+                violates_tXSNR_fire_wire[1], 
+                violates_tXSRD_fire_wire[1],
+                CKE_low_for_non_selfrefresh_or_powerdown_fire_wire[1],
+                no_auto_refresh_fire_wire[1],
+                no_dll_reset_fire_wire[1],
+                violates_tdll_fire_wire[1],
+		invalid_self_refresh_or_power_down_exit_fire_wire[1],
+                bad_data_chk_fire_wire[1],
+                read_before_write_chk_fire_wire[1]);
+
+qvl_ddr_sdram_bank_monitor
+	  #(ADDR_WIDTH,ZI_EFFECTIVE_DM_WIDTH,DATA_WIDTH,ZI_CONSTRAINTS_MODE_MEMORY_SIDE,
+	    AUTOPRECHARGE_ENABLE_ADDRESS_BIT, CON_AUTO_PRECHARGE,
+            ZI_DLL_RST_BIT_A8_SELF_CLEARABLE, BYPASS_INIT, NON_JEDEC, 
+            COL_ADDRESS_WIDTH)
+	  bank2(clock,clock_n,areset,reset,
+        	mode_register_set,
+		burst_type,CAS_latency,burst_length,full_page_mode,
+		2'b10,CKE_delayed,
+                CKE,CS_n,RAS_n,CAS_n,WE_n,BA,A,dm_to_bank,
+		z_autoprecharge_enable,
+		write_data_fall,write_data_mask_fall,
+		write_data_rise,write_data_mask_rise,
+		read_data_fall,
+		read_data_rise,
+                tRC,tRAS,tRP,tRCD,tWR,tWTR,
+                tMRD,tRFC,tXSNR,tXSRD,
+		illegal_command,
+		why_precharge_an_idle_bank,
+		violates_tRC,
+		violates_tRP,
+		violates_tRCD,
+		violates_tRAS,
+                violates_tMRD,
+                violates_tRFC,
+                violates_tXSNR,
+                violates_tXSRD,
+                CKE_low_for_non_selfrefresh_or_powerdown,
+                no_auto_refresh,
+                no_dll_reset,
+                violates_tdll,
+		invalid_self_refresh_or_power_down_exit,
+                bad_data_chk,
+                read_before_write_chk,
+                data_mask_window_flag[2], 
+		illegal_command_fire_wire[2],
+		why_precharge_an_idle_bank_fire_wire[2],
+		violates_tRC_fire_wire[2],
+		violates_tRP_fire_wire[2],
+		violates_tRCD_fire_wire[2],
+		violates_tRAS_fire_wire[2],
+                violates_tMRD_fire_wire[2], 
+                violates_tRFC_fire_wire[2], 
+                violates_tXSNR_fire_wire[2], 
+                violates_tXSRD_fire_wire[2],
+                CKE_low_for_non_selfrefresh_or_powerdown_fire_wire[2],
+                no_auto_refresh_fire_wire[2],
+                no_dll_reset_fire_wire[2],
+                violates_tdll_fire_wire[2],
+		invalid_self_refresh_or_power_down_exit_fire_wire[2],
+                bad_data_chk_fire_wire[2],
+                read_before_write_chk_fire_wire[2]);
+
+qvl_ddr_sdram_bank_monitor
+	  #(ADDR_WIDTH,ZI_EFFECTIVE_DM_WIDTH,DATA_WIDTH,ZI_CONSTRAINTS_MODE_MEMORY_SIDE,
+	    AUTOPRECHARGE_ENABLE_ADDRESS_BIT, CON_AUTO_PRECHARGE,
+            ZI_DLL_RST_BIT_A8_SELF_CLEARABLE, BYPASS_INIT, NON_JEDEC, 
+            COL_ADDRESS_WIDTH)
+	  bank3(clock,clock_n,areset,reset,
+        	mode_register_set,
+		burst_type,CAS_latency,burst_length,full_page_mode,
+		2'b11,CKE_delayed,
+                CKE,CS_n,RAS_n,CAS_n,WE_n,BA,A,dm_to_bank,
+		z_autoprecharge_enable,
+		write_data_fall,write_data_mask_fall,
+		write_data_rise,write_data_mask_rise,
+		read_data_fall,
+		read_data_rise,
+                tRC,tRAS,tRP,tRCD,tWR,tWTR,
+                tMRD,tRFC,tXSNR,tXSRD,
+		illegal_command,
+		why_precharge_an_idle_bank,
+		violates_tRC,
+		violates_tRP,
+		violates_tRCD,
+		violates_tRAS,
+                violates_tMRD,
+                violates_tRFC,
+                violates_tXSNR,
+                violates_tXSRD,
+                CKE_low_for_non_selfrefresh_or_powerdown,
+                no_auto_refresh,
+                no_dll_reset,
+                violates_tdll,
+		invalid_self_refresh_or_power_down_exit,
+                bad_data_chk,
+                read_before_write_chk,
+                data_mask_window_flag[3], 
+		illegal_command_fire_wire[3],
+		why_precharge_an_idle_bank_fire_wire[3],
+		violates_tRC_fire_wire[3],
+		violates_tRP_fire_wire[3],
+		violates_tRCD_fire_wire[3],
+		violates_tRAS_fire_wire[3],
+                violates_tMRD_fire_wire[3], 
+                violates_tRFC_fire_wire[3], 
+                violates_tXSNR_fire_wire[3], 
+                violates_tXSRD_fire_wire[3],
+                CKE_low_for_non_selfrefresh_or_powerdown_fire_wire[3],
+                no_auto_refresh_fire_wire[3],
+                no_dll_reset_fire_wire[3],
+                violates_tdll_fire_wire[3],
+		invalid_self_refresh_or_power_down_exit_fire_wire[3],
+                bad_data_chk_fire_wire[3],
+                read_before_write_chk_fire_wire[3]);
+
+`protected
+
+    MTI!#1<CB>IJ}Opr2*,UseED[CT$v$KwDc-*|}Z+X7m[-\pluAzx#l,Al}@}$iU=J[mHX10_1YXk
+    s}sA[5sGHyuzzKJr-2UrkULaDK!7[D*3v1mv;@YM\vnnI!OxWEer2DTOB?-O#{|I<B$^na*B+*R"
+    el?BU\!_5Y-Jq$BZQsWXTI=~$V!+<zXl@#o{7>V_[~xiT!+IWFj-vsmVY$f}B<{7@jzhRYlH-UnV
+    oG+oG,'u1iv#{wZ2E_$]]OYa|\>Q;kH}=Ys5u3sCr^+8G'}5pm{'J[5o_T![BuExI?x]xO+#JBEz
+    $$#sUz;uZ{2QrQurE_H1xYp^eC}[h7,z@u=C_QDHHQ^k;I2J$,k+;7i@ZWe<+Lz<{Y~pkXZE[,@B
+    Kx#Va{QsaJ<*;5K^p*HH-jU^m2[G'>~B-@]I1BlJTXj{1}oOCi\$_'5;llZ+KQv-XQkon1]3]u,O
+    Wzj+>@WTJ!w$!HzQZkNFr>CQ#aB1l(eB!#Xlu{^IvE#Y*B]2(O<z;Va@KKsk~#lH[e*U=|*=?-mx
+    [v#7+;frwZUHl@@}=k+Y'eE$?3QWB3u%G+B]FBVXE+<xw}>As-jk!OUj~ZQo3-Ta-eW_$',=B2n[
+    BY{}D1o<[$T-7+|nUX=o-)ViQ1Q\oOZO>?nIV]E@Wp1>n<?sXO>T,?_=s[1p<uhO*#E*;ro2Tr2B
+    Wn$31?@rOUWe}jvXjevK=^HD3B77m=xUB,[&;X$-Qk}r9xGJY[}p!*k$2!Oln~a=@r^ZKjIp@T7@
+    7+*+x=[H-*<}CGW<#H}C25eax}V?1p~<DBET7K{m+i'zA^sG=qz$[#~{CjG=_p+1;xPGH3,Gu}R#
+    t'spRD_s$VO[pIE<G+VA32B{zrTvixlvR_YnJiAO--a[{C*+@-Q\XD#e--sQCQ,QxGJBjpU]nk5R
+    J\*s@QK3X=}-Au$u[B-RJiDvG|VB?Y_{-oHETRUOR>]nT~X7DDp[vR"F";GI[18/^3v-l^ZWOI1_
+    W-lwH+H<O7A;;]wQ@o*"l~x5e^CmQ=D2;TvKoK_z{r$x%}x;@l[Xw8[_mp={}#owuo2R*1W7TOs>
+    ,@~r-_G@1sGa3]}Qh"o?+{Yo\;ur$=D]~rV3wGosE~XIH@=>s}qQ=TCj[<~oRZH><JB71<?^'CvN
+    93EWU2jA=(J-wD3V?V=5>j^5-@aY'u^=B;>+xv8u,jv|<lGnKR{ADC>[5O,*QTamRJ1#QuBmARsO
+    Jr#^,Da;=r-^v7+wvvB}>1C>Q'm3pUCwI^U=r7pI5rv^:aaoZvz32Tw$2@5aBUT_iZBEz^J;OZY-
+    Qxx<z],7rr$3j$QW'O@1T^m,7Qa5m{YCwkO\7)XR^GQQ7Ut-z5wue_YJ7x'Buxu,_a[|$!!Y$;KH
+    {7iTo=UX$pxO4u-l7k>Zkeoa{?ER[bL/Dk\~uA5+WTwuRuQX2s]o{YnVn[V\zp2ElJrm;lY'rB#<
+    ,_sl(ZaJ<[XCCp]=BxQQ?W=rUm$v_H7k7=O_Jo-*WHQVora>]smjBR{OD=eZ_2$w!+=Ip_wp=$_J
+    5BZ$]]2r@'@luA'?l2]1Oz3Iu&}?YpA_Rx;jTsEwn\@,5_Ourlf*wDJ^Z^iI[DiARA[{wXm[+~!u
+    p+$}k3uEVK;*[zZx/*>~O;7e]UvmrnLXxzK_2peV^Q3l~D}BEozRY12*<j;Y;1\wV]Z#[i7eKEEE
+    [^[
+`endprotected
+
+    `include "qvl_ddr_sdram_2_0_monitor_assertions.inc"
+    `include "qvl_ddr_sdram_2_0_monitor_cover.inc"
+
+`ifdef ZI_INLINED_PSL
+`include "0in_ac_inline_for_mod_zi_cw_ddr_sdram_2_0_monitor.inc"
+`endif
+`ifdef ZI_INLINED_CHX
+`include "zi_cw_ddr_sdram_2_0_monitor.zi_chx.inc"
+`else
+`ifdef ZI_INLINED_CHX_zi_cw_ddr_sdram_2_0_monitor
+`include "zi_cw_ddr_sdram_2_0_monitor.zi_chx.inc"
+`endif
+`endif
+
+`qvlendmodule // zi_cw_ddr_sdram_2_0_monitor
+
+
+/*************************************************************************
+ *
+ * DESCRIPTION  To monitor the DDR SDRAM's bank's
+ *		state changes to check
+ *		if a controller design is operating 
+ *		the DDR SDRAM correctly.
+ *
+ * INPUTS       clock         - Clock signal
+ *              clock_n       - Complementary clock signal 
+ *              reset         - Reset signal
+ *              areset        - Asynchonous Reset signal
+ *		monitorId     - this monitor's Id
+ *		mode_register_set
+ *		burst_type    - the value from the mode register
+ *		CAS_latency   - the value from the mode register
+ *		burst_length  - the value from the mode register
+ *              bank_num      - the number of this bank e.g. {0, 1, 2, 3}
+ *		CKE_delayed   - the one cycle delay copy of the CKE pin
+ *              CKE	      - DDR SDRAM clock enable signal
+ *              CS_n	      - DDR SDRAM chip select active low signal
+ *              RAS_n	      - DDR SDRAM row address strobe active low signal
+ *              CAS_n	      - DDR SDRAM column address strobe active low 
+ *				signal
+ *              WE_n	      - DDR SDRAM write enable active low signal
+ *              BA	      - DDR SDRAM bank address signals
+ *              A	      - DDR SDRAM address signals
+ *
+ * PARAMETER	ADDR_WIDTH    - width of address bus signals
+ *		DM_WIDTH      - width of data mask signal(s)
+ *		DATA_WIDTH    - width of data bus signals
+ *              ZI_CONSTRAINTS_MODE_MEMORY_SIDE - Parameter to mark a check as 
+ *                constraint when the monitor is intantiated on the memory side.
+ * AUTOPRECHARGE_ENABLE_ADDRESS_BIT - Address bit number that is used to
+ *                                    enable/disbale the Autoprecharge
+ *                                    function. 
+ *       CON_AUTO_PRECHARGE   - determines whether concurrent auto precharge
+ *                              is supported or not.
+ *              ZI_TDLLRST    - Number of clocks delay before read/reada 
+ *                              command and after DLL enable. 
+ *
+ **************************************************************************/
+
+`qvlmodule qvl_ddr_sdram_bank_monitor (clock,clock_n,areset,reset,
+	mode_register_set,
+	burst_type,CAS_latency,burst_length,full_page_mode,
+	bank_num,CKE_delayed,
+	CKE,CS_n,RAS_n,CAS_n,WE_n,BA,A,DM,
+	z_autoprecharge_enable,
+	write_data_fall,write_data_mask_fall,
+	write_data_rise,write_data_mask_rise,
+	read_data_fall,
+	read_data_rise,
+        tRC,tRAS,tRP,tRCD,tWR,tWTR,
+        tMRD,tRFC,tXSNR,tXSRD,
+	illegal_command_enable,
+	why_precharge_an_idle_bank_enable,
+	violates_tRC_enable,
+	violates_tRP_enable,
+	violates_tRCD_enable,
+	violates_tRAS_enable,
+        violates_tMRD_enable,
+        violates_tRFC_enable,
+        violates_tXSNR_enable,
+        violates_tXSRD_enable,
+        CKE_low_for_non_selfrefresh_or_powerdown_enable,
+        no_auto_refresh_enable,
+        no_dll_reset_enable,
+        violates_tdll_enable,
+	invalid_self_refresh_or_power_down_exit_enable,
+        bad_data_chk_enable,
+        read_before_write_chk_enable,
+        data_mask_window_flag, 
+	illegal_command_fire,
+	why_precharge_an_idle_bank_fire,
+	violates_tRC_fire,
+	violates_tRP_fire,
+	violates_tRCD_fire,
+	violates_tRAS_fire,
+        violates_tMRD_fire,
+        violates_tRFC_fire, 
+        violates_tXSNR_fire,
+        violates_tXSRD_fire,
+        CKE_low_for_non_selfrefresh_or_powerdown_fire,
+        no_auto_refresh_fire,
+        no_dll_reset_fire,
+        violates_tdll_fire,
+	invalid_self_refresh_or_power_down_exit_fire,
+        bad_data_chk_fire,
+        read_before_write_chk_fire);
+
+parameter	ADDR_WIDTH = 12;
+wire [31:0] pw_ADDR_WIDTH = ADDR_WIDTH;
+parameter	DM_WIDTH = 1;
+wire [31:0] pw_DM_WIDTH = DM_WIDTH;
+parameter	DATA_WIDTH = 8;
+wire [31:0] pw_DATA_WIDTH = DATA_WIDTH;
+parameter       ZI_CONSTRAINTS_MODE_MEMORY_SIDE = 0;
+wire [31:0] pw_ZI_CONSTRAINTS_MODE_MEMORY_SIDE;
+parameter       AUTOPRECHARGE_ENABLE_ADDRESS_BIT = 10;
+wire [31:0] pw_AUTOPRECHARGE_ENABLE_ADDRESS_BIT = 
+                      AUTOPRECHARGE_ENABLE_ADDRESS_BIT;
+parameter       CON_AUTO_PRECHARGE = 1;
+wire [31:0] pw_CON_AUTO_PRECHARGE = 
+                CON_AUTO_PRECHARGE;
+
+parameter ZI_DLL_RST_BIT_A8_SELF_CLEARABLE = 1;
+wire [31:0] pw_ZI_DLL_RST_BIT_A8_SELF_CLEARABLE = 
+               ZI_DLL_RST_BIT_A8_SELF_CLEARABLE;
+
+parameter BYPASS_INIT = 0;
+wire [31:0] pw_BYPASS_INIT = BYPASS_INIT;
+
+parameter NON_JEDEC = 0;
+wire[31:0] pw_NON_JEDEC = NON_JEDEC;
+
+parameter COL_ADDRESS_WIDTH = 8;
+wire[31:0] pw_COL_ADDRESS_WIDTH = COL_ADDRESS_WIDTH;
+
+parameter       ZI_TDLLRST = 200;
+		  //No. of clocks delay required after DLL enable and before 
+		  //read/read with autoprecharge command.
+
+parameter       ZI_READ_LATENCY_WIDTH_MAX = 3;
+parameter       ZI_WRITE_LATENCY_WIDTH_MAX = 3;
+                  //Maximum Read and Write latencies meant for Data checker
+		  //instantiation.
+
+`ifdef ZI_FOR_SEARCH
+parameter       ZI_CACHE_ADDR_WIDTH = 5;
+                  //Cache memory depth. Each cache memory segment will contain
+                  //one page address of the memory. Every page will have
+                  //( (1'b1 << ZI_CACHE_ENTRY_DATA_LINE_ADDR_WIDTH) - 1)
+                  //no. of data.
+`else
+parameter       ZI_CACHE_ADDR_WIDTH = 10;
+		  //Cache memory depth. Each cache memory segment will contain
+                  //one page address of the memory. Every page will have 
+                  //( (1'b1 << ZI_CACHE_ENTRY_DATA_LINE_ADDR_WIDTH) - 1) 
+                  //no. of data.
+`endif
+
+parameter       EVEN_ADDR = 0;
+parameter       ODD_ADDR = 1;
+
+input		clock,clock_n,areset,reset;
+input		mode_register_set;
+input		burst_type;
+input	[2:0]	CAS_latency;
+input   [3:0]   burst_length;
+input           full_page_mode;
+input	[1:0]	bank_num;
+input		CKE_delayed;
+input		CKE,CS_n,RAS_n,CAS_n,WE_n;
+input	[1:0]	BA;
+input	[ADDR_WIDTH-1:0]	A;
+input                           DM;
+input           z_autoprecharge_enable;
+input	[DM_WIDTH-1:0]		write_data_mask_fall,
+				write_data_mask_rise;
+input	[DATA_WIDTH-1:0]	write_data_fall,
+				write_data_rise,
+				read_data_fall,
+				read_data_rise;
+
+input [31:0] tRC,tRAS,tRP,tRCD,tWR,tWTR,
+             tMRD, tRFC, tXSNR,   
+             tXSRD; 
+
+input illegal_command_enable,
+      why_precharge_an_idle_bank_enable,
+      violates_tRC_enable,
+      violates_tRP_enable,
+      violates_tRCD_enable,
+      violates_tRAS_enable,
+      violates_tMRD_enable,
+      violates_tRFC_enable,
+      violates_tXSNR_enable,
+      violates_tXSRD_enable,
+      CKE_low_for_non_selfrefresh_or_powerdown_enable,
+      no_auto_refresh_enable,
+      no_dll_reset_enable,
+      violates_tdll_enable,
+      invalid_self_refresh_or_power_down_exit_enable,
+      bad_data_chk_enable,
+      read_before_write_chk_enable;
+
+output data_mask_window_flag;
+
+output illegal_command_fire,  
+       why_precharge_an_idle_bank_fire,
+       violates_tRC_fire,
+       violates_tRP_fire,
+       violates_tRCD_fire,
+       violates_tRAS_fire,
+       violates_tMRD_fire, 
+       violates_tRFC_fire, 
+       violates_tXSNR_fire, 
+       violates_tXSRD_fire, 
+       CKE_low_for_non_selfrefresh_or_powerdown_fire,
+       no_auto_refresh_fire, 
+       no_dll_reset_fire, 
+       violates_tdll_fire,
+       invalid_self_refresh_or_power_down_exit_fire,
+       bad_data_chk_fire,
+       read_before_write_chk_fire; 
+
+reg	[40*8:1]	cmd_string, next_state_string,
+			current_state_string,error_code_string;
+
+reg     [4:0]   counter_tMRD,
+                counter_tRFC,
+                counter_tXSNR;
+
+reg     [7:0]   counter_tXSRD, counter_tDLLRST;
+
+wire            load_counter_tMRD,   
+                load_counter_tRFC,
+                load_counter_tXSNR,
+                load_counter_tXSRD,
+                load_counter_tDLLRST;
+reg     DLL_reset_active;
+
+`protected
+
+    MTI!#Ho3#3r$7RHB@}m}G1B~\+z>k.VCj>^i(j~^e|(1V2D*OCIrm$[i7WGQ3YQJA{VQ};[O<R'j
+    Q>G81_?=C7TEEXG^DI[nml,jBsTn0*53'.egbqI#![a1oK7x>z!-EsUNXwl-uX;K:Dx,13r[[jek
+    DCsKG}nw[z|?w^H?'r1'0pYJ;~=Y;;^R>x~azEBiC=2z?1wYlOm2zLk5*TynIv]=+lY]3$@,1$Il
+    xHow{n~,k-?w<D~r!;7j@Up1>+wZ<<3}C>pN<C]l!_n'7,mr1mKH5'$ow-a[i}ajp2JP>7Qst-vT
+    ,}iJkTUZWhkIzHHAHQa5z?Vy@t+wo=xH+1c}{OKOV=J~Eme3DQv4@l<um$ir/pp+3@VE#]n-]5WE
+    D5R=k'o@xv5nw|QiKmz?=X7pjio*+J/-XX]|!^u=#RTnEsKBrKKr}E_;p\^B1OOvx\vHIZ2XAa)"
+    $in;w1I;=!<w#{OpC;KAuG^kBu]_7Z>5ja@;.w=uT1-52cmIDp4ZR=rNO*j^*[O{P7{Bw7W-kluA
+    __KzJ1?wkh;z^=P=?Hs*DBDHjno[:h}5O[#{YXjT$m[*ATJv72e-prJr';kr?o-}VEko#5kj~-8e
+    [Q3UXD#x2[-?7n]n5@w^YWmi*>X1m7H>B_i~CR_4,{H~}Ys3wl\[J[E;j\BOY#BYyoTmxcj^KQqr
+    O_zIJOR_w{*4[\{2zB=~.\+xT$K~X}a'zz=DT[/zO]<Z<Vwn<7>i7Ye;&l!oVsfn<CxKnQDOp@\5
+    5JBE',V{O1<Okx#r*Y7s[k7E]R?5BpW^?Qj5s_=;Q>}=]gmEmG/@\\p+Q#JGir<n''kTv+VVEu#$
+    ~11aETT~D=RcYTR-3A9$CGaJjl,EAvWZp7jRlr>zmlv1nn*=RQR'^\wA$TzwavkP&n_Hpa\^DYkH
+    VN:wj,!IkI32HT$k5BlGH<$KaEaqi'AX#C,nB@,x==EeXOjpBJ]@GBmTl"K1pnxKwB,>Q^[5Aa~_
+    Vkh}eo^G~!V&7Xz_GxOCA5#u,D1~}A}J!l2x{NGVAzIAp+(ZQu5YKQI|3DY*^A$Rh2V[BylpmvO\
+    DV|Ha1o}kOwAae$BYV-i{OYAS7k^Qcz^BW}';57?=_Svmvn=[O3+<jAH'Dal!!>kDnO#=T!n7n}b
+    jsrj}wvOe:_}<_[~B_pa_Ie3ss1m1I%kC$[7s<ee]pK<pRZ=O!jBx^1]&z^=2=~@-H}DUuHVK](o
+    Q3=PuD*ArA5mX6<UT>+'jKp;s}'FGo@ayUIVaeOa^7\De3$xuA$+!_+)URn~sxKIu5,eY~zz'<p*
+    ^7@_G\voi<nJLi7D$B?\Zw\TaDMFG~VG*-+Zn$J<^UU3}>JJ*O*voO?=!U_<spjK2[vrl-Bwn';D
+    D+JZ7'RRmYBK?wQjG3l3>X'7a>o#G,JVK[~a^k>jWnAz@'QK9=I+~R2zA$?DWQH![d1n'U-*zuez
+    !nlBKK+ozis*inO___N.W$}WlRaTO'uI1T5vz'QkY\^puEA]ij*uc?Gkm%!vi_~o[@u-_a2$CH*'
+    l>>EE[VnDk^HB@^E_-:_r{$!-Xp3]x$H,i=#rUL<-VXR*A_D@}K[XDzG}um+B5<1H>m!VjA?sX5>
+    TAuiRaW}#}YB?rTsD}IG#='{ejXZv]ns{Qu5uUvqVi}XN1p'K-wVCJ^vk}H+mT>R3aRrGC\HwKl+
+    r_R_=45T-[,WZYcTOQC-5-GlS&_]uO\EA]+A5G1zau.j5v;ToElYzAC1u<Yv@^x%GQD]$YpOn}nK
+    'D_A7kprY~C$-Y7Ga1C!Lr,DQ@pG]Yp~*J}jA_*nrs}]}dzuX^IY3W^='?\2X;ECE=3]ikrEG?Y1
+    ^Q1U=$_WGO5y*Ywpl{xeR]Xl{[-,X<;jBK<jOD2V8Im]I'7Z#3'Ep|r7}!q-=AjmTZ@G{viU]?u?
+    sm{;{,}21V]mC}?;,$5s>pIAs=-vH@Hk}\iTnW}xixEn=7V5K^<fH$W=IOs{fenJ=?7Bnp|bmE[[
+    D}o_UB~oxi<{s'hg-O1*T$$s:r'YDBYQr=7**^;C~ABW?v-@!\F2xBH!G-=s*?*TwevV'3UxI*>W
+    h5iK'1n$@*z@2=K>\[Q<x5Vu^HvB_-Aa]D]\IHjxJ>AXm$UupO@o2-_TXl'_<D=VZ?>J3i,{=1^<
+    ;nV!ul^wm-Nsl7kiA$<paQX3Azi[Y#GZ5u?pOsRisa'sa{n;Tn<%K[T\k}@OmDv3N:}jJYUxr5CE
+    {'R32!,#DwD?e@}Z@2ez{$DO*~n5VDa*R^>,Q>SsW^3r~TYks>H'#@,XnmBa_u$2ExX7?>p3*[1P
+    rB<~EC,DQEDZ?CI]1UCo*'\~EEi}pke[_JAAQq]2wpBZ\_GB4X_#^k^:*91s!-pV~ZOKEkU\77eX
+    +7<vWrY}C-e{2Y]J+=s=z*-5+'Zw<'I]Zs?'z-hJ<},S'r~?-VZ?h}K$>bQK},fnDV3n>}[KQ?jv
+    1@uxW,5EYx!fE!sj7V}rJA5W+Ql$rYxn4PYimm#SIY=;pHu_"+7ETmvu?;=Haro1!Q-}{R@Oe}1,
+    ++IGu%5X~I@AmDsk!+k}5K]C#p5[l2$@<KHOpleBe]j?sZ7>[kYY?QJ's=VeOoKaw]u<-eX}Q14Q
+    Gno]=;>_kXuI>O--$T[<$wXVz7WB'TaOEwJa1\7j?vaZa]W>Y1_$<}Z-_;l>=\xJj$m?E>;[G7,}
+    DTpvk_uUjAes3sk,EYCQ{Y#zmG2=?j;arRJ<<HpopnvpK$YV2-?7jr{~wK1:O$=i=?rxxssU4,wT
+    }e]IpB#=Uup=u?-=vpS>Ex!}pm=D^~*,TW+DZ*<2eX7h[]AYm}zps#71+1ZjKI-EN\wZ=]B:1p$Z
+    &2{!Ew^Z<#*-!yjTX_CixA\<Bvke!r+-HO,ookNv!\317a'E>[O#[GA[H@u:s]mV;UeBC!lnV.^G
+    5_7o227GTu?r=oFQ-=ldgmvC^I%lt<A95$o#};mo@,AaT'KA,z2Q<{DCv7nr|ksWxx1xou[<'b"$
+    ,K#7A_uA'jX\!vU("ua\CCXG>2=1lCJ]ki,i@1-~,#DU#Q1WDQ*AZvNw,l]'ov}@Tx[j_T,=?rmh
+    e1JwuUmuBj*!$nm<3,]^uD#\kjH\}l[{UL?{n!>VrDlR$DIZxXO5$UcRv{]M7xjTV_vo55BJ;{Xn
+    z,u_s*I*BHTZG}+r%~eiQM37Aa5@mHYUY;HY,;_Tgex'=#[Q<luJ2LkY+]YejYXA[10rr@j2rOoI
+    !jme=>I0JAA>Y-7Hl~3pB*^YEu_pYIxB<AC]a[JvrCAa$a;'oZJjCAG2IZCWyz'x\D}\lWju\WO@
+    eRopBxRDn2-,;Bx2Q)lE*p1llCAGA'21;~$D_1p!C-JQuzTR;nE-Q?^!lG\mR_]}wn/OH7ZirHCe
+    ^7l-a;KxI^$x{=V~|=e^K7R?-KXsGr<asJe}rE_+A)^XXu17rj;rD<oOx2dVu,~rEwW5Z+3p\?lj
+    H<*_BpOAR3^-|Okj7*R\Xa]\n\XCoHjO*OU5nl_m!51=*Is7H]slAOoJ\l#@*7V_2qm_x?[^GWI=
+    ]4r~XH_7}Q2wZJEmUB5m[HC=#z};+5Z,DY*vr2<IxDn{[Bi,22Wv^>JnCG5Q;,<_*C5uHrp4BJv2
+    ++UIGj{o*13X]ZYnGL_-_xU(CkHeFJY#U]u^HX=GZCQJl2$U,NH$5k.~[*e#'[e-s2oAv+#8&*Za
+    *1_-->YO{}\@D;*$?Vj{-O\J@w\+_'#DZHl~[pXY^OW[xUAAu5K><CC%OmsYiH3BxD5vKA['}#$1
+    +V'5R7['Hn,~T_O}J[?\eBx?un-=Uo]nrpTlI+]mEsz^=!p>5WB!/j2x?eFl>ur[>^Q<sKo!zi^F
+    =mVnIJ1B()V3Qxh}3>Y@nKs<QB1lanzo^Ao$>avwUI-ySn=RG@<r@{G<o[*p#f?B~uixs27?V*x~
+    <5[3],2]muH\Dwu+~kB}]\$AIjosmKjmvr[7avg7un+:l'\Vvs{oi*n7H5^^KD$k8L<e3As,}x5J
+    v$_r]7F2e7uup$X>GC@zkRlG?X~j*puu<2Zo{>5BIV3DT@*$^luB1s~7[><lDO=Kj{[6YFsuz7^]
+    7rDaXlk-$GQ3]jhAvOlK$XTuVizBV>uk-ss>j'35TABWwu$2]V1'uWxz5Op/{[\2DU;a_[m',BJ2
+    _}mVEYJ^u}oiq2_n]A_>Ie55$xarWj}ek[v7XW7m'\.,{!o(G5pOO7W[Q{mKkazWizj2<^25IO@o
+    T,aGb2H[K^lZj"f}apBj$@WC>DJ:;wX<^rJ@OTHl+ea>D$_VDZxm+}U7GXwz_n!E!vzi^,\-b/jn
+    pxx<Z+A}n\Ys,^b,jmvT5\K2{^<7^nVjHsDxjZ5zIzNG+xw]@AlIlIVp$+VCGws<suwk=vG*-p2n
+    AVrC^h5v-IeoA{o15i*>ez1T+\}W>1T<p,Lz}!Vj3wBQG$\mO]V7JQ=&erIauekR=><}O;KB<CT+
+    =A-uKpGHZs?Vd3}^m5@pGZVHz5Qw^F'X$-HY7Hei~^lK,B-^^oJ>,>n+5A$x'su5DwL-$EH?\Q>B
+    $!\?}~mIG]T~5mXE=UmJ5x^Pe[l^AQH@oCT#hBKs1]VjsK'Y_A=m~1#CUOXErBsZXl5;^O*I1^$}
+    C@jHpYzuZ,;}aO_'O&UopYv}CR}1;GG>,DV*![,i[l_DmWQou5CBZUUGAp,_EU_C*D17w~,$HQ\'
+    YJsIR_v&.wD~VzRG]EjxxI\O$'Djo"+xi>PkV^rv{Ke>_?XG!1>}o$A=D-v@{Q*%_$r?2Uwm;LTQ
+    <l2<zXa71<G$K5u<ssvW;mABYvsz#pe@=mWDr{1iQ-E*REDBxp0*?>nllloZw~^['_E(#(>suuJz
+    {jATInOH=l^TK3jjUBK_Rn~wR$,V~#vwl}$'@2Izs+?,@WMx7QU7$'rom[ZU$nIr]H]vWU;Z+{I$
+    j>5,ajaTCi$Pujk^\AnHz\'QCU]nxD{=]]A^D#\=31U}IU5?2w,@I+~~nn'zE,-arQ5r5re-V2l3
+    >A$=xYB-x~\xpJuz1;>1t'+$~rJG*>_R'xH{<ti&G~V{5aumI~@?kVCxs]D\p=C*x-nQ]*ElRjv@
+    YX-!haRK*;=F1]-X>O**/VH$n5R[XlHs]w.IO{U;>G#<[k{Y5D1K's\\M~n=j>$B*eHYV}pu#e$[
+    w$SKR1\YoaEvA[1KIxH1TIvx;IwVl+!,+bjvv#;$w~,EIUhE{u'<A;=kxIC3nW$sOR7>U$D]eHCr
+    XE1eOR1]]<r*o+D3X''-Bzwy3Do@$vke~n7k(o!{}CK\nDW5Kp2UO+as\^@$R-*5-BDCTOzEk7#B
+    D$\HYw^^]!QGVVvXTp{3XQE;BezC#2>aRCAo3q5Rjk6$[EAuCp>uxQ}RXOwB_JoxRK1p;QO8k}]W
+    OiI>C@Yz6'Ds,+5j5dF[YA*lQkQszn?V22e4>e-D?7R'x>\~JGsp}GK$*+E{V;wvD#XJ\zAO1>}k
+    QxjlTvVOeA_]$e\\__1$&5ABQrQ@W(i=57D}{W!{u5C{V{rX}VpaY\E#s!@+OADV^V'!o<2>Zmr5
+    {v5RCEb,wX^^n;$~>>{j=aY$5[#WHG$QV]\7"_J5'AYEB$0CGX{r{@rH^-^$A~v}j@J@Hnk~$K!^
+    E,sn]$G1,Rsu[7ew,zVwGA;VR*D3^EDVYwZx]nu!,euGy_3Rs@G;[97*;?^;I*s\+++^jDH_$sZ{
+    XV}@-1eB!UkesA$,?5U'n]&C?rUGuKs!s5~1Qa@TETn7a+\xAp;L\rpBs}737Xa_Qu,IurB[E2>a
+    D_YxB]2-lW[W,VeI3-@az>DVz[GwQF!U]v<pAmW_3Tz{QO;]U~O+AIo7?skH<XH=,=#1p'Txpj,w
+    \]nR[^x*YYYJ{D1n2^_C<3OX5>=x^v<Rs-xxXOW1;jYrK{RDY*{G!TKxTZO!+},d{nYBEZ{B,!Ej
+    C=~3jk5[|=WGTLYTCpsmT\QJ-aK+]QU'#'}_zY>_k^I^,sbAYG~\IuZv?]vmXpWap-l<{HT7xs+{
+    =WQk>EYA_\Jlnlu/i$3rh>DW^M]?^v,]J727eZ3{YCo(k*-Bygm'[2cw5?V<q7!jI;xBj2x>sR?K
+    p#U7HM2r73poDuH(~oBjHR*O[vmkWnOIs$\v5JU[CAGiolw*r@-Vn}U{vV{YR@_k*_WByWNZA+GO
+    ^r;#a@vV|mG[=%i'15[mnD,PpJK-PLmTG;$S=r;[Nd'B#}L=slY1En,fRo3UZXw{u]'[{X1i7i[u
+    nD#;Q+H=lns+21!3RIQ!ZQA><w=\K5@RBEkUVj'T{oj~QkDWH^=O*~!>k5a1?s?R~^psYKJX}XEm
+    p]p,p%>a[Ux77z2||_mH2us$^jKWIJ,laaY'jHvXT~H^3]_olIe+C>pOx'Dz;+^kYkpR?2\[G>&-
+    ^GaX1xsDJpOHwQKS>G>]mYma>oCTXsaIU]ipm[D_''+Y:ACJ'G7X<_a[{(jYx!@n2}A5H~;_;Ej{
+    Q#c+|rK<vV=_E,g-9QHv}EXx;BUAz*EQ}Tr+#'sr_jCkzeY#rO$+_JEEi'x{wRaujZzRTQ#jaQGC
+    r!RJnjlK+@am*/A**]2^VJQB?a_-Hnz!5j2xUsKw1eJ*^[Oo*V=TC_Ze#Z2^k1G>RU$D~x]UH?$K
+    zlV_1x5xuE5GGIC\3Gn,Wl|s+Hzh,,U2Y2nCJD{zTv!\=UlEE+V_mo=ao<7D7vI?#U7;[{$RUR!Q
+    js#1InnoI_D-mo'~>z7ww>~Y$59pQp-~X;+GCJ*_n!*HIla{A^*^m,WBZ<s7]lC7tCeYs,l?sLK]
+    E3J5HBE^;1YTQnb'iYKK[R]}i3zmY;T#Y1KQX*r|U[7^OWuC?EW3ivHnEViQBsnG{C!2lV,punO>
+    !URv:v'3$poVC[zW'm'>HI[n3c._W=j!H[a3YAX1iBug!rl>E{5[{z?,kwUU?jp5TEA\;}mTvv[u
+    V^2T[2YuDmEYO*vlP!T]=0[n-k'W[<zG5YT=,Iln-OKL;Cm\G#vORuI-u-aIjmVCQl-p1[]\ljrz
+    =<pY9aT1ZK,{z+BHE;=H[![,I~_KQsw-!GHTo+B[eH'{Di$x?lkU{;Gr7BXI]&]V$3BloE*$O*TC
+    TRe-1Y@l!Bw^-7Qpi-Q#zAG]G@o@ErVxG_j{ur?,{Y_s#unRKm^1$ms[->]ozR--1C_{v?kH\J#U
+    j2[!aQ5{lr]VI@ZUEapm1xfo*!~+E55J$TY['D=m7Z!dux,R/V*R^a++WdU=z@|gs@aX,;j;vEJ'
+    ?T,IO~H*MOWr{?e'\*pJ^s}x55@~G}*-u!,@Go]>K?lI@TDxka5-[x\il$[,<*-$7BE\v;}x'Q~o
+    jCv^#=uu#qjlp~!Va7x>mos1*K5QiuWHnV5\K*x:iCTmT+eJ5NOu}rkH<O-OwE1j*5[_[s7m-7iC
+    }lK+O@}8-O<aXruQ*WR;[im>]rHz-X3Dp*=U~{2,YOeXEC1v,QC<DY1lm[Rm]C,O%DsvZu=ApE2x
+    p*Uj@Qv*>Z*;rupQ}wxzWR^vY=K*EVBsi*'*\\o\==uTH[p5n3VBHK_!QBAc=YnQ$uRWW+HXD{=T
+    sO-3V\*v)eVRu&L1!=<ooC3+*iww]3nEQE*i\5A<{]+C*YZiB,k2T+]E2j'CT[IJOVH%VnsuQ'vz
+    W-wGY1[jO,A5v?zO'=CZO}Km<U!7spABJ]j}*AmzAsCvUB>$[}~~p!${R,vU'eJorvawGWw'[QR7
+    $_+mXQoV7n[AA}Zo773wq1=3=[,HUW*AZe~Z'TXeaTX]!7[}upYoGp{RCep@@7AG~&'~5mCBRE1D
+    D@[$?ZkeH'gOxB?,Epw+Hz__f_23R=,kC^wHQCHA#D};eGun[O~=e-TCs-euEPAr*>o]R#~s1Rr3
+    DG+_He-*DE,$To*Bm?1_m1s!*ouR~=Jj;a=P5-;7$Vs[lJ$oGUDo@[
+`endprotected
+
+
+wire illegal_command_idle_fire, illegal_command_pall_fire,
+     illegal_command_mrs_fire, illegal_command_emrs_fire,
+     illegal_command_aref_fire, illegal_command_active_fire,
+     illegal_command_write_fire, illegal_command_writea_fire,
+     illegal_command_read_fire, illegal_command_reada_fire,
+     illegal_command_pre_fire, why_precharge_an_idle_bank_fire,
+     violates_tRC_fire, violates_tRP_fire,
+     violates_tRCD_fire, violates_tRAS_fire,
+     violates_tMRD_fire, violates_tRFC_fire, 
+     violates_tXSNR_fire, violates_tXSRD_fire,
+     no_auto_refresh_fire, no_dll_reset_fire,
+     violates_dll_timing_fire, 
+     default_fire;
+
+wire illegal_command_fire = (
+       illegal_command_idle_fire || illegal_command_pall_fire ||
+       illegal_command_mrs_fire || illegal_command_emrs_fire ||
+       illegal_command_aref_fire || illegal_command_active_fire ||
+       illegal_command_write_fire || illegal_command_writea_fire ||
+       illegal_command_read_fire || illegal_command_reada_fire ||
+       illegal_command_pre_fire );
+
+wire min_delay_fire;
+
+wire		mrs_cmd,
+		active_cmd,
+		any_bank_active_cmd,
+		cbr_refresh_cmd,
+		self_refresh_cmd,
+		self_refresh_exit,
+		power_down_cmd,
+		power_down_exit,
+		write_cmd,
+		writea_cmd,
+		read_cmd,
+		reada_cmd,
+		other_bank_read_or_write_cmd,
+		other_bank_read_cmd,
+		other_bank_write_cmd,
+		pre_cmd,
+		other_bank_pre_cmd,
+		burst_stop_cmd,
+		nop_cmd,
+		dsel_cmd;
+reg r_other_bank_read_or_write_cmd;
+
+wire	[4:0]	next_state;
+wire		clear_burst_counter,
+		load_burst_counter;
+wire		load_counter_tRC,load_counter_tRAS,
+		load_counter_tRP,load_counter_tRCD;
+wire	[7:0]	error_code;
+
+reg	[4:0]	current_state;
+
+reg             end_of_initialization; 
+		  //This signal goes high immediately after 
+		  //the init sequence is over.
+
+reg             auto_refresh_flag, two_auto_refreshes_happened, 
+		burst_stop_cmd_received, pre_cmd_received;
+
+reg     [ADDR_WIDTH-2:0] burst_counter;
+           //Width is one bit less than the ADDR_WIDTH in order to
+           //account the Auto precharge enable bit.
+
+reg	[4:0]	counter_tRC,
+		counter_tRAS,counter_tRP,counter_tRCD;
+reg     [2:0]   read_abort_latency_counter;
+
+reg             DLL_reset, DLL_enable;
+reg      [6:0]  mrs_mode_bits;// Change in the Mode Register Defination in the 
+                              // latest specification.
+reg      [10:0]  emrs_mode_bits;
+reg             read_with_autoprecharge_flag;
+reg      [7:0]      dm_pipe;
+
+wire            extended_mrs_cmd, precharge_all_cmd;
+wire            cmd_other_than_nop_and_dsel;
+wire     [2:0]  effective_CAS_latency;
+
+// The following code has been added to support Concurrent Auto Precharge.
+// Reference documents are Infineon - 512M_DDR_D14_1.pdf
+// and Micron - 1GbDDRx4x8x16.pdf.
+
+reg [COL_ADDRESS_WIDTH:0] bl;
+reg r_reada_or_writea_cmd;
+
+wire [4:0] allowed_writea_to_read_or_reada_delay = (1+(bl>>1)+tWTR);
+wire [4:0] allowed_writea_to_write_or_writea_delay = (bl>>1);
+wire [4:0] allowed_reada_to_read_or_reada_delay = (bl>>1);
+wire [4:0] allowed_reada_to_write_or_writea_delay = effective_CAS_latency + 
+					            (bl>>1);
+
+reg [4:0] writea_counter;
+reg [4:0] reada_counter;
+wire    bad_data_chk_fire_even,read_before_write_chk_fire_even,
+	bad_data_chk_fire_odd,read_before_write_chk_fire_odd;
+
+
+`protected
+
+    MTI!#GvX-hxv!=\bZeeB'm=^"W_,Wo'OH3nm[\mKW7"3p*rYGJ@*wD_]>z[8K7BTl5O>}CY}$?R>
+    yI<-?-Cx_l*[m~=[!#si7El3vrrEo=?!_TGyI$-p7mBs++J~iO!CKrZpCmHpKD$2=aY]C+4RH,jI
+    \,m8}vH2$3m\~]}_{'^B,YAOao-]K{@Y}zYk&=X!#HpZ[v[kD;5[T->3C+'?_$*2A~Xp!,@}ps-e
+    5razHX^3AY$T!UHY@cDVkm+j'KvlGp",++*1<C+o>XAY>A{5=l[G]@XWYWa'/E3AW7?3UvI?^VAe
+    <OE$W|IkGkxQr3=sz<};}?k-,3}lZjp1XmVvkJV#xAAe]CHOujpB{[2U<-[Ww1$03H'xo<5s<jZu
+    1]U@1#Z?|,p@1eQkKbF|~==-EMg<X}ET[?jnAnk9F4,W\U2U,='DuAuReU!E#<{o3\|W1?$n=EB=
+    +;ET.JUf^zxUYu\\X1G7>rA*lo$[l{s2s!5aUY}ofv-a_a&|K<Kp!IAZn=<!u}3I<5BD}TUs<_T!
+    ZR-Ts8vkZ@WEE+zVTxGPMBknA-X]*~o{=[pzH$1@\%z>zD1_}3AD_'!$T\7#+#~sV$_oT]^_$}*H
+    wJ<R}>YZw27jkRHown9(ioJ<IQIB!r{7eoHEI2;X:T>~'=pa<R\?oqgRu>DCx1?e?}=OW{[I#3TQ
+    o'^EWwk!$Ae/}]T}?E]u=]K*ua]YQJ}3@I2u}DRIRJB#+HVT\BH${HTRKrkB3ad![]=la<G35kr+
+    7]k+DKW]2OY&_$n#cm{]e3Oi+r7x,:\EmO+eXsG0}$uJRC^}]YK;[vUk'R>H_jp[N,3C}=J[Ic*!
+    uwUUuln$#psCkT?D<*Yi}$eA7QpDU!?z?'};DO<{\$>G3e=lRs=3{oQ*;!KX3[{wTTqu}YJ'Bos4
+    ,nTn\n,Tg+$?KH'$GQ;@K<5kGrK*X5\^~r;^w>7lan'\1xHfs1V~iHB7VBkW51OUYZ$-JD0v!RDk
+    -pWER[l*<Qv>NFdsX!@{ou[F#X<,ij!Grp#2,V~G}n<uD~_*'A=<+=iQ$oKxM}2a~peJE6j+Y!T<
+    n@9!V]DVa*B9}]DU[py-{<xX}kamV-WCW7IY#,KaU=z@{u>o(eO;e;+_K+Ap2pIo~5}^vYJznY3H
+    oN3H1B2}[=KC,~#nBoxB^G6JTH{)U>U@W]BO^Dn]^U*aAj=Dk}K*OW\2#*XB4o]]K1JX@jY*J#=\
+    ms$nc{]_W2*K1lHeA,^>K'hQ\J[s\^sWpJR~rn~?.r7BIr-2Y\}axLAArYQ=>]Y;lQ^3D@euaJ=C
+    *?vpwQ*B-^L%uO6z}}CWs{E|mpOr>'Iv1-2}m>*$T1vR7KCTv2u>EK^TI+<kwH$]XT{@sZ@vqBG5
+    J+jezVwvPVWlBDku>pVus>U-$,m<m}>V-cr++7t}]X!{xsmrrm>l!^KP[3j7O[<-Yr?*OQk?Wp\C
+    G17OaomD1Or\1_+QCQ7X\]lj[@<'z\e=mp}]'WJ^X>>@QxjA{Q-QO,o#RB#+p"DKmVm},,VjB;EC
+    z$Xa=!a'CX,-7{'2vJ5}K>UDW;-I7HDh^I*IuVu!B=Z{gI=\_Q,J_X>W^!q{s$][K57)!XouFmR3
+    $uD?=E>s;rjI@y}IDG?HU>zA>r[5]{wlr[uppSa6_Ra1j[nWIP<XYuo<.m_R}V[<+J1-<]@[+KA>
+    EKApD?$?,\?W7?CGvRx?1jGJU]>CiY]x=N%y(,HZY1^VkFea@{^,I!*1*zw-^OV/jIuQrIpVl^aU
+    {B_QIC5{=a_^l!,'KGee,2D]JlWJvTX@.2s7=pOar#ov>1*]-vRpKwA[ri$DKyXYm;^*_jG2u*YB
+    -!p~=jL?'$<woZ1[oZ'ROo;dK]n~17+Q})Grj]5O{lHY_[,w\^R_k=eVJ3rB^}5dmj<\Z}Bn,[Qw
+    [E=xQ5]{I+HR+<a~BrQ_J<@JG+mIn\xi51]j#^JRZ7ew#z<{JV!-hmD_]kXD@!$~lPeXCx=CW_jj
+    o5*\QIs*]ApZr>,;XC'3DjL'ZA\siDYYa2RKvVw7p?AIECQyI#rk*#!^{RU3Qi@{$x[opU3lXB-]
+    -+poIYD?dQ32aAr+5[0N1}~aeO$x@sm@6>--]w]Im}>3=BgTr?I=JmYa+$KX[lUCR@3jo#*-NQ1=
+    Yv^;aw5TBkpX#Wl<VD^J[#Rr}O'o=NMj~a*I5]3pajJ;+O5B=E]-Rvnp7o$ansuKB!#%?X]U_YQv
+    e7<'pBG34.$OXQEn=z+AOX\3]=uneXFAIuas]aVyA=W5*lp\Q?va<+OOE[B3hN?n,zVZ5oP>TTYI
+    {<C*r2<EzG;@**Xp~@X*5.E*!=RkXm<s}YjC5v!RrA%~ao}ERa1)*>;UcB;vAY_Q>=]?!WoG#B#]
+    xg.E\Q<Yr[7lQV}RxKoE#X=ee*O{Cp>OHsnGFwaw1CE-psGCYenT_7aWjZ$ZKQi{>vZQ!1c4{a*v
+    7aPuQ5w18r*{GR!v5D$j>E^va-'$a,UHO'Z^{lOnl*Yzpk},7RE#mORnD*0GJAjaE-B$2VT5I^@{
+    C<Gr!<DR>>}VR$]nwW]2On[Vj_[8<+DQBir+IkAXfAoaG-o{aM;wr<2G$V2+2AxQV1hVeIOkIT=W
+    j5']?Jzo{v]r_EU<zw<#_Cnz'nXe{uJCzH'/7ir2a+U}=2'[YxIkYo@;3'VllQuK1T3!Yvze1aTl
+    HnQ}Kx;3k5Czpx*7T\?!Qz!@>\EuJa$eNj^uJo\#T,|vKlV[7xmLPH\n\qo5A#F=?ZmeZ\UJ<]BE
+    +ZID,5>#*W]@$D<nUw['?}<!CQU\GRo\=A^HAomQxI#IW-EO-Gv->wZTr{x*\{@Zl[RK]A2VU]Qe
+    EA=T7RTD@JY$[@\1*aul2a^6T>*mX-7-HeV,OeJv))CXG]1.L5]Q5r>+erC>1>R{!12=oI-3'$_7
+    -u1+*@nRTmD$k8]E75*aJDA]$$_<5spXG$v'xsk1O\m<=DG7Cm<RHkB$TT_vCH^7a}rp@^^?+Ikr
+    kuVKIuoZ$^,1BIas{}mr{<p_k2?jJJA+[~?-l}jkUY3{@D#<s[C=,^21,uV>YON/{wB[?Aje^+32
+    1DBErEWOI>_m[Dov|PC1-aj7pZZRC7;EEC-sm<O{mm;AI[+Xsll#A=_[AOX=~ozH\W>nH,2{=$QC
+    l#fp{e*qw=}iW>,V*r#3~$E=WxlUOz~X{>lT?[AuVTDVu}>\L^rv~D#AA@>2$e]>3~x[T|lH2W/I
+    w*sjDR^[l;3r3Ong^aQnoYpZV2_K3U7I$5,>Y+j{mY\-3vvDo5\#pZxA73=xmv[ia7OQTjBK'JJ!
+    ~Qs;'Kj?pC><XTjC8Qe2~ko<5H7zw?<WwzC5~;j;]l3}?ZX1o=uuRQw]II@ao^rO3h2qr@I<$-JO
+    [@O*bez7C=xTkBD{pp\a#lA^\wnX@.a-KzVE<+M<r-WACuJGIkDJDmH#&CQXU/$XT^0V3GO}pD-$
+    EoGIU2J:R!>KXr$u~[mk]HaY<13uCZ*^Vs+V+a\UrOBr^r$i4>*KAYJV@W]#HGWwW$\\Tl=Bpk_v
+    iUnO!7G#!=2{#O3b\OY7-1BHq2no_$ZY=+[-BQ~m-[VK1[$x2e7iuIRKw?^u\oGo~+pwY*{Y@=->
+    YI<pOX'KYG3Y3,om^'|rl7I;z,7'cY^I}gnX~ppC^WU7x>]E;@C%IG~-e!!2*;opZQ+Q3G+xXCle
+    XYBV1E>$ljC~nVo2YnGQBk*G!n]p8ZHK$!CI[=b&|1+-_MX\@UYi~Uj2rnl+VkHQ7r[mHzjxk}Op
+    {7IsRYQaI-Z5w^9a=eeOa>Zinx#mrnv!=z''Dn$\Txp?VQJf7UsKwx<K$]z70Q?Un{oT3kA@Ti5k
+    #zxT2Y<DW=@{QsGY,Y]B^7nq$#>;3T$CT\<2x5H}F![;}O_+'hv\<UhY'ou<R!zOiV+{x7UrYRz}
+    Q{Vr1i1x=X[EZ2kC675-?Ta}XE7#Ul=QY7#5@#<l=!=?e5{JrRTRj"Q>'wBAl7KO+zBYTn\iGGI;
+    ,--Enj'VTH5R*A9DVOeJI^pB~J#&1[*WeDZ'8jnC2J>@@^5BKl<-m+$DXYTO]sI1V04]C=z'2ODc
+    -r?;B*$x^Qru_HIe+p^uVlB2<a*T5D1,/5HUuup;DiD>{*{p\l#!Z1=7l?YXUvk2U+-vT?DB\^Y{
+    GQkAZ7+zsG2[7iIY[5*J5FO5_VjO?27\Gee{5pk_;[MY1RBmnsw}~{,5Z[51Zo=^>u},Z{JUY@AT
+    n{@%VUjIS\{v1mBB[\A7OD_1r_7rTK>Y;)2zzKCWa}z#AT$+ROYk<KeY[E]#{<W=r;43>=-VKoz1
+    Gw1>aO~X,A-vO\,n_k>TIO=sDveQ*\O_~5;Y!Xj,HvXW]vXB;XB|OpJR71jom'\Z\sH1<T-;0}*E
+    AvZK#KpzuKG2Yk^^n_r{x]o_B&e<Uo*CnRm=OEm_Kl_X'7VTu@#<'XDTB$uz5!Al=Xw]AV~^'?d@
+    IC7\<{\@>!K.GG+WIWp1C{e3@,aAy4E^R^Ra-Kj[sOtsX!>vsvU,wY3]wwAk>o$H]A5-rv~e3J];
+    xWXXEnH{j}Vd<ve'OasrmU_atQ'?ripo1?vm3G_2e^{7{z*>ztf^?Ri3O,VN$A$7\kfDQVulT~rI
+    5+x'l'B;YD@p,l?<7?m47K[;B?!{=eI>ya{|UCi]AOi~oHAr^>U[a'J_by,Yv~kX{x2*r;Q{R]]T
+    -]7Op1Zwx7YH^H2,A+|Y2sQ5a5Q^zQo-aGvZ17}EvU2@DJ*$#$R]#<+3l?,$jNC*?*=^=5Sa^{WR
+    2O7"sT_Hsnpj<vi^VYx*X1JQo<\$AH+1Rj^XmOD!a_ou[CH}SwGT]lH<1}k*p?j'H*bd@\vnxauo
+`endprotected
+
+// Data checker code
+
+reg	[ADDR_WIDTH-1:0]	ras_addr,cas_addr;
+reg     [3:0]			cas_addr_0_saved;
+reg     [ADDR_WIDTH-2:0]        data_checker_burst_counter;
+           //Width is one bit less than the ADDR_WIDTH in order to
+           //account the Auto precharge enable bit.
+
+reg     [2*ADDR_WIDTH-3:0]      addr_even,addr_odd;
+           //Address width value is subtracted with 3 which is accounted for 
+           //1 bit for autoprecharge enable bit, and the the dual
+           //data checker struncture that needs one line lessor to address
+           //half the memory.
+wire                            cas_addr_0_write,cas_addr_0_read;
+wire    [ADDR_WIDTH-2:0]       burst_addr_mask;
+           //Width is one bit less than the ADDR_WIDTH in order to
+           //account the Auto precharge enable bit.
+wire	[ADDR_WIDTH-3:0]	burst_addr, eff_burst_addr;
+wire    [ADDR_WIDTH-3:0]        burst_addr_plus_one, eff_burst_addr_plus_one;
+           //Width is two bits less than the ADDR_WIDTH in order to 
+           //account the Auto precharge enable bit, and the the dual 
+           //data checker struncture that needs one line lessor to address 
+           //half the memory.
+
+wire	[DATA_WIDTH-1:0]	write_data_even,
+				write_data_odd,
+				read_data_even,
+				read_data_odd;
+wire	[DM_WIDTH-1:0]		write_data_mask_even,
+				write_data_mask_odd;
+reg				write,read;
+wire	[3:0]			read_latency,write_latency;
+wire    write_terminate_flag; //Goes high if a write is terminated.
+
+`protected
+
+    MTI!#lp[YT*1x[;X>hp~Bxse;B}=,aul2k.B|rmUW7"2w,rYGuwRw@#G#[i}m7>b}j}D:%l^J[rI
+    >7[lC_ETxXI~$<iU7m-HCHU']XY^B^~DkKK7-po?$Cq+w_{BpziR3\{B,XvrX\r6s<@_sBV]pm,@
+    70IGriG^-_}7Ge}2~BB_YipA!KJHjnBOO=$+!@[pDZI!7OsjtIZEk}5Eu~<j[jV{~KDr@U=w-I;A
+    If}>*<\]ACaD5uI+UK#UTlX>m-a=k$gaC-'[@aJT]]27[u3]^Apua}=Ez$37S<YG5e7eXUs^1yXw
+    ]'~7{!lKYpJ'\CXD+@XT>Y1#2og>w!Q"#n,w7Du7DV<[K'jOQAD5~>vWNlnrnaTmJ2VJ^$*>n3Q[
+    7lY+~$R?]_{V<jkxW'Ux'uH<{~5Ez"(lQ$[Y@\~BR[,w^iX#H{^pvx[A-7xC1\oxYVpqWl}ieVWQ
+    |y_wv1[zDeNb>+Nn-_;^o[Ya1'<'IACD;}CNse<}9_!Bj+x{$91ZlE'Tn+L_1#A1-v7GUQZYA~2K
+    1HX?pWwE@aZkYD>Egsu!^kRvlsw{I*GODI~++Rj}GYFk75E*Y@YEoED-V;u1xK7#>A!T$u+VlQZs
+    E*+1z,-LOVloiB;\uAO[@V$1#,p,Bz<?E_B$DUl{o52Co]krUT~pseTG[avO/ru,D67lBeCR_-QC
+    Ci#}Y>.!>;UIZ{K1jXV?z<YICnW>nDV[ZV]#E~DY}Ojx2CQIxKD[1O[z\j]l~x7O=#Il>7^{-wv!
+    [-xI<]~'jAGt&i}{K@'?[37lk--<Y2s\*uswsxoCK!UrXUUKaKA@[_2puI{~;ILE]~2xu_~xW[lB
+    es[6[x*3D1l{#TBs>X~D3V5{]@jZ&teY1iU'p51U-1*{;=O\B[1^[iB_~X@e~Ix,T#f&#'D7fs*k
+    ^eHsR[O2zNHrm#mH3Zb9zJpUuCzVBZGkD#'~qITXAH};1'Q@Ez3n-gzJp#EW$;pk~[1O[X_E;K$B
+    Oi\TB\7;e#Wwv=-]{[,;O_3w+IA<@]U>a@:wXX!i,H#E?VpUT\<VmXskv7Y2EXvp<\7\[T*yXH!u
+    no?@kzvTwz7v7,X;2DTD3V!n]X<v1Hr}$K[{-rRjm]X2}kxi}>>YNi1sA1VI!!$>m^;Er3,o=naG
+    UYl{@usJA#r;p#r#U+r,s@=\V?+swi}~7Hl{GD-;xRW]$6)!O]iHa,=\*zEW{Bj;DrGbYvT[]KIK
+    l_i#[EYWoZ!ZO2}^0En!uUa=Xo\WJ@HE5QT-3kEa=72E3$v175#W1]j2!<sX<5nH\w}#,F9}OnT_
+    2^wz,RWDx?$D1[i!]}~~]WoL{BU7@^ra8{B=ik-w[i}rE)rW1?;R]\s}5B=o@K^j!D2p2n\/CNp;
+    3]=1!l]$,G^~Aa+{{rDZspsCO?]ejwK1WkXD_XQ<a3_-Dk\YuIXUji7lzke~*lp5K~IwJW|N7nW,
+    .r*&4@|3-yaY]UQs7s=Yo[TXI<m]D-DYR'[r#17W$]>*jHvvn5\pY'Y'-*I2uzIGRv_\Q*XG\E{V
+    eC\w}sU7wvCe;O+CnrD!Xa]AYT-]j{owl]i'[wDB<*I3^TN,uO5oHQejO{zB*Au%zeHpz3l-T*J+
+    5waw}1TW=,{$$2YE='au>IPVzl*f9U\m^$uHE>>}n1QGBW>ZxJ_!rzkluH,<Yd[o71'*kAG{O~?I
+    Bmzw^,IJNl5<e>e5jH-@$q]DT<}C}CDwsVCrar_HoZR_kv\U'QU=wrJC7#1{3jmwrmy^>E$_<-Qm
+    H~#~^C-sT=[A',;0#al'Lq}w,%,W+[YBG!DwYnsnA;;GInQ?BvpUZQ@,J<v-*K^_-W|>VIKiYzsr
+    >=e>+VBJRe2Gj#*5]u'k>;--[^lXVVWYDCxnep[OXIZ@>;O3*pmeaRa;a@*1[}IQm1,T+*IV++U@
+    _>\vZu;raXzrG2X}eZm7G-1j'o]2ps3tRaW5k'XOCx@s"^*zE\5~oV,nXur15?*\5Bw>}CC}T3Bp
+    K}?nuBoaG_x7V=[12<>CDE~[_^vu>yp-*HHQken+\_@E?1U<j\?^!lD,o-5WnpI?7~nlRa\H}<Ew
+    ~mG1*3vQVrRZR!BAvT^!OQG5B!AaZ=I;>#=KE1\E{vkwY]=^'{RK'r_l}ru]1olvQ\mv*'psJRuq
+    2Y[VRz!;\H,[pj#GVW]vBH--3w\_'e51*eW5jupVw++$[;J1kEl\$7w#2]o^O\Da@I<}^DZOfeUO
+    QM>OR3,}Z#@alWo>WY3\XJ5#*Bj2U~7'7v!'HDkAHD{A3H>l+*1a\}<_$JvaaYHz<[H-@H#wlGoj
+    ipCAnl.eU<nlX{TGpYJ,@D3Y5-riOrsmG;J=w@UnB5=7jWE='r[Mr?m~OxslVGD>=+>BrWX#,L*'
+    Cz",K<a[ABWm-Zsrp{W2BjVN]OG^xr2~],BWYYH5=EkeE#eHk,kliYu1QvK]>a+s]pHXeHeTRDp;
+    hWaC]C7U21AnH,-Bl]K!>o!Q!D]-~l.kw!BEkZ=m$}^?aA3p3wu3jRaoP]$'*}KX-HH5j1n@2TGn
+    Gv^AE)(ZG5=Iza!=_VJ<Q3rpR<pVQ7Oe4@CGT~_Q~5*'U%zV7}}@mTxWA^y}q=3,!r}2W\lnn5_s
+    Z*w@s=J*[DmxmlR+D7KW<J>z7<YR~I*!mH<*pZ1-^'Uoo%i\\$+11zH}2as7BzeGrpX^Y7cRI?7~
+    TYw=rYneDr@iE<l}'J7]pW!W\v;6X'u~^C!-=,T1r$J=ZE%_m2C#_oe4IXZp7\v}->w?C[C@M~Ha
+    A=A~@GCm[*-w<:$IW?^XX]H<7Go+r$u1r!g[jr@-pIX<T5\7Cr@h]!@*m$C#*H7D-wzB"$rC2GIR
+    }R[#Qe_,r^-I=Ia!H?Q#K~URlgBQAKusTGv\7l$-HIHE5o,+=EZxA<,QRzQdy[_jQA}T*x;KpB5s
+    {,ouUvUTx\Fko_n;A+GRV\o2]52Cg*m!aJ=_egv5]_TYj\=Y+UUGGp4nxrHirrpaY7!#a}?n+]~P
+    eXnorZ\xz5Z>|)/!}iU](|"}vm1AUa}K}{w+H>ptW>5@CilmLp+A'uHDi+em7#E'zI7oZaYixPH5
+    v{BO{x[XUJ{TEX7Ce,&{z2{6"~$loJ*@Im>^1x>V<nT]7!$l3Ks>x>En2(fCU^[XsG]U^;U\BE},
+    3@~2BaBW{Yk6!7]AU$k@5Q+>]Q~{J7[IMK>_kInZp5JY'j}eJ<*J5,,#aoQeAx'@sRD177nI$k>j
+    ]GeYW=;H<l=5izX\<G!<RH5U3#Io#OE5}v{@~U+HoKD$eprJ}jiK2uoR_R!^Uu$\[v'T2-}>x|Xp
+    ~As,-e=T}iia5Q4uOTr*D3w~X^QHpHAGB3T5K,k}A$5\+UY-a,m5~>Hz@ZE:}pIZX-uw!5#z$vEk
+    Ik>nzz+G0j<!=w$_1rpG,#QEx'W_-mG7,|XeXO_{zEU}H*H.Iw<W\\[,*5;n[TUBrzCppu{Di*_;
+    b!eBmyG*Bkiw,}-}an/?V^?{xBH2w_J\p=~7IrEE3TTS{rejIm$Ks*$#+.SkD{x;1nakxx=y\mZW
+    ADC?YAJ7,wDCAeVVOjZGW}{7v13xe5ZH'V57^OKrXpZ$k}XYg5$=[o_]#$p[#xV[[RYBlhT\-x{n
+    =Jez7J[ET\Wv,OnIr-]W*rHR<D>w[=t{w2TL}A2nL2$urIGuD'VB;n]=AsWl;6>]A79e4IY*OP*m
+    JawY~O&*=7Y9$TA36B2Tsn{H[5vATHGH[B"{,_'zKXVA'#Cp3Qr\z1CU>o<$iI^}#A-41,T;Aj\O
+    :rsxk}TIO~5p'hI=i3_J5YDseD}}v\e7$k*prZxkED!VruQ&o>e>m,Q_JH!,R1#O{xe![1QEV=Zp
+    O*OxkaxkgJR~wjU\WxaGij^OWG;3?|~OElB?URZTI-AA3'LSir[I^jZ#]_=}-]pGvKI5<ADaUsTz
+    }12rW\m3o^T1!5T>Is$ZJouRp{Xx7JnBOcT-DH[-r$Xp};GgRnGGE\s!@9tYt4YrK-|O[XJg,dkR
+    !Ov+l5&C*[I\Rw5vtL]oY~XG_}ce?Y]dl{U~6[nEEowzHN2_I~?s{C}slZ\H2_OlT3^5z^I{U]*o
+    1ojA5D3+^}C_=>l}=KsUDmjZj$%RQH^g\;JE!,w]Gk]<A{B^2AYQ"k--^~XXwVG\zo=-O<AZ\CsW
+    -vp2TRLH5!BFE{Z$TVTAv*Kp#YC_Cb7eT@g}a\EaUAvZ}?#l}I=l!IIY[}+Irk2[r!+8ZQo_p#3n
+    {[R];UYxP>OQz[(om[=wr_^==a*FQo[\zp?>7{Hw7.z#>1}aIUJYWr7\H=nA{olCA@a57zlE*}BO
+    D-g,~F=px;AOEjV2'*QYr@#pHAr\@+RpjeQuG\ZH}X_s!Z=x]@_ksI#<J*5EkkWGE~J=^Y)A-^2H
+    ]neIl?a5kIaG1'^=^WE{}"xXZnBHzQ
+`endprotected
+
+qvl_ddr_sdram_data_checker 
+        #(ZI_CONSTRAINTS_MODE_MEMORY_SIDE,(2*ADDR_WIDTH-2),
+          DATA_WIDTH,ZI_READ_LATENCY_WIDTH_MAX,ZI_WRITE_LATENCY_WIDTH_MAX,
+	  ZI_CACHE_ADDR_WIDTH,DM_WIDTH,EVEN_ADDR,
+	  AUTOPRECHARGE_ENABLE_ADDRESS_BIT,ADDR_WIDTH)
+	data_checker_even(
+          .clk (clock),
+          .cke (1'b1), 
+          .reset (reset),
+          .areset (areset),
+          .read (read),
+          .read_addr (addr_even),
+          .read_data (read_data_even),
+	  .write (write),
+          .write_addr (addr_even),
+          .byte_enables (~write_data_mask_even),
+          .write_data (write_data_even),
+	  .read_latency (read_latency),
+          .write_latency (write_latency),
+          .bad_data_chk (bad_data_chk_enable),
+          .read_before_write_chk (read_before_write_chk_enable),
+          .bad_data_chk_fire (bad_data_chk_fire_even),
+          .read_before_write_chk_fire (read_before_write_chk_fire_even),
+	  .bank(bank_num));
+
+qvl_ddr_sdram_data_checker 
+        #(ZI_CONSTRAINTS_MODE_MEMORY_SIDE,(2*ADDR_WIDTH-2),
+          DATA_WIDTH,ZI_READ_LATENCY_WIDTH_MAX,ZI_WRITE_LATENCY_WIDTH_MAX,
+	  ZI_CACHE_ADDR_WIDTH,DM_WIDTH,ODD_ADDR,
+	  AUTOPRECHARGE_ENABLE_ADDRESS_BIT,ADDR_WIDTH)
+        data_checker_odd(
+          .clk (clock),
+          .cke (1'b1), 
+          .reset (reset),
+          .areset (areset),
+          .read (read),
+          .read_addr (addr_odd),
+          .read_data (read_data_odd),   
+          .write (write),
+          .write_addr (addr_odd),
+          .byte_enables (~write_data_mask_odd),
+          .write_data (write_data_odd), 
+          .read_latency (read_latency),
+          .write_latency (write_latency),
+          .bad_data_chk (bad_data_chk_enable),
+          .read_before_write_chk (read_before_write_chk_enable), 
+          .bad_data_chk_fire (bad_data_chk_fire_odd),
+          .read_before_write_chk_fire (read_before_write_chk_fire_odd),
+	  .bank(bank_num));
+
+// End of data checker code
+
+`protected
+
+    MTI!##YOYP?,[VKa@7x$,,XalziAn,oUpIzn1[x@zA|em$-6|)Qu3ZO_27aro[d3ECQ-N.IxTX#w
+    QV$ZV<5J<Q"i(~|ar_ZIw-Qat,>uXEA=*}*KuhYVjnC+G\g-Q{^P=@n\EaExHDvrf7QA^lX1$O<]
+    zDmVwrBBe{-oHc^E?ksO]Ve?B^|X5mTH{o^}#@r(+Hso[*WsXr'oE,B^l]?@T<vk$(|;v*O\jJ]^
+    vG2poDn3ln!UpWWG'3#a]GY\;1,1!ZvR'^G^x>BWeUpgwOsI%@p=3}KVs}zkrQkmp7Jp*f~A+}5D
+    k\lwKo,{]mWVw5mAjW{QH#wT>oAOA2a<1w#xAnYp>a,HXs*=w@oKa@*km*=Crz~h,HH[(ECli=j}
+    }IG!{{az*ORI*1*u]OW>>$ri*wAn!*32epXlX7#^oZeBQivYz^5ozn5A,K_7CLR!Z7~xKV5}o$Qt
+    yT]k]Yr;-<z$+RZ5T7IY~Hs3BI!D\Yz*O'k=-{_Y*z,+wCoDm@Gv[*@}IuoY-Op3-'-a$q2aK5kT
+    \+=iDpvY;~oO?#V[AmR[?k5sr3<VT}IXzTB!}*},-n^U^mR3amE1#7Tr2,k]+uvEAE(,Z!ZCITuR
+    a=KZ[auC@@rR77Vo*#Q]51E,XOay{+_5}zm2*Isa2p1r<Ci'1iJ,$Wm@.Xx-w3DDx1AG'N$>EGAo
+    0;zWQD5K;q7U}'Wl\~~I3e4o5m==R>3}UXeN58xRn7?CzQom<U*a5<]k<Iz5Imh-zUjC7!1CrQlp
+    J-\*s22(I{YpZ+^lew=7~G?~3T7uBJ^O9IG{jsK7udcQTJ*YXupE=j7lC}oia2w[2]5Hsg}{u${w
+    UO^;}BwXZoul1*eX]lxJpMo#X{=[Xm2{IT}HJ'i=W';^]w\![ziB{?B~<7-UYU=~Xu<A$}}1<j_~
+    xICp-O[dh~XG^}+~\=i\_vnBZ}O{-JjieBmD\GYUGem@XrBE2CT}V"~v?uM[kur7+>AQ#]!2[<VU
+    C?!Re=}0Irpz*M;ae\Ca^_uj+Ur}+<'zsk*~<I=#*Ku=k@,~sz8Er,Q2-Qx_RGX^kBZX}Z[z#Up|
+    -]e<1~YB2]E!BK-p!zH{lsTE#^z+vVp-$J5Xao#R=xun.,_X'zXHVSBzjo_W}XFkxoV[>K7L@II$
+    voA^?D~lY?a@Ik]kWa!u]iJ@R,[j<HC*keoG^lV]X+Z@}<Z1Io<r[C$#'QBu7BX~IE{}D@m58dIC
+    l}7O\==_DXonoY-1]V@<<IU5Q$5Hx1JaZ_}z=^Zs1ED~+2rkCK=C][}pIw$@oeO<-u[B@Jl{2!!G
+    $@=TA~_soO'p5ni+jlrxR[)e1+z+$2{A'{wu7*B0>5'*=X!V+}A[Dv51KTHpC/-]V2'\nk{srCo?
+    ABO_zQ<[YG*Rie;a\oCwrTO*-[]=~>vQGi?{nZ_'i@'t@QziA'Yv>pi#ar'k[l#\tA_H*aC#*j(I
+    er<*s?1G1!CXR$iC#Zp:F"}X\GB>EGjZjE7m}o#s=w0+a{?kE*?5oo7sw{v2v*Qq!=iCU^0h}<ei
+    KDI2,]?-,$Vi@$'pU$B@AT'iip]_RvQ]u-AT#sp*e'@z1O?#HQO'^m!>3wWwp}HZ_=i@9J7K=~j[
+    kEvWOz_}\D^KE]@om;U{J7&:;r*=}is\@]13o#Y{X>,7o\3YbBJTGlBH~52W_*Z-1KEYu=o>wUrj
+    ?+H{IYp*oVFXo,1$o$u=G#ZIO"$mX!!a<-#=n<j3u]5'[U^D3!'27+T57K!DKuJ\iw}TTuiD;r8i
+    DxVKH@[w{X!=]T]ev=[[$Q<|)gRo#3}(aaI}<$#RiXAX}CQK,G[I,$u=~]jrP{$A$P$-QO^CaA1+
+    7R2Eo^CH2?aolpg%a&L}?@]f/Ut8:rew[JTa#.<T_B(VlWpNI>Yz*el_)YZlk~RG*i]Kkr*>]|QA
+    'r[1W[CK$$Ajwo5!K;u_Qe'$k]DKD@8DQ!^vu-ur*uE=1i17ewKVz@o5[}et2Y=^[iB!AX'!ks^Y
+    [S3CO3[iZOxuXV>5;VIsX~cVQ*\uaw;Fk[]eE!11iUY}4U<Q-r?^ut0.A<{rhF1@VUo>nrYYp>p]
+    D!R?I$/wXxkI[DIe!mZ6lR{I"V>EXvH~kj4#]72Y7}l6r}nVW{];7KG[;T@V|[$e-=L|C-w>p!=<
+    M$2o_@seTJefe!D+(D!v-@U{->{pOvTsCC+J2I@Y\3a7UDj^<wr@v'zU~@U*es{=l]Y]Zo^WVoT;
+    'l_o[?xE!8}$,7Z'@CDEoCwVmu\-n[=a!H2hBuA!n^3=*l7Gjp!~YHx>e15U71'[]<~^GT+em>Vo
+    kRO,TriA;^jI^UrZm}{Biz_[[D#m1He{7DAlgAal3'A+2\mU>sG@+Tl;^gs*K=$xU!VD?*[k1{'Z
+    a_Jvm7S?eDOQwV'7G>\*I3UmB@3Q.OdCz{z;CIao1-3t'p~Q]a=u,n7jp(Sr]Ak^T-s$o@OrG^Jn
+    [vwJ5X+UQ#GsR<V__C5o1\{7jaO1B?wfr$VejRJso\po!XO2'$ik,ng#o'T*O[2VXwD?<^kiOa}x
+    XIO#$G=T1*Vk*JnJ>u7R2-siEIa}p>u1[EoxUO>I;e37'[B_Ei1zUA_QizveDRUkYX{~Y$[Y[DlV
+    <O#1]CK#CrIknoJ;^r3_YoGVV=I#l1]rCjT2H\Z0o5uv>$z+c!$}Y1Krzkpw+QDZ2p;+JW7\Gj#{
+    C9Q[u^dO{s_i{1~wI=jx?,_}O7r,'mk2p_HepQQ43[7ub>{Q3C^J#II's/o@-J)r}[x.Q71>GwlC
+    5w]!$3{AojkI;U\Q*m~I-}-'R2,R<>rYYV1'=eXDR}A[GWvv<{G-t_Rru)ZY]kEjmHB^QlpAwUQQ
+    n~<+!@=sD{-A@^ejD!.si<e[DOv3r7<x@aTGV_soE3@=I,E;YX=p]o?OeRI2I'[}>KRn6i7p}>sR
+    Cx=z,q.0BEU?1K\pCBR={]GYlerBq*EDEKTREK7>__j<_kD*[Xj\BMwH~{mx;<uTwJ$.[>'#9-}C
+    ?kv"7sO[zs@$'1wv@IU?m]C'+_J>;aQp1Z,i^iIua<U1l@$G7DVAV<GjCHu@1QlI1aBZ\$x*?p=l
+    RjWxIqW5~D7ssW,2vzYXs@;-;u,]DO]3rB0g_Oz[q=Xj_}auA$@[TO7-WGTloZ]=wK>{-v;]l;G]
+    R*GZVj#x3<G?eWYn,7a<AUwIoX{CIt">91<AVZX>sj^zW2xm_3--[}B7GE]DwK[WVAUloDv,W$sz
+    7%w}3r]pKk]'XTbk]R#]KKJzmaj,C'j$vHVLHG,xa{{W7RQ$6R#!;@Am1n'<_x!Ri>Qospp\e<[@
+    v7+~I?OD$^3u#TD@Iw$R>\S}p!UX-}[CG2KVRJku1Cu07Xu+#,E@JrY,fdg[D1kHrX;8U]>37[s]
+    !TlrI'>W7uQ\;p!ea<TA}<{?COmEwHpaVuOYs]sVYG\2KOHle[CRIVG]$TWu{oXOO]YUO=>,=k'p
+    Jn[ZA*^JCj}!EOu1w]GwBu\o,^A[o{IG>$WOIC@\(-\w*P{Huz^{>D7*'ns1~pR>7?<aK5^}X+G,
+    +*l_m2'<\aAlHx_\kjys-]op>7JI+\'(@X+7I}x^p#{O~>X*IeY$$]CEIsp*^QT3XT=pW-_n}p]u
+    ?R,1G^HaC,IBA$I;JUaQo<Ww}_zJ?\+k&ivjV#C-ZRDR@D-*E'pH7pH;\VYn!sW[T(s{I;CBe3[:
+    }l+ADSWjCn}BR$zVV2<<!24>$-;Ro#E'X{_J}^,~Brs5$uR}Y_niVBQJHGebE'$TCIkI:7zTYrZA
+    {@]Hs+XI^$!*jAQ~?NX}D~@O5Txmlvhm,-jr$oHsW-!aD-+^vwY[YD=T{vzG?J;c;[;jI41'Tkc=
+    _=?;V2mvx*ICem-T^+<%l<<{n*>~{8[w+A@[]zC]#a~1xC{UGvl^;{AHjT\J<<VO#GDrr}WB!K^>
+    @I$\CD}~BDQQ>Ipek[jHJ!jQ@D?OsekTC$,>}sN^J!$Z$Y^sajouVB3jJaUV]zHi+QuG2-,nwmE]
+    O5CkT'$3nuKs17+@\OCEieauI[=>Qw~I,}T>lx}r?_O$-~;|}O)3>sar-7}W71[:->2r,>1X3YTz
+    waA7C@,wQH5Z=l=WV+JCM.}[XO,,z2,z*<!\EUX{~I72*U^<Xw^*sOrs[XT_k!CWCAE@E$"TXB-5
+    w_73,<#1l!;E^J'kVm_zvn{e;zwW{<_|nsZrg!r;*I^{,]33+,{TwE>H+kp~CRD5x7!XeoGKn'[r
+    {7C*=5uUkH^Z*rV+_A,I,I5l=+}ziTGx36_YxD6vGGwrO[a59^BuKImxE*iw#e}@[>>V_$m-z!o;
+    [1_*pu[J5!17ef[i**e3Z~p3j~$k{#9qnT_2t#sVruY\CBQEBH$HmzuY+fa_#rW]m'rK_G$CK*k+
+    zI!UVKs<s@U+3r#'H7k=?<;O?2XCXJpxxrCaG'5K<p-$RCw^YwUT^,M\$$QR]k>l'?$?ro^O]Iwx
+    [+KHo+ndE5'37ivuV3U1zYkJ?RYTAz^U[xO<+$+HVj@[rx]}kzZ<juo-kww_ZDsu=5B];O?ZvVvW
+    2'GOjD}_1#BRBQ*x=eGsCarE7Z1Q7HA*RAR~D8C_Z]Cm<wVXI!BKD!~Cunv1nUmUnD%H<jx@v{\}
+    X!R%*A1xJs;_e{Cm,\l,UYi<x!JRg\D>@<x}KG(WT@$44+eEHEr;!=1_+jev^#RIH:jZ+}DY+;Ps
+    \{n'}5=$EsU$$zGxI[-EViY5]-X}#[[]E!+i<sZV.+j]$-n5^[?'ozHU^"@Ar@K5G}#TZoQ]@E(e
+    _w<=eQn-TrJ*@B#@5wxi1Ik,K_B^$<^3=K+7p!p@{!Tk+jl7xw+\axs5umG#}R\>r-Y[moos}~=p
+    V$,_!-E:=juZ=@rQ:UY2Gj1d;aDW[~>zND5773E1UK-]>\Yw{5e[r*\el5v\@?zuxWOwIG}@e,zR
+    VX{XjW53$TsX\I3wupvlIN~p,r^#7m]a-pw51V}2l[Nu.xjkr^J5aD@x]j+sHQsj~;B?RJs?V-jY
+    ]z2U+L;,e3V#~ZB[]u~Xlzz\C3_EQ]nAQ12v'7*RHR@\,Q4U*W!w5?e'd~1o!<TKIQAp>z/KX~WU
+    -l'(=5;3]2D=mEnZ]ye@>BXpx2o_Gw2[,vE,#>fml@?F+_3-JVRjEu=K=n>aG<{ZeLoL9w'_>*T\
+    $w=DJ$vWOmOz*'e+]?E2>=p&Gkw}%^kz10I^npHE,Z'D2u]vKnhJYmYl'#a_-mE;Y-z?]?z%OD]?
+    #Ev,k=K\t0HH@W2DH+Y_5;B3nrOpnKsmY=^~W2n,s@w]KB3}}*+DH^ae}A;T@B+1mTK-DIvw!-}#
+    ]O*\n]u+TYp,B}I_H'$TmZ_R?#zTBJx5?\Aw5[?[j#+a_2X_ZJ*5W;rTVoHo_u=;Da7O[GYu~~Gr
+    3IIs$*G?D[1_^[nCuVDVuw]]Y>@H>uY-5sX+~W^K!Gs_a;k5Z#J>\I@-37L+s$u7,,A<T{Ge>ou1
+    jppsJj'lsGU\D-_\J@;QmS]GCU}1TDv,-e97\,pC]zO,z}{}\>Ul<GY1Ip!y-p{JoJRKJoUX$nvW
+    u_xAfj-j3l#Rx)7ZG#.BSQel@ABls-Ur7K1Tx$$,mjkZ;V3oT]CTQ[]poICl_x5TxuVNk^unijs[
+    @1z5]OT;\Iv5={lQe71J\^=CEUaz9p^x,3Q^*#IXJ;-e5>Hu$\G+l~^V+Wa$Gl#-^U(1@O*l[O\I
+    'ilI5R-#{@auo>E\KoO<\K<,pI@B57J?+gK}matG]Hm1!K#XV,wr--j-x[}*7{+^]$wWA\7Gj!-6
+    rvrnZIU\*>1j@lZGn*u5}\{5N==B2AzDwHHKpKU^zBi@m2C!K)jQ@Ap?7-F4{AIBjxpYR[pH>zxl
+    FaAo=WOUKQAVYG+C]TRX++-*=I<eXj*RTm}\~dQoX!*'7]cf2T-k-+~O]G#>lwm{Ir~!B{YZ,u'G
+    }reVZr}O^\juHx[{H*'GGVv^E1E{1_ao7jx<kBV=0oO}K_;'zo\nk~*Vmx-QZ$rjYrEOG~z*2oa7
+    ew5ouTYk7!s3j$\AZO5'_IB\ZHAzO7~VJm5Q1]+=*<$$?Q_}U#*XJ>aEx\T\>sVI7t\j~kra<n'r
+    _k:=GwBG7#{vJ7mWIeE;rrv~e\~[TTDCT~u5Z3uW^K]R!;pOjRX,?5k?n-]O_w>O!e[vpT\GJseY
+    B-'L[vUrI}[G'JB^ZA<'T-$3E{13Y]3K[_[QvK>*n{jY+eCYh07V[}Ne'e?!ln}FN=kx$rG]TB>I
+    ][RR$a}l2$k>Y~{<<p_?nX],[D^~T=O-o+Do@TX1?I'Yo><jpO$2x>CEB3$Y[In1#1#}a{Q@#%*{
+    Usz>2_<avC!E+pzKQ]R+XZVXGJY,=T5V*@D;z\f)U\X\j]1@Z<;=ZE\iAN>1}rom7=@^\7FGWjIj
+    <_ZwA*uzJ*=eK5,JTJOEUDOzn^3|xOOKvD>[TE3!U}z}x[;+1uR[^iJz@_V[+[
+`endprotected
+
+    `include "qvl_ddr_sdram_2_0_bank_monitor_assertions.inc"
+    `include "qvl_ddr_sdram_2_0_bank_monitor_cover.inc"
+ 
+
+`ifdef ZI_INLINED_PSL
+`include "0in_ac_inline_for_mod_zi_cw_ddr_sdram_bank_monitor.inc"
+`endif
+`ifdef ZI_INLINED_CHX
+`include "zi_cw_ddr_sdram_bank_monitor.zi_chx.inc"
+`else
+`ifdef ZI_INLINED_CHX_zi_cw_ddr_sdram_bank_monitor
+`include "zi_cw_ddr_sdram_bank_monitor.zi_chx.inc"
+`endif
+`endif
+
+`qvlendmodule // qvl_ddr_sdram_bank_monitor
+
+
+

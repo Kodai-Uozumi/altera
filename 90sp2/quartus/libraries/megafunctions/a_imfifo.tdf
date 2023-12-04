@@ -1,0 +1,269 @@
+-- **************************************************************************
+--	Interleaved-Memory FIFO Parameterized Megafunction - A_IMFIFO
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 2.0
+--
+------------------------------
+--
+-- For a description of the parameters and ports, see SCFIFO
+--
+-- The behavior of this design is slightly different than other Altera-provided FIFO 
+--  designs in the following ways:
+--  1. The q[] output is only guaranteed to be valid for one clock cycle (following each
+--     read-request), whereas for other FIFOs the q[] output stays constant between read-cycles.
+--     The extra "q_avail" output port can be used to demonstrate this.
+--
+--  2. This design doesn't provide the show-ahead mode (LPM_SHOWAHEAD must be set to "OFF")
+--
+--  3. This design has additional pipelining capabilities to get speed improvements.
+--     If pipelining is used, the behavior of the function is unchanged except that q[] is delayed.
+--     Use the INPUT_PIPELINE and OUTPUT_PIPELINE parameters to specify the pipeline 
+--      lengths used. You usually can get the maximum speed improvement by using 
+--         INPUT_PIPELINE = 0 or 1, and OUTPUT_PIPELINE = 1 or 2. 
+--     The latency for q[] is the sum of both parameter values.
+--     The extra "q_avail" and "outpipe_empty" output ports can be used to demonstrate this.
+--
+-------------------------------------------------------------------------------
+
+include "lpm_counter";
+include "lpm_compare";
+include "lpm_add_sub";
+include "lpm_or";
+include "altram";
+include "busmux";
+include "dffpipe";
+include "a_fefifo";
+
+parameters
+(
+	LPM_WIDTH,
+	LPM_NUMWORDS,
+
+	LPM_SHOWAHEAD = "OFF",		-- note: no show-ahead possible with this FIFO
+								-- use A_I2FIFO if you need the show-ahead mode
+	UNDERFLOW_CHECKING = "ON",
+	OVERFLOW_CHECKING = "ON",
+	ALLOW_RWCYCLE_WHEN_FULL = "OFF",
+
+	INPUT_PIPELINE = 0,		-- number of latency of the input stage
+	OUTPUT_PIPELINE = 0		-- number of latency of the output stage
+							-- note: the latency for q[] is the sum of both
+);
+
+constant WIDTHAD = LPM_NUMWORDS > 2 ? ceil(log2(LPM_NUMWORDS)) : 2;
+constant OUTPUT_EAB_PIPELINE = OUTPUT_PIPELINE>0 ? 1 : 0;
+constant OUTPUT_STAGE_PIPELINE = OUTPUT_PIPELINE>1 ? OUTPUT_PIPELINE-1 : 0;
+
+-------------------------------------------------------------------------------
+subdesign a_imfifo
+(
+	data[LPM_WIDTH-1..0]		: input;
+	q[LPM_WIDTH-1..0]			: output;
+
+	wreq, rreq					: input;
+	clock						: input;
+	aclr, sclr					: input = gnd;
+
+	threshlevel[WIDTHAD-1..0]	: input = gnd;
+	threshold					: output;
+	empty, full					: output;
+	usedw[WIDTHAD-1..0]			: output;		-- # of words in the FIFO
+
+	q_avail, outpipe_empty		: output;
+)
+
+-------------------------------------------------------------------------------
+variable
+	valid_wreq, valid_rreq: node;
+	memory_block0	: altram with( WIDTH=LPM_WIDTH, AD_WIDTH=WIDTHAD-1 );
+	memory_block1	: altram with( WIDTH=LPM_WIDTH, AD_WIDTH=WIDTHAD-1 );
+	wr_ptr, rd_ptr	: lpm_counter with( LPM_WIDTH=WIDTHAD );
+	next_rd[WIDTHAD-2..0]: DFF;
+
+	data_read_sel	: node;
+	data_read_mux	: busmux with( WIDTH=LPM_WIDTH );
+	data_latch_mux	: busmux with( WIDTH=LPM_WIDTH );
+	data_latch[LPM_WIDTH-1..0]: DFF;
+	data_out_mux	: busmux with( WIDTH=LPM_WIDTH );
+	fifo_state		: a_fefifo with( LPM_WIDTHAD=WIDTHAD, LPM_NUMWORDS=LPM_NUMWORDS, UNDERFLOW_CHECKING=UNDERFLOW_CHECKING, OVERFLOW_CHECKING=OVERFLOW_CHECKING, ALLOW_RWCYCLE_WHEN_FULL=ALLOW_RWCYCLE_WHEN_FULL );
+	delayed_rreq[INPUT_PIPELINE+OUTPUT_PIPELINE..0]: node;
+
+-------------------------------------------------------------------------------
+begin
+	assert (LPM_WIDTH>=1)
+			report "Value of LPM_WIDTH parameter must be at least 1"
+			severity error
+			help_id IMFIFO_WIDTH;
+
+	assert (LPM_NUMWORDS>=3)
+			report "Value of LPM_NUMWORDS parameter must be at least 3"
+			severity error
+			help_id IMFIFO_WIDTHAD;
+
+-------------------------------------------------------------------------------
+	assert (LPM_SHOWAHEAD=="ON") or (LPM_SHOWAHEAD=="OFF")
+			report "Assign either ""ON"" or ""OFF"" to LPM_SHOWAHEAD"
+			severity error
+			help_id IMFIFO_SHOWAHEAD;
+
+	assert (UNDERFLOW_CHECKING=="ON") or (UNDERFLOW_CHECKING=="OFF")
+			report "Assign either ""ON"" or ""OFF"" to UNDERFLOW_CHECKING"
+			severity error
+			help_id IMFIFO_UNDERFLOW_CHECKING;
+
+	assert (OVERFLOW_CHECKING=="ON") or (OVERFLOW_CHECKING=="OFF")
+			report "Assign either ""ON"" or ""OFF"" to OVERFLOW_CHECKING"
+			severity error
+			help_id IMFIFO_OVERFLOW_CHECKING;
+
+	assert (ALLOW_RWCYCLE_WHEN_FULL=="ON") or (ALLOW_RWCYCLE_WHEN_FULL=="OFF")
+			report "Assign either ""ON"" or ""OFF"" to ALLOW_RWCYCLE_WHEN_FULL"
+			severity error
+			help_id IMFIFO_ALLOW_RWCYCLE_WHEN_FULL;
+
+-------------------------------------------------------------------------------
+	assert (LPM_SHOWAHEAD=="OFF")
+			report "no show-ahead possible with A_IMFIFO"
+			severity error
+			help_id IMFIFO_SHOWAHEAD_OFF;
+
+-- **************************************************************************
+--
+	if UNDERFLOW_CHECKING=="OFF" generate
+		valid_rreq = rreq;
+	else generate
+		valid_rreq = rreq and !empty;
+	end generate; 
+
+	if OVERFLOW_CHECKING=="OFF" generate
+		valid_wreq = wreq;
+	else generate 
+		if ALLOW_RWCYCLE_WHEN_FULL=="ON" generate
+			valid_wreq = wreq and (!full or rreq);
+		else generate
+			valid_wreq = wreq and !full;
+		end generate; 
+	end generate;
+
+	wr_ptr.(cnt_en, aclr, sclr, clock) = (valid_wreq, aclr, sclr, clock);
+	rd_ptr.(cnt_en, aclr, sclr, clock) = (valid_rreq, aclr, sclr, clock);
+
+-- **************************************************************************
+-- Write to the RAM
+--
+	if( valid_rreq or rd_ptr.q[0] ) then
+		next_rd[] = lpm_add_sub( .dataa[]=rd_ptr.q[WIDTHAD-1..1], .datab[]=1 )
+					with( LPM_WIDTH=WIDTHAD-1, ONE_INPUT_IS_CONSTANT="YES" )
+					returns( .result[] );
+	else
+		next_rd[] = rd_ptr.q[WIDTHAD-1..1];
+	end if;
+	next_rd[].clk = clock;
+
+	memory_block0.address[]	= 
+		dffpipe(.clock=clock, 
+				.d[]=busmux(.dataa[] = next_rd[],
+							.datab[] = wr_ptr.q[WIDTHAD-1..1],
+							.sel = !wr_ptr.q[0] and valid_wreq
+					 )
+					 with( WIDTH=WIDTHAD-1 )
+					 returns( .result[] )
+		)
+		with( WIDTH=WIDTHAD-1, DELAY=INPUT_PIPELINE ) 
+		returns(.q[]);
+
+	memory_block1.address[]	= 
+		dffpipe(.clock=clock, 
+				.d[]=busmux(.dataa[] = rd_ptr.q[WIDTHAD-1..1],
+							.datab[] = wr_ptr.q[WIDTHAD-1..1],
+							.sel = wr_ptr.q[0] and valid_wreq
+					 )
+					 with( WIDTH=WIDTHAD-1 )
+					 returns( .result[] )
+		)
+		with( WIDTH=WIDTHAD-1, DELAY=INPUT_PIPELINE )
+		returns(.q[]);
+
+	memory_block0.we = dffpipe( .clock=clock, .d[]=!wr_ptr.q[0] and valid_wreq ) with( WIDTH=1, DELAY=INPUT_PIPELINE ) returns(.q[]);
+	memory_block1.we = dffpipe( .clock=clock, .d[]= wr_ptr.q[0] and valid_wreq ) with( WIDTH=1, DELAY=INPUT_PIPELINE ) returns(.q[]);
+
+	(memory_block0,memory_block1).data[] = dffpipe( .clock=clock, .d[]=data[] ) with( WIDTH=LPM_WIDTH, DELAY=INPUT_PIPELINE ) returns(.q[]);
+	(memory_block0,memory_block1).clocki = clock;
+	if OUTPUT_EAB_PIPELINE>0 generate (memory_block0,memory_block1).clocko=clock; end generate;
+
+-- **************************************************************************
+-- Read from the RAM
+--
+	data_latch[].clk	= clock;
+	data_read_sel		= dffpipe( .clock=clock, .d[]=rd_ptr.q[0] ) with( WIDTH=1, DELAY=INPUT_PIPELINE+OUTPUT_EAB_PIPELINE ) returns(.q[]);
+	data_read_mux.sel	= DFF( .clk=clock, .d=data_read_sel );
+	data_latch_mux.sel	= data_read_sel;
+	data_out_mux.sel	= dffpipe( .clock=clock, .d[]=!((rd_ptr.q[0] xnor wr_ptr.q[0]) and valid_wreq) )
+						  with( WIDTH=1, DELAY=INPUT_PIPELINE+OUTPUT_EAB_PIPELINE+1 ) 
+						  returns(.q[]);
+
+	data_read_mux.(dataa[], datab[]) = (memory_block0.q[], memory_block1.q[]);
+	data_latch_mux.(dataa[], datab[]) = (memory_block0.q[], memory_block1.q[]);
+
+	data_latch[]		= data_latch_mux.result[];
+	data_out_mux.(dataa[], datab[]) = (data_latch[], data_read_mux.result[]);
+
+	q[]	= dffpipe( .clock=clock, .d[]=data_out_mux.result[] ) with( WIDTH=LPM_WIDTH, DELAY=OUTPUT_STAGE_PIPELINE ) returns(.q[]);
+
+-- pipe signals
+	delayed_rreq[] = dffpipe( .clock=clock, .d[]=valid_rreq, .clrn=!aclr, .sclr=sclr ) with( WIDTH=1, DELAY=INPUT_PIPELINE+OUTPUT_PIPELINE+1 ) returns(.pq[INPUT_PIPELINE+OUTPUT_PIPELINE+1..1][]);
+	q_avail = delayed_rreq[INPUT_PIPELINE+OUTPUT_PIPELINE];
+
+	if INPUT_PIPELINE+OUTPUT_PIPELINE==0 generate
+		outpipe_empty = vcc;	-- no pipe, so always empty
+	else generate
+		outpipe_empty = !LPM_OR( .data[][]=delayed_rreq[INPUT_PIPELINE+OUTPUT_PIPELINE-1..0] ) with( LPM_WIDTH=1, LPM_SIZE=INPUT_PIPELINE+OUTPUT_PIPELINE );
+	end generate;
+
+-- **************************************************************************
+-- status register and full/empty flags
+--
+	fifo_state.(wreq, rreq, aclr, sclr, clock) = (wreq, rreq, aclr, sclr, clock);
+	(usedw[], empty, full, threshold) = fifo_state.(usedw_out[], empty, full, threshold);
+
+	if used(threshlevel) generate fifo_state.threshlevel[]=threshlevel[]; end generate;
+--	data_latch[].clrn = !aclr;
+	IF !USED(outpipe_empty) GENERATE
+		outpipe_empty = GND;
+	END GENERATE;
+	IF !USED(threshold) GENERATE
+		threshold = GND;
+	END GENERATE;
+	IF !USED(full) GENERATE
+		full = GND;
+	END GENERATE;
+	IF !USED(q) GENERATE
+		q[] = GND;
+	END GENERATE;
+	IF !USED(usedw) GENERATE
+		usedw[] = GND;
+	END GENERATE;
+	IF !USED(empty) GENERATE
+		empty = GND;
+	END GENERATE;
+	IF !USED(q_avail) GENERATE
+		q_avail = GND;
+	END GENERATE;
+end;
+

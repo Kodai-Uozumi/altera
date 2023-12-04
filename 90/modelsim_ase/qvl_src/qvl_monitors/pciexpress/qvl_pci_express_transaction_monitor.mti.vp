@@ -1,0 +1,744 @@
+//              Copyright 2006-2007 Mentor Graphics Corporation
+//                           All Rights Reserved.
+//
+//              THIS WORK CONTAINS TRADE SECRET AND PROPRIETARY
+//            INFORMATION WHICH IS THE PROPERTY OF MENTOR GRAPHICS
+//           CORPORATION OR ITS LICENSORS AND IS SUBJECT TO LICENSE
+//                                  TERMS.
+//
+//                   Questa Verification Library (QVL)
+//
+
+/*************************************************************************
+*
+* PURPOSE     This file is part of the Questa Verification Library (QVL).
+*
+* DESCRIPTION This monitor checks the PCI Express interface for compliance
+*             with PCI Express Base specification - Transaction layer 
+*             specification.
+*
+* REFERENCES  PCI Express Base Specification, Revision 1.0, July 22, 2002.
+*             PCI Express Base Specification, Revision 1.0a, April 15,2003.
+*             PCI Express Base Specification, Revision 1.1, March 28, 2005.
+*
+* USAGE       This sub-module is instantiated in the top level PCI Express
+*             monitor module. This module tracks the flow control, request
+*             v/s response tracking.
+* 
+**************************************************************************/
+
+`ifdef ZiCwDebug
+`define ZiCwDebugDelay1 #1
+`define ZiCwQuietIfNoCwDebug
+`else
+`define ZiCwDebugDelay1
+`define ZiCwQuietIfNoCwDebug -quiet
+`endif //ZiCwDebug
+
+`ifdef QVL_COVER_ON
+  `ifdef QVL_SV_COVERGROUP_OFF
+     // Do nothing
+  `else
+    `define QVL_SV_COVERGROUP
+  `endif
+
+  `ifdef QVL_MW_FINAL_COVER_OFF
+     // Do nothing
+  `else
+     `define QVL_MW_FINAL_COVER
+  `endif
+`endif
+
+`qvlmodule qvl_pci_express_transaction_monitor (
+                                       reset,
+                                       areset,
+
+                                       tx_level_select,
+                                       rx_level_select,
+
+                                       tx_clk,
+                                       rx_clk,
+
+				       transaction_layer_checks_disable,
+				       // Additional gen1 code start		
+                                       disable_cpl_timeout,
+				       // Additional gen1 code end 		
+				       // Interface packet monitor
+
+				       xmtd_tlp,
+				       xmtd_tlp_packet1,
+				       xmtd_tlp_packet2,
+				       xmtd_malformed_tlp,
+				       tx_retry_progress,
+				       xmtd_lcrc_error,
+
+                                       rcvd_tlp, 
+                                       rcvd_tlp_packet1, 
+                                       rcvd_tlp_packet2,
+                                       rcvd_malformed_tlp,
+				       rx_retry_progress,
+				       rcvd_lcrc_error,
+
+                                       dll_status,
+				       phy_status
+                                       );
+
+  // Parameter declarations
+
+  parameter Constraints_Mode = 0;
+  parameter DOUBLE_DATA_RATE = 0;
+
+  // parameter MAX_REQUESTS_ADDR_WIDTH specifies the number of bits required
+  // to address the maximum number of outstanding requests stored in the
+  // memory.
+
+  parameter MAX_REQUESTS_ADDR_WIDTH = 5;
+
+  // PCI_EXPRESS_GEN2 code start
+  parameter PCI_EXPRESS_GEN2 = 0;
+  // PCI_EXPRESS_GEN2 code end
+
+  // Additional gen1 code start
+  parameter CPL_TIMEOUT_CLK = 30000;
+  // Additional gen1 code end
+  parameter MAX_REQUESTS = 1 << MAX_REQUESTS_ADDR_WIDTH;
+
+  // Input declarations
+
+  input reset;
+  input areset;
+  input tx_level_select;
+  input rx_level_select;
+  input tx_clk;
+  input rx_clk;
+  input transaction_layer_checks_disable;
+  input disable_cpl_timeout;
+
+  input [1:0] xmtd_tlp;
+  input [69:0] xmtd_tlp_packet1;
+  input [69:0] xmtd_tlp_packet2;
+  input [1:0] xmtd_malformed_tlp;
+  input [1:0] tx_retry_progress;
+  input [1:0] xmtd_lcrc_error;
+
+  input [1:0] rcvd_tlp; 
+  input [69:0] rcvd_tlp_packet1;
+  input [69:0] rcvd_tlp_packet2; 
+  input [1:0] rcvd_malformed_tlp;
+  input [1:0] rx_retry_progress;
+  input [1:0] rcvd_lcrc_error;
+
+  input dll_status;
+  input phy_status;
+
+  // Internal parameter declarations
+
+  parameter ZI_MEM_REQ = 0; // Memory requests
+  parameter ZI_MEMLK_REQ = 1; // Locked requests
+  parameter ZI_IO_REQ = 2; // IO requests
+  parameter ZI_CFG0_REQ = 4; // Configuration type 0 requests
+  parameter ZI_CFG1_REQ = 5; // Configuration type 1 requests
+  parameter ZI_CPL = 10; // Completions
+  parameter ZI_CPL_LK = 11; // Completions for locked requests 
+  
+  parameter ZI_MSG_REQ = 2;
+  parameter ZI_MSGAS_REQ = 3;
+
+  // PCI_EXPRESS_GEN2 code start
+  parameter ZI_TCFG_REQ = 27; // Trusted config types(deprecated) requests
+  
+  // PCI_EXPRESS_GEN2 code end
+  parameter ZI_SC = 0; // Succesfull completion
+  parameter ZI_UR = 1; // Unsupported request
+  parameter ZI_CA = 4; // Completor abort
+  parameter ZI_CSR = 2; // Configuration request retry status
+
+  // Register declarations
+
+  reg [23:0] tx_req_mem [0:MAX_REQUESTS - 1]; // This memory stores the req ID
+                                    // and TAG field of the transmitted
+                                    // requests
+  reg [23:0] rx_req_mem [0:MAX_REQUESTS - 1]; // This memory stores tha ReqID and
+				    // TAG field of the received
+				    // requests
+
+  reg [MAX_REQUESTS-1 :0] tx_valid_req_reg; // Stores the status of the 
+                           // cache memory. A logic high represents there
+                           // is a valid entry. A logic low indicates that
+                           // there is no valid entry at that location
+  reg [MAX_REQUESTS-1 :0] rx_valid_req_reg; // Stores the status of the
+                           // cache memory. A logic high represents there
+                           // is a valid entry. A logic low indicates that
+                           // there is no valid entry at that location
+  reg [MAX_REQUESTS-1 :0] multi_cpl_tx_reg;
+  reg [MAX_REQUESTS-1 :0] multi_cpl_rx_reg;
+  reg [MAX_REQUESTS-1:0] temp_tx_valid_req; // Temporary register
+  reg [MAX_REQUESTS-1:0] temp_rx_valid_req; // Temporary register
+  reg [MAX_REQUESTS-1:0] temp_multi_cpl_tx; // Temporary register
+  reg [MAX_REQUESTS-1:0] temp_multi_cpl_rx; // Temporary register
+// Additional gen1 code start
+  reg [1:0] non_unique_tag_in_non_posted_tx_req;
+  reg [1:0] non_unique_tag_in_non_posted_tx_req_negedge;
+  reg [1:0] non_unique_tag_in_non_posted_rx_req;
+  reg [1:0] non_unique_tag_in_non_posted_rx_req_negedge;
+// Additional gen1 code end
+
+  // Memory to store the transmitted requests fmt,type,tc,attr,length.
+
+  // xmtd_req bit allocations
+ 
+  // {fmt,type,tc,attr,length,reqid,tag}
+ 
+  // rcvd_cpl bit allocations
+ 
+  // {cs,fmt,type,tc,attr,length,reqid,tag}
+  // Commented as modified for gen2
+  // reg [22:0] tx_req_info_mem [0:MAX_REQUESTS];
+  // reg [22:0] temp_tx_info_mem1;
+  // reg [22:0] temp_tx_info_mem2;
+  // reg [22:0] temp_rx_info_mem1;
+  // reg [22:0] temp_rx_info_mem2;
+  // reg [22:0] rx_req_info_mem [0:MAX_REQUESTS];
+
+  // PCI_EXPRESS_GEN2 code start         
+  // Adding 23rd field for acs violation/next_unsupported_request,27:24 - FBE,31:28 - LBE, 32- EP, 33 - TD, 35:34 - Reserved
+  reg [45:0] tx_req_info_mem [0:MAX_REQUESTS];
+  reg [45:0] temp_tx_info_mem1;
+  reg [45:0] temp_tx_info_mem2;
+  reg [45:0] temp_rx_info_mem1;
+  reg [45:0] temp_rx_info_mem2;
+  reg [45:0] rx_req_info_mem [0:MAX_REQUESTS];
+  // PCI_EXPRESS_GEN2 code end
+
+  reg [1:0] tx_cache_hit;
+  reg [1:0] rx_cache_hit;
+  reg [1:0] tx_cache_hit_negedge;
+  reg [1:0] rx_cache_hit_negedge; 
+  reg [2*MAX_REQUESTS_ADDR_WIDTH - 1:0] tx_cache_hit_address; 
+  reg [2*MAX_REQUESTS_ADDR_WIDTH - 1:0] rx_cache_hit_address;
+  reg [2*MAX_REQUESTS_ADDR_WIDTH - 1:0] tx_cache_hit_address_negedge; 
+  reg [2*MAX_REQUESTS_ADDR_WIDTH - 1:0] rx_cache_hit_address_negedge;
+
+  reg [1:0] tx_cache_hit1;
+  reg [1:0] rx_cache_hit1;
+  reg [2*MAX_REQUESTS_ADDR_WIDTH - 1:0] tx_cache_hit_address1;
+  reg [2*MAX_REQUESTS_ADDR_WIDTH - 1:0] rx_cache_hit_address1;
+
+  // Register declarations for error assertions
+
+  reg completion_without_request_rx;
+  reg completion_without_request_tx;
+  reg mismatch_tc_attr_in_cpl_rx;
+  reg cpl_csr_for_non_cfg_req_rx;
+  // PCI_EXPRESS_GEN2 code start
+  reg cpl_not_ca_for_acs_violated_mem_req_rx; // CPL status should be CA for ACS violated request.
+  // PCI_EXPRESS_GEN2 code end
+  reg completion_cpld_for_io_cfg_write_rx;
+  reg completion_cpld_for_unsuccesful_cpl_rx;
+  reg locked_cpl_for_non_locked_req_rx;
+  reg mismatch_tc_attr_in_cpl_tx; 
+  reg cpl_csr_for_non_cfg_req_tx;
+  // PCI_EXPRESS_GEN2 code start
+  reg cpl_not_ca_for_acs_violated_mem_req_tx; // CPL status should be CA for ACS violated request.
+  // PCI_EXPRESS_GEN2 code end
+
+  // Additional gen1 code start
+  reg cpl_not_ur_for_ur_req; // CPL status should be UR for unsupported request.
+  reg cpl_not_ur_for_poisonned_io_write_req_tx;
+  reg cpl_not_ur_for_poisonned_io_write_req_rx;
+  reg cpl_not_ur_for_poisonned_cfg_write_req_tx;
+  reg cpl_not_ur_for_poisonned_cfg_write_req_rx;
+  reg cpl_lower_byte_error_tx;
+  reg cpl_lower_byte_error_rx;
+  reg cpl_length_not_1dw_for_flush_req_tx;
+  reg cpl_length_not_1dw_for_flush_req_rx;
+  reg rd_cpl_without_data_tx;
+  reg rd_cpl_without_data_rx;
+  reg type1_cfg_not_ur;
+  // Additional gen1 code end
+  reg completion_cpld_for_io_cfg_write_tx; 
+  reg completion_cpld_for_unsuccesful_cpl_tx;
+  reg locked_cpl_for_non_locked_req_tx;
+  reg cpl_byte_count_value_error_tx;
+  reg cpl_byte_count_value_error_rx;
+  reg lwr_address_value_error_tx;
+  reg lwr_address_value_error_rx;
+  reg no_locked_completion_for_locked_req_rx;
+  reg no_locked_completion_for_locked_req_tx;
+
+  reg [1:0] xmtd_req_negedge;
+  reg [1:0] rcvd_req_negedge;
+  // Commented as modified for gen2
+  // reg [46:0] xmtd_req1_negedge;
+  // reg [46:0] xmtd_req2_negedge;
+  // reg [46:0] rcvd_req1_negedge;
+  // reg [46:0] rcvd_req2_negedge;
+
+  // PCI_EXPRESS_GEN2 code start
+  reg [69:0] xmtd_req1_negedge; // 47th bit for AT field violation of mem request
+  reg [69:0] xmtd_req2_negedge;
+  reg [69:0] rcvd_req1_negedge;
+  reg [69:0] rcvd_req2_negedge;
+  // PCI_EXPRESS_GEN2 code end
+
+  reg [1:0] rcvd_cpl_negedge;
+  reg [1:0] xmtd_cpl_negedge;
+  reg [69:0] xmtd_cpl1_negedge;
+  reg [69:0] xmtd_cpl2_negedge;
+  reg [69:0] rcvd_cpl1_negedge;
+  reg [69:0] rcvd_cpl2_negedge;
+
+  reg [3:0] tx_req_bitmap; // To store the number of requests. One hot encoding
+  reg [3:0] rx_req_bitmap; // To store the number of requests. One hot encoding
+
+  reg [1:0] xmtd_lcrc_error_negedge;
+  reg [1:0] tx_retry_progress_negedge;
+  reg [1:0] rcvd_lcrc_error_negedge;
+  reg [1:0] rx_retry_progress_negedge;
+  reg [1:0] rcvd_cpl_lcrc_error_negedge;
+  reg [1:0] rcvd_cpl_retry_progress_negedge;
+  reg [1:0] xmtd_cpl_lcrc_error_negedge;
+  reg [1:0] xmtd_cpl_retry_progress_negedge;
+
+  // Additional gen1 code start
+  reg [19:0] tx_cpl_timeout_counter_posedge [0:MAX_REQUESTS - 1];
+  reg [19:0] rx_cpl_timeout_counter_posedge [0:MAX_REQUESTS - 1]; 
+  reg [19:0] tx_cpl_timeout_counter_negedge [0:MAX_REQUESTS - 1];
+  reg [19:0] rx_cpl_timeout_counter_negedge [0:MAX_REQUESTS - 1];
+  wire [19:0] tx_cpl_timeout_counter [0:MAX_REQUESTS - 1];
+  wire [19:0] rx_cpl_timeout_counter [0:MAX_REQUESTS - 1]; 
+  // Additional gen1 code end
+				    
+
+  // Wire declarations
+
+  wire tx_memory_full;
+  wire rx_memory_full;
+
+  // Wire declarations for the transmitted, received TLPs
+  // fmt, type, length fields
+
+  wire [1:0] rcvd_cpl; // Since two TLPs can end in a single symbol
+                      // time, each bit represents whether
+                      // only one TLP is received or two TLPs are
+                      // received
+
+  wire [1:0] xmtd_cpl; // Since two TLPs can end in a single symbol 
+                      // time, each bit represents whether 
+                      // only one TLP is received or two TLPs are 
+                      // received
+
+  wire [1:0] xmtd_cpl_temp;
+  wire [1:0] rcvd_cpl_temp;
+
+  wire [1:0] xmtd_req;
+  wire [1:0] rcvd_req;
+
+  wire [69:0] xmtd_cpl1;
+  wire [69:0] rcvd_cpl1;
+  wire [69:0] xmtd_cpl2;
+  wire [69:0] rcvd_cpl2;
+
+  // Commented as modified for gen2
+  // wire [46:0] xmtd_req1;
+  // wire [46:0] rcvd_req1;
+  // wire [46:0] xmtd_req2;
+  // wire [46:0] rcvd_req2;
+
+  // PCI_EXPRESS_GEN2 code start
+  wire [69:0] xmtd_req1;       // 47th bit for AT field violation of mem request
+  wire [69:0] rcvd_req1;
+  wire [69:0] xmtd_req2;
+  wire [69:0] rcvd_req2;
+  // PCI_EXPRESS_GEN2 code end
+  wire [4:0] xmtd_tlp1_type;
+  wire [4:0] rcvd_tlp1_type;
+  wire [4:0] xmtd_tlp2_type;
+  wire [4:0] rcvd_tlp2_type;
+ 
+  wire rx_cpl_fifo_empty;
+  wire tx_cpl_fifo_empty;
+  wire [145:0] rx_cpl_fifo_in_data;
+  wire [145:0] rx_cpl_fifo_out_data;
+  wire [145:0] tx_cpl_fifo_in_data; 
+  wire [145:0] tx_cpl_fifo_out_data;
+  wire [1:0] rcvd_cpl_lcrc_error;
+  wire [1:0] rcvd_cpl_retry_progress;
+  wire [1:0] xmtd_cpl_lcrc_error;
+  wire [1:0] xmtd_cpl_retry_progress;
+
+  // Integer declarations
+
+  integer j, k,l,m,n;
+  integer tx_req1_index, tx_req2_index, tx_req3_index, tx_req4_index;
+  integer rx_req1_index, rx_req2_index, rx_req3_index, rx_req4_index;
+
+`protected
+
+    MTI!#OEHWSD-EWlw3eu63Rb@CKm^EJBv~x+|(1kX[C?vu}?{ks1x7ioC~f$?VBMkr_2Rvm^Kom;5
+    /N-Uo*#5;j}~msD}5n]-V^8\lu?xkW\w5e-CAfI17<_omfdlZZ#EuJ-|{.kUT*R[w>6YBRi1-}Go
+    o$#\aAYRB=[9?>}i'i[W\$^YUnxGHU$!j,^\NlKxZL1xsnGV3]F!}<-\opD^VC@LmO!B~r{'[;+W
+    Goi$A=Bz<>[2$\#e3O;mC<WWKE;$=Q'W/[2Ck,EZE~j^zE-uT7+$\AHEnj5HjDXx*[%Q;3pe*73V
+    ;op'Z~ulDw[VB{r$}B*HDJ2ilo$V%I5{WisKW}m@1[BoZ\u'E}~}i2'z,]n^X%gB-oCN1=@{\=Qj
+    \[+2@GET=,An3a>CA7X5<p2;zVAof,I<@oRs_\K^7wAJpD5;eD,!HEj^_aOCTGZGaT}##u$]}o<l
+    T}[]j"?RxnjDKlv1ojB?mWK1=iQeVm<}X?,I2#KQa]QDr\xaKa_BEpVWY_$z~1Qe<XL-z]U]BZ_6
+    9V1+GZ={pX+EX~]'O'KXxV+;>aoa-_7<!pDJ!\#5]=YR@B+1U-v}Z2RYl,o;{-\nQiH$umsz]2*]
+    #ZaW$OX$<IA=u'Gv<O'=^KE-76lk'3*{\rR@}2z=a-mrnV$Uz{$CnjI>7mJ}]]p2s_35XX}DK,B[
+    =rs\73<apW[sT1nGKRO13]E<u?Em!n[5X}vY$ZRI@l$]zs5iz;?A;W71ZQx^<]5EvsuAZK_EU[=~
+    \IB]_}Z=ooY*umqow{]IHWGA\-3l\+*b=G-ze?u_w_BzJ[i<fk[Xw5<Cz\wwOBJvC@*XlU^B@?w[
+    C"[uIY]j'{E*{oJOeE-j23lZ-$DxCH~}*TR2rC+Cia]}3HYR2Gqvm2zK[{*B41GGQBjKa9&r@$]}
+    j=R-V+a3$i*w(lXUkqOlkY3+!ol$5i8ww}ZMAwzk#j}GMnj\3F'mQ_y[_T3'#r]ZTYn@H>GVJszv
+    JOUxo-#O&m7uuYVA^UX@u[,X,E{rJ,3-+m[B_6I7xBy8xR]xE=]$^7?B5mWX>5<K$?J#xBmmij}D
+    [l1]B>uJ,[*B\>n#\Y=ZvAQ#Cs!n7A_I*paGB,\2@+'<|j_@lvT!Kc^2zD-E-zExZH-B7GOx+=,T
+    @*Xa7{Ba]w,GCl}CJU^\<QZX1Y-H<A{O+UO@~2<75*XaV[ur~T'H'>4@XWXE,[@eJz-aseEO#xn$
+    -KU$GI[sY7G,*r>UH51m'*2eY2-mH}!YAmU2lK}Y'YpEAO[jEpVK>AA]pHK-{}itw'pQ,Q=uk5B2
+    m[oTjQia}sUoKOQKYs=lD]asjioWI_?@#Vww#E$-EX'2}@l^@v?U5H{ukVsZO<-]QkUH_Q$Z-]B$
+    ~]Y#us_${]z=k5_3UT7GV*e7rBav(A}z1iRvOH+Ew;lio]E7}O*$^~a\i3E<I_o#7:*a]Oc=w=WB
+    VlAD5ljuv}kTxs'_-3~7w!]K^kRe!+W.T5ari>=!IV7KLm*GxQvWr'vGCKj$[U5@'kXC]1;O;k,G
+    nU*lW*a2XRwGuznnx6]I\WCu)5#m'p#Ra2CxJZ7eIJY7W/#<K-P2V7mTH<VV!)qkICo}x^!lmmEk
+    h-sRRJR3zo#^xTar~YE~__]jD,XJJ<7+A1<Uvw|p23xl+[5'-><X]Z]_&\ST,WQT_O~G,_X{^!mk
+    I2$KXw2GC<aMa7_B>tpU>Irs>C=X3#p(Q$-riTT<l;GAP$2}JuoB?x\O#W6D$nO2CB]AlJnur!Dm
+    G=;A<]@DmHEo_B?vW{]9=j~B8C-AJiw=7ev<?FDi&E'1p*Qs1$!jYI5>llT'B#jzBYe1DsjYu_\@
+    +cs_+<-[u+kCX$=nAn1{<!JEr#Y[Aa5DO#2Y']"P=zoD^#RrD3vm3[?7GW\K^Y@u
+`endprotected
+  // Wire assignments
+
+  assign xmtd_cpl_temp = {(xmtd_tlp2_type == ZI_CPL || xmtd_tlp2_type == ZI_CPL_LK),
+                         (xmtd_tlp1_type == ZI_CPL || xmtd_tlp1_type == ZI_CPL_LK)};
+
+  assign rcvd_cpl_temp = {(rcvd_tlp2_type == ZI_CPL || rcvd_tlp2_type == ZI_CPL_LK),
+                         (rcvd_tlp1_type == ZI_CPL || rcvd_tlp1_type == ZI_CPL_LK)};
+
+  assign xmtd_req = {(~xmtd_cpl_temp[1] & xmtd_tlp[1]), (~xmtd_cpl_temp[0] & xmtd_tlp[0])};
+  assign rcvd_req = {(~rcvd_cpl_temp[1] & rcvd_tlp[1]), (~rcvd_cpl_temp[0] & rcvd_tlp[0])};
+
+
+  // assign xmtd_req1 = xmtd_tlp_packet1[46:0];
+  // assign xmtd_req2 = xmtd_tlp_packet2[46:0];
+  // assign rcvd_req1 = rcvd_tlp_packet1[46:0];
+  // assign rcvd_req2 = rcvd_tlp_packet2[46:0]; 
+   
+  // PCI_EXPRESS_GEN2 code start
+  assign xmtd_req1 = xmtd_tlp_packet1;
+  assign xmtd_req2 = xmtd_tlp_packet2;
+  assign rcvd_req1 = rcvd_tlp_packet1;
+  assign rcvd_req2 = rcvd_tlp_packet2;
+  // PCI_EXPRESS_GEN2 code end
+  assign rcvd_cpl = rx_cpl_fifo_out_data[145:144];
+  assign rcvd_cpl1 = rx_cpl_fifo_out_data[143:74];
+  assign rcvd_cpl2 = rx_cpl_fifo_out_data[73:4];
+  assign xmtd_cpl = tx_cpl_fifo_out_data[145:144];
+  assign xmtd_cpl1 = tx_cpl_fifo_out_data[143:74];
+  assign xmtd_cpl2 = tx_cpl_fifo_out_data[73:4];
+
+  assign xmtd_tlp1_type = xmtd_tlp_packet1[44:40];
+  assign xmtd_tlp2_type = xmtd_tlp_packet2[44:40];
+  assign rcvd_tlp1_type = rcvd_tlp_packet1[44:40];
+  assign rcvd_tlp2_type = rcvd_tlp_packet2[44:40];
+
+  assign tx_memory_full = &tx_valid_req_reg;
+  assign rx_memory_full = &rx_valid_req_reg;
+
+  // Additional gen1 code start 
+  // Completion timeout 
+  generate
+    genvar g1;
+    for( g1 = 0; g1 < MAX_REQUESTS; g1 = g1 + 1)
+      begin : cpl_timeout                                         
+        assign tx_cpl_timeout_counter[g1] = (tx_level_select)? 
+					    tx_cpl_timeout_counter_posedge[g1]:
+					    tx_cpl_timeout_counter_negedge[g1];
+	assign rx_cpl_timeout_counter[g1] = (rx_level_select)? 
+					    rx_cpl_timeout_counter_posedge[g1]:
+					    rx_cpl_timeout_counter_negedge[g1];
+      end  
+  endgenerate
+  // Additional gen1 code end
+   //  
+`protected
+
+    MTI!#seVZiQ_B]'X7I]*TU1lAo'm;!pC+{^R\Fqo<u[I;Ke'e,[nR#Ia7G#-U~xQ#+$O$*s=ZjOR
+    J!2[,,mhI?5Y,nTJ#aQ#ne{EXE{mM=l;D$2}_B_l~^=+GHEUQ_#!3p(1!3GEa7m=~p>l=Zop,1*5
+    /^c&i-*^V,K=rv*;_rTC\}C@}3>,^ez,;}3'@U\;Rv^#3C[TJoHx~5e*uXO}Xjv]*CBOyECZp2'1
+    A.yr'Z$r[Qi~VY2IbKew7hDQB$d$x!B'IouavGXmAJ$3]!^I]uQGiY?e,m*_}1#GmWR2DV$kUX$j
+    -K{z3m2=X5z;R?T14aG-<,^<_5\^$-5Wv>s#=#]kCuAm-Y#,I7'l-#hoGk-E>HI^sYU$,C[vn$O$
+    -GpriWWkw$T}DaEX_ls-=R2X}Xo>>RCy|EeH{qql"YXw-KH--R]uA%r5]>xl}^L7OSt@*1iG~w>q
+    epZ\x2EXr}[-kQK}2Qw@7Z'a7nji1<C^1['VS^HB_HOi7|}~j~R1+K^G7wL;}Apb7<=#Va\Y}HV]
+    jr#,C1^l3$?I?{_B1K-VAEkQVCIEqxmQR7~]-oRHa*Hl;>vw,F7okJTBuCEVEY*A~r1,rer71<B$
+    ?QQKZuR?jeD_+z$Ba5/BmWshLp?z~/V_RoB'u}v~CEK-l}!sYlv#~<kl8#QpTc]2rAm$e#7oTk4v
+    >!ZzOU~Is',I!zkEjIKx7;l~^Q[[w=@,_53${*$Gan]KBV7I=Y@qmxZr~j'\jkA+][pk]>VkTAT2
+    E71on>+5?T\Rg3,wT1{B[VE'+m[1nD<Z_sm^p,_D-xD?TR=#s$,lG1';~nl*o<rx<%5U@C1m^a$C
+    E(zX<3e>[o5$2@[~*BB{xa{Aon2o7zoWQAC2}H/@]'Al2O-Zei$kj+\%^31p<Tr1[EJma$-u=!5?
+    *;1;KV!2nDRipm@+TIXGPYx1lk5kz3E1sWHC]wE;Xwxv5f1C-Q]T;'T5p^eV{V=3[]lDAAh1\T3v
+    +{*/"oi~Col1Jnz1+l!@\<R>^mY5=+YU7uQ~!o{UoTlO{p!,T,\p2=_!QYzJszk}ICl\UUAKksu_
+    mR8DQ$iFn}[B\Q*{1B+^w<]n[*mp/$\Zkp{\p,Wumji5uwTnC,uV3}Z2v~HmTov@-luU{~+I[eFC
+    $z5u^-vw'<k\\H~2o]@^GyC-^,7,^^<en]5$A'eAT-H[<nVRm'j{E@zGKOCHXTeY-o$3C_1#^B|p
+    ip'~*{*Q^>z#p$-xX1BaIW![J+IwUE}G+!Ubf>HHrcf_i=<E}3DG;{?<.g=R@@rkeTzmm@r3jOor
+    I\^W\adGx3QvOp'P3<ee@}mX#,_1\_YAIZ*Y>v_*S$+aa~5<lcm8*i2DRT}7kOD?sm}Jzpkkl[-~
+    jomlizR}YO3lI]Q;]!V,)Yv2_K^wx5piQRXU_$\RD1x_i7[*B~C7X#-,,D1?R6vw22IWr\5vOA]Q
+    u^AC!GZzkA1neOu+~1K>5-\]ol$;}-=}$7@_{CuGX?BuE,5-nOlHpAW\X\-Ri,TQO!GB5X_xu;8$
+    yueopN{jXp%!ERm:oie~[3HaDF;$!C>RZ3/}>5'aozGQ*~~YR,TG@-Tx2Q1W7]YExTJQ>=]'OC>k
+    'CplZBG@tuU\3}}{_gV,#Vkow_*_:$}\\=n~}'_+Yjk7x>CAJAID7wErQI7mRB;QDU{GUe+_$7>1
+    {]awA>$k3J5~[H]@ux1!X[lo_zthLJUHG~v\]2>,]w+x]<-CG1;l]}n!r1z;RjpGle,IODjDw^;n
+    3vonlI#]Y7Vp[C*_aa^mu,+D-]5JuZT_[=j3#ZR\pB*K#U_+Exjk]Y6GlC*gv$>_E@V2?[oDGV'Z
+    k[}erj7Y]<*UiB#moWx@D!Y,2E]WR?zebBu!wxAm]@UIWP[;zBcboJB^B3EIG2YmOKK=Ox[Ar1Ge
+    ka2-*\#7z[jT_A}]!'o^WsiHA1Z~*XHGdR~@>er]>5_~^Wn@,Nl#e+rTY==;1K{EX\5Gu{0OrB;z
+    @zW=2D>D>{<_Rn[&jW@]3je>F$\eV2j?Z^Gm]l#@Bd.9<al#1wpe)lD,@v#=_[C~}p1IoYD#\dw=
+    lp}T<j]o\wBY_!WD!U}#^5ywQnEHw-{'EiaX+O}U'>O/$xR~1Jsm1DHAzD,'#nOj]_WOj[jBsnW-
+    Oz[@ZosUXrB[p=]HBa~!!>'E@ClaWXjRX'*UY!!Qx-IwRskuW[x3N\_s+m*wXZ{~r~]~;BiV*5RW
+    w^#R*wQmW\Ska<>Ts,\V~V@ln)]pH>m$k58KH3xY!|Xw>UIa[+8{AEQ7Iz[kOo\,UlZ_omZg/VKA
+    Z2\1~5fS{UOC,X-VZ^Vi:uCiJ{-YlK5-<!ERn%,Y?rt#T$[_Z7iBi>BR5=elCE13RA<o2u7l>1^I
+    v?':ouwwIR{mGzY5-]}Kk*5-E?Ie:\1ZUFCAYWnNI;V*G!,,V<D~nHUuQ@'B1enAYEB@}J)ulB<D
+    EToQ=[IK=UjX-GaTQT,',<vOap1+11eu_'-$r,H{G~>J1B;'v+I$n-lToH'0Cr7=j[}K1&$wWoWC
+    J30A{~1Q[n2HE*V]I+<\WDeC*nG/Za{TSknCkH]57E>~]"giC,^5?2ZPKXX#|ioK-[#n-C#B}rZ<
+    _QZ7k<nA?T]XvR7Dm5G'mEJYYQHe7~]'Xx3_@T8.'Z[e;1ZaYnu#<Y[-aT_A'?n~&^~B^0B6*7n!
+    _T>r*vG^6QvuRo><RKqKjA?!_eRA{pCQCnz{zB{ZeE3V+C1__j'H}@CnliAs#BRY8*YA=Y>1@rp<
+    wmvE}S'W]\x|^[*<2E_Ixd_X[<*-Z[ok@^KzYG/6XD3}@E1Y&A>Yz=7nX;+@2,O_n~\WYk5_n%<O
+    p?UA~GDaKo_ZDR'~3R15~lp1n$vXHOVxe@K]z=87\'^O{w;ZwXDHTUHlVZ-jW${InHE,_-K[zjXK
+    >O=7La\E=rooel:VVo>[!D+u5=B=D~?zVjWa&eZUpY^KoWH<CZXlsZ53>gb,}!IZr'5O3{RuA=}T
+    o{>pda5~=]D2w]<@CR[ox1JDTABvCz><H~sisfqP[e;+8dY-j]>lu[JA+z*ua],e[p&7O'1us#Ql
+    2B$NFnvmQ]Z,~J^#wGVC<Lk1kkm_WUU-=DDYnJCO3Jopus'H{DJ7?727j~^*=_oKox0\#CC3Bu<@
+    B^j'iBn}~H,w-15Oo,}#zDx'sW?ex2;z5}[@j$'EUXW'!-T<VDao<_uET=@B<*U+*j2V*~YyO~K}
+    RA-}B[k'CDarh;xa$C{WTEG,i7^]pZnH{3snBD][$;=k3<o3A<QJoG?zpGx}<=#2uv;G<W\@5Du5
+    kOJE>(Gk{XD-3U.>EG12ROl[j-v4n8[#Qi52^7<x<af4,;{>JsQevo#RIQ+7Y;]^^sp^BT}'aH<!
+    w]@3BRjBJ[K^H5zv3vUVzsC2VU}1U]=Arl1D_{-u\$@rkA3Cv31J#'vpk={WlBmn?5A\ep-YQ\BT
+    QET'R~H1nsK7EO#<p[R]YJU-1[3#7ZY[ZU^iQ_O[1'kYVTo_@lT1;l1XRE]5:Cr1Ts,R#l{,Wpp}
+    *C{~R'nG~kDC+np7s[0SKU7^OW*^UzX3@Er=oUR*=sl+Z*DKkE{ns!YD<lsX?1DT^5eOZ,2E)7Qo
+    ~\u7x?Y+JCs;TRnwD_-rK>YG='|CXK\$]OiEInG)KvJVaoV5X$\!bv?*DK,pxmo-~[#n~lm~#\p'
+    >UTREcOH\Xx\u}]DWmo3ZV6YA=-T-~k2,,xO1+BQ-BO%,,W7GJvxFr3I[$=8kA=,q>E?'$mQBR1s
+    ^DEV]uxKOF$X~5$>Ts>,eH;XuK$wr_7e2#x$Z3|%7UJoYV-<<Q37_}=wVZ~Ha'-=aUj^B^,=OHXx
+    QoUC^D+kJnmm0pK{72DB}em^lsvuZDo}v!'H1t{T'iv$]73{Zm%C7$'VQ<A}O?ol3@7FKz~p4v{Z
+    $E@@xTQr7D=~}7j{\oYUDuBRl^k-vKoV$WUAnvv}xna{x2}OV?aGX+>_]P;{e3Bk,2djEjDh=_[$
+    Y'vC?wU{-q'5*i5mx['>7aEHEJ5-E\[sB]%NepA-RO12>BE!?A_\IJna~o#p$bLW}-Ix'skVGxw1
+    ioIXA!W7X[=$-~^_CH'Ox-Y^l>25pv~%Gle3@Ex[mQvl:NQ$3^i$?2\A5iKQ*^jm,m)C5+Z[Y[v{
+    'OZv^w*=DVWHTI$r?uK}J_-*ZW_7We@OZe[l}}EuR3=3XQ~O{{@*'GHixi;$riv2RV_ajn5kHWe@
+    ^}H5VsQ4A}T12x[KToJwgQn,?q,R{IWjaa\GX,YQonCXKE>}>@{pYvvnWupXzlyi5*V-^i=F3v{;
+    MpneBB:O4^BB'vBGnED$}Z\WE7u^K0B;+a?5\$O+;~D!VVZU=^\c(GaZs'aWe$wp}AY40L>Uwu#^
+    !3^U^5$D$p6n,JC*B+k}V$,7KuOu}*zw[pnReW11K>kr2$*E7p{DY1nSPe_iXwGHZUhw,<33,r'j
+    TAA=n^X3spAnO31Oi7lF1?eU{NO$+\n,pZjCXIso}wvCA]-XQ2^uTkGX<#>o^]$k^_xa[}=]n~>Q
+    +[VuEA-HYjQO-G_UXjYkJz[Z>URL\=^Er2{ZzWA]J'O?eGE}$mRlu>l7~E#$GkZI"RuR5ER-<*sW
+    }~=Wp{U@XY@ZVBEDR@o_+=7m*~]Z]=*}sO]J3}{C}eEza'KT\^5CjM2*3R@{GZK'j}}-!ven'$Y<
+    X;o}*_j<\=W'xlD!H{?Y73#naS-QZB@U>TYk=U>V@nTaIiK+1_D+!B-TB]]~$15zWVR7VBn5V{ou
+    }x{Cev=*'$G+]*ri+*B]]=5{mmKa<>-=-eKXppH_+U?*\>_3U_nomGc-5I+G{msG]VR6C]VQ<Dns
+    ^QVj6aw3$^2$[7k}G>VHu]ApVB\K+oX,G!NKp5oTp$i5o{ozCrCW}[j[#A@6ZevOARkaa5@CY>U#
+    Y]XYixWo7GHwGC1I*\R+V\ZTKlOn55vp/j?D3p!Bvk8ajQ3,#~x$Q<-zY[$xnOiYAB+]j?1GrZ}^
+    e\oH_kpR;$?D#4E;C7'u,H1Y-Gm_R7/Qon~-'+X,m+!Tn;?zkCQ1e_A}1V#\[]s^IGn1[YRAn[\4
+    6<xW8zVl=7Q{UipjoORaWd'C^uoB',n<I,TD5#5ou\;$Qp!=x']OA-Wr7XITJ[pK-A\*vm\A,XUj
+    1m@_kROY#!:QO>C\C+?R[zi_nY{h3zvjEW1kIHQ+eZr2GQ7JZj?zU{u3euA;Q^;j(v]#1q#ro_ia
+    orXlu@o!+,.0wT<vz2^xQQu@K}=I{Cxeu'",?BV^[nm<v\C>6~7!x~a1{lDCnIa]w]'=_nH\I%eo
+    aOo_1;;leJpEwnlL**'DDYO@@,iTxUuK^Xpl-H2x?xI}&U*DienOpRrzI-Io>e]J3WU^'vzW-Z-}
+    <3Hr]u^U7es$o'Y\RcRH{_.Z{\3=1av{,<aG3neZ\L[+3]xiHYGzHeGmO_n{5UaajUQ!a~NW$$7'
+    @_Z:N^CXB5U7Yf{1@WuIjI_uO5H1$rY@=@cWH_57X^^O}ZCq?+W'v3Is*+>\D!x;~^p*p#sImeE@
+    {vnn5s$+-lD'z<v!{=BDVOrX$RUGn{X7npXQl7A<-wXI=~$\12TIaXsx,,>pdK*sX1@m~D$Yv!'Y
+    5neEzn1olkR{K7H3^Go>oC*7I,$$EY#TC]Z{Z2j3W13W<M:pU;3>AV<B#uCwT=-WR<,?YZn!,lY[
+    ms-7al;**<W;TJD'#_!OKR=ZBsB0Vuv]v#1KpGXTjRiH[\i+*-jJI@ZekUz?*\YQ)uR2uEnBstO-
+    2DBU['*[naQXxWZ,CTD0sZ{Z2Veu>5s$HTIA-']TI3j#vuK2i,D\mDJJ{+<E]>RjYoKE2C2^FK>1
+    aeVpza*^X1ZvUCv7mYTZlpmsB]xnH$s<xdok>CX1@]~B\^)G#='[>7x1Div)Rm5WZXrO+]+2xWw?
+    s5n,1Rj[4sTmZG;Q[+TCeRkE^7OvnxaA,%@}{mh>{5TA=;-V*75$==,E5nGOevZeOBRL+ew=w7?e
+    xO+TrY_C+>Ozz-Z#go1?+fHv@r2{_]YR_=*iDG>r2mWQTQx25EDH+R,nZ[%AH_#L_Y0l$Bo]3uY]
+    =Kwr*ea^xa2qTwTpTaXpmE!YTXK\\_$KK<HIVKr3ez_$#-T$<pAWaa5+oT'~~_uT5YZ~-[W\'2lA
+    ,UG;\Ke7>_~=EZ*o=xxY([{r]p+;ER@R'Q7kDZsK1k<Z1m7ZV>Q*s/SwC7JliC${j!*kVo[XR_n'
+    UW>1^@r=#m=xlCGmUvA^cBEVnymp?p!V~u;ABlnQ!Wz*ID5BGT<'v??rX2(CkY{Q,+HKVn+^e,v[
+    2}Jn1apae^TK<,~vBDzF@oUZLC*OQiX~GM3z=mCml;esjwe@<Hx]0JHN_Q^},|OiQK\U@U{E<Y&E
+    VsuxQ<pnCT1@\$3!GT=PK,jw'IV{BT7mh~+eUInvAa&5aUs6;wKH=nA$V}w~-n'o=Gn?I<vU{7CJ
+    vsKe@D]~faA<7K$}7Vj}DzuO@,WJWUp;5sxU*Bm32CH,J3Op?3]_={wJ5eHXCv-H'\YUOO=*V5{}
+    _B-vl1d_+V!mXCaS'^7V_,Z5#[+wzC\G5CEC-,-}j!J\VuDp{la\H>pG*KxVV[-v$DzmGVVw'T2O
+    CIz$H5R;->];SLETeeQonI5i{j0[BuoGY>x-^#;1kwO7@s7;z[${7zjj'-rm=Cr'>QovnC2#U=Ch
+    -s=~a<Z~]+\Tn{-',s$Rr~m*3Gnv[7,DC;m3!C[^j[VjL-D[D2V_}BEZ1;'@z&QrTj=KB1vn$*L~
+    sm<\C'$_jVo=ylBJwOGGTQU{pv;T##jxW|T^Tne$=X+5,Oj}+{]x@\K_wzZT1W-C}KY*T@#=Dvb?
+    YVO{*EQtYwY>O[nnyv+aClTIn+[sn^_}?Yx\{$Qv}kX1$.,saG7'n<e$~T_IHu2YXr]x#H,<<>g]
+    xAn?eXDp^Ie^KzngR}jEsB]Q_><3Ws<ejG;#vmTT3+-n{pV-7a2_@lYpoD*#?7KD#_'TeZaH&~'Y
+    U/6@RZxzoRCs?a,5aO!KBK\U}Y7DRvRUC]rijY5xY2*uDa2G$m2~AZ?(kVrex1}o><QCN'z>}u*w
+    XrO;#e>=;Drpp:DIjG(\*{x9jjksZsTwC1aJpsiDT\{2jAlr};pJG5QDk}O[e}~nT{J,p-*w<VXB
+    ilB,vCsU5VY*pY_vo'l51HA~G',5^*-xs'U52+V$uojZKp<Jx7mRGwR1#QxCY'e3uVBiXTv]63TD
+    @yE+H7V7aB=Q<uo>Io1-7xuO@C*nxRj+-HT[Qj,XT}nA<*'u2K~zzD5*$^G@nYRb"kx!1D;vCGkv
+    EW}Q2p}{mCAz<J=+luTWJDE'rIzX_4^1V]]m\Q#]>_i>,BOremBI+Jk[aVKz5eK'mR$*Q3W{~O@[
+    \mI!>]\n=<ux\$xQsZA51D!}lC#[3kZ*3]c'u[_^WI]]uFkXH#l-!Y2VZO'7i}s\HW?_H$TGr,G>
+    \_IlO;=pm\<^xoMxe@wCoR2Gz@AwDsasjJ]~rsmSsJwB}-nKR*rBK]!'m$<nU_l*2EOkGY7R|f/-
+    UxKi[JOtVoHwi7Ae]^[3x'n[M2p\nHH;7
+`endprotected
+  assign rx_cpl_fifo_in_data = ({rcvd_cpl_temp, 
+                                 rcvd_tlp_packet1, rcvd_tlp_packet2, 
+           		         rx_retry_progress, rcvd_lcrc_error});
+  assign rcvd_cpl_retry_progress = rx_cpl_fifo_out_data[3:2];
+  assign rcvd_cpl_lcrc_error = rx_cpl_fifo_out_data[1:0];
+
+  qvl_pci_express_sync_fifo # (DOUBLE_DATA_RATE,4,146) rx_cpl_fifo
+				(.reset(reset !== 1'b0 || phy_status !== 1'b1),
+				 .areset(areset),
+				 .read_clk(tx_clk),
+				 .rd_level_select(tx_level_select),
+				 .write_clk(rx_clk),
+				 .write_enable(|rcvd_cpl_temp),
+				 .read_enable(~rx_cpl_fifo_empty),
+				 .input_data(rx_cpl_fifo_in_data),
+				 .output_data(rx_cpl_fifo_out_data),
+				 .empty(rx_cpl_fifo_empty)
+				 );
+
+   //--------------------------------------------------------------------
+   // Clock synchronisers for the following variables.
+   // xmtd_cpl, xmtd_cpl1, xmtd_cpl2, tx_retry_progress, xmtd_lcrc_error
+   //--------------------------------------------------------------------
+
+   assign tx_cpl_fifo_in_data = ({xmtd_cpl_temp,
+                                  xmtd_tlp_packet1, xmtd_tlp_packet2, 
+			          tx_retry_progress, xmtd_lcrc_error});
+
+   assign xmtd_cpl_retry_progress = tx_cpl_fifo_out_data[3:2];
+   assign xmtd_cpl_lcrc_error = tx_cpl_fifo_out_data[1:0];
+
+   qvl_pci_express_sync_fifo # (DOUBLE_DATA_RATE,4,146) tx_cpl_fifo
+				 (.reset(reset !== 1'b0 || phy_status !== 1'b1),
+				  .areset(areset),
+				  .read_clk(rx_clk),
+				  .rd_level_select(rx_level_select),
+				  .write_clk(tx_clk),
+				  .write_enable(|xmtd_cpl_temp),
+				  .read_enable(~tx_cpl_fifo_empty),
+				  .input_data(tx_cpl_fifo_in_data),
+				  .output_data(tx_cpl_fifo_out_data),
+				  .empty(tx_cpl_fifo_empty)
+				  );
+
+`protected
+
+    MTI!#{=BGMJT'a5'rCA[kX?NQVr5~U\~saj^N&Y!][lW!UN4I''QAYYij^A=<a@HV!n3-IvpQ[#Z
+    }C{V$Y!]#D,mcwL"Ia~zG#ZBn[?uxzvi02_H?o!H-<rJH=3v2ijp#o2W+swO,;1#U~x@;x,T{f?j
+    B@-{-;[;!7-QpB$OZY21j3@skuOzye*l2kU!+k7i}!XpDgiI}iFanTx[iXBBZ^QEo06E]Ke'p3[&
+    X-+@5+K_"sH>U=-7Zk_zJ$'_iRJ>eJju]6VQ?T3nJnza{$?jDD}T7Ar~r72[Y#*@mu-wBZk5ku3Q
+    O[53pI<QC2!T+DH5Tu>w$H6D<vY^~1Q#1wVo+z[3lavDVRYQ/Q+lZjIQ'T$iQ=\}-<7$z^+$RZs?
+    z<jE_.w]$iI+R+yvlmBG-[^4HC~ewGG71mjC8=-j{:Bsr,<}mlQ5AaJ},RXo>}rQQki<YnJED2vG
+    YWv#5,#=DQ1]i;,>muuU,Wv~Trs-{]o\GrBOva*};sO<puD=VzN~$x_o_e[Z'p}#jC!!'n]YX!*.
+    \HJeU[Jrd}_ExCRX?C{wow1rYB^*QpT<-sDp2]3T!=EmA4E;Qjj1*UOG;]xM,O,>_3CmP+ooX2om
+    ~-<\'VWnUvHJ-GR*RIWeH3I7[El@<eWJr9[?J>pUzo12=Oe>s>E{,pnvzz!_n3Z[!$Dg3v!ZPH]V
+    <u}vCYiD^KQl~=rTI!*!+laJo},~ROYJ'!oGAZ7x^Fn,YYeZAj=>VA#+x72An1BH*E[*2!%,Y##L
+    g$Y?ln+W$0EB2raH*o$HYGe-J>CmBmp?Y!WU}Za'Oo'*-!IVD~o=QA}Clm$=RAG~Gu*{D~C7A{S+
+    lB#]U{$i<CkVlUj,**k]lC[slB3Qk$573JQ2wZ'$su@>oQ#$?>]$=52E{r!B+1eaa1i4,imm6lKj
+    5sTV^biDH3uOlOTD7\/&ImzB\39?'Hzp5meIjzO+_wUH5J={RZDvAZ*bQlQXrn=Z'ZGAiYZD1@~u
+    dJj2C,QTx=JvQBJZ$'Ts~{rw_v5HzXt$?vme^A{RM^m~R?XAY[v\2lH1u>+mG],?<!xnrO,I$o#Y
+    ^nHroEY~#:iD-?9^(CXA}s/Eru[|El2@[BVD*k-G95C{-A5?=BRCD?1oGP5Y}D_{vjp#\o'kpG1m
+    =aiU+v]skrpZRk_Iu3QZTE]a7nKaxk_KU}>}U!-RaX3=<^,HvRTzJQTszDK1e}A7I^]YlBgDK{[X
+    TY3*LAO$po^Z~xpKDV3^7Y_$,-RZe'51i=ZawPVoiXITGZ<<1]3RE2D-{#e}s5@x#,WC?ow-O<[P
+    =T~BNF&uV!J~52#_V?1jWaw]u]<'wBur,6+sEnXD##Hl{D6mvAmGlUjXA@QY-z^BKa{oQ^Q'WQji
+    on~avW$ckE+eE1{}TCOjL6}on#byWQEYKxa3$G3JH++me+Oo=BrEHzpU[2U;^j@2F_uRvV^x[k>a
+    I=9_,Yo%2GE@dHrH@a+!lp>2R[z4J,;<j*>Uf]^pD7uBjG_$XR@[\i*jB#Ym=;lm#sOZur;OU]^'
+    ieB~5k*,o*XwI>12mejkUZjG@^Q3$^XQl$ZD_YJj;.jsnAGlv<2^_Iu'nwjp~#~ji]hX'BCx3A7s
+    ]2^_~1o]2CR#s@G'h+$^<I-[^@*zoi+Ci\Q3XGVJ+y]pE11}-JrBH[naOJnwEmY};U4K^3wTB7V;
+    wUnJ(_CDX@D,!o>nC[*}2]BkU-<*JF3QA12*<x"}_]~r*$s:QupWG3*oZCVU[5aQb$QuEU}-3Tzl
+    xgHei?Br5]x8*#pUS7mu~G[*[lwBACz}2]2\kRXe?wAs_J*H3Y>[r]Z]owA[I@w5o$sr3w'*K:o!
+    $'A[!^-VnJK<l-]k~l4e-XCiT7pZGx\~rVuqY\[GN\AjwIJCVC'w;yj!-kepxO3v}Z=1_n}@UR{w
+    {{3lzJ{URIKrOlZB-{QxiskxI'lu2eskA-kATj8*UZT5HAYM\xH-<DI?5~JZYBza^!VsOkm_52'J
+    *1rXo@'={XXYy~p>2srno]DR'}AVsok@m'D*D'JKEIBU1HjDX5a\C[5mnSI@;rXODj?E\2^:JExW
+    \WsvtxEul$+o~T^wVK>@KB$\>sYH!>+^a^pX~r*5X;T>oM!1i?Ic@s{Zf>E'VQin~#]>@A_1WO{>
+    JB'DQ{Ue3VDW?l#z!cU[uml=aC*#Op}<oG7AIVfjG5,m{e!TEAJZ*K7IUY,'=+Y*XX<(s1w-A$_V
+    3>oGv5T5kl>jJ]'D_zj]ER^]_al[1-,71aB'VRUwt5_oB?+OJIVVW+$@wZlIo!_zCX\$p@D\QvQ$
+    ;esKv8nXYuU{2ZY+nx3QH3jVKr,A33~v<V\p>!CGTn9lp;XPwX51er-Q4s_B_,p]<C1rO@G\+$5O
+    7rs[wQCUlST+{uils^Gp;Al=sI*Iu^6iE*m8O*KTo#oA:L=UGmmDOuGHG*NC#Bwa_I\w77>kGpQS
+    A{=Y1ZJUiSO;wV@>x<rO!_oYsvuXR^+^_1G]JRp~2n+tM,?*1xKIsF=:#*xGN3wT2OZp'dp;rX&R
+    p=m5suKr/o{[kmIe*V$~aE'la-Tv<N7i>\eHCnD3m[K[t,->3oe_s>V!~*Wn@99YDH*l~j#1ZJ'a
+    w3]?}IlQ1apW[B[pjeDszre1i+,<llT--a^bB#^^IKYl1vWlKQ}+5-}$'C\3GVc&lxoTA\EwABIu
+    vl2O%RonA3eX]2^B;@oQp~=Z^]II~.zCzUsC#>5rl~js2aQxE{kC$#:cu$E2Cn5:p;~s&YnC#7\7
+    Q_rlU\1<T*ZX{h,Es$TTR_<7\<lV'C{suxB~Z,#s\]5YsB9=n3{5**uQa$Z?D1j@DK}ce3\$n,C5
+    [l>?>oDkT*V7~>^U)Jp1R$2esi<U^iwnn,AjVVA,Ir@l#u{l7TRo~n,+x7l^Bfg<5[<G=5Od5*aI
+    }W*=aEoC,'7@^?oo]OmDEZ-Kd]wZB$\U5#<!jsx+\TE@O6^!{D2,Q5B*u7[?O?O'xC_@pr!<=-u_
+    G~Q+pJ1wlivlw5wEI5AwABnz?autK^O\F^_5v?l3#_?KxL8qyk_QCd'ROv;BXzI!\!D;,veA'uu'
+    Qs]Uv+ewDp^lBu'3_okH5'^,kss}o[m,kwIAeUDaRzr!}!TI@mvoaxOa_JZQesTzVxp}$v'+}w!1
+    mV7N7n\[.YPZ+RrMC>!?okVvUAU,>T[z>EsOevL0F?XAox)]o3J,skoVmTk_@A1ZD~VoWT$kw<Y+
+    ,a?e1w_;<U\<_*]9pD!7lCxRT>\{Ul?$s{EYxeA5]XXW5a5jIO'O$,wsj;V<os;wkr+3Gl=pZ1$+
+    *5*>VUABvjFCUQzR];B']^mHOx,O<7nEU@naQ?,KE^i{$<+rlIB6z;{!_!1'TezCbK62a5E9joZp
+    kOB*'+Vs5p~nZ+\*Rm-V7?X-aAx@Gx'wul+}Dzm\Yzu=lArwEzzDnBHeb,-XEV-(@p}jCiwwQ'GD
+    R[p!G[s>TA_ZHovk:[~$DYDBR5VO2e*zxEE_]p<Y]sRkZ:=2=>OYJ+.-+oO]eVv7R=#OHxVVmWW:
+    @vjaGIoDl}XCEZU!Q\[+s$}$@l>nin,5*k9!]^r3$r++vK]O?T@\B~Y8xVJ[woOE'l5,mwxxsWI$
+    <Ujok[C7i,-lu[@svC~W@,O@:Y'Y#pK*U?z5G?=<#$D7^xJ+o)o1oW_A,nsu'QCpV@5s>?3R1l]O
+    7'_9-,G=Z>KkE${AIiR>1U]5olDK|*Rv\xVaD1ja\IpzCvI?1)BDkp\)e-Cl'3$e;}oC!XK^x>+=
+    ZpH~zX2T+wU++aeRa]?CQxrwO>7jjVnvsal!Q#GTJ^[~%|s>@j[xYA=iA']}^Y?,'A{{3#IJ3YGN
+    GZ1<H1#++njotYw=*1VZ;lRwwHA>#jQzW$7}27X_U@7a~QEIuaVZsI;,Z1*a#rZZ3tY1WZ,Emsr&
+    p2RsH*!,~Hl's*ep|5Ix{l>r}#Gr#>\i$%ie~!=$T?VG_<]#e+vnZV5SBjAereIr+R!DE1RpuV]X
+    xleOQmp>dHC-H><T_73*H5}#IZ\sCNI<oxi[R+A}=pL[['2DuJW^5}ZWpD$<-GQUp+$G-*rr$[~J
+    rDiCa[XGuV5p]?Rr;;WBau}<};nwzI@oRQHp,ooW'nm.-*l\.R=7E.EaK7uERWnAwkYpnk_1<$lB
+    TBQ?J<}weQ)&1u]<Qu>~Uv~Jo3R^Gk~mlZ{,7E}-p=KpS7?wK!AA<l{ew>$z'GA@E\QUmBl[Y,#>
+    GcE{[YAx>5IXlu1${,QZOsrOom7v'}D<1kRp}5lk*pGj[#i_*[cp+ECE*}lvU^D?I#\1~w2l=-s,
+    72jADYroaB$5<3XaO$Ge3Cpk-lC7CVu?T<Ex_[3$-8'1p~B*'a[nT?p;<R<Hu$1~$Gne]37QIwKI
+    1UapERJOkA:JD=Q0@rl#q--RsR[7*K$j*pHCEQ<\z@+X@eUrUB'J^=5@YsH\lNB>ak}@;<>p_3<^
+    _Ik{ow@U-BODx!Un~*Kj+W=~W?A_k2=#QzmA<Iz>sr;=uQ}wwjr]a\,kB_pj5{VAzkEzvRVB$;wj
+    1*lCx}E=>KQpj]}v-H5#_O5#*WD{2OAp'o5>@ZaD}upiGZ$_w~IOp?A+I?}{;;Ns{{B,^,ZOuGW[
+    R*,Yh%}O?ps7s_;Q{Dr2G}}7BwIJ1[roVELIi]kXLYQzwUD}VRIrsCJop5w+a14i+BD;ns?3{OO7
+    Bk<'3HnrO^}~Xda<w^U,u^=OAop{r7+^Ae'kY5<EAD3w,;;1v!zx@AuAw*#Uov3slH}3+Rl'w1,<
+    Ia_,zo$DQpw]pCKX<$e!a*'_o\^;zBQBm5Cs7k;HC'<Q7;KX!]7${GjUmj9{5vr^kn1Qk!2u7!xv
+    nG>X}#Hw-AU#B5j7CrjGH$J)oWGJzAV$9_77>zQTp#Tj2NmUWCX}xlu$~jTxn_<x~'Xa$DdK$KUa
+    A1IU}cu+KvUs!3++715Qk{[2DvA\*mvDjO,?owlr*ue}W[^TQYIJVVR;lI!v@JD,\#~ClxxR!GKT
+    p;O^HvY+BB$\Ew0%z?{V7w{H4C=Em!^<nC=>_,?_=^m~\_;en52*_Il[<JxU]pW'>3'p_1OA@psE
+    ZGpAjcToCi73B]e1a-G;~\D^B3++^GneGuzOw1zpa3pp>md}-]![[+'pEB]l3AjpXKk\U+E=vH@\
+    iTGs'o,\o+R2Xa#E!<V25,}{]$G5G~Z_o-2:s22Q:vTv5#5]>:Tv@=9HVle<Ir1RHpJHa*<57+VD
+    X<Y^lUJ<=U[oW=Vx@zpUU\+-517w}xT#s$YzQDDjw\V]iXGDT85TU!zl,Dl;alXp=XGwlG(HBoT$
+    ,^i>VE;^i$oVww@v~B,\[uePRBi]*tBRkYX]AZ=iAQb*)#xpE?V~CUa3a2+R^p\D*<B5<vn_ZGX@
+    Y*R<\Q6=U2[QlaGo[J;YG?=V='vhGj!U@v;AJ\x3JG7Ae3jp3^s'^<Q=vGT^Qe7pXO+!;A[VwDzZ
+    geMr_3;EWT2;]wU@[a]}E{Xy'wne#H>#?wT$P#<SVi3K;Tn7TE^n$uKoKEk3p;=!=A<a1E2U1e7x
+    CEB\#_Y]mno=:?Gak[}DG{^2;_3,{-1~{A+j=}Zvu#n[rCTI1GY<rZ>_^Co{>Z>a-*kR>$uw'|Bx
+    Wxp[@W1+e1qJxnpQxwYkj<j#aZCo[?esl}uDD;]aExHa$VWk*@EL*z*@'V1J;}uOQ~sze7JRaHI7
+    zQ[eOXV@gRCj}^ZEwsAXr[#AAe@I2O2UVEl+uIYX2,1ACw{l^BGk2(7K$]v;<$5o7V\+Cr\Un@[Z
+    eWQV3wx$7KS[[$p|nv]+klK*vBAr[$?GBCkC$\TE[~mU*P*zr3}?w?w=<I$vJ~{DIjN^{zXw5U+z
+    '}+>nDn'vlB;Ve2@sHD@>HHQe*B[o<A@r=Ae~UJe'e}'k2_{,;UXeY'pn=xB$<<IWUBxEVQH<$v~
+    n!2zpw~jmY7_~xjpOE~?'+mj-ua5'iA5+lJnCC7IlCX<D]z>Y+1IQ$}Hxao_svE-+O3rn^v+'VC?
+    <Ea*]7A1jR-<IiJlsZ;u,UWi\QY)Z1lBG^lY?>Gw;QpIv<wxepUGY=0}73p,}G,JC{ey']ZQ0m>K
+    ,zV5uJo$wk{,_j^AAw.oX*p][YoEK\~kT5j!QC=#1eUWe==Ei=<bIT3Hm-IK3GA?2=DO_A[{UBC$
+    DZWVksBI2vJ{@_E,L%.vOGAP?n1W?U-<Rpx^VVJ!wYuVXsQKT_w~{R=$1v<Ukz]iBxA5G3p@n[[\
+    =l,*vTn=so@eVCwJGml#^3Rzb^G*;H>E^$^=_3L#>{[(jHXV?swZUQ3>Y!\1mOmpHHZYnQvZ{la?
+    znIl$]Z*xZJ'Ojxzkt5Gj@AIGCBBnxa=Y?Krz51\Cez^2CoQZ+^33\o-e])l@=zrZZU]~_^\m_$t
+    rXwQ~*WQ!UEo8UI^OV{-2?w!G7$K]CWae=[Vsj-WV,vAO-EOWCB#X{1XUZDJvuv-][DOG17ZrGH[
+    i=IX@erD,,ZuaX-DA1XpzA.5R{J~{Q$~r[*]=vAVHKu=n^$WnUC+,>s<BaI]JXGxX$1xKpWomHp'
+    i]jI3J,~AR?Z{VBlEuXC-C@TrDC;nu;V@ojR]XA\#>z#w-v!v+Tp}[!Wx5m(5viXo3Wr[]#D=xRa
+    5XAw3,7EEO3KlijmeK<O_'_HRO*3o~$zrU{\'7[x#*s1C#Ev>GI<G?7CR^\G{1+*PnYR1WD;W5sB
+    a'YY*2+VTc#=EE~oA!vimv]^5!1~5o{Em}Zr7;Z5unS*\s!V#WXz^*aK7{s{C2HUewkGs-@i7{#[
+    ji[e>$Ww-Ro_al!m$T>@ljkl]ivI$nRtl,jlYij\ixr\>]!llIm5JaUTvv};E]2+<nAjHUzERj0^
+    T3]9Cm^pIvK#5lW~;5~3l5iTDA]V1RjpzE}#''Z*z#!H'v@j[vC#SYzxT*n\#jI<InR{@X1D1@n[
+    *<X--z;C\BW2Ze'~]3^-?<VT25JK^us\UTQsVV*HnR5H5CIi^ep_<$\$!p}n#x'_[wwT;B#GVAXo
+    *lCD^i\DQR#um|?n^W+z};C['#7$Gk>\XEG}H3mvj$*2{={5@=Ep[![5v'>vs@RQ;G>]{Kj?G>k_
+    EjOI][eLAz~YBm{VKnV>o$i2spR{maz}ppEz;>7lK+}~DpJU7K>-{Um=]HDZOrx_yBl[n^X!Jv<2
+    K@naJGCY+QsR}:mjn_l+GuxxO^eK@{'zZU~HmE1T]3QSz^i7^Q1^0zx=z[-3Xo{*?w<~^[H5[vJo
+    3al!w_[_'~+I#BR#$ne=]ro~+wQH{-lVAOW*l=Q-v-RpR<]vj5,w=:nEe>.Vu1iT]rzWUH3e\{~l
+    ~HTQ-772OonY5Dxm{,lA<wV\Tz<,eex0.CawpsDie1v35YaZvr^H75_V3op<o712Z{R^\-B{Ri_O
+    kJwrZXLus,I,-7Ax*>r!G}p{jj-H,wG#zInUTT$E@5e;I5pirTulsKZB!A}Ya~pz}TV,J;3s-D\V
+    vpIk\=@v_Ao[k3*3n5,xuK1AUuOQXC\BU@{!]5a?G+vJVUjZ_'Q}Jes$ox@0UXAErsZJ2=p{#+K>
+    okEK21Q[V?QO'XBjHAnwGV\7_V1xee~>OpA\wzsCJREjDu]wu=x;Ln_w\j'Eju^OX}U\e1{jABnX
+    #;ED{CI}7+waWTro@Xr\oKn{ja[=Z]xKKwrZ1}I>XIJRp&Oo1vLGwOo{splHU+x#]z#'5}{CTz-l
+    5D1NxyR>evIaRl?_kXEV7Rvn!a2EK57^uW4)e7@B_QDAYT+!L$YQ=>I}vt)<_a}e?rop-=!R7x?_
+    uQBu^=1+}DO^?+lJ57r[ADDC?W5l@rO<Ar'NDlwHtC=5^\;an/1K@l\@'DzHsU{=wx^+-[u_j{Dp
+    p^]W--W75evB{Xuekz!p'B\I'1\Fhax[n<IO[2GRu}@~5x72uC_YA3O}~]{@>VOJQIwC72BVD;>]
+    $UY\H3l_GO@^J?qnTe-~[ER^l3~?[~\DnAI~s1Z?{5+/RD{j<R\wCzA1@-]J,i2WI]]#r\x[QU3;
+    eRO*m_@@BKrU0'-mQjk=]vC,-R}T*F@$r-D=HQeiKVx#[GKEa<1OHT#CZvoY*vv~HGoDG+k}1WE2
+    TY7o$HGRlGC>m-V;B53UT-ZIB!ZU@eJp\-E_H3Y;KpN~,vXkRQ$5ApZxBWVnoY?Zj<{:R<s[o@Ul
+    UBuYA=+,YC*Jm[V,l,UA_R3~L;]ZQ1~!]xGUY:pHsV^D'REs!{WG}[{{*s$\3}\p\'V$"}G+HnTI
+    AzTV~EI,JJ_GrkD_GY<GdO>HkE735nz]Rks>#7Vus(\~uHSCu{_pV}+OT2=3DDIT$?v{$Z2ToU?5
+    +37C\aso@ZuX[XuDET+XoGs+[eX]r=?Ok;Q=Ym[]H+{$}U=;A$~)\[m><e]]-,kTpDRJT<AWu9~7
+    <IRDD#YQ~ZY1~?$V[Q]jRr1KA_2Ckavl-azHsrj22x1},k\W$,;1=+CUI\nxVwj?>;o3YG]U3KBW
+    O$*k_-n}5K-w}~+\3+m7WG~D7isGH][sZpBK,jr3w{GGxk#Gks1Di-pB-2knBTv;j_C=*k?r_^oO
+    5l.hv75Z2^^^v=ejzCKQ8T}eo/#RwG?Xrlg-evu!'GEzaQW$r?r\A<o@a_Gz3TX*G<nvC?u?\El$
+    Vsv1rwRQ1'pLyVY,'kvX;liEG>TYj7}=*Bsa7CWY'Xn,xuVnDR5R_[U>?\k'l}un2Uv$OXsiU$=_
+    IX*j><^TDg,HURA<5{eDW#\DJ_H^E?^j+?H-O~ie+jP^5Tu3nlV+l\JWl?D'xYZLxZ]]qIas'G<G
+    Im,A=5Oj3>'~H+\Z5Y3lXCpKssH>lCzY=PMpC-YjzCEn^Ri@,o~kv;Ba*rYMV3a+~a<_=BBZH]D$
+    ZhjGOQ=zZ!e-,Kk{7HW^YzP{Q~svWG\jGiC+=1T*wHH#CB5,e]K+'U<Zlx>Tn]~a7GUE?1=BvsU<
+    $Z]i|j*GUs*}_-a^HB1}Qp=AonS[wm#UUv^]#Y$HD]Y;5_aC;ZTD[{V*sv'XaWU!\+@]oG}U5KoQ
+    :8}5UJ=5~2>^<EZo<^'wuA$QI+11\Y_*Q+oZ55\vE^h@CGun>UXr}ak-z[Vp\\?Knm=_vG]3'7~J
+    {u2?A3-[UoG_WpBmE,$de^<5a<;\;l:i''<P]g7K*zN1[~z*[
+`endprotected
+
+  //--------------------------------------------------------------------------
+  // OVL SVA Assertions are included here
+  //--------------------------------------------------------------------------
+
+`include "qvl_pci_express_transaction_monitor_assertions.inc"
+
+`ifdef ZI_INLINED_PSL
+`include "0in_ac_inline_for_mod_zi_cw_pci_express_transaction_monitor.inc"
+`endif
+`ifdef ZI_INLINED_CHX
+`include "zi_cw_pci_express_transaction_monitor.zi_chx.inc"
+`else
+`ifdef ZI_INLINED_CHX_zi_cw_pci_express_transaction_monitor
+`include "zi_cw_pci_express_transaction_monitor.zi_chx.inc"
+`endif
+`endif
+
+`qvlendmodule // End of module qvl_pci_express_transaction_monitor.v

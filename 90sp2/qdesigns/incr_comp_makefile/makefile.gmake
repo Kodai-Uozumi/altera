@@ -1,0 +1,66 @@
+#//START_MODULE_HEADER///////////////////////////////////////////////////////
+#
+#  Filename:    makefile.mak
+#
+#  Description: Makefile for the the incr_comp_makefile example
+#
+#  Authors:     Shawn Malhotra
+#
+#               Copyright (c)  Altera Corporation 2004
+#               All rights reserved.
+#
+#
+#//END_MODULE_HEADER/////////////////////////////////////////////////////////
+
+###############################################################################
+# See Technote 209 for information on customing makefiles
+###############################################################################
+
+###############################################################################
+# Set up the base environment
+###############################################################################
+
+BASE_DIR = ../../..
+
+
+include $(BASE_DIR)/environ.gmake
+
+PVCS_DIR = $(PVCS_ROOT)/install/qdesigns/incr_comp_makefile
+
+###############################################################################
+# Set owned files and macros for targets
+###############################################################################
+
+OWNED_FILES = \
+	auto_max.v \
+	chiptrip.v \
+	speed_ch.v \
+	tick_cnt.v \
+	time_cnt.v \
+	setup_example.tcl \
+	read_me.txt \
+	time_cnt_makefile \
+	tick_cnt_makefile \
+	speed_ch_makefile \
+	auto_max_makefile \
+	master_makefile \
+	parallel_makefile \
+	chiptrip_makefile
+
+###############################################################################
+# Builtins.mak
+###############################################################################
+
+
+include $(BASE_DIR)/builtins.gmake
+
+###############################################################################
+# Now the targets
+###############################################################################
+
+all : $(OWNED_FILES)
+	chmod +w chiptrip*
+	chmod +w tick_cnt*
+	chmod +w time_cnt*
+	chmod +w speed_ch*
+	chmod +w auto_max*

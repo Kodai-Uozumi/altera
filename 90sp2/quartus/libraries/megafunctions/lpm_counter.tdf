@@ -1,0 +1,1497 @@
+-------------------------------------------------------------------------------
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Copyright (C) 1988-1999 Altera Corporation
+--	Any megafunction design, and related net list (encrypted or decrypted),
+--	support information, device programming or simulation file, and any other
+--	associated documentation or information provided by Altera or a partner
+--	under Altera's Megafunction Partnership Program may be used only to
+--	program PLD devices (but not masked PLD devices) from Altera.  Any other
+--	use of such megafunction design, net list, support information, device
+--	programming or simulation file, or any other related documentation or
+--	information is prohibited for any other purpose, including, but not
+--	limited to modification, reverse engineering, de-compiling, or use with
+--	any other silicon devices, unless such use is explicitly licensed under
+--	a separate agreement with Altera or a megafunction partner.  Title to
+--	the intellectual property, including patents, copyrights, trademarks,
+--	trade secrets, or maskworks, embodied in any such megafunction design,
+--	net list, support information, device programming or simulation file, or
+--	any other related documentation or information provided by Altera or a
+--	megafunction partner, remains with Altera, the megafunction partner, or
+--	their respective licensors.  No other licenses, including any licenses
+--	needed under any third party's intellectual property, are provided herein.
+--
+--	Version 3.0
+--
+-------------------------------------------------------------------------------
+
+INCLUDE "lpm_constant";
+INCLUDE "lpm_decode";
+INCLUDE "lpm_add_sub";
+INCLUDE "cmpconst";
+INCLUDE "lpm_compare";
+INCLUDE "lpm_counter";
+INCLUDE "dffeea";
+INCLUDE "alt_synch_counter";
+INCLUDE "alt_synch_counter_f";
+INCLUDE "alt_counter_f10ke";
+INCLUDE "alt_counter_stratix";
+INCLUDE "aglobal90";		-- device family definitions
+
+FUNCTION p8count(clk, clrn, setn, ldn, dnup, gn,  h, g, f, e, d, c, b, a)
+ RETURNS 		(qh, qg, qf, qe, qd, qc, qb, qa, cout);
+
+FUNCTION f8count(clk, clrn, setn, ldn, dnup, gn,  h, g, f, e, d, c, b, a)
+ RETURNS		(qh, qg, qf, qe, qd, qc, qb, qa, cout);
+
+OPTIONS NAME_SUBSTITUTION = ON;
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+
+-------------------------------------------------------------------------------
+PARAMETERS
+(
+	LPM_WIDTH,
+	LPM_DIRECTION			=	"DEFAULT",					-- optional, "UP", "DOWN" or "DEFAULT"
+	LPM_MODULUS				=	0,							-- optional, for modulus counters
+	LPM_AVALUE				=	"UNUSED",					-- optional, asynchronous set value (loaded by aset)
+	LPM_SVALUE				=	"UNUSED",					-- optional, synchronous set value (loaded by sset)
+	LPM_PORT_UPDOWN			=	"PORT_CONNECTIVITY",		-- "PORT_USED", "PORT_UNUSED" or "PORT_CONNECTIVITY"
+
+	DEVICE_FAMILY,											-- optional
+	CARRY_CHAIN				=	"IGNORE",					-- optional
+	CARRY_CHAIN_LENGTH		=	32,							-- optional
+	NOT_GATE_PUSH_BACK		=	"OFF",						-- optional, "ON" or "OFF"
+	CARRY_CNT_EN			=	"SMART",					-- optional, "SMART", "ON" or "OFF"
+	LABWIDE_SCLR			=	"ON",						-- optional, "ON" or "OFF"
+	USE_NEW_VERSION			=	"TRUE",						-- optional, "TRUE" or "FALSE"
+	CBXI_PARAMETER			=	"NOTHING"
+);
+-- Constant defenition
+-- this constant is to determine the minimum maximum chain length that will be 
+-- tolerated by the newer version of the counter
+CONSTANT LOWER_CHAIN_LIMIT = 4;
+-------------------------------------------------------------------------------
+-- Determines whether or not to pass this function on to another module
+
+DEFINE USE_OLD_VERSION() = USE_NEW_VERSION == "FALSE" # CARRY_CNT_EN == "OFF" #
+						   LABWIDE_SCLR == "OFF" # !USE_CARRY_CHAINS() #
+						   CARRY_CHAIN_LENGTH < LOWER_CHAIN_LIMIT # LPM_WIDTH <= 1
+						   -- also check if there is a wysiwyg implementation
+						   -- available
+						   # (FAMILY_APEX20K() == 0 & FAMILY_APEX20KE() == 0 & FAMILY_APEXII() == 0
+						   		& FAMILY_FLEX6000() == 0 & FAMILY_MERCURY() == 0
+								& FAMILY_FLEX10KE() == 0 & FAMILY_STRATIX() == 0
+								& FAMILY_FLEX10K() == 0
+							 );
+						   -- currently only APEX20K & APEX20KE have the wysiwyg
+						   -- implemntation available to force the chains
+
+-------------------------------------------------------------------------------
+-- Determines whether clearbox is used.
+
+DEFINE CBX_FAMILY() = ((FAMILY_STRATIX() == 1 # FAMILY_STRATIXII() == 1 # FAMILY_CYCLONEII() == 1) ? 1 : 0);
+
+-------------------------------------------------------------------------------
+-- unified netlist connectivity check
+DEFINE USED_UPDOWN() = LPM_PORT_UPDOWN == "PORT_USED" # (LPM_PORT_UPDOWN != "PORT_UNUSED" & USED(updown));
+
+-------------------------------------------------------------------------------
+-- Evaluated functions
+
+DEFINE break_chain_here(p) = -- When to break carry chains
+	  CEIL(LPM_WIDTH div 2) < CARRY_CHAIN_LENGTH & p == CEIL(LPM_WIDTH div 2)
+	# CEIL(LPM_WIDTH div 2) >= CARRY_CHAIN_LENGTH & (p mod (CARRY_CHAIN_LENGTH-2)) == 0;
+
+DEFINE ModulusCounter() =		-- do we need separate modulus checking logic?
+	((LPM_MODULUS != 0) & !((LPM_WIDTH<32) & (LPM_MODULUS==2^LPM_WIDTH)));
+
+DEFINE Ceil_Log2_Modulus() = -- Number of bits needed for this LPM_MODULUS
+	(LPM_MODULUS != 0) ?
+		(LPM_MODULUS<0 ? (LPM_MODULUS==2^31 ? 31:32) : CEIL(LOG2(LPM_MODULUS)))
+					  : 1;
+
+DEFINE OK_to_use_pcustom() =	-- If counter is simple enough, use custom logic for p-term
+	  (LPM_WIDTH<=MAXPIA_SIZE())
+	& (FAMILY_FLEX() == 0)
+	& USED(aconst) == 0 & USED(sconst) == 0
+	& USED(aset) == 0 & USED(sset) == 0
+	& USED(aload) == 0 & USED(sload) == 0 & USED(data) == 0
+	& !ModulusCounter();
+
+DEFINE OK_to_use_8count() =		-- Can we just use 8count?
+	  (LPM_WIDTH<=MAXPIA_SIZE())
+	& (FAMILY_FLEX()==0 # !USE_CARRY_CHAINS())
+	& (Is_multiple_of_8(LPM_WIDTH) # USED(cout)==0)
+	& (USED(cnt_en)==0 # USED(cout)==0)
+	& USED(aconst)==0 & USED(sconst)==0 & USED(clk_en)==0
+	& USED(aset)==0 & USED(sclr)==0 
+	& (USED(sset)==0 # (USED(sload)==0 & USED(aload)==0))
+	& !ModulusCounter();
+
+DEFINE Is_multiple_of_8(a) = (CEIL(a div 8) == FLOOR(a div 8));
+
+-- if aconst or aset is used in a FLEX 8000 or FLEX 10K device, NOT_GATE_PUSH_BACK must be turned off
+DEFINE need_not_gate_push_back_off() =	
+	  (NOT_GATE_PUSH_BACK == "ON")
+	& (FAMILY_FLEX() == 1)
+	& (FAMILY_HAS_NATIVE_ALOAD() == 1)
+	& (USED(aconst) # USED(aset));
+
+-- If the device family doesn't have preset capability,
+--  then we will need external async control logic 
+DEFINE NEED_dffeea() = (FAMILY_HAS_PRESET()==0) & (USED(aload) # (USED(aclr) & USED(aset)));
+
+-------------------------------------------------------------------------------
+-- For FLEX devices
+
+-- UP or DOWN counter ?
+DEFINE COUNT_ONLY_UP() = ((LPM_DIRECTION=="UP") # ((LPM_DIRECTION=="DEFAULT") & !USED_UPDOWN()));
+DEFINE COUNT_ONLY_DOWN() = (LPM_DIRECTION=="DOWN");
+DEFINE COUNT_UP() = (!COUNT_ONLY_DOWN());				--   up or up/down counter
+DEFINE COUNT_DOWN() = (!COUNT_ONLY_UP());				-- down or up/down
+
+-- check if we use clr for modulus overflow
+DEFINE UseSyncClrModUp() = ( (COUNT_ONLY_UP() # USED_UPDOWN()) & (LPM_MODULUS != 0)
+	& (nBasicExtraSyncInput()>0)	-- don't use clr if basic counter
+-- FLEX10K and 8K specific: to be removed when SPR42458 is closed
+--	& !(((FAMILY_FLEX10K()==1) # (FAMILY_FLEX8000()==1)) & USED_UPDOWN() %& !USED(SCLR)%)
+	);
+
+-- count the number of extra sync inputs
+DEFINE nBasicExtraSyncInput() = ExtraUpDown() + (USED(clk_en) & 1) + (USED(cnt_en) & 1) + (USED(cin) & 1) +
+	(USED(sclr) & 1) + (USED(sset) & 1) + (USED(sload) & 1) +
+	(ModulusCounter() & COUNT_UP() & 1) + (ModulusCounter() & COUNT_DOWN() & 1);
+
+DEFINE UseFuncSCLR() = (UseSyncClrModUp() # USED(sclr));
+DEFINE UseClearableCounterMode() = (FAMILY_HAS_CLEARABLE_COUNTER_MODE() & UseFuncSCLR() & !USED_UPDOWN());
+DEFINE UseLabWideSclr()= ((FAMILY_HAS_LABWIDE_SCLR()==1) & UseFuncSCLR() & (LABWIDE_SCLR=="ON"));
+--	& (nBasicExtraSyncInput()>2));	-- don't use lab-wide clr if basic counter
+
+DEFINE FLEXUseCarryChain() =
+--	!(need_not_gate_push_back_off()) & !(OK_to_use_8count()) &
+	!USED(sconst) & (FAMILY_FLEX()==1) & (USE_CARRY_CHAINS()) & (CARRY_CHAIN_LENGTH>3) & (LPM_WIDTH > 1);
+
+-------------------------------------------------------------------------------
+-- The dedicated inputs of a counter are UpDown, SClr and Data/nLoad (FLEX10K).
+-- The FLEX LCELL have an extra input to accommodate any extra sync signal 
+--  like SSet or Wrap (modulus).
+
+-- Check if sclr should be counted as an extra input.
+DEFINE ExtraInputSClr() = (UseFuncSCLR() & !UseClearableCounterMode() & !UseLabWideSclr() & 1);
+-- modulus
+DEFINE UpWrapLoad() = (ModulusCounter() & COUNT_UP() & !UseSyncClrModUp() & 1);
+DEFINE DnWrapLoad() = (ModulusCounter() & COUNT_DOWN() & 1);
+-- updown
+DEFINE ExtraUpDown() = (USED_UPDOWN() & !FAMILY_HAS_UPDOWN_COUNTER_MODE() & 1);
+-- inputs with feedback
+DEFINE ExtraClkEn() = (USED(clk_en) & %!FAMILY_HAS_ENABLE_LUT_INPUT() &% 1);
+DEFINE ExtraCntEn() = (USED(cnt_en) & !CntEnThroughCarryChain() & 1);
+DEFINE ExtraExternalFeedback() =
+		( USED_UPDOWN() & !FAMILY_HAS_UPDOWN_COUNTER_MODE() & (ExtraClkEn() # ExtraCntEn()) ) #
+		( ExtraClkEn() & ExtraCntEn() );
+DEFINE nFeedbackInputs() = ( ExtraClkEn() + ExtraCntEn() + ExtraExternalFeedback() );
+
+-- count the number of extra sync inputs
+DEFINE nExtraSyncInput() = ExtraUpDown() + ExtraClkEn()*2 + 
+	ExtraInputSClr() + (USED(sset) & 1) + UpWrapLoad() + DnWrapLoad() + (USED(sload) & 1);
+
+-- Check if we use the carry chain to propagate cnt_en
+DEFINE CntEnThroughCarryChain() = USED(cnt_en) & FLEXUseCarryChain() & !USED(cout) &
+	( (CARRY_CNT_EN=="ON") # ((CARRY_CNT_EN=="SMART") & (nExtraSyncInput()>1)) );
+
+-- # of inputs that may use the nLoad input
+DEFINE nLoadInput() = (
+	  (USED(clk_en) & !FAMILY_HAS_ENABLE_LUT_INPUT() & 1)	-- use ENA_DATA ?
+	+ (ExtraCntEn() &										-- use LUTCntEn ?
+		(USED(clk_en) # (USED_UPDOWN() & !FAMILY_HAS_UPDOWN_COUNTER_MODE()))	-- with LUT0
+		# UpWrapLoad() # DnWrapLoad())	-- or with wrap
+	+ ExtraInputSClr() + (USED(sset) & 1) + UpWrapLoad() + DnWrapLoad() + (USED(sload) & 1)
+	);
+
+DEFINE nLoadDataInput() = ExtraUpDown() + nFeedbackInputs() 
+	+ ExtraInputSClr() + (USED(sset) & 1) +	UpWrapLoad() + DnWrapLoad() + (USED(sload) & 1);
+
+-- Check if we use the LOAD LCELL scheme
+DEFINE LoadMuxLCELL() =	FLEXUseCarryChain() & !SpecialCase();
+-- Special cases where the legacy expression leads to a better result
+DEFINE SpecialCase() = USED(clk_en) & (USED(sclr) # USED(sset)) & (nBasicExtraSyncInput()==2);
+
+-- Extra carry-out for modulus down counters
+DEFINE SizeCarryChain() = (LPM_WIDTH+1);
+DEFINE UseExtraCarryBit4DownWrap() = (DnWrapLoad() & !(
+--  speed up simple counters by not using the extra carry-out but a comparator instead
+	!USED_UPDOWN() &
+	!(%USED(sclr) #% USED(sset) # USED(sload)) & !(USED(cnt_en) & USED(clk_en))
+											 ));
+
+FUNCTION @CBXI_PARAMETER(data[LPM_WIDTH-1..0], clock, clk_en, cnt_en, updown, cin, aclr, aset, aconst, aload, sclr, sset, sconst, sload)
+RETURNS( q[LPM_WIDTH-1..0], cout, eq[15..0]);
+
+
+-------------------------------------------------------------------------------
+OPTIONS ALTERA_INTERNAL_OPTION = "suppress_da_rule_internal=a101;suppress_da_rule_internal=s102;suppress_da_rule_internal=s103";
+SUBDESIGN LPM_COUNTER
+(
+	clock						: INPUT;
+	clk_en						: INPUT = VCC;	-- clock Enable
+	cnt_en						: INPUT = VCC;	-- count Enable
+	updown						: INPUT = VCC;	-- VCC counts up, GND counts down
+	aclr, aset, aconst, aload	: INPUT = GND;
+	sclr, sset, sconst, sload	: INPUT = GND;
+	data[LPM_WIDTH-1..0]		: INPUT = GND;	-- used by aload and/or sload
+	cin							: INPUT = VCC;
+
+	q[LPM_WIDTH-1..0]			: OUTPUT;		-- counter output
+	cout						: OUTPUT;
+
+-- LPM specification calls for the following, but MAX+PLUS II only implements
+-- 16 eq outputs:
+--	eq[2^LPM_WIDTH-1..0]		: OUTPUT;
+	eq[15..0]					: OUTPUT;		-- Counter decode output
+)
+
+
+-------------------------------------------------------------------------------
+VARIABLE
+	IF (CBX_FAMILY() == 1 & CBXI_PARAMETER != "NOTHING") GENERATE
+		auto_generated : @CBXI_PARAMETER WITH (CBXI_PARAMETER = "NOTHING");
+	ELSE GENERATE
+	IF USE_OLD_VERSION() GENERATE
+		IF need_not_gate_push_back_off() GENERATE
+			c2: lpm_counter WITH( NOT_GATE_PUSH_BACK="OFF", CBXI_PARAMETER = "NOTHING" );	-- New LPM_COUNTER instance
+		ELSE GENERATE
+			IF OK_to_use_pcustom() GENERATE
+				IF LPM_DIRECTION!="DOWN" GENERATE
+					and_a[LPM_WIDTH-1..0]:NODE;
+				END GENERATE;
+				and_b[LPM_WIDTH-1..0]: NODE;
+				dffs[LPM_WIDTH-1..0]: DFFE;					-- state storage
+			ELSE GENERATE
+				IF OK_to_use_8count() GENERATE		-- feature set is limited to 8count, so use 8count
+					IF FAMILY_FLEX()==1 GENERATE
+						p8c[CEIL(LPM_WIDTH div 8)-1..0]: f8count;
+					ELSE GENERATE
+						p8c[CEIL(LPM_WIDTH div 8)-1..0]: p8count;
+					END GENERATE;
+				ELSE GENERATE
+
+					-- state storage
+					IF NEED_dffeea() GENERATE
+						dffs[LPM_WIDTH-1..0]: dffeea;
+					ELSE GENERATE
+						IF NEED_DFFEA_FOR_ASYNC() GENERATE
+							dffs[LPM_WIDTH-1..0]: DFFEA;
+						ELSE GENERATE
+							dffs[LPM_WIDTH-1..0]: DFFE;
+						END GENERATE;
+					END GENERATE;
+
+					-- Device aware customization. For device having aload port
+					IF NEED_DFFEA_FOR_ASYNC() GENERATE
+						aclr_actual							: NODE;
+						a_val[LPM_WIDTH-1..0]				: NODE;
+						safe_q[LPM_WIDTH-1..0]				: NODE;
+						
+						IF (USED(aset) # USED(aconst)) & USED(aclr) GENERATE
+							a_data[LPM_WIDTH-1..0]				: NODE;
+							effective_prn[LPM_WIDTH-1..0]		: NODE;
+							effective_clrn[LPM_WIDTH-1..0]		: NODE;
+							pre_latch_signal[LPM_WIDTH-1..0]	: NODE;
+							latch_signal[LPM_WIDTH-1..0] 		: NODE;
+							pre_hazard[LPM_WIDTH-1..0]			: NODE;				
+						END GENERATE;
+					END GENERATE;
+
+					IF USED(LPM_AVALUE) GENERATE
+						ac: lpm_constant WITH( LPM_WIDTH=LPM_WIDTH, LPM_CVALUE=LPM_AVALUE, CBXI_PARAMETER = "NOTHING" );
+					END GENERATE;
+
+					IF USED(LPM_SVALUE) GENERATE
+						sc: lpm_constant WITH( LPM_WIDTH=LPM_WIDTH, LPM_CVALUE=LPM_SVALUE, CBXI_PARAMETER = "NOTHING" );
+					END GENERATE;
+
+					IF FLEXUseCarryChain() GENERATE
+						carrybit[SizeCarryChain()-1..0]	: carry_sum;
+						Count[LPM_WIDTH-1..0]			: NODE;
+						
+						IF LoadMuxLCELL() GENERATE
+
+							IF nLoadInput()<=1 GENERATE nLoad:NODE;	ELSE GENERATE nLoad:LCELL; END GENERATE;
+
+							IF nLoadDataInput()<=3 GENERATE
+								LoadLCELL[LPM_WIDTH-1..0]: NODE;
+							ELSE GENERATE
+								LoadLCELL[LPM_WIDTH-1..0]: LCELL;
+							END GENERATE;
+
+							IF UseClearableCounterMode() # (UseLabWideSclr() & (USED(clk_en) # UseSyncClrModUp())) GENERATE
+								nClr	: LCELL;
+							ELSE GENERATE
+								nClr	: NODE;
+							END GENERATE;
+
+							IF USED(clk_en)
+							# (USED_UPDOWN() & !FAMILY_HAS_UPDOWN_COUNTER_MODE())
+							# (USED(cnt_en) & !CntEnThroughCarryChain())
+							#  UseClearableCounterMode()
+							# (!UseLabWideSclr() & UseFuncSCLR())
+							#  USED(sset)
+							# !USED(cnt_en)
+							GENERATE		-- LUT 0-5 or no cnt_en
+								Wrap : NODE;
+							ELSE GENERATE	-- LUT 6-7 with cnt_en: special wrap
+								Wrap : LCELL;
+							END GENERATE;
+
+							LoadModulus[LPM_WIDTH-1..0]	: NODE;
+							LoadCntEn[LPM_WIDTH-1..0]	: NODE;
+							LoadSLoad[LPM_WIDTH-1..0]	: NODE;
+							LoadSSet[LPM_WIDTH-1..0]	: NODE;
+							nState[LPM_WIDTH-1..0]		: NODE;
+
+							UseSClr, UseSSet, UseSLoad								: NODE;
+							UseLoadCntEn, UseLoadSLoad, UseLoadSSet					: NODE;
+							DnWrapOnly, UseModulus, ENA_DATA, SyncClr, LoadUpWrap	: NODE;
+							LUTCntEn, UseLUTCntEn									: NODE;
+
+						ELSE GENERATE	-- no LoadMuxLCELL
+							DontWrap: NODE;
+						END GENERATE;
+						
+					ELSE GENERATE	-- FLEX doesn't UsesCarryChain
+						nState[LPM_WIDTH-1..0]: NODE;
+
+	-- Adder/encoder for next-state logic when count is enabled
+						IF COUNT_ONLY_UP() GENERATE
+							add_sub	: lpm_add_sub WITH( LPM_WIDTH=LPM_WIDTH, CBXI_PARAMETER = "NOTHING",
+														ONE_INPUT_IS_CONSTANT="YES",
+														LPM_DIRECTION="ADD" );
+						ELSE GENERATE
+							IF COUNT_ONLY_DOWN() GENERATE
+								add_sub	: lpm_add_sub WITH( LPM_WIDTH=LPM_WIDTH, CBXI_PARAMETER = "NOTHING",
+															ONE_INPUT_IS_CONSTANT="YES",
+															LPM_DIRECTION="SUB" );
+							ELSE GENERATE		-- up/down counter
+								add_sub	: lpm_add_sub WITH( LPM_WIDTH=LPM_WIDTH, CBXI_PARAMETER = "NOTHING",
+															ONE_INPUT_IS_CONSTANT="YES",
+															LPM_DIRECTION="DEFAULT" );
+							END GENERATE;
+						END GENERATE;
+					END GENERATE;
+
+					DirUpDown, upwrap, dnwrap, ce: NODE;
+					IF (LPM_MODULUS != 0) GENERATE
+						scdw: lpm_constant WITH( LPM_WIDTH=LPM_WIDTH, LPM_CVALUE=LPM_MODULUS-1, CBXI_PARAMETER = "NOTHING" );
+					ELSE GENERATE
+						scdw: lpm_constant WITH( LPM_WIDTH=LPM_WIDTH, LPM_CVALUE=0, CBXI_PARAMETER = "NOTHING" );
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+
+	-- Output decoder
+			IF USED(eq) GENERATE
+				decode	: lpm_decode WITH( LPM_WIDTH=4, LPM_DECODES= %2^LPM_WIDTH% 16, CBXI_PARAMETER = "NOTHING" );
+	--  MAX+PLUS II only implements 16 eq outputs, instead of 2^LPM_WIDTH according to
+	--   the LPM_COUNTER standard
+			END GENERATE;
+		END GENERATE;
+	ELSE GENERATE
+		-- able to use a wysiwyg generated counter
+		
+		-- Stratix family is ClearBox now
+		IF (FAMILY_STRATIX() == 1) GENERATE
+			wysi_counter : alt_counter_stratix WITH ( LPM_WIDTH = LPM_WIDTH, LPM_DIRECTION = LPM_DIRECTION,
+													LPM_MODULUS = LPM_MODULUS, CBXI_PARAMETER = "NOTHING", 
+													LPM_AVALUE = USED(LPM_AVALUE) ? LPM_AVALUE : "UNUSED",
+													LPM_SVALUE = USED(LPM_SVALUE) ? LPM_SVALUE : "UNUSED"
+												  );
+		ELSE GENERATE
+		IF (FAMILY_FLEX10K() == 1) GENERATE
+			wysi_counter : alt_counter_f10ke WITH ( LPM_WIDTH = LPM_WIDTH, LPM_DIRECTION = LPM_DIRECTION,
+													LPM_MODULUS = LPM_MODULUS, 
+													LPM_AVALUE = USED(LPM_AVALUE) ? LPM_AVALUE : "UNUSED",
+													LPM_SVALUE = USED(LPM_SVALUE) ? LPM_SVALUE : "UNUSED"
+												  );
+		ELSE GENERATE
+		IF (FAMILY_FLEX10KE() == 1) GENERATE
+			wysi_counter : alt_counter_f10ke WITH ( LPM_WIDTH = LPM_WIDTH, LPM_DIRECTION = LPM_DIRECTION,
+													LPM_MODULUS = LPM_MODULUS, 
+													LPM_AVALUE = USED(LPM_AVALUE) ? LPM_AVALUE : "UNUSED",
+													LPM_SVALUE = USED(LPM_SVALUE) ? LPM_SVALUE : "UNUSED"
+												  );
+		ELSE GENERATE
+		IF (FAMILY_FLEX6000() == 1) GENERATE
+			wysi_counter : alt_synch_counter_f WITH ( LPM_WIDTH = LPM_WIDTH, LPM_DIRECTION = LPM_DIRECTION,
+													LPM_MODULUS = LPM_MODULUS, 
+													LPM_AVALUE = USED(LPM_AVALUE) ? LPM_AVALUE : "UNUSED",
+													LPM_SVALUE = USED(LPM_SVALUE) ? LPM_SVALUE : "UNUSED"
+												  );
+		ELSE GENERATE
+			wysi_counter : alt_synch_counter WITH ( LPM_WIDTH = LPM_WIDTH, LPM_DIRECTION = LPM_DIRECTION,
+													LPM_MODULUS = LPM_MODULUS, 
+													LPM_AVALUE = USED(LPM_AVALUE) ? LPM_AVALUE : "UNUSED",
+													LPM_SVALUE = USED(LPM_SVALUE) ? LPM_SVALUE : "UNUSED"
+												  );
+		END GENERATE;
+		END GENERATE;
+		END GENERATE;
+		END GENERATE;
+
+	-- Output decoder
+			IF USED(eq) GENERATE
+				decode	: lpm_decode WITH( LPM_WIDTH=4, LPM_DECODES= %2^LPM_WIDTH% 16, CBXI_PARAMETER = "NOTHING" );
+	--  MAX+PLUS II only implements 16 eq outputs, instead of 2^LPM_WIDTH according to
+	--   the LPM_COUNTER standard
+			END GENERATE;
+
+	END GENERATE;
+	END GENERATE;
+-------------------------------------------------------------------------------
+BEGIN
+	-- cause:	The clock port is not connected
+	-- action:	Connect the clock port of this megafunction
+	ASSERT USED(clock)
+		REPORT "clock port must be connected for lpm_counter"
+		SEVERITY ERROR
+		HELP_ID LPM_COUNTER_NEEDS_CLOCK;
+
+	-- assert block
+	ASSERT LPM_WIDTH>0
+		REPORT "Value of LPM_WIDTH parameter must be greater than 0"
+		SEVERITY ERROR
+		HELP_ID LPM_COUNTER_WIDTH;
+
+	ASSERT !USED(aconst) # USED(LPM_AVALUE)
+		REPORT "Value of LPM_AVALUE parameter must be assigned if aconst port is used"
+		SEVERITY ERROR
+		HELP_ID LPM_COUNTER_ACONST;
+
+	ASSERT !USED(aconst) # (!USED(aclr) & !USED(aset))
+		REPORT "Can't use aconst port if aclr or aset port is used"
+		SEVERITY ERROR
+		HELP_ID LPM_COUNTER_ACONFLICT;
+
+	ASSERT !USED(sconst) # USED(LPM_SVALUE)
+		REPORT "Value of LPM_SVALUE parameter must be assigned if sconst port is used"
+		SEVERITY ERROR
+		HELP_ID LPM_COUNTER_SCONST;
+
+	ASSERT !USED(sconst) # (!USED(sclr) & !USED(sset))
+		REPORT "Can't use sconst port if sclr or sset port is used"
+		SEVERITY ERROR
+		HELP_ID LPM_COUNTER_SCONFLICT;
+
+	ASSERT (LPM_MODULUS == 0) # (LPM_WIDTH>31) # (Ceil_Log2_Modulus()<=LPM_WIDTH)
+		REPORT "Value of LPM_MODULUS parameter (%) is too large for a %-bit counter"
+			LPM_MODULUS, LPM_WIDTH
+		SEVERITY WARNING
+		HELP_ID LPM_COUNTER_MODULUS_BIG;
+
+	ASSERT (LPM_DIRECTION=="DEFAULT") # (LPM_DIRECTION=="UP") # (LPM_DIRECTION=="DOWN")
+		REPORT "Illegal value for LPM_DIRECTION parameter (%) -- value must be DEFAULT, UP, or DOWN" 
+			LPM_DIRECTION
+		SEVERITY ERROR
+		HELP_ID LPM_COUNTER_DIRECTION;
+
+	ASSERT (LPM_DIRECTION=="DEFAULT") # !USED_UPDOWN()
+		REPORT "Can't use LPM_DIRECTION parameter if updown port is used"
+		SEVERITY ERROR
+		HELP_ID LPM_COUNTER_DIR_CONFLICT;
+
+	ASSERT (!USE_CARRY_CHAINS()) # (CARRY_CHAIN_LENGTH>3)
+		REPORT "Ignored request for carry chain -- chain length setting is too low (< 4) to create useful carry chains"
+		SEVERITY WARNING
+		HELP_ID LPM_COUNTER_CARRY_LOW;
+
+
+	ASSERT USED(data) !$ (USED(aload) # USED(sload))
+		REPORT "Either aload or sload is used without the data[] port connected or the data[] port is connected to ground"
+		SEVERITY WARNING
+		HELP_ID LPM_COUNTER_LOAD_WITHOUT_DATA;
+
+	ASSERT (CARRY_CNT_EN=="ON") # (CARRY_CNT_EN=="OFF") # (CARRY_CNT_EN=="SMART")
+		REPORT "Illegal value for CARRY_CNT_EN parameter (%) -- value must be SMART, ON, or OFF" 
+		CARRY_CNT_EN
+		SEVERITY ERROR
+		HELP_ID LPM_COUNTER_CARRY_CNT_EN;
+
+	ASSERT (LABWIDE_SCLR=="ON") # (LABWIDE_SCLR=="OFF")
+		REPORT "Illegal value for LABWIDE_SCLR parameter (%) -- value must be ON or OFF" LABWIDE_SCLR
+		SEVERITY ERROR
+		HELP_ID LPM_COUNTER_LABWIDE_SCLR;
+
+	-- Cause:	The current device family doesn't match any of those listed in aglobal90.inc.
+	--			This probably means that this megafunction is from a previous release of MAX+plus II
+	--			that didn't know about this device family.  The megafunction should still work,
+	--			but the results may not be optimal.
+	-- Action:	If the old version of the megafunction is coming from an archived project directory,
+	--			then get the latest version of the megafunction (and aglobal90.inc).  This could also be
+	--			caused if MAX+plus II has libraries from an older version in its library path.
+	--			In this case, make sure that MAX+plus II has current libraries in its library path.
+	ASSERT (FAMILY_IS_KNOWN() == 1)
+		REPORT "Megafunction lpm_counter does not recognize the current device family (%) -- ensure that you are using the newest version of the megafunction"
+			DEVICE_FAMILY
+		SEVERITY WARNING
+		HELP_ID LPM_COUNTER_FAMILY_UNKNOWN;
+		
+	IF (CBX_FAMILY() == 1 & CBXI_PARAMETER != "NOTHING") GENERATE
+	IF USED(aclr) GENERATE
+		auto_generated.aclr = aclr;
+	END GENERATE;
+	IF USED(aload) GENERATE
+		auto_generated.aload = aload;
+	END GENERATE;
+	IF USED(aset) GENERATE
+		auto_generated.aset = aset;
+	END GENERATE;
+	IF USED(cin) GENERATE
+		auto_generated.cin = cin;
+	END GENERATE;
+	IF USED(clk_en) GENERATE
+		auto_generated.clk_en = clk_en;
+	END GENERATE;
+	IF USED(clock) GENERATE
+		auto_generated.clock = clock;
+	END GENERATE;
+	IF USED(cnt_en) GENERATE
+		auto_generated.cnt_en = cnt_en;
+	END GENERATE;
+	IF USED(cout) GENERATE
+		cout = auto_generated.cout;
+	END GENERATE;
+	IF USED(data) GENERATE
+		auto_generated.data[] = data[];
+	END GENERATE;
+	IF USED(q) GENERATE
+		q[] = auto_generated.q[];
+	END GENERATE;
+	IF USED(eq) GENERATE
+		eq[] = auto_generated.eq[];
+	END GENERATE;
+	IF USED(sclr) GENERATE
+		auto_generated.sclr = sclr;
+	END GENERATE;
+	IF USED(sload) GENERATE
+		auto_generated.sload = sload;
+	END GENERATE;
+	IF USED(sset) GENERATE
+		auto_generated.sset = sset;
+	END GENERATE;
+	IF USED(updown) GENERATE
+		auto_generated.updown = updown;
+	END GENERATE;
+		
+
+	ELSE GENERATE
+		
+-------------------------------------------------------------------------------
+	IF USE_OLD_VERSION() GENERATE
+		ASSERT (0) REPORT "+++++++++++ This is a OLD_VERSION LPM_COUNTER" SEVERITY DEBUG;
+		IF need_not_gate_push_back_off() GENERATE
+
+			ASSERT (0) REPORT "need_not_gate_push_back_off()=%" need_not_gate_push_back_off() SEVERITY DEBUG;
+			c2.clock = clock;
+			IF USED(data)		GENERATE	c2.data[]	= data[];	END GENERATE;
+			IF USED(clk_en)		GENERATE	c2.clk_en	= clk_en;	END GENERATE;
+			IF USED(cnt_en)		GENERATE	c2.cnt_en	= cnt_en;	END GENERATE;
+			IF USED_UPDOWN() GENERATE
+				IF USED(updown) GENERATE
+					c2.updown = updown;
+				END GENERATE;
+			END GENERATE;
+			IF USED(aclr)		GENERATE	c2.aclr		= aclr;		END GENERATE;
+			IF USED(aset)		GENERATE	c2.aset		= aset;		END GENERATE;
+			IF USED(aconst)		GENERATE	c2.aconst	= aconst;	END GENERATE;
+			IF USED(aload)		GENERATE	c2.aload	= aload;	END GENERATE;
+			IF USED(sclr)		GENERATE	c2.sclr		= sclr;		END GENERATE;
+			IF USED(sset)		GENERATE	c2.sset		= sset;		END GENERATE;
+			IF USED(sconst)		GENERATE	c2.sconst	= sconst;	END GENERATE;
+			IF USED(sload)		GENERATE	c2.sload	= sload;	END GENERATE;
+			IF USED(q)			GENERATE	q[]			= c2.q[];	END GENERATE;
+			IF USED(eq)			GENERATE	eq[]		= c2.eq[];	END GENERATE;
+			IF USED(cin)		GENERATE	c2.cin		= cin;		END GENERATE;
+			IF USED(cout)		GENERATE	cout		= c2.cout;	END GENERATE;
+
+		ELSE GENERATE
+
+		IF OK_to_use_pcustom() GENERATE
+
+			ASSERT (0) REPORT "OK_to_use_pcustom()=%" OK_to_use_pcustom() SEVERITY DEBUG;
+			dffs[0].d = !sclr and (dffs[0].q xor (cnt_en & cin));
+			dffs[].clk = clock;
+			dffs[].ena = clk_en;
+			dffs[].clrn = !aclr;
+
+			IF LPM_DIRECTION!="DOWN" GENERATE
+				and_a[0] = dffs[0] and cin;
+				IF LPM_WIDTH>=2 GENERATE
+					and_a[LPM_WIDTH-1..1] = dffs[LPM_WIDTH-1..1] and and_a[LPM_WIDTH-2..0];
+				END GENERATE;
+			END GENERATE;
+
+			and_b[0] = !dffs[0] and cin;
+			IF LPM_WIDTH>=2 GENERATE
+				and_b[LPM_WIDTH-1..1] = !dffs[LPM_WIDTH-1..1] and and_b[LPM_WIDTH-2..0];
+			END GENERATE;
+
+			IF LPM_WIDTH>1 GENERATE
+				IF LPM_DIRECTION=="DOWN" GENERATE
+					dffs[LPM_WIDTH-1..1] = !sclr and (dffs[LPM_WIDTH-1..1] xor (cnt_en & and_b[LPM_WIDTH-2..0]));
+				ELSE GENERATE
+					IF USED_UPDOWN() GENERATE
+						dffs[LPM_WIDTH-1..1] = !sclr and (dffs[LPM_WIDTH-1..1] xor (cnt_en & updown & and_a[LPM_WIDTH-2..0] # !sclr & cnt_en & !updown & and_b[LPM_WIDTH-2..0]));
+					ELSE GENERATE
+						dffs[LPM_WIDTH-1..1] = !sclr and (dffs[LPM_WIDTH-1..1] xor (cnt_en & and_a[LPM_WIDTH-2..0]));
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+			q[] = dffs[];
+
+			IF LPM_DIRECTION=="DOWN" GENERATE
+				cout = and_b[LPM_WIDTH-1];
+			ELSE GENERATE
+				IF USED_UPDOWN() GENERATE
+					cout = (and_a[LPM_WIDTH-1] and updown) or (and_b[LPM_WIDTH-1] and !updown);
+				ELSE GENERATE
+					cout = and_a[LPM_WIDTH-1];
+				END GENERATE;
+			END GENERATE;
+
+		ELSE GENERATE	-- OK_to_use_pcustom() 
+
+		IF OK_to_use_8count() GENERATE
+
+			ASSERT (0) REPORT "OK_to_use_8count()=%" OK_to_use_8count() SEVERITY DEBUG;
+			IF USED(sset) GENERATE
+				IF USED(LPM_SVALUE) GENERATE
+					p8c[].(h, g, f, e, d, c, b, a) = LPM_SVALUE;
+				ELSE GENERATE
+					p8c[].(h, g, f, e, d, c, b, a) = VCC;
+				END GENERATE;
+			ELSE GENERATE
+				IF Is_multiple_of_8(LPM_WIDTH) GENERATE
+					p8c[].(h, g, f, e, d, c, b, a) = data[];
+				ELSE GENERATE
+					p8c[].(h, g, f, e, d, c, b, a) = (0, data[]);
+				END GENERATE;
+			END GENERATE;
+
+			IF LPM_DIRECTION=="DOWN" GENERATE
+				p8c[].dnup = VCC;
+			ELSE GENERATE
+				IF USED_UPDOWN() GENERATE
+					p8c[].dnup = !updown;
+				ELSE GENERATE
+					p8c[].dnup = GND;
+				END GENERATE;
+			END GENERATE;
+			p8c[].clk = clock;
+			p8c[].clrn = !aclr;
+			p8c[].setn = !aload # aclr;
+			p8c[].ldn = !(sload # sset);
+
+			-- wire up Count Enable signal, with logic for later stages
+			p8c0.gn = !(cnt_en and cin);
+			IF LPM_WIDTH>8 GENERATE
+	--			p8c[CEIL(LPM_WIDTH div 8)-1..1].gn =  p8c[CEIL(LPM_WIDTH div 8)-2..0].cout !& cnt_en;
+				p8c[CEIL(LPM_WIDTH div 8)-1..1].gn = !p8c[CEIL(LPM_WIDTH div 8)-2..0].cout;
+			END GENERATE;
+
+			-- define outputs
+			IF Is_multiple_of_8(LPM_WIDTH) GENERATE
+				q[] = p8c[].(qh, qg, qf, qe, qd, qc, qb, qa);
+				cout = p8c[CEIL(LPM_WIDTH div 8)-1].cout;
+			ELSE GENERATE
+				IF LPM_WIDTH>8 GENERATE
+					q[(FLOOR(LPM_WIDTH div 8)*8)-1..0] = 
+						p8c[CEIL(LPM_WIDTH div 8)-2..0].(qh, qg, qf, qe, qd, qc, qb, qa);
+				END GENERATE;
+
+				q[FLOOR(LPM_WIDTH div 8)*8] = p8c[CEIL(LPM_WIDTH div 8)-1].qa;
+				IF (LPM_WIDTH > (FLOOR(LPM_WIDTH div 8)*8)+1) GENERATE
+					q[(FLOOR(LPM_WIDTH div 8)*8)+1] = p8c[CEIL(LPM_WIDTH div 8)-1].qb;
+				END GENERATE;
+				IF (LPM_WIDTH > (FLOOR(LPM_WIDTH div 8)*8)+2) GENERATE
+					q[(FLOOR(LPM_WIDTH div 8)*8)+2] = p8c[CEIL(LPM_WIDTH div 8)-1].qc;
+				END GENERATE;
+				IF (LPM_WIDTH > (FLOOR(LPM_WIDTH div 8)*8)+3) GENERATE
+					q[(FLOOR(LPM_WIDTH div 8)*8)+3] = p8c[CEIL(LPM_WIDTH div 8)-1].qd;
+				END GENERATE;
+				IF (LPM_WIDTH > (FLOOR(LPM_WIDTH div 8)*8)+4) GENERATE
+					q[(FLOOR(LPM_WIDTH div 8)*8)+4] = p8c[CEIL(LPM_WIDTH div 8)-1].qe;
+				END GENERATE;
+				IF (LPM_WIDTH > (FLOOR(LPM_WIDTH div 8)*8)+5) GENERATE
+					q[(FLOOR(LPM_WIDTH div 8)*8)+5] = p8c[CEIL(LPM_WIDTH div 8)-1].qf;
+				END GENERATE;
+				IF (LPM_WIDTH > (FLOOR(LPM_WIDTH div 8)*8)+6) GENERATE
+					q[(FLOOR(LPM_WIDTH div 8)*8)+6] = p8c[CEIL(LPM_WIDTH div 8)-1].qg;
+				END GENERATE;
+
+			END GENERATE;
+		
+		ELSE GENERATE	-- OK_to_use_8count()
+
+			ASSERT (0) REPORT "nExtraSyncInput()=%" nExtraSyncInput() SEVERITY DEBUG;
+			ASSERT (0) REPORT "nLoadInput()=%" nLoadInput() SEVERITY DEBUG;
+			ASSERT (0) REPORT "nLoadDataInput()=%" nLoadDataInput() SEVERITY DEBUG;
+			ASSERT (0) REPORT "FAMILY_HAS_ENABLE_LUT_INPUT()=%" FAMILY_HAS_ENABLE_LUT_INPUT() SEVERITY DEBUG;
+			ASSERT (0) REPORT "ModulusCounter()=%" ModulusCounter() SEVERITY DEBUG;
+			ASSERT (0) REPORT "FLEXUseCarryChain()=%" FLEXUseCarryChain() SEVERITY DEBUG;
+	-------------------------------------------------------------------------------
+	-- FLEX devices
+
+			dffs[].clk = clock;
+			ce = cnt_en & cin;
+
+	-- Asynchronous signals
+			IF NEED_DFFEA_FOR_ASYNC() GENERATE
+				-- generating the constants for AVALUE, SVALUE
+				IF USED(LPM_AVALUE) GENERATE	
+					a_val[] = ac.result[];
+				ELSE GENERATE
+					a_val[] = VCC;
+				END GENERATE;
+				dffs[].clrn = !aclr_actual;
+
+				IF USED(aset) # USED(aconst) GENERATE
+					IF USED(aclr) GENERATE	-- latch circuitry
+						aclr_actual = aclr # aset # aconst # aload;				
+						a_data[] = ((aset # aconst) & a_val[]) # ((aset !# aconst) & data[]);
+						effective_clrn[] = !(aclr # (!a_data[] & (aset # aconst # aload)));
+						effective_prn[]  = !((aset # aconst # aload) & a_data[]);
+						pre_latch_signal[] = effective_prn[] & latch_signal[];
+						latch_signal[] = !effective_clrn[] # pre_latch_signal[];
+					ELSE GENERATE	-- pushback circuitry for aset
+						aclr_actual = aclr # aset # aconst;				
+						-- The usage of !aclr and !aset is to temporary workaround the priority problem in functional simulation
+						dffs[].aload = aload & !aclr & !aset;
+						dffs[].adata = data[] $ a_val[];
+					END GENERATE;
+				ELSE GENERATE	-- Normal circuitry without latch or pushback
+					aclr_actual = aclr # aset # aconst;				
+					-- The usage of !aclr and !aset is to temporary workaround the priority problem in functional simulation
+					dffs[].aload = aload & !aclr & !aset;
+					dffs[].adata = data[];
+				END GENERATE;
+			ELSE GENERATE
+				IF (USED(aconst)) GENERATE
+					dffs[].clrn = (!aconst # ac.result[]) & (aconst # !aload # data[]);
+					dffs[].prn  = (!aconst # !ac.result[]) & (aconst # !aload # !data[]);
+				ELSE GENERATE
+					IF (USED(LPM_AVALUE)) GENERATE
+						dffs[].clrn = !aclr & (!aset # ac.result[]) & (aset # !aload # data[]);
+						dffs[].prn = aclr # (!aset # !ac.result[]) & (aset # !aload # !data[]);
+					ELSE GENERATE
+						IF (USED(aclr) # USED(aload)) GENERATE
+							dffs[].clrn = !aclr & (aset # !aload # data[]);
+						END GENERATE;
+						IF (USED(aset) # USED(aload)) GENERATE
+							dffs[].prn = aclr # !aset & (!aload # !data[]);
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+
+	--------------------------------------------------------------------
+	-- Synchronous signals
+
+			IF COUNT_ONLY_UP() GENERATE
+				DirUpDown = VCC;
+			ELSE GENERATE
+				IF COUNT_ONLY_DOWN() GENERATE
+					DirUpDown = GND;
+				ELSE GENERATE
+					IF USED_UPDOWN() GENERATE
+						DirUpDown = updown;
+					ELSE GENERATE
+						DirUpDown = VCC;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+
+			IF NEED_dffeea() GENERATE
+				ASSERT (0) REPORT "NEED_dffeea" SEVERITY DEBUG;
+			END GENERATE;
+
+	--------------------------------------------------------------------
+			IF FLEXUseCarryChain() GENERATE
+
+				ASSERT (0) REPORT "SpecialCase()=%"  SpecialCase() SEVERITY DEBUG;
+				ASSERT (0) REPORT "LoadMuxLCELL()=%" LoadMuxLCELL() SEVERITY DEBUG;
+				ASSERT (0) REPORT "UseClearableCounterMode()=%" UseClearableCounterMode() SEVERITY DEBUG;
+				ASSERT (0) REPORT "UseLabWideSclr()=%" UseLabWideSclr() SEVERITY DEBUG;
+				ASSERT (0) REPORT "CntEnThroughCarryChain()=%" CntEnThroughCarryChain() SEVERITY DEBUG;
+				ASSERT (0) REPORT "UseSyncClrModUp()=%" UseSyncClrModUp() SEVERITY DEBUG;
+				ASSERT (0) REPORT "COUNT_ONLY_UP()=%" COUNT_ONLY_UP() SEVERITY DEBUG;
+
+	--------------------------------------------------------------------
+	-- Generates the counter with the carry chain
+				IF NEED_DFFEA_FOR_ASYNC() GENERATE
+					Count[] = carrybit[LPM_WIDTH-1..0].cout xor safe_q[];
+				ELSE GENERATE
+					Count[] = carrybit[LPM_WIDTH-1..0].cout xor dffs[].q;
+				END GENERATE;
+				q[] = carrybit[LPM_WIDTH..1].sout;
+				
+				IF CntEnThroughCarryChain() GENERATE 
+					carrybit[0].cin = cnt_en and cin;
+				ELSE GENERATE
+					carrybit[0].cin = cin;
+				END GENERATE;
+				carrybit[0].sin = VCC;
+
+				IF SizeCarryChain()>1 GENERATE
+					IF CARRY_CHAIN_LENGTH>=LPM_WIDTH GENERATE
+						IF NEED_DFFEA_FOR_ASYNC() GENERATE
+							carrybit[SizeCarryChain()-1..1].cin =
+								(safe_q[SizeCarryChain()-2..0] !$ DirUpDown) & carrybit[SizeCarryChain()-2..0].cout;
+						ELSE GENERATE
+							carrybit[SizeCarryChain()-1..1].cin =
+								(dffs[SizeCarryChain()-2..0].q !$ DirUpDown) & carrybit[SizeCarryChain()-2..0].cout;
+						END GENERATE;
+					ELSE GENERATE
+						IF NEED_DFFEA_FOR_ASYNC() GENERATE
+							FOR ebit IN 1 TO SizeCarryChain()-1 GENERATE
+								IF (break_chain_here(ebit)) GENERATE
+									carrybit[ebit].cin = LCELL(CARRY(
+										(safe_q[ebit-1] !$ DirUpDown) & carrybit[ebit-1].cout ));
+									ASSERT REPORT "Breaking carry chain at bit %" ebit SEVERITY DEBUG;
+								ELSE GENERATE
+									carrybit[ebit].cin = (safe_q[ebit-1] !$ DirUpDown) & carrybit[ebit-1].cout;
+								END GENERATE;
+							END GENERATE;
+						ELSE GENERATE
+							FOR ebit IN 1 TO SizeCarryChain()-1 GENERATE
+								IF (break_chain_here(ebit)) GENERATE
+									carrybit[ebit].cin = LCELL(CARRY(
+										(dffs[ebit-1].q !$ DirUpDown) & carrybit[ebit-1].cout ));
+									ASSERT REPORT "Breaking carry chain at bit %" ebit SEVERITY DEBUG;
+								ELSE GENERATE
+									carrybit[ebit].cin = (dffs[ebit-1].q !$ DirUpDown) & carrybit[ebit-1].cout;
+								END GENERATE;
+							END GENERATE;
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+
+				IF !ModulusCounter() GENERATE
+					cout = carrybit[LPM_WIDTH].cout;
+				ELSE GENERATE
+					cout = (upwrap or dnwrap) and cin;
+					cout = carrybit[LPM_WIDTH].cout and gnd;	-- get rid of warning
+				END GENERATE;
+
+	--------------------------------------------------------------------
+	-- Special logic for MODULUS counters
+				IF !ModulusCounter() GENERATE
+					upwrap = GND;
+					dnwrap = GND;
+				ELSE GENERATE
+					IF COUNT_UP() GENERATE
+						IF NEED_DFFEA_FOR_ASYNC() GENERATE
+							upwrap = DirUpDown & 
+								lpm_compare( .dataa[]=safe_q[], .datab[]=scdw.result[] )
+								WITH( LPM_WIDTH=LPM_WIDTH, ONE_INPUT_IS_CONSTANT="YES",
+									  CASCADE_CHAIN = "IGNORE" )
+								RETURNS( .aeb );
+						ELSE GENERATE
+							upwrap = DirUpDown & 
+								lpm_compare( .dataa[]=dffs[].q, .datab[]=scdw.result[] )
+								WITH( LPM_WIDTH=LPM_WIDTH, ONE_INPUT_IS_CONSTANT="YES",
+									  CASCADE_CHAIN = "IGNORE" )
+								RETURNS( .aeb );
+						END GENERATE;
+					ELSE GENERATE
+						upwrap = GND;
+					END GENERATE;
+		
+					IF COUNT_DOWN() GENERATE
+						IF UseExtraCarryBit4DownWrap() GENERATE
+							dnwrap = !DirUpDown & carrybit[LPM_WIDTH].cout;
+						ELSE GENERATE
+							IF NEED_DFFEA_FOR_ASYNC() GENERATE
+								dnwrap = !DirUpDown & 
+									lpm_compare( .dataa[]=safe_q[], .datab[]=0 )
+									WITH( LPM_WIDTH=LPM_WIDTH, ONE_INPUT_IS_CONSTANT="YES",
+										  CASCADE_CHAIN = "IGNORE" )
+									RETURNS( .aeb );
+							ELSE GENERATE
+								dnwrap = !DirUpDown & 
+									lpm_compare( .dataa[]=dffs[].q, .datab[]=0 )
+									WITH( LPM_WIDTH=LPM_WIDTH, ONE_INPUT_IS_CONSTANT="YES",
+										  CASCADE_CHAIN = "IGNORE" )
+									RETURNS( .aeb );
+							END GENERATE;
+						END GENERATE;
+					ELSE GENERATE
+						dnwrap = GND;
+					END GENERATE;
+		
+				END GENERATE;	-- ModulusCounter()
+
+	-------------------------------------------------------------------------------
+	-- Counter using the LUT load feature in Up/Down or Clearable counter mode
+				IF LoadMuxLCELL() GENERATE
+
+					IF USED(cnt_en) & !CntEnThroughCarryChain() & 
+						(USED(clk_en) # (USED_UPDOWN() & !FAMILY_HAS_UPDOWN_COUNTER_MODE())) -- LUT0 only
+					GENERATE
+						LUTCntEn	= cnt_en;
+						UseLUTCntEn	= VCC;
+					ELSE GENERATE	-- LUT1..7 assume cnt_en is already taken care of
+						LUTCntEn	= VCC;
+						UseLUTCntEn	= GND;
+					END GENERATE;
+
+					SyncClr = sclr;
+					IF UseSyncClrModUp() GENERATE
+						SyncClr		= upwrap & !sset & !sload & ce;
+						LoadUpWrap	= GND;
+					ELSE GENERATE
+						LoadUpWrap	= upwrap;
+					END GENERATE;
+
+	-- Generates the Wrap signal according to the LUT used
+					IF USED(clk_en)
+					# (USED_UPDOWN() & !FAMILY_HAS_UPDOWN_COUNTER_MODE())
+					# (USED(cnt_en) & !CntEnThroughCarryChain())
+					#  UseClearableCounterMode()
+					# (!UseLabWideSclr() & UseFuncSCLR())
+					#  USED(sset)
+					GENERATE	-- LUT 0-5: Wrap is a NODE
+						Wrap = ce & (LoadUpWrap # dnwrap);
+					ELSE GENERATE
+						IF COUNT_ONLY_UP() & !UseSyncClrModUp() GENERATE
+							-- LUT 6: Wrap is an LCELL for special wrap up
+							Wrap = ce & LoadUpWrap;
+						ELSE GENERATE
+							-- LUT 7: Wrap is an LCELL for special wrap down
+							Wrap = ce & dnwrap;
+						END GENERATE;
+					END GENERATE;
+
+	-- input usage nodes
+					IF UseFuncSCLR() GENERATE
+						UseSClr = VCC;
+					ELSE GENERATE
+						UseSClr = GND;
+					END GENERATE;
+
+					IF USED(sset) GENERATE
+						UseSSet = VCC;
+					ELSE GENERATE
+						UseSSet = GND;
+					END GENERATE;
+
+					IF USED(sload) GENERATE
+						UseSLoad = VCC;
+					ELSE GENERATE
+						UseSLoad = GND;
+					END GENERATE;
+
+	-- Generates Modulus related flags
+					IF !ModulusCounter() GENERATE
+						UseModulus	= GND;
+						DnWrapOnly	= GND;
+					ELSE GENERATE
+						IF UseSyncClrModUp() & COUNT_ONLY_UP() GENERATE
+							UseModulus	= GND;	-- sclr does modulus roll-over
+						ELSE GENERATE
+							UseModulus	= VCC;
+						END GENERATE;
+						
+						IF COUNT_ONLY_DOWN() GENERATE
+							DnWrapOnly = VCC;
+						ELSE GENERATE
+							DnWrapOnly = GND;
+						END GENERATE;
+					END GENERATE;
+
+					LoadModulus[] = (dnwrap # DnWrapOnly) & scdw.result[];
+
+					UseLoadCntEn = UseModulus # UseLUTCntEn;
+
+					IF NEED_DFFEA_FOR_ASYNC() GENERATE
+						LoadCntEn[] = (   LUTCntEn 				  & LoadModulus[]		   ) # 
+									  ( (!LUTCntEn # !UseModulus) & UseLUTCntEn & safe_q[] );
+					ELSE GENERATE
+						LoadCntEn[] = (   LUTCntEn 				  & LoadModulus[]		   ) # 
+									  ( (!LUTCntEn # !UseModulus) & UseLUTCntEn & dffs[].q );
+					END GENERATE;
+
+					UseLoadSLoad = UseSLoad # UseLoadCntEn;
+					LoadSLoad[]	= ( (sload # !UseLoadCntEn)	& data[]	  )	# 
+								  ( !sload					& LoadCntEn[] );
+
+					UseLoadSSet = UseSSet # UseLoadSLoad;
+					IF USED(LPM_SVALUE) GENERATE
+						LoadSSet[]	= ( (sset # !UseLoadSLoad) & sc.result[] ) #
+									  ( !sset				   & LoadSLoad[] );
+					ELSE GENERATE
+						LoadSSet[]	= ( (sset # !UseLoadSLoad) & UseSSet) # (!sset & LoadSLoad[]);
+					END GENERATE;
+
+	-- clk_en
+					IF FAMILY_HAS_ENABLE_LUT_INPUT() GENERATE
+						dffs[].ena	= clk_en;
+						ENA_DATA	= VCC;
+					ELSE GENERATE
+						ENA_DATA	= clk_en;
+					END GENERATE;
+
+	-------------------------------------------------------------------------------
+	-- LUT logic
+
+				-- first we use the ENA input if available
+					IF USED(clk_en) & FAMILY_HAS_ENABLE_LUT_INPUT() GENERATE	-- FLEX10K LUT input used ?
+						nState[] = Count[];
+						IF UseClearableCounterMode() # UseLabWideSclr() GENERATE -- space for nClr ?
+							ASSERT (0) REPORT "LUT0a" SEVERITY DEBUG;
+							nClr = !SyncClr;
+							LoadLCELL[] = LoadSSet[];
+							nLoad = !(sset # sload # !LUTCntEn # Wrap);
+						ELSE GENERATE			-- no space for extra LUT input
+							ASSERT (0) REPORT "LUT0b" SEVERITY DEBUG;
+							nClr = VCC;
+							LoadLCELL[] = !SyncClr & LoadSSet[];
+							nLoad = !(SyncClr # sset # sload # !LUTCntEn # Wrap);
+						END GENERATE;
+					ELSE GENERATE
+					
+					-- next we check if updown fills up the LUT
+					IF USED_UPDOWN() & !FAMILY_HAS_UPDOWN_COUNTER_MODE() GENERATE -- FLEX6000 LUT input used ?
+						nState[] = Count[];
+						IF UseClearableCounterMode() # UseLabWideSclr() GENERATE -- space for nClr ?
+							ASSERT (0) REPORT "LUT0c" SEVERITY DEBUG;
+							nClr = !(SyncClr & ENA_DATA);
+							LoadLCELL[] = (ENA_DATA & LoadSSet[]) # ((!ENA_DATA # !UseLoadSSet) & dffs[].q);
+							nLoad = !(!ENA_DATA # sset # sload # !LUTCntEn # Wrap);
+						ELSE GENERATE			-- no space for extra LUT input
+							ASSERT (0) REPORT "LUT0d" SEVERITY DEBUG;
+							nClr = VCC;
+							LoadLCELL[] = (ENA_DATA & !SyncClr & UseLoadSSet & LoadSSet[]) # 
+										((!ENA_DATA # !(UseLoadSSet # UseSClr)) & dffs[].q);
+							nLoad = !(!ENA_DATA # SyncClr # sset # sload # !LUTCntEn # Wrap);
+						END GENERATE;
+					ELSE GENERATE
+					
+					-- next we try to feed the LUT with clk_en
+					IF USED(clk_en) GENERATE	--> FLEX6000 or FLEX8000
+						nState[] = (ENA_DATA & Count[]) # (!ENA_DATA & dffs[].q);
+						IF UseClearableCounterMode() # UseLabWideSclr() GENERATE -- space for nClr ?
+							ASSERT (0) REPORT "LUT0e" SEVERITY DEBUG;
+							nClr = !(SyncClr & ENA_DATA);
+							LoadLCELL[] = LoadSSet[];
+							nLoad = !(ENA_DATA & (sset # sload # !LUTCntEn # Wrap));
+						ELSE GENERATE			-- no space for extra LUT input
+							ASSERT (0) REPORT "LUT0f" SEVERITY DEBUG;
+							nClr = VCC;
+							LoadLCELL[] = !SyncClr & LoadSSet[];
+							nLoad = !(ENA_DATA & (SyncClr # sset # sload # !LUTCntEn # Wrap));
+						END GENERATE;
+					ELSE GENERATE
+					
+					-- no clk_en, so we try to feed the unused LUT input
+					IF USED(cnt_en) & !CntEnThroughCarryChain() GENERATE
+						ASSERT (0) REPORT "LUT1" SEVERITY DEBUG;
+						IF UseClearableCounterMode() # UseLabWideSclr() GENERATE -- space for nClr ?
+							nClr = !SyncClr;
+							IF NEED_DFFEA_FOR_ASYNC() GENERATE
+								nState[] = (ce & Count[]) # (!ce & safe_q[]);						
+							ELSE GENERATE
+								nState[] = (ce & Count[]) # (!ce & dffs[].q);
+							END GENERATE;
+							LoadLCELL[] = LoadSSet[];
+							nLoad = !(sset # sload # Wrap);
+						ELSE GENERATE
+							nClr = VCC;
+							IF NEED_DFFEA_FOR_ASYNC() GENERATE
+								nState[] = (ce & Count[]) # (!ce & safe_q[]);
+							ELSE GENERATE
+								nState[] = (ce & Count[]) # (!ce & dffs[].q);
+							END GENERATE;
+							LoadLCELL[] = !SyncClr & LoadSSet[];
+							nLoad = !(SyncClr # sset # sload # Wrap);					
+						END GENERATE;
+					ELSE GENERATE
+				
+					IF UseClearableCounterMode() GENERATE
+						ASSERT (0) REPORT "LUT2" SEVERITY DEBUG;	-- sclr feeds nclr
+						nClr = !SyncClr;
+						nState[] = Count[];
+						LoadLCELL[] = LoadSSet[];
+						nLoad = !(sset # sload # Wrap);
+					ELSE GENERATE
+			
+					IF !UseLabWideSclr() & UseFuncSCLR() GENERATE
+						ASSERT (0) REPORT "LUT3" SEVERITY DEBUG;	-- sclr feeds DATA1
+						nClr = VCC;
+						nState[] = !SyncClr & Count[];
+						LoadLCELL[] = LoadSSet[];
+						nLoad = !(!SyncClr & (sset # sload # Wrap));
+					ELSE GENERATE
+						IF UseLabWideSclr() GENERATE
+							ASSERT (0) REPORT "LUT4a" SEVERITY DEBUG;
+							nClr = !SyncClr;	-- feeds wide-lab sclr
+						ELSE GENERATE
+							ASSERT (0) REPORT "LUT4b" SEVERITY DEBUG;
+							nClr = VCC;			-- counter without sclr
+						END GENERATE;
+		
+						IF USED(sset) GENERATE
+							ASSERT (0) REPORT "LUT5" SEVERITY DEBUG;
+							IF USED(LPM_SVALUE) GENERATE
+								nState[] = (sset & sc.result[]) # (!sset & Count[]);
+							ELSE GENERATE
+								nState[] = sset # (!sset & Count[]);
+							END GENERATE;
+							LoadLCELL[] = LoadSLoad[];
+							nLoad = !(!sset & (sload # Wrap));
+						ELSE GENERATE
+		
+							IF COUNT_ONLY_UP() & !UseSyncClrModUp() GENERATE
+								ASSERT (0) REPORT "LUT6" SEVERITY DEBUG; -- special wrap up
+								nState[] = !wrap & Count[];
+								LoadLCELL[] = data[];
+								nLoad = !sload;
+							ELSE GENERATE
+								ASSERT (0) REPORT "LUT7" SEVERITY DEBUG;	-- special wrap down
+								nState[] = (wrap & scdw.result[]) # (!wrap & Count[]);
+														-- use sload only if up/down counter
+								LoadLCELL[] = (sload # !UseModulus # DnWrapOnly) & data[];
+								nLoad = !(sload # (ce & LoadUpWrap));
+							END GENERATE;
+						END GENERATE;
+					END GENERATE;
+					END GENERATE;
+					END GENERATE;
+					END GENERATE;
+					END GENERATE;
+					END GENERATE;
+
+					-- Create the counter output according to nClr and nLoad LCELL inputs
+					IF NEED_DFFEA_FOR_ASYNC() GENERATE
+						IF USED(aset) # USED(aconst) GENERATE
+							IF USED(aclr) GENERATE
+								dffs[] = (nClr & ((!nLOAD & LoadLCELL[]) # (nLoad & nState[]))) $ !latch_signal[];
+							ELSE GENERATE
+								dffs[] = (nClr & ((!nLOAD & LoadLCELL[]) # (nLoad & nState[]))) $ a_val[];
+							END GENERATE;
+						ELSE GENERATE
+							dffs[] = nClr & ((!nLOAD & LoadLCELL[]) # (nLoad & nState[]));
+						END GENERATE;
+					ELSE GENERATE
+						dffs[] = nClr & ((!nLOAD & LoadLCELL[]) # (nLoad & nState[]));
+					END GENERATE;
+
+					-- Avoid Warnings on unused nodes
+					nState[] = GND & LoadSSet[] & UseLoadSSet & ENA_DATA & UseSClr & SyncClr & DirUpDown & LoadUpWrap;
+
+				ELSE GENERATE	-- LoadMuxLCELL()
+
+					dffs[].ena = clk_en;
+					DontWrap = (DirUpDown & !upwrap) # (!DirUpDown & !dnwrap);
+
+					IF USED(LPM_SVALUE) GENERATE
+						IF CntEnThroughCarryChain() GENERATE
+							dffs[].d = !sclr & (sset & sc.result[] # !sset & (sload & data[] # !sload &
+								((!ce # DontWrap) & Count[] # (ce & dnwrap) & scdw.result[])));
+						ELSE GENERATE
+							dffs[].d = !sclr & (sset & sc.result[] # !sset & (sload & data[] # !sload & (ce & 
+								((DontWrap & Count[]) # (dnwrap & scdw.result[])) # !ce & dffs[].q)));
+						END GENERATE;
+					ELSE GENERATE
+						IF CntEnThroughCarryChain() GENERATE
+							dffs[].d = !sclr & (sset # !sset & (sload & data[] # !sload & (
+								(!ce # DontWrap) & Count[] # (ce & dnwrap) & scdw.result[])));
+						ELSE GENERATE
+							dffs[].d = !sclr & (sset # !sset & (sload & data[] # !sload & 
+								(ce & (DontWrap & Count[] # dnwrap & scdw.result[]) # !ce & dffs[].q)));
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+				IF NEED_DFFEA_FOR_ASYNC() GENERATE
+					IF USED(aset) # USED(aconst) GENERATE
+						IF USED(aclr) GENERATE
+							pre_hazard[] = dffs[].q;
+							safe_q[] = (pre_hazard[] & latch_signal[] & effective_clrn[]) # 
+									     (!latch_signal[] & !pre_hazard[] & effective_clrn[]) #
+									     (!aclr & !effective_prn[]);
+						ELSE GENERATE
+							safe_q[] = dffs[].q $ a_val[];
+						END GENERATE;
+					ELSE GENERATE
+						safe_q[] = dffs[].q;
+					END GENERATE;
+					carrybit[LPM_WIDTH..1].sin = safe_q[];
+				ELSE GENERATE
+					carrybit[LPM_WIDTH..1].sin = dffs[].q;
+				END GENERATE;
+
+			ELSE GENERATE	-- FLEXUseCarryChain()
+
+				dffs[].ena = clk_en;
+
+	-- Special logic for MODULUS counters
+				upwrap = GND;
+				dnwrap = GND;
+				IF NEED_DFFEA_FOR_ASYNC() GENERATE
+					IF COUNT_UP() AND ModulusCounter() GENERATE
+						upwrap = cmpconst(safe_q[]) WITH( WIDTH=LPM_WIDTH, CVALUE=LPM_MODULUS-1 );
+					END GENERATE;
+					IF COUNT_DOWN() AND ModulusCounter() GENERATE
+						dnwrap = cmpconst(safe_q[]) WITH( WIDTH=LPM_WIDTH, CVALUE=0 );
+					END GENERATE;
+	-- synchronous logic
+					IF USED(aset) # USED(aconst) GENERATE
+						IF USED(aclr) GENERATE
+							IF USED(sconst) GENERATE
+								dffs[].d = ((sconst & sc.result[]) # !sconst & (sload & data[]
+											# !sload & (ce & nState[] # !ce & safe_q[]) ))
+											$ !latch_signal[];
+							ELSE GENERATE
+								IF USED(LPM_SVALUE) GENERATE
+									dffs[].d = (!sclr & (sset & sc.result[] # !sset & (sload & data[]
+												# !sload & (ce & nState[] # !ce & safe_q[]) )))
+												$ !latch_signal[];
+								ELSE GENERATE
+									dffs[].d = (!sclr & (sset # (sload & data[] 
+												# !sload & (ce & nState[] # !ce & safe_q[]) )))
+												$ !latch_signal[];
+								END GENERATE;
+							END GENERATE;
+						ELSE GENERATE
+							IF USED(sconst) GENERATE
+								dffs[].d = ((sconst & sc.result[]) # !sconst & (sload & data[]
+											# !sload & (ce & nState[] # !ce & safe_q[]) ))
+											$ a_val[];
+							ELSE GENERATE
+								IF USED(LPM_SVALUE) GENERATE
+									dffs[].d = (!sclr & (sset & sc.result[] # !sset & (sload & data[]
+												# !sload & (ce & nState[] # !ce & safe_q[]) )))
+												$ a_val[];
+								ELSE GENERATE
+									dffs[].d = (!sclr & (sset # (sload & data[] 
+												# !sload & (ce & nState[] # !ce & safe_q[]) )))
+												$ a_val[];
+								END GENERATE;
+							END GENERATE;
+						END GENERATE;
+					ELSE GENERATE
+						IF USED(sconst) GENERATE
+							dffs[].d = (sconst & sc.result[]) # !sconst & (sload & data[]
+										# !sload & (ce & nState[] # !ce & safe_q[]) );
+						ELSE GENERATE
+							IF USED(LPM_SVALUE) GENERATE
+								dffs[].d = !sclr & (sset & sc.result[] # !sset & (sload & data[]
+											# !sload & (ce & nState[] # !ce & safe_q[]) ));
+							ELSE GENERATE
+								dffs[].d = !sclr & (sset # (sload & data[] 
+											# !sload & (ce & nState[] # !ce & safe_q[]) ));
+							END GENERATE;
+						END GENERATE;
+					END GENERATE;
+					-- next counting state
+					add_sub.dataa[] = safe_q[];	
+				ELSE GENERATE
+					IF COUNT_UP() AND ModulusCounter() GENERATE
+						upwrap = cmpconst(dffs[].q) WITH( WIDTH=LPM_WIDTH, CVALUE=LPM_MODULUS-1 );
+					END GENERATE;
+					IF COUNT_DOWN() AND ModulusCounter() GENERATE
+						dnwrap = cmpconst(dffs[].q) WITH( WIDTH=LPM_WIDTH, CVALUE=0 );
+					END GENERATE;
+	-- synchronous logic
+					IF USED(sconst) GENERATE
+						dffs[].d = (sconst & sc.result[]) # !sconst & (sload & data[]
+									# !sload & (ce & nState[] # !ce & dffs[].q) );
+					ELSE GENERATE
+						IF USED(LPM_SVALUE) GENERATE
+							dffs[].d = !sclr & (sset & sc.result[] # !sset & (sload & data[]
+										# !sload & (ce & nState[] # !ce & dffs[].q) ));
+						ELSE GENERATE
+							dffs[].d = !sclr & (sset # (sload & data[] 
+										# !sload & (ce & nState[] # !ce & dffs[].q) ));
+						END GENERATE;
+					END GENERATE;
+
+					-- next counting state
+					add_sub.dataa[] = dffs[].q;
+				END GENERATE;
+		
+				IF LPM_WIDTH>1 GENERATE add_sub.datab[]=1; ELSE GENERATE add_sub.datab[]=VCC; END GENERATE;
+
+				IF COUNT_ONLY_UP() GENERATE
+					nState[] = !upwrap & add_sub.result[];
+				ELSE GENERATE
+					IF COUNT_ONLY_DOWN() GENERATE
+						nState[] = (!dnwrap & add_sub.result[]) # (dnwrap & scdw.result[]);
+					ELSE GENERATE			-- up/down counter
+						add_sub.add_sub = DirUpDown;
+						nState[] = (DirUpDown & !upwrap & add_sub.result[]) #
+							(!DirUpDown & (!dnwrap & add_sub.result[] # dnwrap & scdw.result[]));
+					END GENERATE;
+				END GENERATE;
+	-- Avoid warnings on unused nodes
+				nState[] = GND & scdw.result[] & upwrap & dnwrap & DirUpDown;
+
+				IF !ModulusCounter() GENERATE
+					cout = (add_sub.cout xnor DirUpDown) and cin;
+				ELSE GENERATE
+					cout = ((DirUpDown and upwrap) or (!DirUpDown and dnwrap)) and cin;
+				END GENERATE;
+				IF NEED_DFFEA_FOR_ASYNC() GENERATE
+					IF USED(aset) # USED(aconst) GENERATE
+						IF USED(aclr) GENERATE
+							pre_hazard[] = dffs[].q;
+							safe_q[] = (pre_hazard[] & latch_signal[] & effective_clrn[]) # 
+							           (!latch_signal[] & !pre_hazard[] & effective_clrn[]) #
+							           (!aclr & !effective_prn[]);
+						ELSE GENERATE
+							safe_q[] = dffs[].q $ a_val[];
+						END GENERATE;
+					ELSE GENERATE
+						safe_q[] = dffs[].q;
+					END GENERATE;				
+					q[] = safe_q[];
+				ELSE GENERATE
+					q[] = dffs[].q;
+				END GENERATE;
+
+			END GENERATE;		-- FLEXUseCarryChain()
+
+		END GENERATE;	-- OK_to_use_8count()
+		END GENERATE;	-- OK_to_use_pcustom()
+
+	-------------------------------------------------------------------------------
+	-- Counter decode output
+
+		IF USED(eq) GENERATE
+			IF LPM_WIDTH>=4 GENERATE
+				decode.data[] = q[3..0];
+
+	-- make sure the MSB counter bits are zero
+				IF LPM_WIDTH>4 GENERATE
+					decode.enable = cmpconst( q[LPM_WIDTH-1..4] ) WITH( WIDTH=LPM_WIDTH-4, CVALUE=0 );
+				END GENERATE;
+
+			ELSE GENERATE
+				decode.data[] = ( 0, q[] );
+			END GENERATE;
+			eq[] = decode.eq[];
+		ELSE GENERATE
+			eq[] = GND;
+		END GENERATE;
+		
+	-------------------------------------------------------------------------------
+		END GENERATE;	-- need_not_gate_push_back_off()
+	ELSE GENERATE
+	-- can use the wysiwyg counter
+	-- connect the inputs only if necessary otherwise the lower counter will detect a probe
+	-- and do something bad
+
+		IF USED(clock) GENERATE
+			wysi_counter.clock = clock;
+		END GENERATE;
+
+		IF USED(clk_en) GENERATE
+			wysi_counter.clk_en = clk_en;
+		END GENERATE;
+
+		IF USED_UPDOWN() GENERATE
+			IF USED(updown) GENERATE
+				wysi_counter.updown = updown;
+			END GENERATE;
+		END GENERATE;
+
+		IF USED(cnt_en) GENERATE
+			wysi_counter.cnt_en = cnt_en;
+		END GENERATE;
+
+		IF USED(aclr) GENERATE
+			wysi_counter.aclr = aclr;
+		END GENERATE;
+
+		IF USED(aset) GENERATE
+			wysi_counter.aset = aset;
+		END GENERATE;
+
+		IF USED(aconst) GENERATE
+			wysi_counter.aconst = aconst;
+		END GENERATE;
+
+		IF USED(aload) GENERATE
+			wysi_counter.aload = aload;
+		END GENERATE;
+
+		IF USED(sclr) GENERATE
+			wysi_counter.sclr = sclr;
+		END GENERATE;
+
+		IF USED(sset) GENERATE
+			wysi_counter.sset = sset;
+		END GENERATE;
+
+		IF USED(sconst) GENERATE
+			wysi_counter.sconst = sconst;
+		END GENERATE;
+
+		IF USED(sload) GENERATE
+			wysi_counter.sload = sload;
+		END GENERATE;
+
+		IF USED(data) GENERATE
+			wysi_counter.data[] = data[];
+		END GENERATE;
+
+		IF USED(cin) GENERATE
+			wysi_counter.cin = cin;
+		END GENERATE;
+
+		q[] = wysi_counter.q[];
+		cout = wysi_counter.cout;
+
+		-- Counter decode output
+		IF USED(eq) GENERATE
+			IF LPM_WIDTH>=4 GENERATE
+				decode.data[] = q[3..0];
+
+	-- make sure the MSB counter bits are zero
+				IF LPM_WIDTH>4 GENERATE
+					decode.enable = cmpconst( q[LPM_WIDTH-1..4] ) WITH( WIDTH=LPM_WIDTH-4, CVALUE=0 );
+				END GENERATE;
+
+			ELSE GENERATE
+				decode.data[] = ( 0, q[] );
+			END GENERATE;
+			eq[] = decode.eq[];
+		ELSE GENERATE
+			eq[] = GND;
+		END GENERATE;
+
+	END GENERATE;
+	END GENERATE;
+	IF !USED(cout) GENERATE
+		cout = GND;
+	END GENERATE;
+	IF !USED(q) GENERATE
+		q[] = GND;
+	END GENERATE;
+	IF !USED(eq) GENERATE
+		eq[] = GND;
+	END GENERATE;
+END;

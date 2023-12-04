@@ -1,0 +1,185 @@
+<FORCE_DAT>
+Force Delay Annotation. Using this option runs the Delay 
+Annotator and new delays are annotated on the compiler netlist. 
+The compiler netlist is the source from which a timing netlist 
+is created. This option therefore ensures that new delays are 
+used in the timing netlist. If this option is not set, the 
+default flow attempts to re-use existing delays in the compiler 
+netlist (if available).
+</FORCE_DAT>
+
+<POST_MAP>
+Analyzes output of Analysis and Synthesis (quartus_map), using
+a rough delay model to estimate the place and route results. 
+Note that the error can be vary large.
+</POST_MAP>
+
+<MULTICORNER>
+Creates slack summaries for all available operating conditions, enabling multi-corner timing analysis.
+</MULTICORNER>
+
+<QSF2SDC>
+Use this option to migrate assignments from the Classic 
+Timing Analyzer. to SDC format. The migration includes 
+existing QSF timing assignments, and the results found 
+in the timing analysis report.
+The recommended migration flow is shown below:
+
+    quartus_map rev
+    quartus_fit rev
+    quartus_tan rev
+    quartus_sta rev --qsf2sdc
+
+Warnings are given for any assignment that does not have a 
+save conversion into an SDC command. The genrated SDC file is
+named <revision>.sdc, where revision is the current revision of
+your project.
+</QSF2SDC>
+
+<TQ2PT>
+Generate temporary files to convert the TimeQuest Timing Analyzer 
+SDC file(s) to a PrimeTime SDC file.
+BY default, when uising this option quartus_sta converts the SDC 
+files specified by the SDC_FILE QSF variable. Use "--sdc <file>" 
+to manually specify the SDC to convert.
+This option is equivalent to executing the following Tcl commands:
+
+      project_open
+ 	      create_timieng_netlist
+      read_sdc
+      update_timing_netlist
+      write_sdc -primetime
+
+The Quartus II EDA Netlist Writer (quartus_eda) uses the generated
+files to generate the final SDC file for use by PrimeTime.
+This option is not required if "PrimeTime" has already been selected
+as the EDA Timing Analyzer tool in the QSF file for the project
+revsion. In that case, the default quartus_sta script automatically 
+calls "write_sdc -primetime" To manually generate the PrimeTime 
+SDC file, the recommended flow is:
+
+    quartus_sta rev --tq2pt [--sdc <mysdcfile.sdc]
+	quartus_eda rev --timing_analysis --tool=primetime
+
+Note that TimeQuest-only SDC extensions like get_registers and 
+get_keepers do not get converted.
+</TQ2PT>
+
+<TQ2HC>
+Generate temporary files to convert the TimeQuest Timing Analyzer 
+SDC file(s) to a PrimeTime SDC file that can be used by the 
+HardCopy Design Center (HCDC). The HardCopy SDC files are required 
+to generate the required handoff files.
+BY default, when using this option quartus_sta converts the SDC 
+files specified by the SDC_FILE QSF variable. Use "--sdc <file>"
+to manually specify the SDC to convert. 
+This option is equivalent to the following Tcl commands:
+
+      project_open
+ 	      create_timieng_netlist
+      read_sdc
+      update_timing_netlist
+      write_sdc -hc
+
+The Quartus II EDA Netlist Writer (quartus_eda) uses the generated
+files to generate the final SDC file that can be used by the HCDC.
+This option is not required if "HardCopy II" is selected as the 
+device family. In that case, the default quartus_sta script 
+automatically calls "write_sdc -hc"
+To manually generate the PrimeTime SDC file, the recommended flow is:
+
+    quartus_sta rev --tq2hc [--sdc <mysdcfile.sdc]
+	quartus_cdb rev --generate_hardcopy_files
+
+Note that TimeQuest only SDC extensions like get_registers and 
+get_keepers do not get converted.
+</TQ2HC>
+
+<DO_REPORT_TIMING>
+For every clock domain, this option reports the most critical
+path based on setup slack. This command is equivalent to: 
+
+     report_timing -npaths 1 -to_clock $clock
+
+for every clock in the design (where $clock is the clock name).
+</DO_REPORT_TIMING>
+
+<SDC>
+Name of the SDC File to read. If this option is not specified, 
+the TimeQuest Timing Analyzer reads the default <rev>.sdc file
+ if it exists.)
+</SDC>
+
+<REPORT_SCRIPT>
+Name of the custom Tcl script called at the end of
+the default script, but before the netlist is destoryed.
+The behavior of the default script is equivalent to the 
+following if this option is specified:
+
+     project_open <rev>
+     create_timing_netlist <options>
+     read_sdc if defined
+     update_timing_netlist
+     create summary panels
+
+     # The custom script is loaded here
+     source <script_name>
+
+     delete_netlist
+     project_close
+
+An example of the script is shown next:
+
+    set setup_domain_list [get_clock_domain_info -setup]
+
+    # Report the Worst Case setup slack per clock
+    foreach domain $setup_domain_list {	
+        report_timing -setup -to_clock [lindex $domain 0]
+    }
+
+</REPORT_SCRIPT>
+
+<SPEED>
+Option to specify the device speed grade to use when running
+the TimeQuest Timing Analyzer.
+
+Examples:
+	quartus_map top --family=Stratix
+	quartus_fit top --part=EP1S10F780C7
+	# Run Timing Analysis for every speed grade
+	quartus_sta top --speed 5
+</SPEED>
+
+<MODEL>
+Option to specify the timing model to use when running
+the TimeQuest Timing Analyzer.
+
+Examples:
+	quartus_map top --family=Stratix
+	quartus_fit top --part=EP1S10F780C7
+	# Run Timing Analysis for every speed grade
+	quartus_sta top --model slow --temperature 0 -voltage 1200
+</MODEL>
+
+<TEMPERATURE>
+Option to specify the device temperature (C) to use when running
+the TimeQuest Timing Analyzer.
+
+Examples:
+	quartus_map top --family=Stratix
+	quartus_fit top --part=EP1S10F780C7
+	# Run Timing Analysis for every speed grade
+	quartus_sta top --model slow --temperature 0 -voltage 1200
+</TEMPERATURE>
+
+<VOLTAGE>
+Option to specify the device voltage (mV) to use when running
+the TimeQuest Timing Analyzer.
+
+Examples:
+	quartus_map top --family=Stratix
+	quartus_fit top --part=EP1S10F780C7
+	# Run Timing Analysis for every speed grade
+	quartus_sta top --model slow --temperature 0 -voltage 1200
+</VOLTAGE>
+

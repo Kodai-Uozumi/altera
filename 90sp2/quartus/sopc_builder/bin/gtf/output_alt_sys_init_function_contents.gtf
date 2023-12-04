@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<!-- output_alt_sys_init_function_contents.gtf
+                        - This "subroutine" outputs the contents of the
+                          alt_sys_init() function, called by alt_sys_init.c.gtf
+     Inputs:
+        CPU             - the name of the CPU's PTF module
+        CONDITION       - either "eq" or "ne", used to compare condition class
+        CONDITION_CLASS - the class type to use CONDITION to compare
+                          for example, if CONDITION is "eq" and
+                          CONDITION_CLASS is "altera_avalon_timer", only
+                          modules of class equal to "altera_avalon_timer" will
+                          be output
+-->     
+
+
+<generate_set>
+
+    <for_each variable="MODULE" ptf_path="SYSTEM/MODULE">
+        <if condition="and( ptf_module_is_mastered_by( %MODULE%, %CPU% ), ne( %MODULE%, %CPU% ) )">
+            <set_variable variable="MODULE_CLASS"
+                          ptf_path="SYSTEM/MODULE %MODULE%/class"/>
+	    <if condition="eq( %MODULE_CLASS%, no_legacy_module )">
+                <set_variable variable="MODULE_CLASS"
+                        ptf_path="SYSTEM/MODULE %MODULE%/gtf_class_name"/>
+	    </if>
+            <if condition="and( list_contains( %HAL_COMPONENT_LIST%, %MODULE_CLASS% ), %CONDITION%( %CONDITION_CLASS%, %MODULE_CLASS% ) )">
+                <set_variable variable="MODULE_CLASS_UPPER"
+                              to="uppercase( %MODULE_CLASS% )"/>
+                <set_variable variable="MODULE_UPPER"
+                              to="uppercase( %MODULE% )"/>
+                <set_variable variable="MODULE_LOWER"
+                              to="lowercase( %MODULE% )"/>
+                <text>
+    %MODULE_CLASS_UPPER%_INIT( %MODULE_UPPER%, %MODULE_LOWER% );
+                </text>
+            </if>
+        </if>
+    </for_each>
+
+</generate_set>

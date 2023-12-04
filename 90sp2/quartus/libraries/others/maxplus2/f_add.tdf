@@ -1,0 +1,17 @@
+INCLUDE "add_f.inc";
+SUBDESIGN f_add 
+(
+     IN1,IN2,CI : INPUT = GND;
+     S          : OUTPUT;
+)
+VARIABLE
+     	ufadd:add_f with ( IGNORE_SOFT_BUFFERS = "OFF" );
+begin
+
+	ufadd.in1 = IN1;
+	ufadd.in2 = IN2;
+	ufadd.ci = CI;
+	S = ufadd.s;	
+end;
+
+

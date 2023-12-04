@@ -1,0 +1,100 @@
+------------------------------------------------------------------
+-- altufm_i2c parameterized megafunction
+-- Generated with 'clearbox' loader - do not edit
+------------------------------------------------------------------
+
+
+-- Copyright (C) 1991-2009 Altera Corporation
+--  Your use of Altera Corporation's design tools, logic functions 
+--  and other software and tools, and its AMPP partner logic 
+--  functions, and any output files from any of the foregoing 
+--  (including device programming or simulation files), and any 
+--  associated documentation or information are expressly subject 
+--  to the terms and conditions of the Altera Program License 
+--  Subscription Agreement, Altera MegaCore Function License 
+--  Agreement, or other applicable license agreement, including, 
+--  without limitation, that your use is for the sole purpose of 
+--  programming logic devices manufactured by Altera and sold by 
+--  Altera or its authorized distributors.  Please refer to the 
+--  applicable agreement for further details.
+
+--  Version 9.0 Build 235 06/17/2009
+
+OPTIONS NAME_SUBSTITUTION = ON;
+
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+
+PARAMETERS
+(
+	ACCESS_MODE = "READ_WRITE",
+	ERASE_METHOD = "MEM_ADD",
+	ERASE_TIME = 500000000,
+	FIXED_DEVICE_ADD = "UNUSED",
+	LPM_FILE = "UNUSED",
+	MEM_ADD_ERASE0 = "UNUSED",
+	MEM_ADD_ERASE1 = "UNUSED",
+	MEM_PROTECT = "FULL",
+	MEMORY_SIZE = "4K",
+	OSC_FREQUENCY = 180000,
+	PAGE_WRITE_SIZE = 16,
+	PORT_GLOBAL_RESET = "PORT_UNUSED",
+	PROGRAM_TIME = 1600000,
+	WRITE_MODE = "SINGLE_BYTE",
+	CBXI_PARAMETER = "NOTHING"
+);
+FUNCTION @CBXI_PARAMETER (a0, a1, a2, global_reset, oscena, wp)
+RETURNS (osc, scl, sda);
+
+
+SUBDESIGN altufm_i2c
+(
+	a0		:	INPUT = GND;
+	a1		:	INPUT = GND;
+	a2		:	INPUT = GND;
+	global_reset		:	INPUT = GND;
+	osc		:	OUTPUT;
+	oscena		:	INPUT = VCC;
+	scl		:	BIDIR;
+	sda		:	BIDIR;
+	wp		:	INPUT = GND;
+)
+VARIABLE
+	IF CBXI_PARAMETER != "NOTHING" GENERATE
+		auto_generated : @CBXI_PARAMETER WITH ( CBXI_PARAMETER = "NOTHING" );
+	END GENERATE;
+BEGIN
+	ASSERT (CBXI_PARAMETER != "NOTHING")
+	REPORT "Valid clear box generator not found or Errors encountered during clear box generation"
+	SEVERITY ERROR;
+	IF (CBXI_PARAMETER != "NOTHING") GENERATE
+		IF USED(a0) GENERATE
+			auto_generated.a0 = a0;
+		END GENERATE;
+		IF USED(a1) GENERATE
+			auto_generated.a1 = a1;
+		END GENERATE;
+		IF USED(a2) GENERATE
+			auto_generated.a2 = a2;
+		END GENERATE;
+		IF USED(global_reset) GENERATE
+			auto_generated.global_reset = global_reset;
+		END GENERATE;
+		IF USED(osc) GENERATE
+			osc = auto_generated.osc;
+		ELSE GENERATE
+			osc = GND;
+		END GENERATE;
+		IF USED(oscena) GENERATE
+			auto_generated.oscena = oscena;
+		END GENERATE;
+		IF USED(scl) GENERATE
+			scl = auto_generated.scl;
+		END GENERATE;
+		IF USED(sda) GENERATE
+			sda = auto_generated.sda;
+		END GENERATE;
+		IF USED(wp) GENERATE
+			auto_generated.wp = wp;
+		END GENERATE;
+	END GENERATE;
+END;

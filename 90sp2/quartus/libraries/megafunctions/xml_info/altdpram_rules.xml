@@ -1,0 +1,158 @@
+<?xml version="1.0"?>
+<ROOT>
+	<INCLUDE FILE="mfam_family_macros.xml" />
+	<MACROS>
+		<MACRO NAME="m_titan_lutram" >
+			<DEFINITION>		
+				mfam_family_stratixiii and (USE_EAB == "ON") and (RAM_BLOCK_TYPE == mfam_lutram)
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_old_data_possible" >
+			<DEFINITION>
+				(RDADDRESS_REG == WRADDRESS_REG) and (OUTDATA_REG == WRADDRESS_REG) and m_par_reg(WRADDRESS_REG)
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_par_reg" ARGUMENTS="REG_PARAM" >
+			<DEFINITION>
+				REG_PARAM != "UNREGISTERED"
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_inclk_used" >
+			<DEFINITION>
+				(INDATA_REG == str(INCLOCK)) ||
+				(WRADDRESS_REG == str(INCLOCK)) ||				
+				(RDADDRESS_REG == str(INCLOCK)) ||
+				(RDCONTROL_REG == str(INCLOCK) and is_used(rden)) ||
+				(WRCONTROL_REG == str(INCLOCK)) ||												
+				(OUTDATA_REG == str(INCLOCK))				
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_outclk_used" >
+			<DEFINITION>
+				(RDADDRESS_REG == str(OUTCLOCK)) ||
+				(RDCONTROL_REG == str(OUTCLOCK) and is_used(rden)) ||
+				(OUTDATA_REG == str(OUTCLOCK))				
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_aclr_used" >
+			<DEFINITION>
+				((INDATA_ACLR == "ON") and m_par_reg(INDATA_REG)) || 
+				((WRADDRESS_ACLR == "ON") and m_par_reg(WRADDRESS_REG)) ||
+				((WRCONTROL_ACLR == "ON") and m_par_reg(WRCONTROL_REG)) ||		
+				((RDADDRESS_ACLR == "ON") and m_par_reg(RDADDRESS_REG)) ||		
+				((RDCONTROL_ACLR == "ON") and m_par_reg(RDCONTROL_REG) and is_used(rden)) ||		
+				((OUTDATA_ACLR == "ON") and m_par_reg(OUTDATA_REG))																
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_no_eab_sync_write" >
+			<DEFINITION>
+				(USE_EAB == "OFF") and m_par_reg(WRADDRESS_REG)
+			</DEFINITION>
+		</MACRO>
+	</MACROS>
+	<PARAMETERS>
+		<PARAMETER NAME="BYTE_SIZE" >
+			<FORCE_VALUE TO="8" WHEN="!m_titan_lutram" />
+			<FORCE_RANGE TO="5|8|9|10" WHEN="m_titan_lutram" />
+		</PARAMETER>
+		<PARAMETER NAME="INDATA_ACLR" >
+			<FORCE_VALUE TO="OFF" WHEN="m_titan_lutram || m_no_eab_sync_write || !m_par_reg(INDATA_REG)" />
+		</PARAMETER>
+		<PARAMETER NAME="INDATA_REG" >
+			<FORCE_VALUE TO="str(INCLOCK)" WHEN="m_titan_lutram" />
+			<FORCE_VALUE TO="WRADDRESS_REG" WHEN="m_no_eab_sync_write" />
+		</PARAMETER>
+		<PARAMETER NAME="MAXIMUM_DEPTH" >
+			<FORCE_RANGE TO="0|32|64" WHEN="m_titan_lutram" />
+		</PARAMETER>
+		<PARAMETER NAME="NUMWORDS" >
+			<FORCE_RANGE MAX="(2 exp WIDTHAD)" MIN="(2 exp (WIDTHAD - 1)) + 1" />
+		</PARAMETER>
+		<PARAMETER NAME="RDADDRESS_ACLR" >
+			<FORCE_VALUE TO="OFF" WHEN="(RDADDRESS_REG == UNREGISTERED) || ((READ_DURING_WRITE_MODE_MIXED_PORTS == OLD_DATA) and m_titan_lutram)" />
+		</PARAMETER>
+		<PARAMETER NAME="READ_DURING_WRITE_MODE_MIXED_PORTS" >
+			<FORCE_VALUE TO="DONT_CARE" WHEN="m_titan_lutram and !m_old_data_possible" />
+			<FORCE_RANGE TO="DONT_CARE|OLD_DATA" WHEN="!m_titan_lutram and mfam_family_stratix" />
+		</PARAMETER>
+		<PARAMETER NAME="WIDTH_BYTEENA" >
+			<FORCE_VALUE TO="WIDTH div BYTE_SIZE" WHEN="is_used(byteena)" ELSE="1" />
+		</PARAMETER>
+		<PARAMETER NAME="OUTDATA_ACLR" >
+			<FORCE_VALUE TO="OFF" WHEN="!m_par_reg(OUTDATA_REG)" />
+		</PARAMETER>
+		<PARAMETER NAME="OUTDATA_REG" >
+			<FORCE_RANGE TO="str(OUTCLOCK)|UNREGISTERED" WHEN="!m_titan_lutram" />
+		</PARAMETER>
+		<PARAMETER NAME="WIDTH"  >
+			<VALUE_RULE>
+				(((WIDTH % BYTE_SIZE) == 0) and is_used(byteena)) || !is_used(byteena)
+			</VALUE_RULE>
+			<VALUE_RULE>
+				(((WIDTH div BYTE_SIZE) gt 1) and is_used(byteena)) || !is_used(byteena)
+			</VALUE_RULE>
+		</PARAMETER>
+		<PARAMETER NAME="WRADDRESS_ACLR" >
+			<FORCE_VALUE TO="OFF" WHEN="m_titan_lutram || m_no_eab_sync_write || !m_par_reg(WRADDRESS_REG)" />
+		</PARAMETER>
+		<PARAMETER NAME="WRADDRESS_REG" >
+			<FORCE_VALUE TO="str(INCLOCK)" WHEN="m_titan_lutram" />
+		</PARAMETER>
+		<PARAMETER NAME="WRCONTROL_ACLR" >
+			<FORCE_VALUE TO="OFF" WHEN="m_titan_lutram || m_no_eab_sync_write || !m_par_reg(WRCONTROL_REG)" />
+		</PARAMETER>
+		<PARAMETER NAME="WRCONTROL_REG" >
+			<FORCE_VALUE TO="str(INCLOCK)" WHEN="m_titan_lutram" />
+			<FORCE_VALUE TO="WRADDRESS_REG" WHEN="m_no_eab_sync_write" />			
+		</PARAMETER>
+		<PARAMETER NAME="RDCONTROL_ACLR" >
+			<FORCE_VALUE TO="OFF" WHEN="!m_par_reg(RDCONTROL_REG) || m_titan_lutram" />
+		</PARAMETER>
+		<PARAMETER NAME="RDCONTROL_REG" >
+			<VALUE_RULE> !is_used(rden) || (is_used(rden) and ((RDCONTROL_REG == "UNREGISTERED") || !m_par_reg(RDADDRESS_REG) || (RDCONTROL_REG == RDADDRESS_REG)))
+			</VALUE_RULE>
+		</PARAMETER>
+		<PARAMETER NAME="RAM_BLOCK_TYPE" >
+			<FORCE_VALUE TO="UNUSED" WHEN="!mfam_family_stratix" />
+			<FORCE_RANGE TO="AUTO|M4K|M512|M-RAM" WHEN="mfam_family_has_m512 and mfam_family_has_megaram" />
+			<FORCE_RANGE TO="AUTO|M4K" WHEN="mfam_family_stratix and !mfam_family_has_m512 and !mfam_family_has_megaram" />
+			<FORCE_RANGE TO="AUTO|mfam_lutram" WHEN="mfam_family_stratixiii" />
+		</PARAMETER>
+	</PARAMETERS>
+	<PORTS>
+		<PORT NAME="aclr" USAGE="VARIABLE" >
+			<STATE TO="USED" WHEN="m_aclr_used" ELSE="UNUSED" />
+		</PORT>
+		<PORT NAME="byteena" USAGE="VARIABLE" >
+			<STATE TO="UNUSED" WHEN="!m_titan_lutram" />
+		</PORT>
+		<PORT NAME="inclock"  USAGE="VARIABLE" >
+			<STATE TO="USED" WHEN="m_inclk_used" ELSE="UNUSED" />
+		</PORT>
+		<PORT NAME="inclocken"  USAGE="VARIABLE" >
+			<STATE TO="UNUSED" WHEN="!is_used(inclock)" />		
+		</PORT>
+		<PORT NAME="outclock"  USAGE="VARIABLE" >
+			<STATE TO="USED" WHEN="m_outclk_used" ELSE="UNUSED" />		
+		</PORT>
+		<PORT NAME="outclocken"  USAGE="VARIABLE" >
+			<STATE TO="UNUSED" WHEN="!is_used(outclock)" />		
+		</PORT>
+		<PORT NAME="rdaddressstall"  USAGE="VARIABLE" >
+			<STATE TO="UNUSED" WHEN="!m_titan_lutram || (m_titan_lutram and !m_par_reg(RDADDRESS_REG))" />
+		</PORT>
+		<PORT NAME="rden"  USAGE="VARIABLE" >
+			<STATE TO="UNUSED" WHEN="m_titan_lutram" />
+		</PORT>
+		<PORT NAME="wraddressstall"  USAGE="VARIABLE" >
+			<STATE TO="UNUSED" WHEN="!m_titan_lutram" />
+		</PORT>
+		<PORT NAME="rdaddress"  USAGE="USED" >
+			<FORCE_RANGE MAX="NUMWORDS - 1" MIN="0" />
+		</PORT>
+		<PORT NAME="wraddress" USAGE="USED" >
+			<FORCE_RANGE MAX="NUMWORDS - 1" MIN="0" />		
+		</PORT>
+		<PORT NAME="data" USAGE="USED" />		
+	</PORTS>
+</ROOT>

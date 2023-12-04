@@ -1,0 +1,368 @@
+<<<<versions>>>>
+1.0
+<<<</versions>>>>
+<<<<1.0>>>>
+<get_advanced_hssi_legality_flow_types>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_advanced_hssi_legality_flow_types [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_hssi_legality 1.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Gets the list of flow types that are defined in this Tcl package.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+#-------------------------------------------------------------------------------
+# This example will show you how to get all of the flow types and print them out
+#-------------------------------------------------------------------------------
+
+set flow_types [get_advanced_hssi_legality_flow_types]
+foreach flow_type $flow_types {
+		    puts "The flow type $flow_type is a valid flow type"
+}
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_advanced_hssi_legality_flow_types>
+
+<get_advanced_hssi_legality_configuration_names>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_advanced_hssi_legality_configuration_names [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_hssi_legality 1.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Gets the list of configuration names that are defined in this Tcl package.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+#-------------------------------------------------------------------------------
+# This example will show you how to get all of the configuration names
+# and print them out
+#-------------------------------------------------------------------------------
+
+set configuration_names [get_advanced_hssi_legality_configuration_names]
+foreach configuration_name $configuration_names {
+		    puts "The configuration name $configuration_name is a valid configuration name"
+}
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_advanced_hssi_legality_configuration_names>
+
+<get_advanced_hssi_legality_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_advanced_hssi_legality_info [-h | -help] [-long_help] -configuration_name <configuration_name> -option <option> -rule_name <rule_name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -configuration_name <configuration_name>: Specifies a valid configuration.  The configuration name can be obtained from the "get_advanced_hssi_legality_configuration_names" command.
+        -option <option>: Specifies a valid option.  The option can be obtained from the "get_advanced_hssi_legality_info_options" command.
+        -rule_name <rule_name>: Specifies a valid rule.  The rule name can be obtained from the "get_advanced_hssi_legality_rule_names" command.
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_hssi_legality 1.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Gets the info for a specified configuration, rule, and option.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+#-------------------------------------------------------------------------------
+# This example will show you how to get the info for all info options and       
+# print it out                                                                  
+#-------------------------------------------------------------------------------
+
+set configuration_names [get_advanced_hssi_legality_configuration_names]
+foreach configuration_name $configuration_names {
+    puts "Processing configuration $configuration_name ..."
+    foreach rule_name [get_advanced_hssi_legality_rule_names -configuration_name $configuration_name] {
+        puts "    The rule name $rule_name is a valid rule name"
+    	foreach info_option [get_advanced_hssi_legality_info_options] {
+        	puts "    The info option $info_option is a valid info option"
+        	set info [get_advanced_hssi_legality_info -configuration_name $configuration_name -rule_name $rule_name -option $info_option]
+        	puts "    The info is $info"
+    	}
+    }
+}
+
+#-------------------------------------------------------------------------------
+# This example will show you how to get the documentation fd for a rule and     
+# print it out                                                                  
+#-------------------------------------------------------------------------------
+
+set configuration_names [get_advanced_hssi_legality_configuration_names]
+foreach configuration_name $configuration_names {
+    puts "Processing configuration $configuration_name ..."
+    foreach rule_name [get_advanced_hssi_legality_rule_names -configuration_name $configuration_name] {
+        puts "    The rule name $rule_name is a valid rule name"
+        set info [get_advanced_hssi_legality_info -configuration_name $configuration_name -rule_name $rule_name -option DOCUMENTATION_FD]
+        puts "    The documentation fd is $info"
+    }
+}
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: "<string>" is not a valid configuration name.
+TCL_ERROR	1   	ERROR: "<string>" is not a valid option.
+TCL_ERROR	1   	ERROR: "<string>" is not a valid rule name for the configuration name "<string>".
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_advanced_hssi_legality_info>
+
+<get_advanced_hssi_legality_info_options>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_advanced_hssi_legality_info_options [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_hssi_legality 1.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Gets the list of info options that are defined in this Tcl package.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+#-------------------------------------------------------------------------------
+# This example will show you how to get all of the info options
+# and print them out
+#-------------------------------------------------------------------------------
+
+set info_options [get_advanced_hssi_legality_info_options]
+foreach info_option $info_options {
+		    puts "The info option $info_option is a valid info option"
+}
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_advanced_hssi_legality_info_options>
+
+<get_advanced_hssi_legality_rule_names>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_advanced_hssi_legality_rule_names [-h | -help] [-long_help] -configuration_name <configuration_name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -configuration_name <configuration_name>: Specifies a valid configuration.  The configuration name can be obtained from the "get_advanced_hssi_legality_configuration_names" command.
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_hssi_legality 1.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Gets the list of rule names for a specified configuration that exists in this Tcl package.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+#-------------------------------------------------------------------------------
+# This example will show you how to get all of the rule names and print them out
+#-------------------------------------------------------------------------------
+
+set configuration_names [get_advanced_hssi_legality_configuration_names]
+foreach configuration_name $configuration_names {
+    puts "Processing configuration $configuration_name ..."
+    foreach rule_name [get_advanced_hssi_legality_rule_names -configuration_name $configuration_name] {
+        puts "    The rule name $rule_name is a valid rule name"
+    }
+}
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: "<string>" is not a valid configuration name.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_advanced_hssi_legality_rule_names>
+
+<get_advanced_hssi_legality_legal_values>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_advanced_hssi_legality_legal_values [-h | -help] [-long_help] -configuration_name <configuration_name> -flow_type <flow_type> [-param_args <param_args>] -rule_name <rule_name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -configuration_name <configuration_name>: Specifies a valid configuration.  The configuration name can be obtained from the "get_advanced_hssi_legality_configuration_names" command.
+        -flow_type <flow_type>: Specifies a valid flow type.  The flow type can be obtained from the "get_advanced_hssi_legality_flow_types" command.
+        -param_args <param_args>: Specifies the parameter arguments for the rule.  The parameter arguments can be obtained from the "get_advanced_hssi_legality_info" command by using the RULE_DEPENDENCIES option.
+        -rule_name <rule_name>: Specifies a valid rule.  The rule name can be obtained from the "get_advanced_hssi_legality_rule_names" command.
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_hssi_legality 1.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Gets the list of the legal values for a specified configuration and rule and wysiwyg parameter dependencies that exists in this Tcl package.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+#-------------------------------------------------------------------------------
+# This example will show you how to obtain the legal values for a rule and print
+ 		# them out
+#-------------------------------------------------------------------------------
+
+set rule_dependencies [get_advanced_hssi_legality_info -configuration_name TGX_HSSI_CONFIG -rule_name PLD_FB_SELECT_PROTOCOL_LEGALITY -option RULE_DEPENDENCIES]
+set legal_values [get_advanced_hssi_legality_legal_values -configuration_name TGX_HSSI_CONFIG -flow_type MAPPER -param_args $rule_dependencies -rule_name PLD_FB_SELECT_PROTOCOL_LEGALITY]
+puts "The configuration name is TGX_HSSI_CONFIG"
+puts "The rule name is PLD_FB_SELECT_PROTOCOL_LEGALITY"
+puts "The rule dependencies are $rule_dependencies"
+puts "The legal values are $legal_values"
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: "<string>" is not a valid configuration name.
+TCL_ERROR	1   	ERROR: "<string>" is not a valid flow type.
+TCL_ERROR	1   	ERROR: The arguments are not valid for the rule "<string>" and configuration "<string>".
+TCL_ERROR	1   	ERROR: "<string>" is not a valid rule name for the configuration name "<string>".
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_advanced_hssi_legality_legal_values>
+
+<<<</1.0>>>>

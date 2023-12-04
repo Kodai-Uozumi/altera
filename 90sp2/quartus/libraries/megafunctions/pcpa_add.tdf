@@ -1,0 +1,271 @@
+--------------------------------------------------------------------
+--
+--	PCPA_ADD Subdesign for PARALLEL_ADD
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 1.0
+--
+--------------------------------------------------------------------
+-------------------------------------------------------------------
+-- Info: 	pcpa_add consists of a parallel tree of 2-input adders.
+-- 		 	Each stage of the tree has been implemented using a
+-- 			recursive call of pcpa-add from the previous stage, with
+--			all calls sharing a common output interface.
+--
+--			For each stage N of the tree, N = 0, 1, 2, ...  the
+--
+--			Number of input bits entering the stage:
+--					WIDTH + (2^N-1)*SHIFT + N
+--			
+--			Number of (intermediate) result bits exiting it:
+--					WIDTH + (2^(N+1)-1)*SHIFT + N + 1
+-- 
+--			Width of adders used in the stage:
+--					WIDTH + (2^N-1)*SHIFT + N + 1
+-------------------------------------------------------------------
+INCLUDE "lpm_add_sub";
+INCLUDE "pcpa_add";
+
+-- Note: (int) stands for internal parameters that are passed to
+-- from the top level design, but are hidden from users.
+
+PARAMETERS 
+(
+	WIDTH,						-- WIDTH of input data (in bits)
+	SIZE,						-- Number of input data vectors
+	SHIFT,						-- Relative shift of input vectors
+	REPRESENTATION,				-- SIGNED/UNSIGNED
+	TOT_LEVELS,					-- Total height of the adder tree (int)
+	STAGE,						-- Current pipeline stage (int)
+	LATENCY,					-- Pipe latency
+	PREV_SING_WIDTH = WIDTH,	-- Width of the previous stage's 
+								-- unpaired output
+	MSW_SUBTRACT = "NO"
+);
+
+-- size/height related parameters
+CONSTANT BLOCKS 		 = FLOOR(SIZE DIV 2);		-- # of input pairs
+CONSTANT REM_BLOCK 		 = SIZE MOD 2; 				-- # of unpaired input
+CONSTANT TOT_BLOCKS 	 = CEIL(SIZE DIV 2);		-- Total # of pairs
+CONSTANT EXTRA_BITS 	 = (2^STAGE)*SHIFT;			-- # of "fall-through" bits
+
+-- Total number of bits added to the "current" input size (WIDTH) at the end
+-- of the current stage. 
+CONSTANT TOT_EXTRA_BITS  = (2^TOT_LEVELS-2^STAGE)*SHIFT + (TOT_LEVELS-STAGE);
+
+-- Expected witdth of result 
+CONSTANT RES_WIDTH 		 = (SIZE == 1) ? WIDTH : WIDTH+TOT_EXTRA_BITS;
+
+-- Width of the unpaired input feeding next stage.
+CONSTANT SING_NODE_WIDTH = (SIZE MOD 2 == 0) ? WIDTH+EXTRA_BITS+1 : PREV_SING_WIDTH;
+
+-- Latency-related functions and parameters
+DEFINE MOD_DIST(n, d)	 = ((2 * n) > d ? d - n : n);
+DEFINE LATENCY_MOD(k)	 = ((k * (LATENCY + 1)) MOD TOT_LEVELS);
+CONSTANT NEED_CLK		 = -((LATENCY_MOD(STAGE+1) == 0) # 
+						    ((LATENCY_MOD(STAGE+1) > LATENCY_MOD(STAGE+2)) & 
+			  			     (MOD_DIST(LATENCY_MOD(STAGE+1), TOT_LEVELS) < 
+							  MOD_DIST(LATENCY_MOD(STAGE+2), TOT_LEVELS))) #
+			  			    ((LATENCY_MOD(STAGE+1) < LATENCY_MOD(STAGE)) & 
+						     (MOD_DIST(LATENCY_MOD(STAGE+1), TOT_LEVELS) <= 
+							  MOD_DIST(LATENCY_MOD(STAGE), TOT_LEVELS))));
+
+						   
+SUBDESIGN pcpa_add
+( 
+	data[SIZE-1..0][WIDTH-1..0]		: INPUT = GND;
+	clock, aclr						: INPUT = GND;								
+ 	result[RES_WIDTH-1..0] 			: OUTPUT;
+ 	clock_out, aclr_out				: OUTPUT;
+)
+
+
+VARIABLE 	
+	
+	IF BLOCKS > 0 GENERATE
+		adder[BLOCKS-1..0]		: lpm_add_sub WITH (LPM_WIDTH = WIDTH+1);
+
+		-- level_result nodes are the outputs of the adders with the 
+		-- "fall through" bits appended to their right.
+		IF USED(clock) & (NEED_CLK == 1) & SIZE > 2 GENERATE
+			level_result_node[BLOCKS-1..0][WIDTH+EXTRA_BITS..0] : DFF;
+		ELSE GENERATE
+			level_result_node[BLOCKS-1..0][WIDTH+EXTRA_BITS..0] : NODE;
+		END GENERATE;
+
+		-- single_input_result nodes are similar to level-result nodes
+		-- but can have different widths due to unpairing of inputs.
+		IF REM_BLOCK == 1 GENERATE
+			IF USED(clock) & (NEED_CLK == 1) GENERATE
+				single_input_node[SING_NODE_WIDTH-1..0]	: DFF;
+			ELSE GENERATE
+				single_input_node[SING_NODE_WIDTH-1..0]	: NODE;	
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;	
+			
+	IF TOT_BLOCKS > 1 GENERATE	
+		sub_par_add		: pcpa_add WITH (WIDTH = WIDTH+1+EXTRA_BITS, 
+										 SIZE = TOT_BLOCKS, 
+										 SHIFT = SHIFT, --(2*SHIFT),
+										 STAGE = (STAGE+1), 
+										 TOT_LEVELS = TOT_LEVELS,
+										 LATENCY = LATENCY, 
+										 PREV_SING_WIDTH = SING_NODE_WIDTH,
+										 MSW_SUBTRACT = "NO");									 
+	END GENERATE;
+		
+BEGIN
+
+	ASSERT REPORT "WIDTH = %, SIZE = %, STAGE = %, TOT_LEVELS = % "
+	WIDTH, SIZE, STAGE, TOT_LEVELS SEVERITY DEBUG;
+
+	ASSERT REPORT "TOT_EXTRA_BITS = %, REM_BLOCK = %, PREV_SING_WIDTH = %" 
+	TOT_EXTRA_BITS, REM_BLOCK, PREV_SING_WIDTH SEVERITY DEBUG;
+			
+	-- Case where there are 2 or more input vectors
+	IF BLOCKS > 0 GENERATE
+		-- Connect the even-numbered input vectors. If SHIFT > 0, there
+		-- will be a corresponding shift of even-numbered vectors with
+		-- respect to odd-numbered ones. Sign extension will be performed 
+		-- for SIGNED case, while 0s will be inserted in UNSIGNED case. 
+		FOR I IN 0 TO BLOCKS-1 GENERATE
+			adder[I].dataa[WIDTH-EXTRA_BITS-1..0] = data[I*2][WIDTH-1..EXTRA_BITS];
+			level_result_node[I][WIDTH+EXTRA_BITS..EXTRA_BITS] = adder[I].result[];
+	
+			IF EXTRA_BITS > 0 GENERATE
+				level_result_node[I][EXTRA_BITS-1..0] = data[I*2][EXTRA_BITS-1..0];
+			END GENERATE;
+
+			IF REPRESENTATION == "UNSIGNED" GENERATE
+				adder[I].dataa[WIDTH..WIDTH-EXTRA_BITS] = GND;
+			ELSE GENERATE
+				adder[I].dataa[WIDTH..WIDTH-EXTRA_BITS] = data[I*2][WIDTH-1];
+			END GENERATE;
+
+			IF USED(clock) & NEED_CLK == 1 & (SIZE > 2) GENERATE
+				ASSERT REPORT "STAGE = %  is clock" STAGE SEVERITY DEBUG;
+				level_result_node[][].(clk, clrn) = (clock, !aclr);
+			END GENERATE;
+
+		END GENERATE;
+		
+		-- Connect the odd-numbered & paired input vectors, up to and including
+		-- the next-to-last one. The last odd-numbered input connection is 
+		-- complicated by the fact that the input from previous stage
+		-- may or may not be of the size of the other inputs. If there's
+		-- been an unpaired input in a previous stage, it may pass through
+		-- without being added to other inputs and thus remain of shorter
+		-- length. Will check for the last odd-numbered & unpaired one later.
+		IF BLOCKS > 1 GENERATE
+			FOR I IN 0 TO BLOCKS-2 GENERATE
+				adder[I].datab[WIDTH-1..0] = data[I*2+1][];
+				IF REPRESENTATION == "UNSIGNED" GENERATE
+					adder[I].datab[WIDTH] = GND;
+				ELSE GENERATE
+					adder[I].datab[WIDTH] = data[I*2+1][WIDTH-1];
+				END GENERATE;	
+			END GENERATE;
+		END GENERATE;	
+
+		-- Now check for the last odd_numbered input
+		IF REM_BLOCK == 1 GENERATE
+			-- If there is no unpaired input vector, then we know that
+			-- the last unpaired input in a previous stage was paired
+			-- in the last stage. So, its size is the same as others.
+			adder[BLOCKS-1].datab[WIDTH-1..0] = data[(BLOCKS-1)*2+1][];		
+
+			IF REPRESENTATION == "UNSIGNED" GENERATE
+				adder[BLOCKS-1].datab[WIDTH] = GND;
+			ELSE GENERATE
+				adder[BLOCKS-1].datab[WIDTH] = data[(BLOCKS-1)*2+1][WIDTH-1];
+			END GENERATE;
+
+			IF MSW_SUBTRACT == "NO" GENERATE
+				single_input_node[] = data[SIZE-1][SING_NODE_WIDTH-1..0];
+			ELSE GENERATE
+				single_input_node[] = lpm_add_sub(.cin = VCC, .dataa[] = data[SIZE-1][SING_NODE_WIDTH-1..0], 
+												  .datab[] = GND)
+										WITH (LPM_WIDTH = SING_NODE_WIDTH)
+										RETURNS (.result[]);
+			END GENERATE;
+
+			IF USED(clock) & (NEED_CLK == 1) GENERATE
+				single_input_node[].(clk, clrn) = (clock, !aclr);
+			END GENERATE;
+
+		ELSE GENERATE
+			-- If there is an unpaired input, it's width may be shorter than
+			-- others. So, will sign extend it if necessary to fill the bits.
+			IF MSW_SUBTRACT == "NO" GENERATE
+				adder[BLOCKS-1].datab[PREV_SING_WIDTH-1..0] = data[(BLOCKS-1)*2+1][PREV_SING_WIDTH-1..0];
+				IF REPRESENTATION == "UNSIGNED" GENERATE
+					adder[BLOCKS-1].datab[WIDTH..PREV_SING_WIDTH] = GND;
+				ELSE GENERATE
+					adder[BLOCKS-1].datab[WIDTH..PREV_SING_WIDTH] = data[(BLOCKS-1)*2+1][PREV_SING_WIDTH-1];
+				END GENERATE;
+			ELSE GENERATE
+				adder[BLOCKS-1].datab[PREV_SING_WIDTH-1..0] = data[(BLOCKS-1)*2+1][PREV_SING_WIDTH-1..0];
+				adder[BLOCKS-1].datab[WIDTH..PREV_SING_WIDTH] = data[(BLOCKS-1)*2+1][PREV_SING_WIDTH-1];
+				adder[BLOCKS-1].cin = VCC;
+			END GENERATE;
+
+		END GENERATE;
+	END GENERATE;
+
+	-- If there were more than 2 inputs feeding the current stage, will need yet another
+	-- recursive call to generate a lower adder subtree.
+	IF TOT_BLOCKS > 1 GENERATE
+		FOR I IN 0 TO BLOCKS-1 GENERATE
+		 	sub_par_add.data[I][] = level_result_node[I][];
+		END GENERATE;
+				
+		IF REM_BLOCK == 1 GENERATE
+			sub_par_add.data[BLOCKS][SING_NODE_WIDTH-1..0] = single_input_node[];
+		END GENERATE;
+			
+		result[] = sub_par_add.result[];
+
+		IF USED(clock) GENERATE
+			sub_par_add.(clock, aclr) = (clock, aclr);	
+			clock_out = sub_par_add.clock_out;
+			aclr_out  = sub_par_add.aclr_out;
+		END GENERATE;
+	
+ 	ELSE GENERATE 
+		-- special cases where either size = 1 or 2
+		IF SIZE == 1 GENERATE
+			result[] = data[0][];
+		ELSE GENERATE
+			result[] = level_result_node[0][];
+		END GENERATE;
+
+		clock_out = clock;
+		aclr_out = aclr;
+	END GENERATE;
+	
+	IF !USED(clock_out) GENERATE
+		clock_out = GND;
+	END GENERATE;
+	IF !USED(aclr_out) GENERATE
+		aclr_out = GND;
+	END GENERATE;
+	IF !USED(result) GENERATE
+		result[] = GND;
+	END GENERATE;
+END;

@@ -1,0 +1,54 @@
+<CSF_ID>
+Option to specify which revision and its associated
+Quartus II Settings File (.qsf) to use.
+
+This option directs the Quartus(R) II software to use
+the existing settings in the specified revision's .qsf,
+if any. However, all arguments passed from command line
+and all assignments obtained from the database override 
+assignments from the .qsf.
+
+If not specified, the revision name is assumed to be the
+same as that of the project. Altera(R) recommends using
+the same name for the project and the revision to avoid
+the use of this option.
+</CSF_ID>
+
+<SET_ID>
+Option to set a global assignment which does not belong
+to any entity. In general, global assignments do not
+take a source or target.
+
+By default, assignments are written to the Quartus II
+Settings File (.qsf) unless you specify 
+"--write_settings_files=off". An exception is the 
+Compiler Database Interface (quartus_cdb), where 
+assignments are written to the QSF only if you specify
+"--write_settings_files=on".
+
+For example, to ignore LCELL buffers during Analysis 
+& Synthesis (quartus_map) type:
+
+quartus_map chiptrip --set=ignore_lcell_buffers=on
+
+To prevent the Fitter from chosing the optimal delay chain
+to meet tsu and tco timing requirements for all I/O elements,
+type:
+
+quartus_fit chiptrip --set=auto_delay_chains=off
+
+Global assignments created or modified with this
+option are saved to the QSF.
+
+For convenience, Quartus II command-line executables
+provide arguments for common assignments.
+For example, to set the device family to Stratix for
+Analysis & Synthesis (quartus_map), type:
+
+quartus_map chiptrip --family=Stratix
+
+Otherwise, you'd have to type:
+
+quartus_map --set=family=Stratix chiptrip
+</SET_ID>
+

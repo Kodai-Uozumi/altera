@@ -1,0 +1,253 @@
+--------------------------------------------------------------------
+--
+--	muxlut Parameterized Megafunction
+--	(subdesign of LPM_MUX)
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 3.0
+--
+--------------------------------------------------------------------
+-------------------------------------
+-- recursive subdesign for LPM_MUX --
+------------------------------------- 
+INCLUDE "muxlut.inc";
+INCLUDE "altshift.inc";
+INCLUDE "aglobal90.inc";
+
+PARAMETERS
+(
+	SIZE,				
+	LEVEL,
+	TOT_LEVELS,
+	LATENCY,
+	REM_LATENCY = LATENCY,	-- The latency required for single input cases
+	LOCAL = 0,
+	CASCADE_CHAIN = "MANUAL",
+	DEVICE_FAMILY
+);
+
+-- Determine the number of select inputs to the current recursion level.
+CONSTANT WIDTHS 		  = (SIZE == 1) ? 1 : CEIL(LOG2(SIZE));
+
+-- Determine the number of (levels) stages of the tree, considering the current
+-- level as the root of the tree.
+CONSTANT STAGES 		  = (SIZE <= 4) ? 1 : CEIL(CEIL(LOG2(SIZE)) DIV 2);
+CONSTANT MAX_OUTPUTS 	  = 4^LEVEL;
+
+-- The number of leaves of the tree with the current stage as its root.
+CONSTANT STAGE_INPUTS 	  = 4^(STAGES-1);
+
+-- The number of input nodes coming into the current level.
+CONSTANT MUX_OUTPUTS_USED = CEIL(SIZE DIV STAGE_INPUTS);
+
+-- The number of leaves of each of lowest branches of the tree with the 
+-- current level as its root.
+DEFINE SIZE_USED_FOR_BLOCK(b) = ((b + 1)*STAGE_INPUTS) <= SIZE ? STAGE_INPUTS :
+							    ((b* STAGE_INPUTS) < SIZE ? SIZE MOD STAGE_INPUTS : 0);
+
+-- Latency-related functions and parameters
+DEFINE MOD_DIST(n, d)	 = ((2 * n) > d ? d - n : n);
+DEFINE LATENCY_MOD(k)	 = (!((k * (LATENCY + 1)) MOD TOT_LEVELS)) ? TOT_LEVELS : 
+							((k * (LATENCY + 1)) MOD TOT_LEVELS);
+CONSTANT NEED_CLK		 = -((LEVEL == (TOT_LEVELS-1)) ? 0 :
+							((LATENCY_MOD(LEVEL+1) == TOT_LEVELS) # 
+						    ((LATENCY_MOD(LEVEL+1) > LATENCY_MOD(LEVEL+2))))); 
+
+
+SUBDESIGN muxlut
+(
+	data[SIZE-1..0]			: INPUT;
+	select[WIDTHS-1..0]		: INPUT = GND;
+	clock, aclr				: INPUT = GND;
+	clken					: INPUT = VCC;
+	result					: OUTPUT;
+	clock_out, aclr_out		: OUTPUT;
+	clken_out				: OUTPUT;
+)
+
+
+VARIABLE
+
+	IF !((LOCAL == 0) & (LEVEL > 0 & SIZE <= MAX_OUTPUTS) # SIZE <= 4) GENERATE
+		mux_outputs[MUX_OUTPUTS_USED-1..0]	: NODE;
+	END GENERATE;
+
+	result_node : NODE;
+
+BEGIN
+
+ 	IF (LOCAL == 0) & (LEVEL > 0 & SIZE <= MAX_OUTPUTS) GENERATE
+ 		IF USED(clock) & LATENCY > 0 GENERATE
+			IF NEED_CLK == 1 GENERATE
+				result_node = DFFE(muxlut(.data[] = data[], 
+									.select[] = select[], 
+									.clock = clock, .aclr = aclr, .clken = clken) 
+									WITH (SIZE = SIZE,
+									  	  LEVEL = LEVEL-1, TOT_LEVELS = TOT_LEVELS,
+										  LATENCY = LATENCY, REM_LATENCY = REM_LATENCY-1, LOCAL = 0)
+									RETURNS (.result), clock, !aclr, VCC, clken);
+
+			ELSE GENERATE
+				result_node = muxlut(.data[] = data[], 
+									.select[] = select[], 
+									.clock = clock, .aclr = aclr, .clken = clken) 
+									WITH (SIZE = SIZE,
+									  	  LEVEL = LEVEL-1, TOT_LEVELS = TOT_LEVELS,
+										  LATENCY = LATENCY, REM_LATENCY = REM_LATENCY, LOCAL = 0)
+									RETURNS (.result);
+			END GENERATE;
+		ELSE GENERATE
+ 				result_node = muxlut(.data[] = data[], 
+										.select[] = select[]) 
+										WITH (SIZE = SIZE,
+									 	  LEVEL = LEVEL-1, TOT_LEVELS = TOT_LEVELS,
+										  LATENCY = LATENCY, LOCAL = 0)
+										RETURNS (.result);
+		END GENERATE;
+
+	ELSE GENERATE
+	 	IF SIZE == 2 GENERATE
+			IF USED(clock) & (NEED_CLK == 1) GENERATE
+				result_node = DFFE((!select[0] & data[0] # select[0] & data[1]), clock, !aclr, VCC, clken);
+			ELSE GENERATE
+				result_node = !select[0] & data[0] # select[0] & data[1];
+			END GENERATE;
+		ELSE GENERATE
+			IF SIZE == 3 GENERATE
+				IF USED(clock) & (NEED_CLK == 1) GENERATE
+					IF USE_CASCADE_CHAINS() GENERATE
+						result_node = DFFE ((!select[1] # !select[0] & data[2]) & 
+							   	   CASCADE (select[1] # select[0] & data[1] # !select[0] & data[0]),
+											 clock, !aclr, VCC, clken);
+					ELSE GENERATE
+						result_node = DFFE ((!select[1] # !select[0] & data[2]) & 
+							   	   		   (select[1] # select[0] & data[1] # !select[0] & data[0]),
+											 clock, !aclr, VCC, clken);
+					END GENERATE;
+		
+				ELSE GENERATE
+					IF USE_CASCADE_CHAINS() GENERATE
+						result_node = (!select[1] # !select[0] & data[2]) & 
+							   CASCADE( select[1] # select[0] & data[1] # !select[0] & data[0]);
+					ELSE GENERATE
+						result_node = (!select[1] # !select[0] & data[2]) & 
+							    	  ( select[1] # select[0] & data[1] # !select[0] & data[0]);
+					END GENERATE;
+				END GENERATE;
+			ELSE GENERATE
+				IF SIZE == 4 GENERATE
+					IF USED(clock) & (NEED_CLK == 1) GENERATE
+						IF USE_CASCADE_CHAINS() GENERATE
+							result_node = DFFE ((!select[1] # select[0] & data[3] # !select[0] & data[2]) & 
+								  	     CASCADE(select[1] # select[0] & data[1] # !select[0] & data[0]),
+											 clock, !aclr, VCC, clken);
+						ELSE GENERATE
+							result_node = DFFE ((!select[1] # select[0] & data[3] # !select[0] & data[2]) & 
+								  	           (select[1] # select[0] & data[1] # !select[0] & data[0]),
+											 clock, !aclr, VCC, clken);
+
+						END GENERATE;
+	
+					ELSE GENERATE
+						IF USE_CASCADE_CHAINS() GENERATE
+							result_node = (!select[1] # select[0] & data[3] # !select[0] & data[2]) & 
+								   CASCADE( select[1] # select[0] & data[1] # !select[0] & data[0]);
+ 						ELSE GENERATE
+							result_node = (!select[1] # select[0] & data[3] # !select[0] & data[2]) & 
+								    	  ( select[1] # select[0] & data[1] # !select[0] & data[0]);
+						END GENERATE;
+					END GENERATE;
+	
+	 			ELSE GENERATE
+					FOR I IN 0 TO MUX_OUTPUTS_USED-1 GENERATE
+						IF SIZE_USED_FOR_BLOCK(I) == 1 GENERATE
+							-- When no pipelining, we can move the singled-out data input
+							-- from the first stage and bring it up to the current level
+							-- without any change in functionality of MUX. However, when 
+							-- pipelined, this can't be done as the pipe synchrony should be
+							-- maintained among all inputs. To do so, a separate pipe with
+							-- appropriate latency is inserted between the singled-out data
+							-- input and the current stage. Recursion will end here then.
+							IF USED(clock) & LATENCY > 0 GENERATE			
+								mux_outputs[I] = altshift(data[I*STAGE_INPUTS], clock, aclr, clken)
+														WITH (WIDTH = 1, DEPTH = REM_LATENCY - NEED_CLK);
+								
+							ELSE GENERATE
+								mux_outputs[I] = data[I*STAGE_INPUTS];
+							END GENERATE;
+	
+						ELSE GENERATE
+							-- Generate the rest of MUX tree
+	 						IF USED(clock) & LATENCY > 0 GENERATE
+								mux_outputs[I] = muxlut(.data[] = data[(I*STAGE_INPUTS-1 + SIZE_USED_FOR_BLOCK(I))..(I*STAGE_INPUTS)], 
+														.select[] = select[CEIL(LOG2(SIZE_USED_FOR_BLOCK(I)))-1..0], 
+														.clock = clock, .aclr = aclr, .clken = clken) 
+														WITH (SIZE = SIZE_USED_FOR_BLOCK(I),
+														  	  LEVEL = LEVEL-1, TOT_LEVELS = TOT_LEVELS,
+															  LATENCY = LATENCY, 
+															  REM_LATENCY = (REM_LATENCY - NEED_CLK),
+															  LOCAL = 0)
+														RETURNS (.result);
+							ELSE GENERATE
+	 							mux_outputs[I] = muxlut(.data[] = data[(I*STAGE_INPUTS-1 + SIZE_USED_FOR_BLOCK(I))..(I*STAGE_INPUTS)], 
+														.select[] = select[CEIL(LOG2(SIZE_USED_FOR_BLOCK(I)))-1..0]) 
+														WITH (SIZE = SIZE_USED_FOR_BLOCK(I),
+														 	  LEVEL = LEVEL-1, TOT_LEVELS = TOT_LEVELS,
+															  LATENCY = LATENCY, LOCAL = 0)
+														RETURNS (.result);
+							END GENERATE;
+						END GENERATE;
+					END GENERATE;
+	
+					-- This is to simplfy the code and could be done in another, albeit lengthier, way. By 
+					-- construction, it is guaraneed that the number of data inputs to the current stage is
+					-- less than or equal to 4. Therefore, a recursive call to itself without a change of level
+					-- will take us to the special 2, 3, and 4-input cases above and generate the current cell.
+					IF USED(clock) & LATENCY > 0 GENERATE	
+						result_node = muxlut(.data[] = mux_outputs[], 
+											 .select[] = select[WIDTHS-1..WIDTHS-CEIL(LOG2(MUX_OUTPUTS_USED))], 
+											 .clock = clock, .aclr = aclr, .clken = clken)  
+											 WITH (SIZE = MUX_OUTPUTS_USED,
+												   LEVEL = LEVEL, TOT_LEVELS = TOT_LEVELS,
+												   LATENCY = LATENCY, LOCAL = 1)
+											 RETURNS (.result);
+					ELSE GENERATE
+						result_node = muxlut(.data[] = mux_outputs[], 
+											 .select[] = select[WIDTHS-1..WIDTHS-CEIL(LOG2(MUX_OUTPUTS_USED))])  
+											 WITH (SIZE = MUX_OUTPUTS_USED,
+												   LEVEL = LEVEL, TOT_LEVELS = TOT_LEVELS,
+												   LATENCY = LATENCY, LOCAL = 1)
+											 RETURNS (.result);
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+
+	-- Clock connections are made to the current level cell.
+ 	IF USED(clock) & (NEED_CLK == 1) GENERATE
+		ASSERT REPORT "stage % needs clock" LEVEL SEVERITY DEBUG;
+	END GENERATE;
+
+	result = result_node;
+	clock_out = clock;
+	clken_out = clken;
+	aclr_out = aclr;
+END;
+ 
+

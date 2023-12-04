@@ -1,0 +1,71 @@
+TITLE "Top-level file for the 74163 macrofunction.  Chooses a device-family optimized implementation."; 
+FUNCTION p74163 (clk, ldn, clrn, enp, ent, d, c, b, a)
+    RETURNS (qd, qc, qb, qa, rco);
+FUNCTION f74163 (clk, ldn, clrn, enp, ent, d, c, b, a)
+    RETURNS (qd, qc, qb, qa, rco);
+
+PARAMETERS
+(
+	DEVICE_FAMILY
+);
+INCLUDE "aglobal.inc";
+
+SUBDESIGN 74163
+(
+	clk              : INPUT = GND;
+	ldn              : INPUT = VCC;
+	clrn             : INPUT = VCC;
+	enp              : INPUT = VCC;
+	ent              : INPUT = VCC;
+	d                : INPUT = GND;
+	c                : INPUT = GND;
+	b                : INPUT = GND;
+	a                : INPUT = GND;
+	qd               : OUTPUT;
+	qc               : OUTPUT;
+	qb               : OUTPUT;
+	qa               : OUTPUT;
+	rco              : OUTPUT;
+)
+
+VARIABLE
+	IF (FAMILY_FLEX() == 1) GENERATE
+		sub  : f74163;
+	ELSE GENERATE
+		sub  : p74163;
+	END GENERATE;
+
+BEGIN
+	IF (USED(clk)) GENERATE
+		sub.clk = clk;
+	END GENERATE;
+	IF (USED(ldn)) GENERATE
+		sub.ldn = ldn;
+	END GENERATE;
+	IF (USED(clrn)) GENERATE
+		sub.clrn = clrn;
+	END GENERATE;
+	IF (USED(enp)) GENERATE
+		sub.enp = enp;
+	END GENERATE;
+	IF (USED(ent)) GENERATE
+		sub.ent = ent;
+	END GENERATE;
+	IF (USED(d)) GENERATE
+		sub.d = d;
+	END GENERATE;
+	IF (USED(c)) GENERATE
+		sub.c = c;
+	END GENERATE;
+	IF (USED(b)) GENERATE
+		sub.b = b;
+	END GENERATE;
+	IF (USED(a)) GENERATE
+		sub.a = a;
+	END GENERATE;
+	qd = sub.qd;
+	qc = sub.qc;
+	qb = sub.qb;
+	qa = sub.qa;
+	rco = sub.rco;
+END;

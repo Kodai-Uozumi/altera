@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<template name="generated_app.mk">
+
+    <call gtf="%GTF_DIR%/check_version.gtf"/>
+
+    <call gtf="%GTF_DIR%/XPATHs.gtf"/>
+
+    <call gtf="%GTF_DIR%/CPU.gtf"/>
+
+    <call gtf="%GTF_DIR%/file_heading.mk.gtf"/>
+
+    <include source="%GTF_DIR%/warning.mk"/>
+
+    <set_variable variable="PTF_PATH"
+                  to="directory_only( full_path( %PTF_NAME% ) )"/>
+
+    <set_variable variable="PTF_NAME_NO_EXTENTION"
+                  to='regex_replace_all( .ptf, "", filename_only( %PTF_NAME% ) )'/>
+
+    <text>
+
+# assuming the Quartus project directory is the same as the PTF directory
+QUARTUS_PROJECT_DIR = %PTF_PATH%
+
+# the simulation directory is a subdirectory of the PTF directory
+SIMDIR = $(QUARTUS_PROJECT_DIR)/%PTF_NAME_NO_EXTENTION%_sim
+
+DBL_QUOTE := "
+
+    </text>
+
+    <!-- find all applicable macros in the PTF -->
+
+    <set_variable variable="MODULE_LIST" to=""/>
+    <set_variable variable="MACRO_LIST" to=""/>
+    <for_each variable="MODULE" ptf_path="SYSTEM/MODULE">
+        <if condition="or( ptf_module_is_mastered_by( %MODULE%, %CPU% ), eq( %MODULE%, %CPU% ) )">
+            <set_variable variable="MODULE_MACRO_LIST1"
+                          ptf_path="SYSTEM/MODULE %MODULE%/WIZARD_SCRIPT_ARGUMENTS/MAKE/MACRO"
+                          index="*"/>
+            <set_variable variable="MODULE_MACRO_LIST2"
+                          ptf_path="SYSTEM/MODULE %MODULE%/WIZARD_SCRIPT_ARGUMENTS/MAKE/MASTER %CPU%/MACRO"
+                          index="*"/>
+            <set_variable variable="MODULE_MACRO_LIST"
+                          to="list_merge( %MODULE_MACRO_LIST1%, %MODULE_MACRO_LIST2% )"/>
+            <if condition="gt( list_size( %MODULE_MACRO_LIST% ), 0 )">
+                <set_variable variable="MODULE_LIST"
+                              to="list_add( %MODULE_LIST%, %MODULE% )"/>
+                <set_variable variable="MACRO_LIST"
+                              to="list_merge_unique( %MACRO_LIST%, %MODULE_MACRO_LIST% )"/>
+            </if>
+        </if>
+    </for_each>
+
+    <!-- write out any macros found in the PTF -->
+
+    <if condition="gt( list_size( %MACRO_LIST% ), 0 )">
+        <set_variable variable="MODULES" to="list_to_text( %MODULE_LIST% )"/>
+        <text>
+
+# macros defined by/for %MODULES%
+        </text>
+
+        <for_each variable="MACRO" list="%MACRO_LIST%">
+            <set_variable variable="MACRO_NAME" to="uppercase( list_get( %MACRO%, 0 ) )"/>
+            <set_variable variable="MACRO_VALUE" to="list_get( %MACRO%, 1 )"/>
+                <text>
+%MACRO_NAME% = %MACRO_VALUE%
+                </text>
+        </for_each>
+    </if>
+
+    <!-- look for generated_app_macros.mk.gtf files in software component directories -->
+
+    <call gtf="%GTF_DIR%/COMPONENT_LIST.gtf"/>
+
+    <for_each variable="SW_COMPONENT_XPATH" xpath="%OS_SPEC_XPATH%/sw_component" file="%STF_NAME%">
+        <set_variable variable="SOPC_COMPONENT_DIR"
+                      to='xpath( %STF_NAME%, "normalize-space(%SW_COMPONENT_XPATH%/@sopc_component_dir)" )'/>
+        <if condition="file_exists( %SOPC_KIT_NIOS2_DIR%/components/%SOPC_COMPONENT_DIR%/HAL/generated_app_macros.mk.gtf )">
+            <set_variable variable="COMPONENT_NAME"
+                          to='xpath( %STF_NAME%, "normalize-space(%SW_COMPONENT_XPATH%/@name)" )'/>
+            <text>
+
+# macros defined by/for %COMPONENT_NAME%
+            </text>
+            <export variable="SW_COMPONENT_XPATH"/>
+            <export variable="COMPONENT_LIST"/>
+            <call gtf="%SOPC_KIT_NIOS2_DIR%/components/%SOPC_COMPONENT_DIR%/HAL/generated_app_macros.mk.gtf"/>
+        </if>
+    </for_each>
+
+    <!-- write out targets and rules found in the PTF -->
+
+    <!-- make two lists... -->
+    <!-- ...all the types of targets in the PTF -->
+    <set_variable variable="TARGET_TYPES_LIST" to=""/> 
+    <!-- ...all modules that have the make targets in TARGET_TYPES_LIST (one list of modules for each type in TARGET_TYPES_LIST) -->
+    <set_variable variable="TARGET_MODULES_LISTS" to=""/>
+    <for_each variable="MODULE" ptf_path="SYSTEM/MODULE">
+        <if condition="or( ptf_module_is_mastered_by( %MODULE%, %CPU% ), eq( %MODULE%, %CPU% ) )">
+            <for_each variable="TARGET_TYPE" ptf_path="SYSTEM/MODULE %MODULE%/WIZARD_SCRIPT_ARGUMENTS/MAKE/TARGET">
+                <if condition='not( list_contains( %TARGET_TYPES_LIST%, "%TARGET_TYPE%" ) )'>
+                    <set_variable variable="TARGET_TYPES_LIST" to='list_add( %TARGET_TYPES_LIST%, "%TARGET_TYPE%" )'/>
+                    <set_variable variable="TARGET_MODULES_LISTS" to='list_add( %TARGET_MODULES_LISTS%, "()" )'/>
+                </if>
+                <set_variable variable="TARGET_LISTS_INDEX"
+                              to='list_index_of( %TARGET_TYPES_LIST%, "%TARGET_TYPE%" )'/>
+                <set_variable variable="TARGET_LIST"
+                              to="list_get( %TARGET_MODULES_LISTS%, %TARGET_LISTS_INDEX% )"/>
+                <set_variable variable="TARGET_LIST"
+                              to="list_add( %TARGET_LIST%, %MODULE% )"/>
+                <set_variable variable="TARGET_MODULES_LISTS"
+                              to="list_set( %TARGET_MODULES_LISTS%, %TARGET_LISTS_INDEX%, %TARGET_LIST% )"/>
+            </for_each>
+        </if>
+    </for_each>
+
+    <set_variable variable="EMPTY" to="1"/>
+    <for_each variable="TARGET_LIST" list="%TARGET_MODULES_LISTS%">
+        <if condition="gt( list_size( %TARGET_LIST% ), 0 )">
+            <set_variable variable="EMPTY" to="0"/>
+            <break/>
+        </if>
+    </for_each>
+
+    <!-- only do all of the following if one of the lists is not empty -->
+    <if condition="not( %EMPTY% )">
+
+        <!-- "all: ..." -->
+        <!-- first, make a list of all targets dependent on all -->
+        <set_variable variable="ALL_DEPENDENT_LIST" to=""/>
+        <for_each variable="TARGET_TYPE" index_variable="TARGET_TYPES_LIST_INDEX" list="%TARGET_TYPES_LIST%">
+            <set_variable variable="TARGET_LIST" to="list_get( %TARGET_MODULES_LISTS%, %TARGET_TYPES_LIST_INDEX% )"/>
+            <for_each variable="MODULE" list="%TARGET_LIST%">
+                <for_each variable="TARGET"
+                          ptf_path="SYSTEM/MODULE %MODULE%/WIZARD_SCRIPT_ARGUMENTS/MAKE/TARGET %TARGET_TYPE%/*">
+                    <set_variable variable="ALL_DEPENDS_ON"
+                                  ptf_path="SYSTEM/MODULE %MODULE%/WIZARD_SCRIPT_ARGUMENTS/MAKE/TARGET %TARGET_TYPE%/%TARGET%/All_Depends_On"/>
+                    <if condition='ne( %ALL_DEPENDS_ON%, 0 )'> <!-- defaults to true (that is, only omit the target from all if All_Depends_On is "0" -->
+                        <set_variable variable="ALL_DEPENDENT_LIST"
+                                      to='list_add_if_unique( %ALL_DEPENDENT_LIST%, "%TARGET_TYPE%" )'/>
+                    </if>
+                </for_each>
+            </for_each>
+        </for_each>
+        <!-- now if at least one is dependent on all -->
+        <if condition="gt( list_size( %ALL_DEPENDENT_LIST% ), 0 )">
+            <text>
+
+
+all: </text>
+            <for_each variable="TARGET_TYPE" list="%ALL_DEPENDENT_LIST%">
+                <text>
+ %TARGET_TYPE%  </text>
+            </for_each>
+        </if>
+
+        <!-- end the line above -->
+        <text>
+
+        </text>
+
+        <!-- make a list of all unique targets and rules -->
+
+        <set_variable variable="FULL_LIST" to=""/> <!-- I can't think of a good name for this list -->
+        <set_variable variable="NEED_TO_CLEAN" to="0"/> <!-- keep track of this for later -->
+        <for_each variable="TARGET_TYPE" index_variable="TARGET_TYPES_LIST_INDEX" list="%TARGET_TYPES_LIST%">
+            <set_variable variable="TARGET_LIST" to="list_get( %TARGET_MODULES_LISTS%, %TARGET_TYPES_LIST_INDEX% )"/>
+            <if condition="gt( list_size( %TARGET_LIST% ), 0 )">
+                <for_each variable="MODULE" list="%TARGET_LIST%">
+                    <for_each variable="TARGET"
+                              ptf_path="SYSTEM/MODULE %MODULE%/WIZARD_SCRIPT_ARGUMENTS/MAKE/TARGET %TARGET_TYPE%/*">
+                        <set_variable variable="TARGET_FILE"
+                                      ptf_path="SYSTEM/MODULE %MODULE%/WIZARD_SCRIPT_ARGUMENTS/MAKE/TARGET %TARGET_TYPE%/%TARGET%/Target_File"/>
+                        <set_variable variable="DEPENDENCY"
+                                      ptf_path="SYSTEM/MODULE %MODULE%/WIZARD_SCRIPT_ARGUMENTS/MAKE/TARGET %TARGET_TYPE%/%TARGET%/Dependency"/>
+
+                        <set_variable variable="COMMAND_LIST" to=""/>
+                        <set_variable variable="COMMAND_INDEX" to=""/>
+                        <loop>
+                            <set_variable variable="COMMAND"
+                                          ptf_path="SYSTEM/MODULE %MODULE%/WIZARD_SCRIPT_ARGUMENTS/MAKE/TARGET %TARGET_TYPE%/%TARGET%/Command%COMMAND_INDEX%"/>
+                            <if condition='ne( "", "%COMMAND%" )'>
+                                <set_variable variable="COMMAND_LIST"
+                                              to='list_add( %COMMAND_LIST%, "%COMMAND%" )'/>
+                            </if>
+                            <!-- after trying /Command and /Command1, if we draw a blank we're done -->
+                            <if condition='and( gt( %COMMAND_INDEX%, 0 ), eq( "%COMMAND%", "" ) )'>
+                                <break/>
+                            </if>
+                            <!-- %COMMAND_INDEX% must be quoted because it will (initially) be empty -->
+                            <set_variable variable="COMMAND_INDEX" to='add( "%COMMAND_INDEX%", 1 )'/>
+                        </loop>
+                        <set_variable variable="IS_PHONY"
+                                      ptf_path="SYSTEM/MODULE %MODULE%/WIZARD_SCRIPT_ARGUMENTS/MAKE/TARGET %TARGET_TYPE%/%TARGET%/Is_Phony"/>
+                        <if condition="ne( 1, %IS_PHONY% )">  <!-- defaults to false -->
+                            <set_variable variable="IS_PHONY" to="0"/>
+                            <set_variable variable="NEED_TO_CLEAN" to="1"/>
+                        </if>
+
+                        <set_variable variable="LIST"
+                                      to='( %TARGET_TYPE%,"%TARGET_FILE%","%DEPENDENCY%",%COMMAND_LIST%,%IS_PHONY% )'/>
+                        <set_variable variable="FULL_LIST"
+                                      to="list_add_if_unique( %FULL_LIST%, %LIST% )"/>
+                    </for_each>
+                </for_each>
+            </if>
+        </for_each>
+
+        <!-- output each target type with all dependencies (for example "hex: ", "dat: ", etc.) -->
+        <for_each variable="TARGET_TYPE" list="%TARGET_TYPES_LIST%">
+            <text>
+
+%TARGET_TYPE%: </text>
+            <for_each variable="LIST" list="%FULL_LIST%">
+                <set_variable variable="TARGET_TYPE_FROM_LIST"
+                              to="list_get( %LIST%, 0 )"/>
+                <if condition="eq( %TARGET_TYPE_FROM_LIST%, %TARGET_TYPE% )">
+                    <set_variable variable="TARGET_FILE"
+                                  to="list_get( %LIST%, 1 )"/>
+                    <text>
+ %TARGET_FILE%      </text>
+                </if>
+            </for_each>
+            <text>
+
+.PHONY: %TARGET_TYPE%
+            </text>
+        </for_each>
+
+        <!-- output each target file, its dependency(ies) and command(s) -->
+        <for_each variable="LIST" list="%FULL_LIST%">
+            <set_variable variable="TARGET_FILE"
+                          to="list_get( %LIST%, 1 )"/>
+            <set_variable variable="DEPENDENCY"
+                          to="list_get( %LIST%, 2 )"/>
+            <set_variable variable="COMMAND_LIST"
+                          to="list_get( %LIST%, 3 )"/>
+            <set_variable variable="IS_PHONY"
+                          to="list_get( %LIST%, 4 )"/>
+
+            <text>
+
+%TARGET_FILE%: %DEPENDENCY%
+            </text>
+            <for_each variable="COMMAND" list="%COMMAND_LIST%">
+                <text>
+&#9;%COMMAND%
+                </text>
+            </for_each>
+            <if condition="eq( 1, %IS_PHONY% )">
+                <text>
+.PHONY: %TARGET_FILE%
+                </text>
+            </if>
+        </for_each>
+
+        <!-- create our own clean target -->
+        <text>
+
+
+generated_app_clean:
+        </text>
+        <for_each variable="LIST" list="%FULL_LIST%">
+            <set_variable variable="IS_PHONY" to="list_get( %LIST%, 4 )"/>
+            <if condition="not( %IS_PHONY% )">
+                <set_variable variable="TARGET_FILE" to="list_get( %LIST%, 1 )"/>
+                <text>
+&#9;$(RM) %TARGET_FILE%
+                </text>
+            </if>
+        </for_each>
+        <text>
+.PHONY: generated_app_clean
+        </text>
+
+    </if>
+
+</template>

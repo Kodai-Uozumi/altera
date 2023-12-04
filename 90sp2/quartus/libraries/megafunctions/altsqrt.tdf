@@ -1,0 +1,198 @@
+------------------------------------------------------------------------------------------------
+-- ALTSQRT.TDF
+--
+-- This is an integer square root function.  radical[] is assumed to be an unsigned.
+-- The function computes q[] and remainder so that
+-- q[]^2 + remainder[] == radical[]  (remainder <= 2 * q[])
+-- This can also be thought of as q[] computing FLOOR(SQRT(radical[]))
+--
+-- Algorithm:
+-- {2 | N && N >= 0}
+-- i, r, b = 0;
+-- while (i != 2*N)
+-- {
+--		if (4r + 2a[N - 2i - 1] + a[N - 2i - 2] >= 4b + 1)
+--		{
+--			r,b = 4r + 2a[N - 2i  - 1] + a[N - 2i - 2] - 4b - 1, 2b + 1
+--		}
+--		else
+--		{
+--			r,b = 4r + 2a[N - 2i - 1] + a[N - 2i - 2], 2b
+--		}
+--		i = i + 1
+-- }
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+------------------------------------------------------------------------------------------------
+
+INCLUDE "lpm_add_sub";
+INCLUDE "dffpipe";
+
+PARAMETERS
+(
+	WIDTH,
+	Q_PORT_WIDTH = 1,
+	R_PORT_WIDTH = 1,
+	PIPELINE = 0
+);
+
+CONSTANT N = WIDTH + (WIDTH MOD 2);
+CONSTANT STAGES = FLOOR(N DIV 2);
+DEFINE Q_WIDTH(i) = i + 1;
+DEFINE R_WIDTH(i) = Q_WIDTH(i) + 1;
+CONSTANT Q_RESULT_WIDTH = Q_WIDTH(STAGES - 1);
+CONSTANT R_RESULT_WIDTH = R_WIDTH(STAGES - 1);
+
+-- pipeline
+DEFINE MIN(a, b) = a <= b ? a : b;
+CONSTANT NINTERNALDFF = MIN(STAGES, PIPELINE);
+CONSTANT NEXTERNALDFF = PIPELINE-NINTERNALDFF;
+
+CONSTANT PIPELINE_DELAY = CEIL(STAGES DIV 2);
+DEFINE STAGEVAL(k) = (k*NINTERNALDFF + PIPELINE_DELAY );
+DEFINE STAGENUM(k) = FLOOR(STAGEVAL(k) DIV STAGES);
+DEFINE STAGEREM(k) = STAGEVAL(k) MOD STAGES;
+DEFINE PUTSTAGEHERE(k) = (PIPELINE > 0) & (STAGEREM(k) >= STAGEREM(k + 1));
+
+DEFINE DELAY_COUNT(i) = DELAY_ASSIST(0, i, 0);
+DEFINE DELAY_ASSIST(i, seeking, count) = (i == seeking) ? count : DELAY_ASSIST(i + 1, seeking, count + (PUTSTAGEHERE(i) ? 1 : 0));
+
+SUBDESIGN altsqrt
+(
+	radical[WIDTH - 1..0]				: INPUT;
+
+	-- pipeline signals
+	clk									: INPUT = VCC;
+	ena									: INPUT = VCC;
+	aclr								: INPUT = GND;
+
+	-- outputs
+	q[Q_RESULT_WIDTH - 1..0]			: OUTPUT;
+	remainder[R_RESULT_WIDTH - 1..0]	: OUTPUT;
+)
+VARIABLE
+	cout_node[STAGES - 1..0] : NODE;
+	cout_node_redirect[STAGES - 1..0] : CARRY_SUM;
+	subtractors[STAGES - 1..0] :	FOR i IN STAGES - 1 TO 0 GENERATE
+										lpm_add_sub	WITH(
+															LPM_WIDTH = (i == 0) ? 2 : R_WIDTH(i - 1) + 2,
+															LPM_DIRECTION = "SUB"
+														)
+									END GENERATE;
+
+	a[N - 1..0] : NODE;
+	
+	a_delay : dffpipe WITH	(
+								DELAY = PIPELINE,
+								WIDTH = N
+							);
+							
+	b[STAGES - 1..0][R_RESULT_WIDTH - 1..0] : NODE;
+	r[STAGES - 1..0][R_RESULT_WIDTH - 1..0] : NODE;
+
+	b_dffe[STAGES - 1..0]	:	FOR i IN STAGES - 1 TO 0 GENERATE
+									dffpipe WITH(
+													DELAY = (PUTSTAGEHERE(i) ? 1 : 0),
+													WIDTH = R_WIDTH(i)
+												)
+								END GENERATE;
+	r_dffe[STAGES - 1..0]	:	FOR i IN STAGES - 1 TO 0 GENERATE
+									dffpipe WITH(
+													DELAY = PUTSTAGEHERE(i) ? 1 : 0,
+													WIDTH = R_WIDTH(i)
+												)
+								END GENERATE;
+	q_final_dff : dffpipe WITH	(
+									DELAY = NEXTERNALDFF,
+									WIDTH = Q_RESULT_WIDTH
+								);
+	r_final_dff : dffpipe WITH	(
+									DELAY = NEXTERNALDFF,
+									WIDTH = R_RESULT_WIDTH
+								);			
+BEGIN
+	ASSERT WIDTH > 0
+		REPORT "WIDTH (%) must be greater than 0." WIDTH
+		SEVERITY ERROR
+		HELP_ID ALTSQRT_WIDTH_ZERO_ERROR;
+
+	-- set up defaults
+	b[][] = GND;
+	r[][] = GND;
+
+	-- pipeline signals
+	b_dffe[].clock = clk;
+	b_dffe[].ena = ena;
+	b_dffe[].clrn = !aclr;
+	r_dffe[].clock = clk;
+	r_dffe[].ena = ena;
+	r_dffe[].clrn = !aclr;
+	a_delay.clock = clk;
+	a_delay.ena = ena;
+	a_delay.clrn = !aclr;
+
+	a_delay.d[] = a[];
+	-- force there to be an even number of input bits
+	IF (WIDTH MOD 2) == 0 GENERATE
+		a[] = radical[];
+	ELSE GENERATE
+		a[] = (GND, radical[]);
+	END GENERATE;
+
+	subtractors[].datab[] = GND;
+	cout_node_redirect[].sin = subtractors[].cout;
+	cout_node_redirect[].cin = GND;
+	cout_node[] = cout_node_redirect[].sout;
+	FOR i IN STAGES - 1 TO 0 GENERATE
+		-- the subtractor stage
+		IF i == 0 GENERATE
+			subtractors[i].dataa[] = a_delay.pq[DELAY_COUNT(i)][N - 2*i - 1..N - 2*i - 2];
+			subtractors[i].datab[0] = VCC;
+			b_dffe[i].d[] = cout_node[i];
+			r_dffe[i].d[] = (!cout_node[i] & a_delay.pq[DELAY_COUNT(i)][N - 2*i - 1..N - 2*i - 2]) # (cout_node[i] & subtractors[i].result[]);
+		ELSE GENERATE
+
+			subtractors[i].dataa[] = (r[i - 1][R_WIDTH(i - 1) - 1..0], a_delay.pq[DELAY_COUNT(i)][N - 2*i - 1..N - 2*i - 2]);
+			subtractors[i].datab[] = (b[i - 1][R_WIDTH(i - 1) - 1..0], GND, VCC);
+			b_dffe[i].d[Q_WIDTH(i) - 1..0] = (b[i - 1][Q_WIDTH(i) - 2..0], cout_node[i]);
+			r_dffe[i].d[R_WIDTH(i) - 1..0] = (!cout_node[i] & (r[i - 1][R_WIDTH(i) - 3..0], a_delay.pq[DELAY_COUNT(i)][N - 2*i - 1..N - 2*i - 2])) # (cout_node[i] & subtractors[i].result[R_WIDTH(i) - 1..0]);
+		END GENERATE;
+
+		b[i][Q_WIDTH(i) - 1..0] = b_dffe[i].q[Q_WIDTH(i) - 1..0];
+		r[i][R_WIDTH(i) - 1..0] = r_dffe[i].q[R_WIDTH(i) - 1..0];
+	END GENERATE;
+
+	-- the final results
+	q_final_dff.d[] = b[STAGES - 1][Q_RESULT_WIDTH - 1..0];
+	r_final_dff.d[] = r[STAGES - 1][];
+	
+	q_final_dff.clock = clk;
+	r_final_dff.clock = clk;
+	q_final_dff.ena = ena;
+	r_final_dff.ena = ena;
+	q_final_dff.clrn = !aclr;
+	r_final_dff.clrn = !aclr;
+	
+	q[] = q_final_dff.q[];
+	remainder[] = r_final_dff.q[];
+	IF !USED(q) GENERATE
+		q[] = GND;
+	END GENERATE;
+	IF !USED(remainder) GENERATE
+		remainder[] = GND;
+	END GENERATE;
+END;

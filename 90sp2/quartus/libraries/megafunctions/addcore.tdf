@@ -1,0 +1,657 @@
+----------------------------------------------------------------------
+-- 	addcore: The adder core subdesign of LPM_ADD_SUB  				--
+-- 		 	 addcore implements an adder optimized for FLEX/FAST,	--
+--		 	 FLEX/NORMAL, and MAX cases by using					--
+--																	--
+--    FLEX/FAST: a carry-chain implementation with chain breaking	--
+--				 when a maximum carry chain length smaller than 	--
+--				 adder width has been specified.					--
+--																	--
+--	FLEX/NORMAL: a ripple carry structure.							--
+--																	--
+-- 		   MAX : a ripple carry structure between 8-bit sub-adders  --
+--				 and 8-bit carry-look-ahead within each sub-adder.	-- 
+----------------------------------------------------------------------
+INCLUDE "addcore.inc";
+INCLUDE "a_csnbuffer.inc";
+INCLUDE "aglobal90.inc";	% device definitions %
+
+
+OPTIONS ALTERA_INTERNAL_OPTION = "SUPPRESS_DA_RULE_INTERNAL=A103";
+
+PARAMETERS
+(
+	WIDTH,
+	REPRESENTATION = "SIGNED",
+	DIRECTION = "DEFAULT",
+	USE_CS_BUFFERS = 1,
+	CARRY_CHAIN = "MANUAL",
+	CARRY_CHAIN_LENGTH = 32,
+	DEVICE_FAMILY
+);
+
+ 
+------------------------------------------
+-- parameters related to FLEX/FAST case
+------------------------------------------
+-- CARRY_LEN is the number of LCELLs in full carry chain, excluding
+-- the beginning and terminating LCELLs when chain brek is needed
+CONSTANT CARRY_LEN = (CARRY_CHAIN_LENGTH <= 2) ? 0 : (CARRY_CHAIN_LENGTH - 2);
+
+-- FULL_WIDTH determines the full length of the adder carry chain taking
+-- usage of cin and cout outputs into conideration. Note that overflow
+-- generated from cout.
+DEFINE FULL_WIDTH()	= WIDTH + (-USED(cin)) + (-USED(cout));
+
+-- FULL_CNT is a unction used to determine the number of full carry chain segments 
+DEFINE FULL_CNT(n, c, i) = (c <= 2 # n < c) ? 0 : ((n == c) ? ((i == 1) ? 0 :
+								(1 + FULL_CNT(n-(c-2), c, i+1))) : 
+								((i == 1) ? (1 + FULL_CNT(n-((c-2)+1), c, i+1)) :
+							 			  	(1 + FULL_CNT(n-(c-2), c, i+1))));
+
+-- The number of full-length carry chain segements
+DEFINE FULL_SEGS() 	   	= FULL_CNT(FULL_WIDTH(), CARRY_CHAIN_LENGTH, 1);
+
+-- The length of a (possible) partial chain
+DEFINE PART_WIDTH()    	= FULL_WIDTH() - (FULL_SEGS()*CARRY_LEN + CBASE());
+
+-- index base, depending on the usage of cin
+DEFINE CBASE() 		   	= -(!USED(cin));
+DEFINE ADJ_PART_WIDTH()	= (PART_WIDTH() == 0) ? 0 : (WIDTH - (CARRY_LEN*FULL_SEGS()+CBASE())); 
+DEFINE NEED_PART_SEG() 	= (PART_WIDTH() == 0) ? 0 : 1;
+DEFINE TOT_SEGS() 	   	= FULL_SEGS() + NEED_PART_SEG();
+
+------------------------------------
+-- parameters related to MAX cases
+------------------------------------
+CONSTANT TOT_BLOCKS   = CEIL(WIDTH DIV 8);
+CONSTANT FULL_BLOCKS  = FLOOR(WIDTH DIV 8);
+CONSTANT REM_WIDTH    = WIDTH MOD 8;
+CONSTANT REM_BLOCKS   = (REM_WIDTH > 0) ? 1 : 0; 
+
+-- use FLEX/FAST or switch to NORMAL style?
+DEFINE NEED_CHAIN()	  = ((FULL_WIDTH() > 2) # (WIDTH == 2 & CBASE() == 1)) &
+						(USE_CARRY_CHAINS() & (CARRY_LEN > 1)) ? 1 : 0;
+
+SUBDESIGN addcore
+(
+	dataa[WIDTH-1..0]			: INPUT = GND;
+	datab[WIDTH-1..0]			: INPUT = GND;
+	cin							: INPUT = GND;
+	add_sub						: INPUT = VCC;
+	clock						: INPUT = GND;
+	aclr						: INPUT = GND;
+	clken						: INPUT = VCC;
+
+	result[WIDTH-1..0]			: OUTPUT;
+	cout						: OUTPUT;
+	unreg_result[WIDTH-1..0]	: OUTPUT;
+	unreg_cout					: OUTPUT;
+	overflow					: OUTPUT;
+	bg_out, bp_out				: OUTPUT;		-- block generate/propagate outputs
+)
+
+VARIABLE
+
+	unreg_cout_node 				: NODE;
+	oflow_node 						: a_csnbuffer;
+	unreg_res_node[WIDTH-1..0] 		: NODE;
+
+	IF (WIDTH == 1) # (FAMILY_FLEX() == 1 & (WIDTH == 2 & !USED(cin))) GENERATE
+		add_sub_node				: NODE;
+		cin_node 					: NODE;
+		cout0_node					: NODE;
+		cout_node 					: a_csnbuffer;
+		datab_node[WIDTH-1..0]		: NODE;
+		result_node				 	: a_csnbuffer WITH (WIDTH = WIDTH);
+
+	ELSE GENERATE
+		IF (FAMILY_FLEX() == 1) GENERATE
+			IF NEED_CHAIN() == 1 GENERATE
+				----------------------
+				-- FLEX/FAST cases	--
+				----------------------					
+				IF TOT_SEGS() == 1 GENERATE
+					IF USED(cin) GENERATE
+						cin_node : CARRY;
+					ELSE GENERATE
+						cin_node : NODE;
+			 		END GENERATE;
+
+					add_sub_node			: NODE;
+					datab_node[WIDTH-1..0]	: NODE;
+					result_node				: a_csnbuffer WITH (WIDTH = WIDTH, NEED_CARRY = NEED_CHAIN(),
+																USE_CS_BUFFERS = USE_CS_BUFFERS);					
+					cout_node 				: a_csnbuffer;
+					
+				ELSE GENERATE
+					cout_node 				: a_csnbuffer;					
+					result_node				: a_csnbuffer WITH (WIDTH = WIDTH);
+					first_seg_adder 		: addcore WITH (WIDTH = CARRY_LEN+CBASE(),
+															DIRECTION = DIRECTION);
+
+					IF (FULL_SEGS() > 1) GENERATE
+						full_seg_adder[FULL_SEGS()-1..1] 	: addcore WITH (WIDTH = CARRY_LEN,
+																			DIRECTION = DIRECTION);
+					END GENERATE;
+
+					IF NEED_PART_SEG() > 0 GENERATE
+ 						part_seg_adder		: addcore WITH (WIDTH = ADJ_PART_WIDTH(),
+															DIRECTION = DIRECTION);
+ 					END GENERATE;
+ 				END GENERATE;
+	
+			ELSE GENERATE
+				--------------------------
+				-- FLEX/NORMAL cases	--
+				--------------------------
+				cin_node 					: NODE;
+		 		add_sub_node				: NODE;
+				datab_node[WIDTH-1..0]		: NODE;
+				result_node				 	: a_csnbuffer WITH (WIDTH = WIDTH, NEED_CARRY = NEED_CHAIN(),
+																USE_CS_BUFFERS = USE_CS_BUFFERS);
+				cout_node 					: a_csnbuffer;
+			END GENERATE;
+	
+			-- block gen/prop signals are non-GND only when
+			-- width of the adder is 8.
+			IF WIDTH == 8 GENERATE
+				prop_node[3..0] : NODE;
+				genr_node[3..0] : NODE;
+				gp0 : NODE;
+			END GENERATE;
+		ELSE GENERATE
+			------------------------------
+			-- MAX cases with WIDTH = 8	--
+			------------------------------
+			-- this special case implements the 8-bit gdf version in tdf.
+			IF WIDTH == 8 GENERATE
+	 			gn[7..0] 	: NODE; 	
+				gs[7..1] 	: SOFT; 
+				pp[7..0] 	: NODE;
+				ps[7..0] 	: SOFT;
+				psi[7..0] 	: NODE;
+				pc[6..0] 	: NODE;
+				gc[2..0] 	: NODE;
+				g2c[2..0] 	: NODE;
+				p2c[2..0] 	: NODE;
+
+				g3 			: NODE;
+				g4 			: SOFT;
+				g2cp[2..1] 	: SOFT;
+				gcp[2] 		: SOFT;
+	
+				cin_node 				: NODE;
+				tot_cin_node[6..0]		: NODE;
+				add_sub_node			: NODE;
+				datab_node[WIDTH-1..0]	: NODE;
+
+				result_node 			: a_csnbuffer WITH (WIDTH = 8);
+				cout_node				: a_csnbuffer;
+				prop_node[3..0] 		: SOFT;
+				genr_node[3..0] 		: SOFT; 
+				gp0 					: NODE;
+
+ 			ELSE GENERATE
+				--------------------------------------
+				-- all MAX cases with WIDTH != 8	--
+				--------------------------------------
+				-- this case will use recursive call to itself to 
+				-- implement a group of 8-bit MAX adders.
+				cout_node 					: a_csnbuffer;
+				result_node					: a_csnbuffer WITH (WIDTH = WIDTH);
+				adder[TOT_BLOCKS-1..0] 		: addcore WITH (WIDTH = 8, 
+															DIRECTION = DIRECTION);
+ 			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+		
+
+BEGIN
+
+	-- the special case WIDTH = 1 is straightforward and no carry chains are needed.
+	IF (WIDTH == 1) # (FAMILY_FLEX() == 1 & (WIDTH == 2 & !USED(cin))) GENERATE
+		IF DIRECTION == "SUB" GENERATE
+			add_sub_node = GND;
+		ELSE GENERATE
+			add_sub_node = add_sub;
+		END GENERATE;
+
+		-- the cin input connections
+		IF USED(cin) GENERATE
+			cin_node = cin;
+		ELSE GENERATE
+			cin_node = !add_sub_node;
+		END GENERATE;
+					
+		datab_node[] = datab[] $ !add_sub_node;
+
+		-- The LSB bit
+		unreg_res_node[0] = dataa[0] $ datab_node[0] $ cin_node;
+		result_node.sin[0] = unreg_res_node[0];
+		cout0_node = %LCELL%((dataa[0] & datab_node[0]) #
+						  (dataa[0] # datab_node[0]) & cin_node);
+
+		IF (WIDTH > 1) GENERATE
+			-- Bit 1
+			unreg_res_node[1] = dataa[1] $ datab_node[1] $ cout0_node;	
+			result_node.sin[1] = unreg_res_node[1];
+			unreg_cout_node = (dataa[WIDTH-1] & datab_node[WIDTH-1]) # 
+							  (dataa[WIDTH-1] # datab_node[WIDTH-1]) & cout0_node;
+		ELSE GENERATE
+			unreg_cout_node = cout0_node;
+		END GENERATE;
+
+		cout_node.sin[0] = unreg_cout_node;
+		result[] = result_node.sout[];
+		cout = cout_node.sout[0];
+		unreg_cout = unreg_cout_node;
+	
+		IF USED(clock) GENERATE
+			result_node.(clk, clrn, ena) = (clock, !aclr, clken);
+			cout_node.(clk, clrn, ena) = (clock, !aclr, clken);
+		END GENERATE;
+	ELSE GENERATE
+		IF (FAMILY_FLEX() == 1)  GENERATE 
+			IF NEED_CHAIN() == 1 GENERATE
+				----------------------
+				-- FLEX/FAST cases	--
+				----------------------
+				IF TOT_SEGS() == 1 GENERATE
+					-- single-segment chain case
+					IF DIRECTION == "SUB" GENERATE
+						add_sub_node = GND;
+					ELSE GENERATE
+						add_sub_node = add_sub;
+					END GENERATE;
+
+					-- the cin input connections
+					IF USED(cin) GENERATE
+						cin_node = cin;
+					ELSE GENERATE
+						IF USED(add_sub) GENERATE
+							cin_node = !CARRY(add_sub_node);
+						ELSE GENERATE
+							cin_node = !add_sub_node;
+						END GENERATE;
+					END GENERATE;
+
+					IF USED(add_sub) & !USED(cin) GENERATE
+						datab_node[0] = datab[0];
+						unreg_res_node[0] = dataa[0] $ datab_node[0];
+						result_node.sin[0] = unreg_res_node[0];
+						result_node.cin[0] = (dataa[0] & datab_node[0] & !cin_node) # 
+		 									(dataa[0] # !datab_node[0]) & cin_node;
+					ELSE GENERATE
+						datab_node[0] = datab[0] $ !add_sub_node;
+						unreg_res_node[0] = dataa[0] $ datab_node[0] $ cin_node;
+						result_node.sin[0] = unreg_res_node[0];
+						result_node.cin[0] = (dataa[0] & datab_node[0]) #
+		 									(dataa[0] # datab_node[0]) & cin_node;
+					END GENERATE;
+					
+					IF WIDTH > 1 GENERATE
+						IF USED(add_sub) & !USED(cout) & !USED(unreg_cout) GENERATE
+							IF WIDTH > 2 GENERATE
+								datab_node[WIDTH-2..1] = datab[WIDTH-2..1] $ !add_sub_node;
+								unreg_res_node[WIDTH-2..1] = result_node.cout[WIDTH-3..0] $ dataa[WIDTH-2..1] $ datab_node[WIDTH-2..1];
+								result_node.sin[WIDTH-2..1] = unreg_res_node[WIDTH-2..1];
+								result_node.cin[WIDTH-2..1] = (dataa[WIDTH-2..1] & datab_node[WIDTH-2..1]) # 
+	 										   	 	 (dataa[WIDTH-2..1] # datab_node[WIDTH-2..1]) & result_node.cout[WIDTH-3..0];
+							END GENERATE;
+
+							datab_node[WIDTH-1] = datab[WIDTH-1];
+							unreg_res_node[WIDTH-1] = (result_node.cout[WIDTH-2] $ dataa[WIDTH-1]) $ 
+														(datab_node[WIDTH-1] $ !add_sub_node);
+							result_node.sin[WIDTH-1] = unreg_res_node[WIDTH-1];							
+							result_node.cin[WIDTH-1] = dataa[WIDTH-1];
+ 
+						ELSE GENERATE
+							datab_node[WIDTH-1..1] = datab[WIDTH-1..1] $ !add_sub_node;
+							unreg_res_node[WIDTH-1..1] = dataa[WIDTH-1..1] $ datab_node[WIDTH-1..1] $ result_node.cout[WIDTH-2..0];
+							result_node.sin[WIDTH-1..1] = unreg_res_node[WIDTH-1..1];
+							result_node.cin[WIDTH-1..1] = (dataa[WIDTH-1..1] & datab_node[WIDTH-1..1]) # 
+	 									   	 	 (dataa[WIDTH-1..1] # datab_node[WIDTH-1..1]) & result_node.cout[WIDTH-2..0];
+						END GENERATE;
+					END GENERATE;
+					
+					result[] = result_node.sout[WIDTH-1..0];
+					unreg_cout_node = result_node.cout[WIDTH-1]; 
+
+					cout_node.sin[0] = unreg_cout_node;
+					cout = cout_node.sout[0];
+					unreg_cout = unreg_cout_node;
+				
+					IF USED(clock) GENERATE
+						result_node.(clk, clrn, ena) = (clock, !aclr, clken);
+						cout_node.(clk, clrn, ena) = (clock, !aclr, clken);						
+					END GENERATE;
+
+				ELSE GENERATE
+					-- Multi-segment chain case
+					-- First full segment
+					IF USED(cin) GENERATE
+	 					first_seg_adder.cin = cin;
+					END GENERATE;
+
+					IF USED(add_sub) GENERATE
+						first_seg_adder.add_sub = add_sub;
+					END GENERATE;
+
+					first_seg_adder.dataa[] = dataa[CARRY_LEN+CBASE()-1..0];
+					first_seg_adder.datab[] = datab[CARRY_LEN+CBASE()-1..0];
+					result_node.sin[CARRY_LEN+CBASE()-1..0] = first_seg_adder.result[];
+					unreg_res_node[CARRY_LEN+CBASE()-1..0] = first_seg_adder.unreg_result[];
+
+					IF USED(clock) GENERATE
+						first_seg_adder.(clock, aclr, clken) = (clock, aclr, clken);
+	 				END GENERATE;
+													
+					-- Intermediate full segments
+					IF FULL_SEGS() > 1 GENERATE
+						FOR I IN 1 TO FULL_SEGS()-1 GENERATE
+							IF (I == 1) GENERATE
+								full_seg_adder[I].cin = LCELL(first_seg_adder.unreg_cout);				
+							ELSE GENERATE
+								full_seg_adder[I].cin = LCELL(full_seg_adder[I-1].unreg_cout);				
+							END GENERATE;
+							
+							full_seg_adder[I].dataa[] = dataa[(I+1)*CARRY_LEN+CBASE()-1..
+																I*CARRY_LEN+CBASE()];
+							full_seg_adder[I].datab[] = datab[(I+1)*CARRY_LEN+CBASE()-1..
+																I*CARRY_LEN+CBASE()];					
+							result_node.sin[(I+1)*CARRY_LEN+CBASE()-1..I*CARRY_LEN+CBASE()] = 
+																full_seg_adder[I].result[];
+							unreg_res_node[(I+1)*CARRY_LEN+CBASE()-1..I*CARRY_LEN+CBASE()] = 
+																full_seg_adder[I].unreg_result[];
+					END GENERATE;
+													
+						IF USED(clock) GENERATE
+							full_seg_adder[].(clock, aclr, clken) = (clock, aclr, clken);
+						END GENERATE;				
+						
+						IF USED(add_sub) GENERATE
+							full_seg_adder[].add_sub = add_sub;
+						END GENERATE;
+					END GENERATE;
+					
+					-- Possible partially full segment
+					IF NEED_PART_SEG() > 0 GENERATE
+						IF (FULL_SEGS() == 1) GENERATE
+ 							part_seg_adder.cin = LCELL(first_seg_adder.unreg_cout);		
+						ELSE GENERATE
+ 							part_seg_adder.cin = LCELL(full_seg_adder[FULL_SEGS()-1].unreg_cout);
+						END GENERATE;
+
+						part_seg_adder.dataa[] = dataa[WIDTH-1..FULL_SEGS()*CARRY_LEN+CBASE()];
+						part_seg_adder.datab[] = datab[WIDTH-1..FULL_SEGS()*CARRY_LEN+CBASE()];
+						result_node.sin[WIDTH-1..FULL_SEGS()*CARRY_LEN+CBASE()] = part_seg_adder.result[];
+						unreg_res_node[WIDTH-1..FULL_SEGS()*CARRY_LEN+CBASE()] = 
+																part_seg_adder.unreg_result[];
+						unreg_cout_node = part_seg_adder.unreg_cout;
+
+						IF USED(add_sub) GENERATE
+							part_seg_adder.add_sub = add_sub;
+						END GENERATE;
+						
+						IF USED(clock) GENERATE
+							part_seg_adder.(clock, aclr, clken) = (clock, aclr, clken);
+						END GENERATE;
+					ELSE GENERATE
+						unreg_cout_node = full_seg_adder[FULL_SEGS()-1].unreg_cout;
+					END GENERATE;
+
+					cout_node.sin[0] = unreg_cout_node;
+					cout = cout_node.sout[0];
+					result[] = result_node.sout[];
+
+					IF USED(clock) GENERATE
+						cout_node.(clk, clrn, ena) = (clock, !aclr, clken);
+					END GENERATE;
+
+					unreg_cout = unreg_cout_node;		
+				END GENERATE;
+
+ 			ELSE GENERATE
+				--------------------------
+				-- FLEX/NORMAL cases	--
+				--------------------------
+				-- the cin input connections
+				IF DIRECTION == "SUB" GENERATE
+					add_sub_node = GND;
+				ELSE GENERATE
+					add_sub_node = add_sub;
+				END GENERATE;
+
+				IF USED(cin) GENERATE
+					cin_node = cin;
+				ELSE GENERATE
+					cin_node = !add_sub_node;
+				END GENERATE;
+
+				datab_node[] = datab[] $ !add_sub_node;
+	 			result_node.cin[0] = (dataa[0] & datab_node[0]) # (dataa[0] & cin_node) # 
+								 (datab_node[0] & cin_node);
+
+				FOR I IN 1 TO WIDTH-1 GENERATE
+					result_node.cin[I] = (dataa[I] & datab_node[I]) # (dataa[I] # datab_node[I]) & 
+															  result_node.cout[I-1];
+				END GENERATE;
+		
+				unreg_res_node[0] = dataa[0] $ datab_node[0] $ cin_node;
+				unreg_res_node[WIDTH-1..1] = (dataa[WIDTH-1..1] $ 
+											result_node.cout[WIDTH-2..0]) $ datab_node[WIDTH-1..1];
+
+				result_node.sin[] = unreg_res_node[];
+				result[] = result_node.sout[];
+				unreg_cout_node = result_node.cout[WIDTH-1];
+				cout_node.sin[0] = unreg_cout_node;
+				cout = cout_node.sout[0];
+				unreg_cout = unreg_cout_node;
+	
+				IF USED(clock) GENERATE
+					result_node.(clk, clrn, ena) = (clock, !aclr, clken);
+					cout_node.(clk, clrn, ena) = (clock, !aclr, clken);
+				END GENERATE;
+ 			END GENERATE;
+
+		ELSE GENERATE
+			IF WIDTH == 8 GENERATE 
+				------------------------------
+				-- MAX cases with WIDTH = 8	--
+				------------------------------
+				IF DIRECTION == "SUB" GENERATE
+					add_sub_node = GND;
+				ELSE GENERATE
+					add_sub_node = add_sub;
+				END GENERATE;
+
+				IF USED(cin) GENERATE
+					cin_node = cin;
+				ELSE GENERATE
+					cin_node = !add_sub_node;
+				END GENERATE;
+				
+				-- GENERATE (gn, gs) and PROPAGATE (!pp, !ps) functions
+				datab_node[] = datab[] $ !add_sub_node;
+
+				pp[0] = dataa[0] !# datab_node[0];
+				ps[0] = pp[0];
+				psi[0] = !ps[0];
+				gn[0] = dataa[0] & datab_node[0];
+				gc[0] = gn[0];
+
+				FOR I in 1 TO 7 GENERATE
+					pp[I] = dataa[I] !# datab_node[I];
+					ps[I] = pp[I];
+					psi[I] = !ps[I];
+					gn[I] = dataa[I] & datab_node[I];
+					gs[I] = gn[I];
+				END GENERATE;
+
+				-- Propagate cin all through 7 stages
+				pc[0] = psi[0] & cin_node;
+				FOR I in 1 TO 6 GENERATE
+					pc[I] = psi[I] & pc[I-1];
+				END GENERATE;
+	
+				g3 = psi[3] & !gs[3];
+				-- g4 is the GENERATE function of first 4 bit positions
+				g4 = gn[3] $ (gc[2] & g3);
+
+				-- Propagate g4 through the positions 4-7
+				-- p2c is the propagated carry with g4 as carry input. 
+				p2c[0] = g4 & psi[4];
+				p2c[1] = p2c[0] & psi[5];
+				p2c[2] = p2c[1] & psi[6];
+
+				-- gc is the generated carry at poistions 0 - 3.
+				gc[0] = gn[0];
+				gc[1] = gn[1] # psi[1] & gc[0];
+				gc[2] = gn[2] # psi[2] & gc[1];
+	
+				-- gcp is the generated carry at poistion 4 - 6.				
+				gcp[2] = gc[2];
+				g2c[0] = gn[4];
+				g2c[1] = gn[5] # psi[5] & g2c[0];
+				g2c[2] = gn[6] # psi[6] & g2c[1];
+	
+				g2cp[1] = g2c[1];
+				g2cp[2] = g2c[2];
+
+				-- tot_cin_node is the total (propagated + generated) carry 
+				-- input to each bit post 
+				tot_cin_node[0] = gc[0] # pc[0];
+				tot_cin_node[1] = gc[1] # pc[1];
+				tot_cin_node[2] = gcp[2] # pc[2];
+				tot_cin_node[3] = g4 # pc[3];
+				tot_cin_node[4] = g2c[0] # pc[4] # p2c[0];
+				tot_cin_node[5] = g2cp[1] # pc[5] # p2c[1];
+				tot_cin_node[6] = g2cp[2] # pc[6] # p2c[2];
+
+				-- compute result (sum) bits. Note that (!ps[I] & !gs[I])
+				-- is the same as (data[I] $ datab[I]). However, using ps[I]
+				-- and gs[I] (or equivalently, pp[I] and gn[I]) results
+				-- in more common factors that can be crammed in shared
+				-- expanders and thus reduce cell count.
+				unreg_res_node[0] = (pp[0] # gn[0]) !$ cin_node;
+				FOR I in 1 TO 7 GENERATE
+					IF I == 3 GENERATE
+						unreg_res_node[I] = g3 $ tot_cin_node[I-1];
+					ELSE GENERATE
+						unreg_res_node[I] = (psi[I] & !gs[I]) $ tot_cin_node[I-1];
+					END GENERATE;
+				END GENERATE;
+
+				result_node.sin[] = unreg_res_node[];
+ 				unreg_cout_node = gn[7] $ (psi[7] & !gs[7] & tot_cin_node[6]);
+
+				-- all outputs are SOFT-buffered.
+			 	result[] = result_node.sout[];
+				cout_node.sin[0] = unreg_cout_node;
+				cout = cout_node.sout[0];
+				unreg_cout = unreg_cout_node;
+			
+				IF USED(clock) GENERATE
+					result_node.(clk, clrn, ena) = (clock, !aclr, clken);
+					cout_node.(clk, clrn, ena) = (clock, !aclr, clken);
+				END GENERATE;
+ 			ELSE GENERATE
+				----------------------------------
+				-- MAX cases with WIDTH != 8 	--
+				----------------------------------
+				IF FULL_BLOCKS > 0 GENERATE
+					FOR I IN 0 TO FULL_BLOCKS-1 GENERATE
+						adder[I].dataa[] = dataa[(I+1)*8-1..I*8];
+						adder[I].datab[] = datab[(I+1)*8-1..I*8];
+						result_node.sin[(I+1)*8-1..I*8] = adder[I].result[];
+						unreg_res_node[(I+1)*8-1..I*8] = adder[I].unreg_result[];
+					END GENERATE;
+				END GENERATE;
+
+				IF REM_BLOCKS == 1 GENERATE
+					adder[TOT_BLOCKS-1].dataa[REM_WIDTH-1..0] = dataa[WIDTH-1..(TOT_BLOCKS-1)*8];
+					adder[TOT_BLOCKS-1].datab[REM_WIDTH-1..0] = datab[WIDTH-1..(TOT_BLOCKS-1)*8];
+					 
+					result_node.sin[WIDTH-1..(TOT_BLOCKS-1)*8] = adder[TOT_BLOCKS-1].result[REM_WIDTH-1..0];
+					unreg_res_node[WIDTH-1..(TOT_BLOCKS-1)*8] = adder[TOT_BLOCKS-1].unreg_result[REM_WIDTH-1..0];
+			
+					IF DIRECTION == "SUB" GENERATE
+						unreg_cout_node = !adder[TOT_BLOCKS-1].result[REM_WIDTH];				
+					ELSE GENERATE
+						unreg_cout_node = adder[TOT_BLOCKS-1].result[REM_WIDTH] $ !add_sub;				
+					END GENERATE;
+				ELSE GENERATE
+					unreg_cout_node = adder[TOT_BLOCKS-1].unreg_cout;
+				END GENERATE;
+				
+				IF USED(add_sub) GENERATE
+					adder[].add_sub = add_sub;
+				END GENERATE;
+
+				IF USED(cin) GENERATE
+					adder[0].cin = cin;
+				END GENERATE;
+
+				IF TOT_BLOCKS > 1 GENERATE
+					FOR I IN 1 TO TOT_BLOCKS-1 GENERATE
+						adder[I].cin = adder[I-1].unreg_cout;
+					END GENERATE;
+				END GENERATE;
+				
+				unreg_cout = unreg_cout_node;
+				cout_node.sin[0] = unreg_cout_node;
+				result[] = result_node.sout[];
+				cout = cout_node.sout[0];
+			
+				IF USED(clock) GENERATE
+					result_node.(clk, clrn, ena) = (clock, !aclr, clken);
+					cout_node.(clk, clrn, ena) = (clock, !aclr, clken);
+				END GENERATE;	
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+	
+	unreg_result[] = unreg_res_node[];
+
+	-- overflow detection
+	IF (REPRESENTATION == "SIGNED") GENERATE
+		-- SIGNED overflow: TRUE when MSB(a) & MSB(b) are same but MSB(result) is different.
+		IF (DIRECTION == "SUB") GENERATE	-- Special case (can't tell from add_sub pin)
+			oflow_node.sin[0] = !(dataa[WIDTH-1] !$ datab[WIDTH-1]) &
+						 		(dataa[WIDTH-1] $ unreg_res_node[WIDTH-1]);
+		ELSE GENERATE
+			oflow_node.sin[0] = !(dataa[WIDTH-1] $ (datab[WIDTH-1] $ !add_sub)) &
+						 		(dataa[WIDTH-1] $ unreg_res_node[WIDTH-1]);
+		END GENERATE;
+
+	ELSE GENERATE
+		-- UNSIGNED overflow calc: TRUE when carry out during add or underflow during sub
+		IF (DIRECTION == "SUB") GENERATE	-- Special case (can't tell from add_sub pin)
+			oflow_node.sin[0] = !unreg_cout_node;
+		ELSE GENERATE
+			oflow_node.sin[0] = !add_sub $ unreg_cout_node;
+		END GENERATE;
+	END GENERATE;
+	IF USED(clock) GENERATE
+		oflow_node.(clk, clrn, ena) = (clock, !aclr, clken);
+	END GENERATE;
+	overflow = oflow_node.sout[0];
+
+	IF WIDTH == 8 GENERATE
+		FOR I IN 0 TO 3 GENERATE
+			prop_node[I] = (dataa[2*I+1] # datab[2*I+1]) & (dataa[2*I] # datab[2*I]);  
+			genr_node[I] = (dataa[2*I+1] & datab[2*I+1]) # (dataa[2*I+1] # datab[2*I+1]) & 
+						   (dataa[2*I] & datab[2*I]);
+		END GENERATE;
+	
+		gp0 = prop_node[2] & (genr_node[1] # prop_node[1] & genr_node[0]);
+		bg_out = genr_node[3] # prop_node[3] & (genr_node[2] # gp0);
+		bp_out = prop_node[0] & prop_node[1] & prop_node[2] & prop_node[3];
+	
+	ELSE GENERATE
+		bg_out = GND;
+		bp_out = GND;
+	END GENERATE;
+
+END;

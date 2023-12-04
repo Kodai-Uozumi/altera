@@ -1,0 +1,113 @@
+------------------------------------------------------------------
+-- altfp_compare parameterized megafunction
+-- Generated with 'clearbox' loader - do not edit
+------------------------------------------------------------------
+
+
+-- Copyright (C) 1991-2009 Altera Corporation
+--  Your use of Altera Corporation's design tools, logic functions 
+--  and other software and tools, and its AMPP partner logic 
+--  functions, and any output files from any of the foregoing 
+--  (including device programming or simulation files), and any 
+--  associated documentation or information are expressly subject 
+--  to the terms and conditions of the Altera Program License 
+--  Subscription Agreement, Altera MegaCore Function License 
+--  Agreement, or other applicable license agreement, including, 
+--  without limitation, that your use is for the sole purpose of 
+--  programming logic devices manufactured by Altera and sold by 
+--  Altera or its authorized distributors.  Please refer to the 
+--  applicable agreement for further details.
+
+--  Version 9.0 Build 235 06/17/2009
+
+OPTIONS NAME_SUBSTITUTION = ON;
+
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+
+PARAMETERS
+(
+	PIPELINE = 3,
+	WIDTH_EXP = 8,
+	WIDTH_MAN = 23,
+	CBXI_PARAMETER = "NOTHING"
+);
+FUNCTION @CBXI_PARAMETER (aclr, clk_en, clock, dataa[WIDTH_EXP+WIDTH_MAN+1-1..0], datab[WIDTH_EXP+WIDTH_MAN+1-1..0])
+RETURNS (aeb, agb, ageb, alb, aleb, aneb, unordered);
+
+
+SUBDESIGN altfp_compare
+(
+	aclr		:	INPUT = GND;
+	aeb		:	OUTPUT;
+	agb		:	OUTPUT;
+	ageb		:	OUTPUT;
+	alb		:	OUTPUT;
+	aleb		:	OUTPUT;
+	aneb		:	OUTPUT;
+	clk_en		:	INPUT = VCC;
+	clock		:	INPUT;
+	dataa[WIDTH_EXP+WIDTH_MAN+1-1..0]		:	INPUT;
+	datab[WIDTH_EXP+WIDTH_MAN+1-1..0]		:	INPUT;
+	unordered		:	OUTPUT;
+)
+VARIABLE
+	IF CBXI_PARAMETER != "NOTHING" GENERATE
+		auto_generated : @CBXI_PARAMETER WITH ( CBXI_PARAMETER = "NOTHING" );
+	END GENERATE;
+BEGIN
+	ASSERT (CBXI_PARAMETER != "NOTHING")
+	REPORT "Valid clear box generator not found or Errors encountered during clear box generation"
+	SEVERITY ERROR;
+	IF (CBXI_PARAMETER != "NOTHING") GENERATE
+		IF USED(aclr) GENERATE
+			auto_generated.aclr = aclr;
+		END GENERATE;
+		IF USED(aeb) GENERATE
+			aeb = auto_generated.aeb;
+		ELSE GENERATE
+			aeb = GND;
+		END GENERATE;
+		IF USED(agb) GENERATE
+			agb = auto_generated.agb;
+		ELSE GENERATE
+			agb = GND;
+		END GENERATE;
+		IF USED(ageb) GENERATE
+			ageb = auto_generated.ageb;
+		ELSE GENERATE
+			ageb = GND;
+		END GENERATE;
+		IF USED(alb) GENERATE
+			alb = auto_generated.alb;
+		ELSE GENERATE
+			alb = GND;
+		END GENERATE;
+		IF USED(aleb) GENERATE
+			aleb = auto_generated.aleb;
+		ELSE GENERATE
+			aleb = GND;
+		END GENERATE;
+		IF USED(aneb) GENERATE
+			aneb = auto_generated.aneb;
+		ELSE GENERATE
+			aneb = GND;
+		END GENERATE;
+		IF USED(clk_en) GENERATE
+			auto_generated.clk_en = clk_en;
+		END GENERATE;
+		IF USED(clock) GENERATE
+			auto_generated.clock = clock;
+		END GENERATE;
+		IF USED(dataa) GENERATE
+			auto_generated.dataa[] = dataa[];
+		END GENERATE;
+		IF USED(datab) GENERATE
+			auto_generated.datab[] = datab[];
+		END GENERATE;
+		IF USED(unordered) GENERATE
+			unordered = auto_generated.unordered;
+		ELSE GENERATE
+			unordered = GND;
+		END GENERATE;
+	END GENERATE;
+END;

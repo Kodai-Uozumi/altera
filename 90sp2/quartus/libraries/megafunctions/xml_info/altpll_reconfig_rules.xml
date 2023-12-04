@@ -1,0 +1,125 @@
+<?xml version="1.0"?>
+<ROOT>
+	<INCLUDE FILE="mfam_family_macros.xml" />
+	
+	<!-- macros -->
+	<MACROS>
+		<MACRO NAME="m_titan_style_pll"  DEFINITION="(mfam_family_stratixiii || mfam_family_cycloneiii)" />
+		<MACRO NAME="m_armstrong_style_pll"	DEFINITION="(mfam_family_base_stratixii)" />
+		<MACRO NAME="m_new_fam_style_pll"	DEFINITION="(m_titan_style_pll || m_armstrong_style_pll)" />
+		<MACRO NAME="m_stratix_style_pll" DEFINITION="mfam_family_base_stratix"/>
+		<MACRO NAME="m_scan_init_file_is_used">
+			<DEFINITION>
+				(is_used(scan_init_file) and scan_init_file != "UNUSED")
+			</DEFINITION>
+		</MACRO>
+	</MACROS>
+	
+	<!-- ports. Note: other ports & more information can be viewed in \quartus\libraries\megafunctions\xml_info\ALTPLL_RECONFIG_INFO.xml -->
+	<PORT_RULES>
+		<!-- input ports -->
+		<PORT NAME="clock" TYPE="INPUT" IS_CLOCK_PORT="TRUE" CLOCK_PERIOD="10"/>
+		<PORT NAME="data_in" TYPE="INPUT" WIDTH="9" DEFAULT_VALUE="0" USAGE="VARIABLE"/>
+		<PORT NAME="reset" TYPE="INPUT" DEFAULT_VALUE="0" INITIAL_VEC_STATE="1" HIGH_PROBABILITY="1"/>
+		<PORT NAME="pll_areset_in" TYPE="INPUT" DEFAULT_VALUE="0" HIGH_PROBABILITY="1" USAGE="VARIABLE" />
+		<PORT NAME="reconfig" TYPE="INPUT" HIGH_PROBABILITY="1" >
+			<FORCE_VALUE TO="0" WHEN="pll_scanclkena == 1" />
+		</PORT>
+		
+		<PORT NAME="counter_type" TYPE="INPUT" WIDTH="4" DEFAULT_VALUE="0" USAGE="VARIABLE">
+			<FORCE_RANGE MIN="0" MAX="9" IF="(counter_type == 10)" />
+			<FORCE_RANGE MIN="12" MAX="15" IF="(counter_type == 11)" />
+		</PORT>
+		<PORT NAME="counter_param" TYPE="INPUT" WIDTH="3" DEFAULT_VALUE="0" USAGE="VARIABLE">
+			<FORCE_RANGE MIN="0" MAX="3" IF="(counter_param == 3) || (counter_param == 4)" />
+			<FORCE_VALUE TO="5" IF="(counter_param == 6) || (counter_param == 7)" />
+		</PORT>
+		
+		<PORT NAME="read_param" TYPE="INPUT" HIGH_PROBABILITY="5" USAGE="VARIABLE">
+			<FORCE_VALUE TO="0" WHEN="reconfig == 1" />
+			<FORCE_VALUE TO="0" WHEN="pll_scanclkena == 1" />
+		</PORT>
+		<PORT NAME="write_param" TYPE="INPUT" HIGH_PROBABILITY="50" USAGE="VARIABLE">
+			<FORCE_VALUE TO="0" WHEN="reconfig == 1" />
+			<FORCE_VALUE TO="0" WHEN="read_param == 1" />
+			<FORCE_VALUE TO="0" WHEN="pll_scanclkena == 1" />
+		</PORT>
+		
+		<!-- output ports -->
+		<PORT NAME="pll_scanclk"  TYPE="OUTPUT" IS_CLOCK_PORT="TRUE">
+			<FORCE_VALUE V="clock" />
+		</PORT>
+		<PORT NAME="pll_areset" TYPE="OUTPUT">
+			<FORCE_VALUE TO="1" WHEN="pll_areset_in == 1" />
+		</PORT>
+		<PORT NAME="data_out" TYPE="OUTPUT" WIDTH="9" USAGE="VARIABLE" />
+		<PORT NAME="busy" TYPE="OUTPUT" USAGE="VARIABLE" />
+
+		<!-- Stratix III/CycloneIII ports  -->
+		<PORT NAME="pll_configupdate" TYPE="OUTPUT" USAGE="VARIABLE">
+			<STATE TO="USED" IF="m_titan_style_pll" ELSE="UNUSED" />
+		</PORT>
+		<PORT NAME="pll_scanclkena" TYPE="OUTPUT" USAGE="VARIABLE">
+			<STATE TO="USED" IF="m_titan_style_pll" ELSE="UNUSED" />
+		</PORT>
+		<!-- External rom write ports (valid only in StratixIII/CycloneIII) -->
+		<PORT NAME="write_from_rom" TYPE="INPUT" USAGE="VARIABLE" >
+			<STATE TO="UNUSED" IF="!m_titan_style_pll" />
+		</PORT>
+		<PORT NAME="rom_data_in" TYPE="INPUT" USAGE="VARIABLE" >
+			<STATE TO="USED" IF="used(write_from_rom)" ELSE="UNUSED" />
+		</PORT>
+		<PORT NAME="reset_rom_address" TYPE="INPUT" USAGE="VARIABLE" >
+			<STATE TO="USED" IF="used(write_from_rom)" ELSE="UNUSED" />
+		</PORT>
+		<PORT NAME="rom_address_out" TYPE="OUTPUT" USAGE="VARIABLE" >
+			<STATE TO="USED" IF="used(write_from_rom)" ELSE="UNUSED" />
+		</PORT>
+		<PORT NAME="write_rom_ena" TYPE="OUTPUT" USAGE="VARIABLE" >
+			<STATE TO="USED" IF="used(write_from_rom)" ELSE="UNUSED" />
+		</PORT>
+		<PORT NAME="pll_scandata" TYPE="OUTPUT" />
+		
+		<!-- Stratix II and Stratix III/Cyclone III ports -->
+		<PORT NAME="pll_scandone" TYPE="INPUT" DEFAULT_VALUE="1" HIGH_PROBABILITY="99" INITIAL_VEC_STATE="1" USAGE="VARIABLE">
+			<STATE TO="UNUSED" IF="m_stratix_style_pll" ELSE="USED" />
+		</PORT>
+
+		<!-- Stratix II only ports -->
+		<PORT NAME="pll_scanread" TYPE="OUTPUT" USAGE="VARIABLE">
+			<STATE TO="USED" IF="m_armstrong_style_pll" ELSE="USED" />
+		</PORT>
+		<PORT NAME="pll_scanwrite" TYPE="OUTPUT" USAGE="VARIABLE">
+			<state TO="USED" IF="m_armstrong_style_pll" ELSE="USED" />
+		</PORT>
+		
+		<!-- Stratix only ports -->
+		<PORT NAME="pll_scanaclr" TYPE="OUTPUT">
+			<STATE TO="USED" IF="m_stratix_style_pll" ELSE="UNUSED" /> 
+		</PORT>
+		
+	</PORT_RULES>
+
+	<!-- parameters -->
+	<PARAMETER_RULES>
+		<PARAMETER NAME="init_from_rom" TYPE="STRING" VALUE="NO|YES" DEFAULT_VALUE="NO">
+			<FORCE_VALUE TO="NO" WHEN="!m_scan_init_file_is_used || !m_armstrong_style_pll" /> <!-- WHEN="!m_scan_init_file_is_used" /> -->
+		</PARAMETER>
+		<PARAMETER NAME="pll_type" TYPE="STRING" VALUE="UNUSED|ENHANCED|FAST" DEFAULT_VALUE="UNUSED">
+			<FORCE_VALUE TO="UNUSED" IF="m_stratix_style_pll" />
+			<FORCE_RANGE TO="ENHANCED|FAST" IF="!m_stratix_style_pll" />
+		</PARAMETER>
+		<PARAMETER NAME="scan_init_file" TYPE="STRING" DEFAULT_VALUE="UNUSED">
+		</PARAMETER>
+		<!-- parameters that should only be used in older families (prior to Stratix II style pll) -->
+		<PARAMETER NAME="scan_chain" TYPE="STRING" VALUE="UNUSED|LONG|SHORT" DEFAULT_VALUE="UNUSED">
+			<FORCE_VALUE TO="UNUSED" WHEN="!m_stratix_style_pll" />
+			<FORCE_RANGE TO="LONG|SHORT" WHEN="m_stratix_style_pll" />
+		</PARAMETER>
+		<PARAMETER NAME="use_scanclk_sync_register" TYPE="STRING" VALUE="NO|YES" DEFAULT_VALUE="NO">
+			<FORCE_VALUE TO="NO" WHEN="(USE_WIZARD == ON)" />
+		</PARAMETER>
+	</PARAMETER_RULES>
+
+		
+</ROOT>

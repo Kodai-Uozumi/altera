@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<!-- EXC_ADDRESS.gtf - This "subroutine" returns the exception address for
+                       the indicated cpu.
+     Inputs:
+        CPU          - the name of the CPU's PTF module
+
+     Returns:
+        EXC_ADDRESS  - the exception address for the indicated CPU
+-->     
+
+<generate_set>
+
+    <!-- only set EXC_ADDRESS if it hasn't already been set
+         (since this GTF may be called multiple times) -->
+    <if condition="not( %EXC_ADDRESS% )">
+
+        <set_variable variable="EXC_SLAVE"
+                      ptf_path="SYSTEM/MODULE %CPU%/WIZARD_SCRIPT_ARGUMENTS/exc_slave"/>
+        <set_variable variable="EXC_SLAVE_MODULE" to="split( %EXC_SLAVE%, /, 0 )"/>
+        <set_variable variable="EXC_SLAVE_SLAVE"  to="split( %EXC_SLAVE%, /, 1 )"/>
+        <set_variable variable="EXC_BASE_ADDRESS"
+                      ptf_path="SYSTEM/MODULE %EXC_SLAVE_MODULE%/SLAVE %EXC_SLAVE_SLAVE%/SYSTEM_BUILDER_INFO/Base_Address"/>
+        <set_variable variable="EXC_OFFSET"
+                      ptf_path="SYSTEM/MODULE %CPU%/WIZARD_SCRIPT_ARGUMENTS/exc_offset"/>
+        <set_variable variable="EXC_ADDRESS" to="add( %EXC_BASE_ADDRESS%, %EXC_OFFSET% )"/>
+
+    </if>
+
+</generate_set>

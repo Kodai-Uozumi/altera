@@ -1,0 +1,254 @@
+------------------------------------------------------------------
+-- altmult_accum parameterized megafunction
+-- Generated with 'clearbox' loader - do not edit
+------------------------------------------------------------------
+
+
+-- Copyright (C) 1991-2009 Altera Corporation
+--  Your use of Altera Corporation's design tools, logic functions 
+--  and other software and tools, and its AMPP partner logic 
+--  functions, and any output files from any of the foregoing 
+--  (including device programming or simulation files), and any 
+--  associated documentation or information are expressly subject 
+--  to the terms and conditions of the Altera Program License 
+--  Subscription Agreement, Altera MegaCore Function License 
+--  Agreement, or other applicable license agreement, including, 
+--  without limitation, that your use is for the sole purpose of 
+--  programming logic devices manufactured by Altera and sold by 
+--  Altera or its authorized distributors.  Please refer to the 
+--  applicable agreement for further details.
+
+--  Version 9.0 Build 235 06/17/2009
+
+OPTIONS NAME_SUBSTITUTION = ON;
+
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+
+PARAMETERS
+(
+	accum_direction = "ADD",
+	accum_round_aclr = "ACLR3",
+	accum_round_pipeline_aclr = "ACLR3",
+	accum_round_pipeline_reg = "CLOCK0",
+	accum_round_reg = "CLOCK0",
+	accum_saturation_aclr = "ACLR3",
+	accum_saturation_pipeline_aclr = "ACLR3",
+	accum_saturation_pipeline_reg = "CLOCK0",
+	accum_saturation_reg = "CLOCK0",
+	accum_sload_aclr = "ACLR3",
+	accum_sload_pipeline_aclr = "ACLR3",
+	accum_sload_pipeline_reg = "CLOCK0",
+	accum_sload_reg = "CLOCK0",
+	accum_sload_upper_data_aclr = "ACLR3",
+	accum_sload_upper_data_pipeline_aclr = "ACLR3",
+	accum_sload_upper_data_pipeline_reg = "CLOCK0",
+	accum_sload_upper_data_reg = "CLOCK0",
+	accumulator_rounding = "NO",
+	accumulator_saturation = "NO",
+	addnsub_aclr = "ACLR3",
+	addnsub_pipeline_aclr = "ACLR3",
+	addnsub_pipeline_reg = "CLOCK0",
+	addnsub_reg = "CLOCK0",
+	dedicated_multiplier_circuitry = "AUTO",
+	dsp_block_balancing = "Auto",
+	extra_accumulator_latency = 0,
+	extra_multiplier_latency = 0,
+	input_aclr_a = "ACLR3",
+	input_aclr_b = "ACLR3",
+	input_reg_a = "CLOCK0",
+	input_reg_b = "CLOCK0",
+	input_source_a = "DATAA",
+	input_source_b = "DATAB",
+	mult_round_aclr = "ACLR3",
+	mult_round_reg = "CLOCK0",
+	mult_saturation_aclr = "ACLR3",
+	mult_saturation_reg = "CLOCK0",
+	multiplier_aclr = "ACLR3",
+	multiplier_reg = "CLOCK0",
+	multiplier_rounding = "NO",
+	multiplier_saturation = "NO",
+	output_aclr = "ACLR3",
+	output_reg = "CLOCK0",
+	port_accum_is_saturated = "UNUSED",
+	port_addnsub = "PORT_CONNECTIVITY",
+	port_mult_is_saturated = "UNUSED",
+	port_signa = "PORT_CONNECTIVITY",
+	port_signb = "PORT_CONNECTIVITY",
+	representation_a = "UNSIGNED",
+	representation_b = "UNSIGNED",
+	sign_aclr_a = "ACLR3",
+	sign_aclr_b = "ACLR3",
+	sign_pipeline_aclr_a = "ACLR3",
+	sign_pipeline_aclr_b = "ACLR3",
+	sign_pipeline_reg_a = "CLOCK0",
+	sign_pipeline_reg_b = "CLOCK0",
+	sign_reg_a = "CLOCK0",
+	sign_reg_b = "CLOCK0",
+	width_a,
+	width_b,
+	width_result,
+	width_upper_data = 1,
+	CBXI_PARAMETER = "NOTHING"
+);
+FUNCTION @CBXI_PARAMETER (accum_round, accum_saturation, accum_sload, accum_sload_upper_data[width_upper_data-1..0], aclr0, aclr1, aclr2, aclr3, addnsub, clock0, clock1, clock2, clock3, dataa[width_a-1..0], datab[width_b-1..0], ena0, ena1, ena2, ena3, mult_round, mult_saturation, scanina[width_a-1..0], scaninb[width_b-1..0], signa, signb, sourcea, sourceb)
+RETURNS (accum_is_saturated, mult_is_saturated, overflow, result[width_result-1..0], scanouta[width_a-1..0], scanoutb[width_b-1..0]);
+
+
+SUBDESIGN altmult_accum
+(
+	accum_is_saturated		:	OUTPUT;
+	accum_round		:	INPUT = GND;
+	accum_saturation		:	INPUT = GND;
+	accum_sload		:	INPUT = GND;
+	accum_sload_upper_data[width_upper_data-1..0]		:	INPUT = GND;
+	aclr0		:	INPUT = GND;
+	aclr1		:	INPUT = GND;
+	aclr2		:	INPUT = GND;
+	aclr3		:	INPUT = GND;
+	addnsub		:	INPUT = VCC;
+	clock0		:	INPUT = VCC;
+	clock1		:	INPUT = VCC;
+	clock2		:	INPUT = VCC;
+	clock3		:	INPUT = VCC;
+	dataa[width_a-1..0]		:	INPUT = GND;
+	datab[width_b-1..0]		:	INPUT = GND;
+	ena0		:	INPUT = VCC;
+	ena1		:	INPUT = VCC;
+	ena2		:	INPUT = VCC;
+	ena3		:	INPUT = VCC;
+	mult_is_saturated		:	OUTPUT;
+	mult_round		:	INPUT = GND;
+	mult_saturation		:	INPUT = GND;
+	overflow		:	OUTPUT;
+	result[width_result-1..0]		:	OUTPUT;
+	scanina[width_a-1..0]		:	INPUT = GND;
+	scaninb[width_b-1..0]		:	INPUT = GND;
+	scanouta[width_a-1..0]		:	OUTPUT;
+	scanoutb[width_b-1..0]		:	OUTPUT;
+	signa		:	INPUT = GND;
+	signb		:	INPUT = GND;
+	sourcea		:	INPUT = GND;
+	sourceb		:	INPUT = GND;
+)
+VARIABLE
+	IF CBXI_PARAMETER != "NOTHING" GENERATE
+		auto_generated : @CBXI_PARAMETER WITH ( CBXI_PARAMETER = "NOTHING" );
+	END GENERATE;
+BEGIN
+	ASSERT (CBXI_PARAMETER != "NOTHING")
+	REPORT "Valid clear box generator not found or Errors encountered during clear box generation"
+	SEVERITY ERROR;
+	IF (CBXI_PARAMETER != "NOTHING") GENERATE
+		IF USED(accum_is_saturated) GENERATE
+			accum_is_saturated = auto_generated.accum_is_saturated;
+		ELSE GENERATE
+			accum_is_saturated = GND;
+		END GENERATE;
+		IF USED(accum_round) GENERATE
+			auto_generated.accum_round = accum_round;
+		END GENERATE;
+		IF USED(accum_saturation) GENERATE
+			auto_generated.accum_saturation = accum_saturation;
+		END GENERATE;
+		IF USED(accum_sload) GENERATE
+			auto_generated.accum_sload = accum_sload;
+		END GENERATE;
+		IF USED(accum_sload_upper_data) GENERATE
+			auto_generated.accum_sload_upper_data[] = accum_sload_upper_data[];
+		END GENERATE;
+		IF USED(aclr0) GENERATE
+			auto_generated.aclr0 = aclr0;
+		END GENERATE;
+		IF USED(aclr1) GENERATE
+			auto_generated.aclr1 = aclr1;
+		END GENERATE;
+		IF USED(aclr2) GENERATE
+			auto_generated.aclr2 = aclr2;
+		END GENERATE;
+		IF USED(aclr3) GENERATE
+			auto_generated.aclr3 = aclr3;
+		END GENERATE;
+		IF USED(addnsub) GENERATE
+			auto_generated.addnsub = addnsub;
+		END GENERATE;
+		IF USED(clock0) GENERATE
+			auto_generated.clock0 = clock0;
+		END GENERATE;
+		IF USED(clock1) GENERATE
+			auto_generated.clock1 = clock1;
+		END GENERATE;
+		IF USED(clock2) GENERATE
+			auto_generated.clock2 = clock2;
+		END GENERATE;
+		IF USED(clock3) GENERATE
+			auto_generated.clock3 = clock3;
+		END GENERATE;
+		IF USED(dataa) GENERATE
+			auto_generated.dataa[] = dataa[];
+		END GENERATE;
+		IF USED(datab) GENERATE
+			auto_generated.datab[] = datab[];
+		END GENERATE;
+		IF USED(ena0) GENERATE
+			auto_generated.ena0 = ena0;
+		END GENERATE;
+		IF USED(ena1) GENERATE
+			auto_generated.ena1 = ena1;
+		END GENERATE;
+		IF USED(ena2) GENERATE
+			auto_generated.ena2 = ena2;
+		END GENERATE;
+		IF USED(ena3) GENERATE
+			auto_generated.ena3 = ena3;
+		END GENERATE;
+		IF USED(mult_is_saturated) GENERATE
+			mult_is_saturated = auto_generated.mult_is_saturated;
+		ELSE GENERATE
+			mult_is_saturated = GND;
+		END GENERATE;
+		IF USED(mult_round) GENERATE
+			auto_generated.mult_round = mult_round;
+		END GENERATE;
+		IF USED(mult_saturation) GENERATE
+			auto_generated.mult_saturation = mult_saturation;
+		END GENERATE;
+		IF USED(overflow) GENERATE
+			overflow = auto_generated.overflow;
+		ELSE GENERATE
+			overflow = GND;
+		END GENERATE;
+		IF USED(result) GENERATE
+			result[] = auto_generated.result[];
+		ELSE GENERATE
+			result[] = GND;
+		END GENERATE;
+		IF USED(scanina) GENERATE
+			auto_generated.scanina[] = scanina[];
+		END GENERATE;
+		IF USED(scaninb) GENERATE
+			auto_generated.scaninb[] = scaninb[];
+		END GENERATE;
+		IF USED(scanouta) GENERATE
+			scanouta[] = auto_generated.scanouta[];
+		ELSE GENERATE
+			scanouta[] = GND;
+		END GENERATE;
+		IF USED(scanoutb) GENERATE
+			scanoutb[] = auto_generated.scanoutb[];
+		ELSE GENERATE
+			scanoutb[] = GND;
+		END GENERATE;
+		IF USED(signa) GENERATE
+			auto_generated.signa = signa;
+		END GENERATE;
+		IF USED(signb) GENERATE
+			auto_generated.signb = signb;
+		END GENERATE;
+		IF USED(sourcea) GENERATE
+			auto_generated.sourcea = sourcea;
+		END GENERATE;
+		IF USED(sourceb) GENERATE
+			auto_generated.sourceb = sourceb;
+		END GENERATE;
+	END GENERATE;
+END;

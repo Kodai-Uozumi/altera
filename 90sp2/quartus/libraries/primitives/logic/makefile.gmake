@@ -1,0 +1,192 @@
+#//START_MODULE_HEADER/////////////////////////////////////////////////////////
+# 
+#  Filename:	makefile.mak
+# 
+#  Description: Gets symbol files for logic primitives out of PVCS.
+# 
+#  Authors:		Robert Romano
+# 
+#  Copyright (c)  Altera Corporation 1996 - 1999
+# 
+#  All rights reserved.
+# 
+# 
+#//END_MODULE_HEADER///////////////////////////////////////////////////////////
+
+#
+#  $Log:   /pvcs/quartus/libraries/primitives/logic/makefile.ma_  $
+#**	
+#**	   Rev 25.0   08 Jul 2007 04:05:16   max
+#**	Quartus II 8.0 
+#**	SJ, Sat Jul  7 09:05:17 2007
+#**	
+#**	   Rev 24.1   22 Mar 2007 04:19:20   dsundara
+#**	move base dir setting to very beginning 
+#**	SJ, Wed Mar 21 09:19:21 2007
+#**	
+#**	   Rev 24.0   11 Feb 2007 02:58:26   max
+#**	Quartus II 7.2 
+#**	SJ, Sat Feb 10 06:58:26 2007
+#**	
+#**	   Rev 23.0   10 Sep 2006 00:46:10   max
+#**	Quartus II 7.1 
+#**	SJ, Sat Sep  9 05:46:11 2006
+#**	
+#**	   Rev 22.0   05 Feb 2006 00:13:30   max
+#**	Quartus II 6.1 
+#**	SJ, Sat Feb  4 04:13:30 2006
+#**	
+#**	   Rev 21.0   07 Aug 2005 00:12:34   max
+#**	Quartus II 6.0 
+#**	SJ, Sat Aug  6 05:12:34 2005
+#**	
+#**	   Rev 20.0   06 Feb 2005 06:16:10   max
+#**	Quartus II 5.1 
+#**	SJ, Sat Feb  5 10:16:10 2005
+#**	
+#**	   Rev 19.0   12 Sep 2004 04:11:48   max
+#**	Quartus II 5.0 
+#**	SJ, Sat Sep 11 09:11:49 2004
+#**	
+#**	   Rev 18.0   10 Apr 2004 04:32:56   max
+#**	Quartus II 4.2 
+#**	SJ, Fri Apr  9 09:32:57 2004
+#**	
+#**	   Rev 17.0   04 Oct 2003 19:07:16   max
+#**	Quartus II 4.1
+#**	SJ, Sat Oct 04 00:07:16 2003
+#**	
+#**	   Rev 16.0   05 Apr 2003 22:01:18   max
+#**	Quartus II 3.1
+#**	SJ, Sat Apr 05 02:01:18 2003
+#**	
+#**	   Rev 15.0   08 Sep 2002 07:10:04   max
+#**	Quartus II 3.0
+#**	SJ, Sat Sep 07 12:10:02 2002
+#**	
+#**	   Rev 14.0   21 Apr 2002 06:03:14   max
+#**	Quartus II 2.2
+#**	SJ, Sat Apr 20 11:03:14 2002
+#**	
+#**	   Rev 13.1   17 Feb 2002 13:31:44   barchell
+#**	Adding OWNED_FILES target
+#**	SJ, Sat Feb 16 17:31:44 2002
+#**	
+#**	   Rev 13.0   04 Nov 2001 14:49:10   max
+#**	Quartus II 2.1
+#**	SJ, Sat Nov 03 18:49:08 2001
+#**	
+#**	   Rev 12.0   23 Apr 2001 02:27:38   max
+#**	Quartus II 1.2
+#**	SJ, Sun Apr 22 07:27:38 2001
+#**	
+#**	   Rev 11.0   25 Nov 2000 22:48:44   max
+#**	QuartusII 1.1
+#**	SJ, Sat Nov 25 02:48:44 2000
+#**	
+#**	   Rev 10.0   06 Aug 2000 09:54:56   max
+#**	2000.12
+#**	
+#**	   Rev 9.0   17 Feb 2000 02:20:06   max
+#**	2000.08
+#**	
+#**	   Rev 8.0   25 Nov 1999 03:05:32   max
+#**	2000.06
+#**	
+#**	   Rev 7.0   22 Jun 1999 03:20:34   max
+#**	1999.09
+#**	
+#**	   Rev 6.0   30 May 1999 02:49:06   max
+#**	1999.06
+#**	
+#**	   Rev 1.1   12 May 1999 14:18:46   rromano
+#**	SPR 56683
+#**	
+#**	   Rev 1.0   12 May 1999 13:43:24   rromano
+#**	Initial revision.
+#**	
+#
+
+###############################################################################
+# Set up the environment
+###############################################################################
+
+BASE_DIR = ../../..
+
+
+include $(BASE_DIR)/environ.gmake
+
+PVCS_DIR = $(PVCS_ROOT)/libraries/primitives/logic
+
+###############################################################################
+# Set target(s) and files used.
+###############################################################################
+
+OWNED_FILES = \
+	and12.bsf \
+	and2.bsf \
+	and3.bsf \
+	and4.bsf \
+	and6.bsf \
+	and8.bsf \
+	band12.bsf \
+	band2.bsf \
+	band3.bsf \
+	band4.bsf \
+	band6.bsf \
+	band8.bsf \
+	bnand12.bsf \
+	bnand2.bsf \
+	bnand3.bsf \
+	bnand4.bsf \
+	bnand6.bsf \
+	bnand8.bsf \
+	bnor12.bsf \
+	bnor2.bsf \
+	bnor3.bsf \
+	bnor4.bsf \
+	bnor6.bsf \
+	bnor8.bsf \
+	bor12.bsf \
+	bor2.bsf \
+	bor3.bsf \
+	bor4.bsf \
+	bor6.bsf \
+	bor8.bsf \
+	nand12.bsf \
+	nand2.bsf \
+	nand3.bsf \
+	nand4.bsf \
+	nand6.bsf \
+	nand8.bsf \
+	nor12.bsf \
+	nor2.bsf \
+	nor3.bsf \
+	nor4.bsf \
+	nor6.bsf \
+	nor8.bsf \
+	not.bsf \
+	or12.bsf \
+	or2.bsf \
+	or3.bsf \
+	or4.bsf \
+	or6.bsf \
+	or8.bsf \
+	xnor.bsf \
+	xor.bsf
+
+###############################################################################
+# Builtins.mak
+###############################################################################
+
+
+include $(BASE_DIR)/builtins.gmake
+
+###############################################################################
+# Now the targets
+###############################################################################
+
+all : $(OWNED_FILES)
+
+clean : 
+	rm -f *.bsf

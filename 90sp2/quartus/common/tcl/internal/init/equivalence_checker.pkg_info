@@ -1,0 +1,20 @@
+# Add ::quartus::equivalence_checker to the table of packages
+lappend quartus(package_table) {equivalence_checker quartus_eqc hidden}
+
+if {[lsearch -exact [list quartus_eqc] $quartus(nameofexecutable)] != -1} {
+
+    # Make ::quartus::equivalence_checker available to load
+    set qpkg_script_auto [file join [file dirname [info script]] equivalence_checker.tcl]
+    if {[file exist $qpkg_script_auto]} {
+       source $qpkg_script_auto
+    }
+    unset qpkg_script_auto
+
+}
+
+if {[lsearch -exact [list quartus_eqc] $quartus(nameofexecutable)] != -1} {
+
+    # Load ::quartus::equivalence_checker by default
+    package require ::quartus::equivalence_checker
+
+}

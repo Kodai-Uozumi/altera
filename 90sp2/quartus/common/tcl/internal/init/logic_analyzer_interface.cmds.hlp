@@ -1,0 +1,412 @@
+<<<<versions>>>>
+1.0
+<<<</versions>>>>
+<<<<1.0>>>>
+<begin_logic_analyzer_interface_control>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: begin_logic_analyzer_interface_control [-h | -help] [-long_help] -device_name <device name> -file_path <file path> -hardware_name <hardware name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -device_name <device name>: Name of the device to be controlled
+        -file_path <file path>: Path of the Logic Analyzer Interface (.lai) file
+        -hardware_name <hardware name>: Name of the hardware that connects to the JTAG chain
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::logic_analyzer_interface 1.0
+
+------------
+Description:
+------------
+
+Starts the Logic Analyzer Interface control sequence to query the Logic Analyzer Interface output pin 
+state and change output pins state. The control sequence should be 
+terminated with end_logic_analyzer_interface_control.
+
+The hardware and device name can be obtained by using get_hardware_names 
+and get_device_names respectively from the jtag package.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Start a new control sequence.
+begin_logic_analyzer_interface_control -hardware_name "USB-Blaster \[USB-0\]" -device_name "@1: EP1C20 (0x020840DD)" -file_path "lai_demo.lai"
+
+# Query the output pin state.
+puts "Current output pin state of instance auto_lai_0:"
+puts [get_current_state_of_output_pin -instance_name "auto_lai_0"]
+
+# Change input bank source to the output pins
+change_bank_to_output_pin -instance_name "auto_lai_0" -bank_name "Bank 1"
+
+# Query the output pin state.
+puts "Current output pin state of instance auto_lai_0:"
+puts [get_current_state_of_output_pin -instance_name "auto_lai_0"]
+
+# Change input bank source to the output pins
+change_bank_to_output_pin -instance_name "auto_lai_0" -bank_index 0
+
+# Query the output pin state.
+puts "Current output pin state of instance auto_lai_0:"
+puts [get_current_state_of_output_pin -instance_name "auto_lai_0"]
+
+# Tristate the output pins
+tristate_output_pin -instance_name "auto_lai_0"
+
+# Query the output pin state.
+puts "Current output pin state of instance auto_lai_0:"
+puts [get_current_state_of_output_pin -instance_name "auto_lai_0"]
+
+# End the control sequence.
+end_logic_analyzer_interface_control
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: A Logic Analyzer Interface control sequence has been started already.
+TCL_ERROR	1   	ERROR: The specified device is not found.
+TCL_ERROR	1   	ERROR: The Logic Analyzer Interface file (.lai) cannot be opened, or it is an invalid file.
+TCL_ERROR	1   	ERROR: The specified hardware is not found.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</begin_logic_analyzer_interface_control>
+
+<end_logic_analyzer_interface_control>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: end_logic_analyzer_interface_control [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::logic_analyzer_interface 1.0
+
+------------
+Description:
+------------
+
+Terminate the Logic Analyzer Interface control sequence.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Start a new control sequence.
+begin_logic_analyzer_interface_control -hardware_name "USB-Blaster \[USB-0\]" -device_name "@1: EP1C20 (0x020840DD)" -file_path "lai_demo.lai"
+
+# Query the output pin state.
+puts "Current output pin state of instance auto_lai_0:"
+puts [get_current_state_of_output_pin -instance_name "auto_lai_0"]
+
+# Change input bank source to the output pins
+change_bank_to_output_pin -instance_name "auto_lai_0" -bank_name "Bank 1"
+
+# Query the output pin state.
+puts "Current output pin state of instance auto_lai_0:"
+puts [get_current_state_of_output_pin -instance_name "auto_lai_0"]
+
+# Change input bank source to the output pins
+change_bank_to_output_pin -instance_name "auto_lai_0" -bank_index 0
+
+# Query the output pin state.
+puts "Current output pin state of instance auto_lai_0:"
+puts [get_current_state_of_output_pin -instance_name "auto_lai_0"]
+
+# Tristate the output pins
+tristate_output_pin -instance_name "auto_lai_0"
+
+# Query the output pin state.
+puts "Current output pin state of instance auto_lai_0:"
+puts [get_current_state_of_output_pin -instance_name "auto_lai_0"]
+
+# End the control sequence.
+end_logic_analyzer_interface_control
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: No Logic Analyzer Interface control sequence has been started.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</end_logic_analyzer_interface_control>
+
+<change_bank_to_output_pin>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: change_bank_to_output_pin [-h | -help] [-long_help] [-bank_index <bank index>] [-bank_name <bank name>] -instance_name <instance name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -bank_index <bank index>: Index of the bank on the mux to be used as the source of the output pins
+        -bank_name <bank name>: Name of the bank to be used as the source of the output pins
+        -instance_name <instance name>: Name of the Logic Analyzer Interface instance to change
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::logic_analyzer_interface 1.0
+
+------------
+Description:
+------------
+
+Change the Logic Analyzer Interface output pin's source on the specified instance to use the specified bank.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Start a new control sequence.
+begin_logic_analyzer_interface_control -hardware_name "USB-Blaster \[USB-0\]" -device_name "@1: EP1C20 (0x020840DD)" -file_path "lai_demo.lai"
+
+# Query the output pin state.
+puts "Current output pin state of instance auto_lai_0:"
+puts [get_current_state_of_output_pin -instance_name "auto_lai_0"]
+
+# Change input bank source to the output pins
+change_bank_to_output_pin -instance_name "auto_lai_0" -bank_name "Bank 1"
+
+# Query the output pin state.
+puts "Current output pin state of instance auto_lai_0:"
+puts [get_current_state_of_output_pin -instance_name "auto_lai_0"]
+
+# Change input bank source to the output pins
+change_bank_to_output_pin -instance_name "auto_lai_0" -bank_index 0
+
+# Query the output pin state.
+puts "Current output pin state of instance auto_lai_0:"
+puts [get_current_state_of_output_pin -instance_name "auto_lai_0"]
+
+# Tristate the output pins
+tristate_output_pin -instance_name "auto_lai_0"
+
+# Query the output pin state.
+puts "Current output pin state of instance auto_lai_0:"
+puts [get_current_state_of_output_pin -instance_name "auto_lai_0"]
+
+# End the control sequence.
+end_logic_analyzer_interface_control
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: No Logic Analyzer Interface control sequence has been started.
+TCL_ERROR	1   	ERROR: The specified device is not found.
+TCL_ERROR	1   	ERROR: The specified hardware is not found.
+TCL_ERROR	1   	ERROR: The specified Logic Analyzer Interface instance in the file is not compatible with the instance in the device.
+TCL_ERROR	1   	ERROR: JTAG communication error is detected.  It can be caused by the hardware failure or poor signal integrity in the JTAG chain.
+TCL_ERROR	1   	ERROR: The specified bank cannot be found in the Logic Analyzer Interface instance.
+TCL_ERROR	1   	ERROR: The specified Logic Analyzer Interface instance cannot be found.
+TCL_ERROR	1   	ERROR: The version of the specified Logic Analyzer Interface instance is not supported in this release of software.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</change_bank_to_output_pin>
+
+<tristate_output_pin>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: tristate_output_pin [-h | -help] [-long_help] -instance_name <instance name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -instance_name <instance name>: Name of the Logic Analyzer Interface instance to change
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::logic_analyzer_interface 1.0
+
+------------
+Description:
+------------
+
+Tristate the output pins of the specified Logic Analyzer Interface instance.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Start a new control sequence.
+begin_logic_analyzer_interface_control -hardware_name "USB-Blaster \[USB-0\]" -device_name "@1: EP1C20 (0x020840DD)" -file_path "lai_demo.lai"
+
+# Query the output pin state.
+puts "Current output pin state of instance auto_lai_0:"
+puts [get_current_state_of_output_pin -instance_name "auto_lai_0"]
+
+# Change input bank source to the output pins
+change_bank_to_output_pin -instance_name "auto_lai_0" -bank_name "Bank 1"
+
+# Query the output pin state.
+puts "Current output pin state of instance auto_lai_0:"
+puts [get_current_state_of_output_pin -instance_name "auto_lai_0"]
+
+# Change input bank source to the output pins
+change_bank_to_output_pin -instance_name "auto_lai_0" -bank_index 0
+
+# Query the output pin state.
+puts "Current output pin state of instance auto_lai_0:"
+puts [get_current_state_of_output_pin -instance_name "auto_lai_0"]
+
+# Tristate the output pins
+tristate_output_pin -instance_name "auto_lai_0"
+
+# Query the output pin state.
+puts "Current output pin state of instance auto_lai_0:"
+puts [get_current_state_of_output_pin -instance_name "auto_lai_0"]
+
+# End the control sequence.
+end_logic_analyzer_interface_control
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: No Logic Analyzer Interface control sequence has been started.
+TCL_ERROR	1   	ERROR: The specified device is not found.
+TCL_ERROR	1   	ERROR: The specified hardware is not found.
+TCL_ERROR	1   	ERROR: The specified Logic Analyzer Interface instance in the file is not compatible with the instance in the device.
+TCL_ERROR	1   	ERROR: JTAG communication error is detected.  It can be caused by the hardware failure or poor signal integrity in the JTAG chain.
+TCL_ERROR	1   	ERROR: The specified Logic Analyzer Interface instance cannot be found.
+TCL_ERROR	1   	ERROR: The version of the specified Logic Analyzer Interface instance is not supported in this release of software.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</tristate_output_pin>
+
+<get_current_state_of_output_pin>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_current_state_of_output_pin [-h | -help] [-long_help] -instance_name <instance name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -instance_name <instance name>: Name of the Logic Analyzer Interface instance to change
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::logic_analyzer_interface 1.0
+
+------------
+Description:
+------------
+
+Query the device to get the current state of the output pins of 
+the specified instance.
+
+The result is either the bank name or "tristated".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Start a new control sequence.
+begin_logic_analyzer_interface_control -hardware_name "USB-Blaster \[USB-0\]" -device_name "@1: EP1C20 (0x020840DD)" -file_path "lai_demo.lai"
+
+# Query the output pin state.
+puts "Current output pin state of instance auto_lai_0:"
+puts [get_current_state_of_output_pin -instance_name "auto_lai_0"]
+
+# Change input bank source to the output pins
+change_bank_to_output_pin -instance_name "auto_lai_0" -bank_name "Bank 1"
+
+# Query the output pin state.
+puts "Current output pin state of instance auto_lai_0:"
+puts [get_current_state_of_output_pin -instance_name "auto_lai_0"]
+
+# Change input bank source to the output pins
+change_bank_to_output_pin -instance_name "auto_lai_0" -bank_index 0
+
+# Query the output pin state.
+puts "Current output pin state of instance auto_lai_0:"
+puts [get_current_state_of_output_pin -instance_name "auto_lai_0"]
+
+# Tristate the output pins
+tristate_output_pin -instance_name "auto_lai_0"
+
+# Query the output pin state.
+puts "Current output pin state of instance auto_lai_0:"
+puts [get_current_state_of_output_pin -instance_name "auto_lai_0"]
+
+# End the control sequence.
+end_logic_analyzer_interface_control
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: No Logic Analyzer Interface control sequence has been started.
+TCL_ERROR	1   	ERROR: The specified device is not found.
+TCL_ERROR	1   	ERROR: The specified hardware is not found.
+TCL_ERROR	1   	ERROR: The specified Logic Analyzer Interface instance in the file is not compatible with the instance in the device.
+TCL_ERROR	1   	ERROR: JTAG communication error is detected.  It can be caused by the hardware failure or poor signal integrity in the JTAG chain.
+TCL_ERROR	1   	ERROR: The specified Logic Analyzer Interface instance cannot be found.
+TCL_ERROR	1   	ERROR: The version of the specified Logic Analyzer Interface instance is not supported in this release of software.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_current_state_of_output_pin>
+
+<<<</1.0>>>>

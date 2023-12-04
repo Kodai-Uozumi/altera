@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<!-- app_makefile.gtf - generates an application makefile given a temporary STF
+-->
+
+<template name="makefile">
+
+    <call gtf="%GTF_DIR%/check_version.gtf"/>
+
+    <call gtf="%GTF_DIR%/XPATHs.gtf"/>
+
+    <set_variable variable="PROJECT_NAME"
+                  to='xpath( %STF_NAME%, "normalize-space(%PROJECT_XPATH%/@name)" )'/>
+    <set_variable variable="APP_DIR"
+                  to='xpath( %STF_NAME%, "normalize-space(%PROJECT_XPATH%/@dir)" )'/>
+    <set_variable variable="SYSTEM_NAME"
+                  to='xpath( %STF_NAME%, "normalize-space(%PROJECT_XPATH%/@system_library_name)" )'/>
+    <set_variable variable="SYSTEM_DIR"
+                  to='xpath( %STF_NAME%, "normalize-space(%PROJECT_XPATH%/@system_library_dir)" )'/>
+
+    <!-- macro defaults -->
+
+    <!-- macro defaults -->
+    <set_variable variable="CONFIGURATION" to="Debug"/>
+    <!-- CFLAG defaults for debug config -->
+    <set_variable variable="CFLAGS" to="-DALT_DEBUG -O0 -g -Wall"/>
+    <set_variable variable="ASFLAGS" to="-g"/>
+    <set_variable variable="LDFLAGS" to=""/>
+    <set_variable variable="MORE_MACROS" to=""/>
+    <set_variable variable="LIBS" to=""/>
+
+
+    <!-- is there a template XML file indicated in the temporary STF? -->
+
+    <set_variable variable="TEMPLATE"
+                  to='xpath( %STF_NAME%, "normalize-space(%PROJECT_XPATH%/@template)" )'/>
+    <if condition="%TEMPLATE%">
+        <!-- yes... -->
+
+        <!-- ... configuration name -->
+        <set_variable variable="TEMPLATE_CONFIGURATION"
+                      to='xpath( %TEMPLATE%, "normalize-space(/template_settings/template/@default_build_configuration)" )'/>
+
+        <if condition="%TEMPLATE_CONFIGURATION%">
+	    <set_variable variable="CONFIGURATION" to="%TEMPLATE_CONFIGURATION%"/>
+	</if>
+
+    	<!-- CFLAG defaults for release config -->
+        <if condition="eq( Release, %CONFIGURATION% )">
+	    <set_variable variable="CFLAGS" to="-DALT_RELEASE -O2 -g -Wall"/>
+	</if>
+
+        <!-- ... Override default CFLAGS if template compiler flags set-->
+        <set_variable variable="TEMPLATE_CFLAGS"
+                      to='xpath( %TEMPLATE%, "normalize-space(/template_settings/template/@compiler_cflags)" )'/>
+        <if condition="%TEMPLATE_CFLAGS%">
+		<set_variable variable="CFLAGS" to="%TEMPLATE_CFLAGS%"/>
+	</if>
+	
+        <!-- ... template linker flags -->
+        <set_variable variable="TEMPLATE_LDFLAGS"
+                      to='xpath( %TEMPLATE%, "normalize-space(/template_settings/template/@linker_ldflags)" )'/>
+        <if condition="%TEMPLATE_LDFLAGS%">
+		<set_variable variable="LDFLAGS" to="%LDFLAGS% %TEMPLATE_LDFLAGS%"/>	
+	</if>
+
+
+        <!-- ... sopc_component_dir attribute? -->
+        <set_variable variable="SOPC_COMPONENT_DIR"
+                      to='xpath( %TEMPLATE%, "normalize-space(/template_settings/stf/os_spec/@sopc_component_dir)" )'/>
+
+		<!-- if os is MicroC RTOS and dir is not template specified then we will hard-code microc/os-ii path here -->
+		<if condition="not( %SOPC_COMPONENT_DIR% )">
+			<set_variable variable="TEMPLATE_SETTINGS_OS_SPEC_XPATH" to="/template_settings/stf/os_spec"/>
+
+        	<!-- ...get the OS name -->
+        	<set_variable variable="OS_NAME"
+                      to='xpath( %TEMPLATE%, "normalize-space(%TEMPLATE_SETTINGS_OS_SPEC_XPATH%/@name)" )'/>
+        	<if condition="eq( MicroC/OS-II, %OS_NAME% )">
+            	<set_variable variable="SOPC_COMPONENT_DIR" to="micrium_uc_osii"/>
+			</if>
+		</if>
+
+        <!-- ...get any <macro> elements -->
+        <!-- TODO - this code is duplicated in system_makefile.gtf (and system.stf.gtf) -->
+        <set_variable variable="MACRO_INDEX" to="1"/>
+        <loop>
+            <set_variable variable="MACRO_ELEMENT_TEXT"
+                          to='xpath_element_to_string( %TEMPLATE%, /template_settings/app_makefile/make_macros/macro[%MACRO_INDEX%] )'/>
+            <if condition="eq( ####, ##%MACRO_ELEMENT_TEXT%## )">
+                <break/>
+            </if>
+            <if condition='regex( "^ERROR.*", ##%MACRO_ELEMENT_TEXT%## )'>
+                <error>
+
+%MACRO_ELEMENT_TEXT%
+                </error>
+            </if>
+            <set_variable variable="MACRO_NAME" to='xpath_string( ##%MACRO_ELEMENT_TEXT%##, "normalize-space(/macro/@name)" )'/>
+            <set_variable variable="MACRO_VALUE" to='xpath_string( ##%MACRO_ELEMENT_TEXT%##, "normalize-space(/macro/@value)" )'/>
+            <set_variable variable="MACRO_QUOTE" to='xpath_string( ##%MACRO_ELEMENT_TEXT%##, "normalize-space(/macro/@quote)" )'/>
+            <if condition="eq( yes, %MACRO_QUOTE% )"> <!-- default to no -->
+                <set_variable variable="MACRO_VALUE" to='"%MACRO_VALUE%"'/>
+            </if>
+            <switch>
+                <if condition="eq( CFLAGS, %MACRO_NAME% )">
+                    <set_variable variable="CFLAGS" to="%MACRO_VALUE%"/>
+                    <break/>
+                </if>
+                <if condition="eq( ASFLAGS, %MACRO_NAME% )">
+                    <set_variable variable="ASFLAGS" to="%MACRO_VALUE%"/>
+                    <break/>
+                </if>
+                <if condition="eq( LDFLAGS, %MACRO_NAME% )">
+                    <set_variable variable="LDFLAGS" to="%MACRO_VALUE%"/>
+                    <break/>
+                </if>
+                <set_variable variable="MORE_MACROS" to="%MORE_MACROS%&#x0A;%MACRO_NAME% = %MACRO_VALUE%"/>
+            </switch>
+
+            <set_variable variable="MACRO_INDEX" to="add( 1, %MACRO_INDEX% )"/>
+        </loop>
+
+        <if condition="%MORE_MACROS%">
+            <!-- put a \n on the end (if it's not blank) -->
+            <set_variable variable="MORE_MACROS" to="%MORE_MACROS%&#x0A;"/>
+        </if>
+        
+    </if> <!-- condition="%TEMPLATE%" -->
+
+    <!-- defaults -->
+
+    <if condition="not( %SOPC_COMPONENT_DIR% )">
+        <set_variable variable="SOPC_COMPONENT_DIR" to="altera_hal"/>
+    </if>
+
+    <!-- the text to generate -->
+
+    <text>
+# ********************************************************************** 
+# 
+# This application makefile was generated by nios2-make-sample-application on
+# %TIMESTAMP%
+#
+# ********************************************************************** 
+ 
+CFLAGS = %CFLAGS%
+ASFLAGS = %ASFLAGS%
+
+LDFLAGS := %LDFLAGS%
+LIBS := 
+LIBS += -lm
+%MORE_MACROS%
+RM := rm -rf
+
+# This project
+PROJECT := %PROJECT_NAME%
+# Location of this project
+APP_DIR := %APP_DIR%
+
+# Configuration for application project
+APP_CONFIG := %CONFIGURATION%
+
+
+# Referenced system library and location
+# These can be changed from App Options property page
+SYSTEM_NAME := %SYSTEM_NAME%
+SYSTEM_DIR := %SYSTEM_DIR%
+
+# Configuration for system library project
+SYS_CONFIG := %CONFIGURATION%
+
+DO_MAKE_OBJDUMP := 0
+
+# **********************************************************************
+# Check for a space in the environment var SOPC_KIT_NIOS2
+
+space = $(empty) $(empty)
+space-to-question = $(subst $(space),?,$1)
+
+HOST_OS :=  $(shell uname | head -c 3 | tr [:upper:] [:lower:])
+
+SOPC_KIT_NIOS2 := $(strip $(SOPC_KIT_NIOS2))
+ifneq ($(call space-to-question,$(SOPC_KIT_NIOS2)),$(SOPC_KIT_NIOS2))
+# If there is a space in your SOPC_KIT_NIOS2 path, then it must be
+# fixed.
+ifeq ($(HOST_OS),cyg)
+# Use short 8.3 dos path on Windows/Cygwin
+SOPC_KIT_NIOS2 := $(shell cygpath --dos "$(SOPC_KIT_NIOS2)")
+else
+# Use a symlink to a unique dir in /tmp/altera_nios2 dir on Unix
+SHELL := /bin/bash
+USER = $(shell whoami)
+DATE = $(shell date +%Y-%m-%d)
+TMP_DIR = /tmp/altera_nios2-$(USER)
+CREATE_TMP_DIR := $(shell mkdir -p $(TMP_DIR))
+NIOS_VERSION_ID := $(shell nios2-elf-gcc -v 2>&amp;1 | grep Altera | sed -e 's/[^0-9]//g')
+TMP_SOPC_KIT_NIOS2 := $(TMP_DIR)/altera_nios2_kit_tmp-$(DATE)-$(NIOS_VERSION_ID)
+CREATE_TMP_NIOS_DIR_CMD := if [ ! -d $(TMP_SOPC_KIT_NIOS2) ]; then ln -s "$(SOPC_KIT_NIOS2)" "$(TMP_SOPC_KIT_NIOS2)"; fi
+CREATE_TMP_NIOS_DIR := $(shell $(CREATE_TMP_NIOS_DIR_CMD))
+SOPC_KIT_NIOS2 := $(TMP_SOPC_KIT_NIOS2)
+endif
+
+export SOPC_KIT_NIOS2
+endif
+# **********************************************************************
+
+
+# List of subdirectories which contain source files
+SUBDIRS := \
+. \
+
+# Include the makefiles for each source subdirectory
+<![CDATA[-include ${patsubst %, %/subdir.mk, $(SUBDIRS)}]]>
+
+# Include makefile for the OS we are building on as specified in system library project
+APP_MAKEFILE := $(SOPC_KIT_NIOS2)/components/%SOPC_COMPONENT_DIR%/build/app.mk
+include $(APP_MAKEFILE)
+    </text>
+
+</template>

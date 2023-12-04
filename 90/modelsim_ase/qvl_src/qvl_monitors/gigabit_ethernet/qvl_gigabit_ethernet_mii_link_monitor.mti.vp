@@ -1,0 +1,408 @@
+//              Copyright 2006-2007 Mentor Graphics Corporation
+//                           All Rights Reserved.                           
+//                                                                          
+//              THIS WORK CONTAINS TRADE SECRET AND PROPRIETARY             
+//            INFORMATION WHICH IS THE PROPERTY OF MENTOR GRAPHICS          
+//           CORPORATION OR ITS LICENSORS AND IS SUBJECT TO LICENSE         
+//                                  TERMS.                                  
+//                                                                          
+//
+/***********************************************************************
+ * PURPOSE       This file is part of the 0-In CheckerWare.
+ *               It describes the MII Interface Monitor.
+ *
+ * DESCRIPTION   This monitor checks the 100 Mbps Etherent frames for
+ *               carrier sense related violations and malformed packets.
+ *
+ * REFERENCE     802.3 IEEE Standard for Information Technology, CSMA/CD
+ *               access method and physical layer specifications, 2002
+ *
+ * INPUTS        areset - asynchronous reset (active high)
+ *               reset  - synchronous reset (active high)
+ *               clk    - interface clk
+ *               data   - data (4-bit)
+ *               ctrl   - encoded control lines (enable and error)
+ *               col    - collision detect
+ *               crs    - carrier sense
+ *
+ * LAST MODIFIED 10 October 2005
+ *
+ *********************************************************************/
+
+`ifdef ZiCwDebug
+`define ZiCwDebugDelay1 #1
+`else
+`define ZiCwDebugDelay1
+`endif //ZiCwDebug
+
+`ifdef QVL_COVER_ON
+ `ifdef QVL_SV_COVERGROUP_OFF
+  //DO nothing
+ `else
+  `define QVL_SV_COVERGROUP
+  `endif
+  `ifdef QVL_MW_FINAL_COVER_OFF
+   // Do nothing
+  `else
+  `define QVL_MW_FINAL_COVER
+  `endif 
+`endif
+
+`qvlmodule qvl_gigabit_ethernet_mii_link_monitor (areset,
+                                                 reset,
+                                                 clk,
+                                                 data,
+                                                 ctrl,
+                                                 col,
+                                                 crs
+                                                );
+
+  // Parameter Constraints_Mode = 0, will configure some checks in this
+  // monitor as constraints during formal analysis.
+
+  parameter Constraints_Mode = 0;
+  wire [31:0] pw_Constraints_Mode = Constraints_Mode;
+
+  // Parameter MAC_SIDE = 1, will indicate as to which side of the MII link
+  // the monitor is instantiated. This parameter, along with the Constraints
+  // Mode parameter is used in constraining the correct side in case of the
+  // formal analysis.
+
+  parameter MAC_SIDE = 1;
+  wire [31:0] pw_MAC_SIDE = MAC_SIDE;
+
+  // Set this parameter to the desired length of Jumbo frames. The default
+  // length of Jumbo frames is taken to be 9K bytes (9126 bytes).
+
+  parameter JUMBO_FRAME_DATA_LENGTH = 9126;
+  wire [31:0] pw_JUMBO_FRAME_DATA_LENGTH = JUMBO_FRAME_DATA_LENGTH;
+
+  // Set this parameter to 0 to disable checking for usage of reserved
+  // values in fields. By default, these checks will be performed.
+
+  parameter RESERVED_VALUE_CHECK_ENABLE = 1;
+  wire [31:0] pw_RESERVED_VALUE_CHECK_ENABLE = RESERVED_VALUE_CHECK_ENABLE;
+
+  // This parameter holds the information whether this instance of the
+  // monitor is on the Transmit interface or the receive interface.
+
+  parameter TX_INTERFACE = 1;
+  wire [31:0] pw_TX_INTERFACE = TX_INTERFACE;
+
+  // Parameter HALF_DUPLEX = 0 indicates a default configuration of full duplex
+  // operation. Set this parameter to 1 to configure the monitor in half duplex
+
+  parameter HALF_DUPLEX = 0;
+  wire [31:0] pw_HALF_DUPLEX = HALF_DUPLEX;
+
+  parameter ZI_CONSTRAINT_MAC_SIDE = (Constraints_Mode == 1 &&
+                                      MAC_SIDE == 1);
+  parameter ZI_CONSTRAINT_PHY_SIDE = (Constraints_Mode == 1 &&
+                                      MAC_SIDE == 0);
+ 
+  // Parameters for states
+
+  parameter ZI_IDLE_STATE = 1;
+  parameter ZI_PREAMBLE_STATE = 2;
+  parameter ZI_SFD_STATE = 3;
+  parameter ZI_DEST_ADDR_STATE = 4;
+  parameter ZI_SRC_ADDR_STATE = 5;
+  parameter ZI_LEN_TYPE_STATE = 6;
+  parameter ZI_DATA_STATE = 7;
+  parameter ZI_PAD_STATE = 8;
+  parameter ZI_FCS_STATE = 9;
+  parameter ZI_TERMINATE_STATE = 10;
+  parameter ZI_CTRL_OPCODE_STATE = 11;
+  parameter ZI_CTRL_PARAM_STATE = 12;
+  parameter ZI_CTRL_RSVD_STATE = 13;
+  parameter ZI_TAG_CTRL_STATE = 14;
+  parameter ZI_FALSE_CAR_STATE = 15;
+  parameter ZI_CAR_EXTN_STATE = 16;
+  parameter ZI_JUMBO_STATE = 17;
+  parameter ZI_UNKNOWN_STATE = 18;
+
+  input areset;
+  input reset;
+  input clk;
+  input [3:0] data;
+  input [1:0] ctrl;
+  input col;
+  input crs;
+ 
+  // Internal variables
+  reg r_crs;
+  reg r_col;
+  reg r_enable;
+  reg r_error;
+  reg [3:0] r_data;
+  reg nibble_position;
+  reg [7:0] packed_byte;
+
+  wire z_enable;
+  wire z_error;
+  wire [7:0] data_to_mac;
+  wire valid_to_mac;
+  wire tx_interface_idle;
+  wire rx_interface_idle;
+  wire collisions_count;
+  wire false_carrier_count;
+  wire [7:0] mii_statistics;
+
+  // The following set of wires are taken from the MAC monitor, for the purpose
+  // of statistics computation. These feed the statistics module.
+
+  wire [04:0] w_present_state;
+  wire [04:0] w_next_state;
+  wire [04:0] w_last_state;
+  wire [31:0] w_r_data;
+  wire [03:0] w_r_ctrl;
+  wire [11:0] w_vid;
+  wire [15:0] w_frame_type;
+  wire [15:0] w_frame_size;
+  wire [15:0] w_req_length;
+  wire [63:0] w_inter_frame_gap;
+
+  // Wires for check enables
+
+  wire nibble_position_at_end_of_frame;
+  wire illegal_mii_frame_type_violation;
+  wire FIRE_ETHERNET_MII_TX_EXTRA_NIBBLE_DETECTED;
+  wire FIRE_ETHERNET_MII_RX_EXTRA_NIBBLE_DETECTED;
+
+
+  assign tx_interface_idle =
+    (TX_INTERFACE == 1 && z_enable === 1'b0 && z_error === 1'b0);
+  assign rx_interface_idle =
+    (TX_INTERFACE == 0 && z_enable === 1'b0 && (z_error === 1'b0 ||
+    (z_error === 1'b1 && data === 8'b0)));
+  assign collisions_count =
+    (HALF_DUPLEX == 1 && col === 1'b1 && r_col === 1'b0);
+  assign false_carrier_count =
+    (TX_INTERFACE === 1'b0 && z_enable === 1'b0 && r_enable === 1'b0 &&
+     z_error === 1'b1 && data === 8'h0E);
+  assign mii_statistics = {6'b0, false_carrier_count, collisions_count};
+
+`protected
+
+    MTI!#g\<[Qz@@?-$-T2QveZ'}-^Vm]^wXT]syom]s="[Krr=mY+Jo1BQX5~OC5x=C_,s7!~EB#WI
+    QHZ7mo<^OGU7+p{svRn],lW,E[~N*}{*asJr;x<x}iI3B'QlC-Y#{O+_UrC3E[A3a{y4Y<ouBH~x
+    k{=~z\x$L$z;7o7<WE}U$rmp=gFwTn>=D\j2XmK\K<@!]@GK]<u:hU}?zCkXe>Tt#[E[BZ^<1rmx
+    O7
+`endprotected
+  assign z_enable = (ctrl[1] === 1'b1) ? 1'b1 : 1'b0;
+  assign z_error = (ctrl[0] === 1'b1) ? 1'b1 : 1'b0;
+`protected
+
+    MTI!#Z*p{HC*k)>VZGl<-kWB>5Ksr[R;[_[p$iNo0F"B1Eo|1?YZ@'$2VhD~_w9D~mrB+7e,]Tu~
+    j-e"*~xo=ZjB[U,+eQ33]_XKt>[$[ns3Vw{=KE/^4[ow!+wz?}z_>_CnC;xJ>3-^?*#WKn}\^/NG
+    x*H[>1V;]#r]<YiGPsY2,w{\@vr3-BmvV{7@v$@11{1}iftBr_{v3G_L#'w2aC{nX^>jpITl|Qjx
+    ?]W=iLI5OjXxe{@=R<jlmYY+3Z.[3ZV)W1lA2AwDswluOvisGBY+w=Y7z$V\?xeE[\;x^.jUzGv5
+    KkG5i3U\*ae5V~(Hz'Cr5@3}vli1wC}nV}#}*W2,QC*#[?@7zwQ)YYzT$!,zsWQ]2^e$<XQk%1w'
+    ai+Yjp#S2,{ZcBC#v!U3pl!GaG~Z^e'{Xl;Hpk*X>NR{{!HOko]kHw=Q]kxHu_lG}z}TJ^vu_[\?
+    EV=Z[CV=Xn'si@7D~$E*UB(5l{]l{Q-#[WCo!}*#=[QKnp~/}s'n_-uUw[;**#1_!\$?,AQ}J^QC
+    rD_X{jsi\=W!o><;5nI{\nWlB@v[KQ]7+{oTWwAko3n}o;1OeC{1EhVnKU$#x_j3j1]pE[!eYWrp
+    O_%C*<m5_O$<}D$zH2xG#VmVo#TO'*v!UOI
+`endprotected
+  assign data_to_mac = (z_enable & !z_error) ? 
+    {data,packed_byte[3:0]} : {4'b0,data};
+  assign valid_to_mac = (r_enable & !r_error) ? 
+    ~nibble_position : 1'b1; 
+  assign nibble_position_at_end_of_frame = 
+    (!z_enable && r_enable && ~nibble_position);
+  assign illegal_mii_frame_type_violation = 
+    (w_present_state === ZI_LEN_TYPE_STATE && w_next_state === ZI_JUMBO_STATE);
+
+
+
+  qvl_gigabit_ethernet_mac_monitor
+  #(Constraints_Mode,
+    MAC_SIDE,
+    JUMBO_FRAME_DATA_LENGTH,
+    RESERVED_VALUE_CHECK_ENABLE,
+    TX_INTERFACE,
+    1, // GMII == 1 for GMII or 100 Mbps
+    HALF_DUPLEX)
+
+    MAC_MONITOR
+    (.areset(areset),
+     .reset(reset),
+     .clk(clk),
+     .data({24'b0,data_to_mac}),
+     .ctrl({2'b0,r_enable,r_error}),
+     .crs(crs),
+     .col(col),
+     .data_valid(valid_to_mac),
+     .dec_err(1'b0),
+     .level_select(1'b1),
+     .w_present_state(w_present_state),
+     .w_next_state(w_next_state),
+     .w_last_state(w_last_state),
+     .w_r_data(w_r_data),
+     .w_r_ctrl(w_r_ctrl),
+     .w_vid(w_vid),
+     .w_frame_type(w_frame_type),
+     .w_frame_size_count(w_frame_size),
+     .w_requested_data_length(w_req_length),
+     .w_inter_frame_gap(w_inter_frame_gap)
+    );
+
+  // Wire declarations for statistics module hookup
+
+  wire [63:0] total_frames_count;
+  wire [63:0] data_frames_count;
+  wire [63:0] ctrl_frames_count;
+  wire [63:0] jumbo_frames_count;
+  wire [63:0] untagged_data_frames_count;
+  wire [63:0] vlan_tagged_data_frames_count;
+  wire [63:0] priority_tagged_data_frames_count;
+  wire [63:0] untagged_pause_frames_count;
+  wire [63:0] vlan_tagged_pause_frames_count;
+  wire [63:0] priority_tagged_pause_frames_count;
+  wire [63:0] untagged_jumbo_frames_count;
+  wire [63:0] vlan_tagged_jumbo_frames_count;
+  wire [63:0] priority_tagged_jumbo_frames_count;
+  wire [63:0] frames_with_global_address_count;
+  wire [63:0] frames_with_local_address_count;
+  wire [63:0] frames_with_group_address_count;
+  wire [63:0] frames_with_individual_address_count;
+  wire [63:0] min_size_untag_data_pkt_count;
+  wire [63:0] max_size_untag_data_pkt_count;
+  wire [63:0] packets_with_pad_count;
+  wire [63:0] remote_faults_count;
+  wire [63:0] local_faults_count;
+  wire [63:0] lane0_termnates_count;
+  wire [63:0] lane1_termnates_count;
+  wire [63:0] lane2_termnates_count;
+  wire [63:0] lane3_termnates_count;
+  wire [63:0] align_column_count;
+  wire [63:0] sync_column_count;
+  wire [63:0] skip_column_count;
+  wire [63:0] valid_block_count;
+  wire [63:0] data_block_count;
+  wire [63:0] control_block_count;
+  wire [63:0] idle_block_count;
+  wire [63:0] error_block_count;
+  wire [63:0] s0_block_count;
+  wire [63:0] s4_block_with_idle_count;
+  wire [63:0] s4_block_with_os_count;
+  wire [63:0] t0_block_count;
+  wire [63:0] t1_block_count;
+  wire [63:0] t2_block_count;
+  wire [63:0] t3_block_count;
+  wire [63:0] t4_block_count;
+  wire [63:0] t5_block_count;
+  wire [63:0] t6_block_count;
+  wire [63:0] t7_block_count;
+  wire [63:0] longest_ipg;
+  wire [63:0] shortest_ipg;
+  wire [63:0] invalid_frame_length_count;
+  wire [63:0] max_align_interval;
+  wire [63:0] min_align_interval;
+  wire [63:0] collisions_statistics_count;
+  wire [63:0] false_carrier_statistics_count;
+  wire [63:0] carrier_extn_statistics_count;
+  wire [63:0] back_to_back_frames_statistics_count;
+
+  wire collect_stats;
+
+  qvl_gigabit_ethernet_statistics
+    #(1, // GMII = 1 for 1G or 100 Mbps
+      TX_INTERFACE)
+
+    GIGABIT_STATS
+    (.areset (areset),
+     .reset (reset),
+     .clk (clk),
+     .level_select(1'b1),
+     .collect_stats (collect_stats),
+     .present_state (w_present_state),
+     .next_state (w_next_state),
+     .last_state (w_last_state),
+     .data ({24'b0,data_to_mac}),
+     .r_data (w_r_data),
+     .vid (w_vid),
+     .frame_type (w_frame_type),
+     .frame_size_count (w_frame_size),
+     .requested_length (w_req_length),
+     .inter_frame_gap (w_inter_frame_gap),
+     .mii_statistics (mii_statistics),
+     .gmii_statistics (8'b0),
+     .xgmii_statistics (8'b0),
+     .xaui_statistics (8'b0),
+     .xsbi_statistics (16'b0),
+     .total_frames_count (total_frames_count),
+     .data_frames_count (data_frames_count),
+     .ctrl_frames_count (ctrl_frames_count),
+     .jumbo_frames_count (jumbo_frames_count),
+     .untagged_data_frames_count (untagged_data_frames_count),
+     .vlan_tagged_data_frames_count (vlan_tagged_data_frames_count),
+     .priority_tagged_data_frames_count (priority_tagged_data_frames_count),
+     .untagged_pause_frames_count (untagged_pause_frames_count),
+     .vlan_tagged_pause_frames_count (vlan_tagged_pause_frames_count),
+     .priority_tagged_pause_frames_count (priority_tagged_pause_frames_count),
+     .untagged_jumbo_frames_count (untagged_jumbo_frames_count),
+     .vlan_tagged_jumbo_frames_count (vlan_tagged_jumbo_frames_count),
+     .priority_tagged_jumbo_frames_count (priority_tagged_jumbo_frames_count),
+     .frames_with_global_address_count (frames_with_global_address_count),
+     .frames_with_local_address_count (frames_with_local_address_count),
+     .frames_with_group_address_count (frames_with_group_address_count),
+     .frames_with_individual_address_count
+       (frames_with_individual_address_count),
+     .min_size_untag_data_pkt_count (min_size_untag_data_pkt_count),
+     .max_size_untag_data_pkt_count (max_size_untag_data_pkt_count),
+     .packets_with_pad_count (packets_with_pad_count),
+     .remote_faults_count (remote_faults_count),
+     .local_faults_count (local_faults_count),
+     .lane0_termnates_count (lane0_termnates_count),
+     .lane1_termnates_count (lane1_termnates_count),
+     .lane2_termnates_count (lane2_termnates_count),
+     .lane3_termnates_count (lane3_termnates_count),
+     .align_column_count (align_column_count),
+     .sync_column_count (sync_column_count),
+     .skip_column_count (skip_column_count),
+     .valid_block_count (valid_block_count),
+     .data_block_count (data_block_count),
+     .control_block_count (control_block_count),
+     .idle_block_count (idle_block_count),
+     .error_block_count (error_block_count),
+     .s0_block_count (s0_block_count),
+     .s4_block_with_idle_count (s4_block_with_idle_count),
+     .s4_block_with_os_count (s4_block_with_os_count),
+     .t0_block_count (t0_block_count),
+     .t1_block_count (t1_block_count),
+     .t2_block_count (t2_block_count),
+     .t3_block_count (t3_block_count),
+     .t4_block_count (t4_block_count),
+     .t5_block_count (t5_block_count),
+     .t6_block_count (t6_block_count),
+     .t7_block_count (t7_block_count),
+     .longest_ipg (longest_ipg),
+     .shortest_ipg (shortest_ipg),
+     .invalid_frame_length_count (invalid_frame_length_count),
+     .max_align_interval (max_align_interval),
+     .min_align_interval (min_align_interval),
+     .collisions_statistics_count(collisions_statistics_count),
+     .false_carrier_statistics_count(false_carrier_statistics_count),
+     .carrier_extn_statistics_count(carrier_extn_statistics_count),
+     .back_to_back_frames_statistics_count(back_to_back_frames_statistics_count)
+     );
+
+  //--------------------------------------------------------------------------
+  // OVL SVA Assertions are included here
+  //--------------------------------------------------------------------------
+
+`include "qvl_gigabit_ethernet_mii_link_monitor_assertions.inc"
+`include "qvl_gigabit_ethernet_mii_link_monitor_cover.inc"
+
+`ifdef ZI_INLINED_PSL
+`include "0in_ac_inline_for_mod_zi_cw_gigabit_ethernet_mii_link_monitor.inc"
+`endif
+`ifdef ZI_INLINED_CHX
+`include "zi_cw_gigabit_ethernet_mii_link_monitor.zi_chx.inc"
+`else
+`ifdef ZI_INLINED_CHX_zi_cw_gigabit_ethernet_mii_link_monitor
+`include "zi_cw_gigabit_ethernet_mii_link_monitor.zi_chx.inc"
+`endif
+`endif
+
+`qvlendmodule // qvl_gigabit_ethernet_mii_link_monitor

@@ -1,0 +1,151 @@
+------------------------------------------------------------------
+-- alt_oct parameterized megafunction
+-- Generated with 'clearbox' loader - do not edit
+------------------------------------------------------------------
+
+
+-- Copyright (C) 1991-2009 Altera Corporation
+--  Your use of Altera Corporation's design tools, logic functions 
+--  and other software and tools, and its AMPP partner logic 
+--  functions, and any output files from any of the foregoing 
+--  (including device programming or simulation files), and any 
+--  associated documentation or information are expressly subject 
+--  to the terms and conditions of the Altera Program License 
+--  Subscription Agreement, Altera MegaCore Function License 
+--  Agreement, or other applicable license agreement, including, 
+--  without limitation, that your use is for the sole purpose of 
+--  programming logic devices manufactured by Altera and sold by 
+--  Altera or its authorized distributors.  Please refer to the 
+--  applicable agreement for further details.
+
+--  Version 9.0 Build 235 06/17/2009
+
+OPTIONS NAME_SUBSTITUTION = ON;
+
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+
+PARAMETERS
+(
+	ALLOW_SERIAL_DATA_FROM_CORE = "FALSE",
+	ENABLE_PARALLEL_TERMINATION = "FALSE",
+	OCT_BLOCK_NUMBER = 0,
+	POWER_DOWN = "TRUE",
+	TEST_MODE = "FALSE",
+	CBXI_PARAMETER = "NOTHING"
+);
+FUNCTION @CBXI_PARAMETER (aclr, calibration_request[OCT_BLOCK_NUMBER-1..0], calibration_wait[OCT_BLOCK_NUMBER-1..0], clken, clock, rdn[OCT_BLOCK_NUMBER-1..0], rup[OCT_BLOCK_NUMBER-1..0], s2pload[OCT_BLOCK_NUMBER-1..0])
+RETURNS (cal_shift_busy[OCT_BLOCK_NUMBER-1..0], calibration_busy[OCT_BLOCK_NUMBER-1..0], calibration_done[OCT_BLOCK_NUMBER-1..0], incrdn, incrup, parallelterminationcontrol[OCT_BLOCK_NUMBER * 14-1..0], scanout, seriesterminationcontrol[OCT_BLOCK_NUMBER * 14-1..0], shiftregisterprobe, termination_control[16 * OCT_BLOCK_NUMBER-1..0], terminationcontrolprobe);
+
+
+SUBDESIGN alt_oct
+(
+	aclr		:	INPUT = GND;
+	cal_shift_busy[OCT_BLOCK_NUMBER-1..0]		:	OUTPUT;
+	calibration_busy[OCT_BLOCK_NUMBER-1..0]		:	OUTPUT;
+	calibration_done[OCT_BLOCK_NUMBER-1..0]		:	OUTPUT;
+	calibration_request[OCT_BLOCK_NUMBER-1..0]		:	INPUT = GND;
+	calibration_wait[OCT_BLOCK_NUMBER-1..0]		:	INPUT = GND;
+	clken		:	INPUT = VCC;
+	clock		:	INPUT = GND;
+	incrdn		:	OUTPUT;
+	incrup		:	OUTPUT;
+	parallelterminationcontrol[OCT_BLOCK_NUMBER * 14-1..0]		:	OUTPUT;
+	rdn[OCT_BLOCK_NUMBER-1..0]		:	INPUT;
+	rup[OCT_BLOCK_NUMBER-1..0]		:	INPUT;
+	s2pload[OCT_BLOCK_NUMBER-1..0]		:	INPUT = GND;
+	scanout		:	OUTPUT;
+	seriesterminationcontrol[OCT_BLOCK_NUMBER * 14-1..0]		:	OUTPUT;
+	shiftregisterprobe		:	OUTPUT;
+	termination_control[16 * OCT_BLOCK_NUMBER-1..0]		:	OUTPUT;
+	terminationcontrolprobe		:	OUTPUT;
+)
+VARIABLE
+	IF CBXI_PARAMETER != "NOTHING" GENERATE
+		auto_generated : @CBXI_PARAMETER WITH ( CBXI_PARAMETER = "NOTHING" );
+	END GENERATE;
+BEGIN
+	ASSERT (CBXI_PARAMETER != "NOTHING")
+	REPORT "Valid clear box generator not found or Errors encountered during clear box generation"
+	SEVERITY ERROR;
+	IF (CBXI_PARAMETER != "NOTHING") GENERATE
+		IF USED(aclr) GENERATE
+			auto_generated.aclr = aclr;
+		END GENERATE;
+		IF USED(cal_shift_busy) GENERATE
+			cal_shift_busy[] = auto_generated.cal_shift_busy[];
+		ELSE GENERATE
+			cal_shift_busy[] = GND;
+		END GENERATE;
+		IF USED(calibration_busy) GENERATE
+			calibration_busy[] = auto_generated.calibration_busy[];
+		ELSE GENERATE
+			calibration_busy[] = GND;
+		END GENERATE;
+		IF USED(calibration_done) GENERATE
+			calibration_done[] = auto_generated.calibration_done[];
+		ELSE GENERATE
+			calibration_done[] = GND;
+		END GENERATE;
+		IF USED(calibration_request) GENERATE
+			auto_generated.calibration_request[] = calibration_request[];
+		END GENERATE;
+		IF USED(calibration_wait) GENERATE
+			auto_generated.calibration_wait[] = calibration_wait[];
+		END GENERATE;
+		IF USED(clken) GENERATE
+			auto_generated.clken = clken;
+		END GENERATE;
+		IF USED(clock) GENERATE
+			auto_generated.clock = clock;
+		END GENERATE;
+		IF USED(incrdn) GENERATE
+			incrdn = auto_generated.incrdn;
+		ELSE GENERATE
+			incrdn = GND;
+		END GENERATE;
+		IF USED(incrup) GENERATE
+			incrup = auto_generated.incrup;
+		ELSE GENERATE
+			incrup = GND;
+		END GENERATE;
+		IF USED(parallelterminationcontrol) GENERATE
+			parallelterminationcontrol[] = auto_generated.parallelterminationcontrol[];
+		ELSE GENERATE
+			parallelterminationcontrol[] = GND;
+		END GENERATE;
+		IF USED(rdn) GENERATE
+			auto_generated.rdn[] = rdn[];
+		END GENERATE;
+		IF USED(rup) GENERATE
+			auto_generated.rup[] = rup[];
+		END GENERATE;
+		IF USED(s2pload) GENERATE
+			auto_generated.s2pload[] = s2pload[];
+		END GENERATE;
+		IF USED(scanout) GENERATE
+			scanout = auto_generated.scanout;
+		ELSE GENERATE
+			scanout = GND;
+		END GENERATE;
+		IF USED(seriesterminationcontrol) GENERATE
+			seriesterminationcontrol[] = auto_generated.seriesterminationcontrol[];
+		ELSE GENERATE
+			seriesterminationcontrol[] = GND;
+		END GENERATE;
+		IF USED(shiftregisterprobe) GENERATE
+			shiftregisterprobe = auto_generated.shiftregisterprobe;
+		ELSE GENERATE
+			shiftregisterprobe = GND;
+		END GENERATE;
+		IF USED(termination_control) GENERATE
+			termination_control[] = auto_generated.termination_control[];
+		ELSE GENERATE
+			termination_control[] = GND;
+		END GENERATE;
+		IF USED(terminationcontrolprobe) GENERATE
+			terminationcontrolprobe = auto_generated.terminationcontrolprobe;
+		ELSE GENERATE
+			terminationcontrolprobe = GND;
+		END GENERATE;
+	END GENERATE;
+END;

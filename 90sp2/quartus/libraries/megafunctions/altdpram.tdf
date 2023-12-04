@@ -1,0 +1,1072 @@
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 1.0
+
+INCLUDE "memmodes.inc";			% Constants defining RAM mode flags %
+INCLUDE "lpm_decode.inc";
+INCLUDE "lpm_mux.inc";
+INCLUDE "a_hdffe.inc";
+INCLUDE "a_rdenreg.inc";
+INCLUDE "altqpram";
+INCLUDE "alt_le_rden_reg";
+INCLUDE "altsyncram";
+
+CONSTANT NO_FILE = "UNUSED";
+
+PARAMETERS
+(
+	WIDTH,
+	WIDTHAD,
+	NUMWORDS = 2^WIDTHAD,
+	FILE = NO_FILE,
+	LPM_FILE = NO_FILE,
+	INDATA_REG = "INCLOCK",
+	INDATA_ACLR = "ON",
+	WRADDRESS_REG = "INCLOCK",
+	WRADDRESS_ACLR = "ON",
+	WRCONTROL_REG = "INCLOCK",
+	WRCONTROL_ACLR = "ON",
+	RDADDRESS_REG = "OUTCLOCK",
+	RDADDRESS_ACLR = "ON",
+	RDCONTROL_REG = "OUTCLOCK",
+	RDCONTROL_ACLR = "ON",
+	OUTDATA_REG = "UNREGISTERED",
+	OUTDATA_ACLR = "ON",
+	USE_EAB = "ON",
+	MAXIMUM_DEPTH = 2048,
+	DEVICE_FAMILY,
+	SUPPRESS_MEMORY_CONVERSION_WARNINGS = "OFF",
+	INTENDED_DEVICE_FAMILY = "APEX20KE",
+	ENABLE_RAM_BENCHMARKING_MODE = "OFF",
+	RAM_BLOCK_TYPE = "AUTO", 							-- New for Stratix III
+	READ_DURING_WRITE_MODE_MIXED_PORTS = "DONT_CARE",
+	BYTE_SIZE = 8,
+	WIDTH_BYTEENA = 1,
+	DISABLE_LE_RAM_LIMIT_CHECK = "OFF",
+	CBXI_PARAMETER = "NOTHING"
+);
+
+INCLUDE "aglobal90.inc";		% Device family definitions %
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+OPTIONS NAME_SUBSTITUTION = ON;
+FUNCTION @CBXI_PARAMETER(wren,data[WIDTH-1..0], wraddress[WIDTHAD-1..0], inclock, inclocken, rden, rdaddress[WIDTHAD-1..0], outclock, outclocken, aclr, byteena[WIDTH_BYTEENA-1..0], wraddressstall, rdaddressstall)
+WITH (WIDTH, WIDTHAD, NUMWORDS, FILE, INDATA_REG, INDATA_ACLR, WRADDRESS_REG, WRADDRESS_ACLR, WRCONTROL_REG, WRCONTROL_ACLR, RDADDRESS_REG, RDADDRESS_ACLR, RDCONTROL_REG, RDCONTROL_ACLR, OUTDATA_REG, OUTDATA_ACLR, USE_EAB, MAXIMUM_DEPTH, RAM_BLOCK_TYPE, READ_DURING_WRITE_MODE_MIXED_PORTS, WIDTH_BYTEENA, BYTE_SIZE)
+RETURNS (q[WIDTH-1..0]);
+
+CONSTANT REAL_MAXIMUM_DEPTH = (USED(MAXIMUM_DEPTH) & (MAXIMUM_DEPTH != 0)) ? ((MAXIMUM_DEPTH  >  FAMILY_EAB_MAX_DEPTH() # MAXIMUM_DEPTH MOD 2 != 0 # MAXIMUM_DEPTH < 2^7)  ?  FAMILY_EAB_MAX_DEPTH() : MAXIMUM_DEPTH) : FAMILY_EAB_MAX_DEPTH(); 
+CONSTANT REAL_NUMWORDS = (NUMWORDS == 0) ? 2^WIDTHAD : NUMWORDS;
+CONSTANT EAB_SLICE_SIZE = FAMILY_EAB_MAX_DEPTH();
+CONSTANT MAX_NUMWORDS = 2^WIDTHAD;
+CONSTANT WORDS_PER_EAB = (MAX_NUMWORDS >= REAL_MAXIMUM_DEPTH) ?
+							REAL_MAXIMUM_DEPTH : MAX_NUMWORDS;
+CONSTANT BITS_PER_EAB = (MAX_NUMWORDS >= EAB_SLICE_SIZE) ?
+							1 : EAB_SLICE_SIZE div WORDS_PER_EAB;
+
+CONSTANT RAM_DEPTH_IN_EABS	= CEIL(REAL_NUMWORDS DIV REAL_MAXIMUM_DEPTH);
+-- RAM width in EABs = CEIL(WIDTH div BITS_PER_EAB)
+CONSTANT EXTRA_ADDR_BITS =
+	(FAMILY_HAS_DUALPORT_EAB() == 1 & USE_EAB == "ON") ?
+		WIDTHAD - LOG2(WORDS_PER_EAB)
+		: WIDTHAD;
+
+% Figure out EAB mode if FLEX10K %
+DEFINE RAM_MODES() = MEM_FIFO	% means dual-port mode %
+	# (INDATA_REG == "INCLOCK" ? MEM_REG_DATAIN_CLK0 : 0)
+	# (WRADDRESS_REG == "INCLOCK" ? MEM_REG_WADDR_CLK0 : 0)
+	# (WRCONTROL_REG == "INCLOCK" ? MEM_REG_WCTRL_CLK0 : 0)
+	# (OUTDATA_REG == "OUTCLOCK" ? MEM_REG_DATAOUT_CLK1 : 0)
+	# (RDADDRESS_REG == "INCLOCK" ? MEM_REG_RADDR_CLK0 : (RDADDRESS_REG == "OUTCLOCK" ? MEM_REG_RADDR_CLK1 : 0))
+	# (USED(rden) & RDCONTROL_REG == "INCLOCK" ? MEM_REG_RCTRL_CLK0
+		 : (USED(rden) & RDCONTROL_REG == "OUTCLOCK" ? MEM_REG_RCTRL_CLK1 : 0))
+	# (USED(aclr) ? (  ((INDATA_ACLR == "ON" & INDATA_REG == "INCLOCK") ? MEM_REG_DATAIN_USE_CLRN0 : 0)
+					 # ((WRADDRESS_ACLR == "ON" & WRADDRESS_REG == "INCLOCK") ? MEM_REG_WADDR_USE_CLRN0 : 0)
+					 # ((WRCONTROL_ACLR == "ON" & WRCONTROL_REG == "INCLOCK") ? MEM_REG_WCTRL_USE_CLRN0 : 0)
+					 # ((OUTDATA_ACLR == "ON" & OUTDATA_REG == "OUTCLOCK") ? MEM_REG_DATAOUT_USE_CLRN0 : 0)
+					 # ((OUTDATA_ACLR == "ON" & OUTDATA_REG == "INCLOCK" & CBX_MODE() == 1) ? MEM_REG_DATAOUT_USE_CLRN0 : 0)
+					 # ((RDADDRESS_ACLR == "ON" & RDADDRESS_REG != "UNREGISTERED") ? MEM_REG_RADDR_USE_CLRN0 : 0)
+					 # ((USED(rden) & RDCONTROL_ACLR == "ON" & RDCONTROL_REG != "UNREGISTERED") ? MEM_REG_RCTRL_USE_CLRN0 : 0) ) : 0)
+	;
+
+% Is "inclock" required, given the parameter settings? %
+DEFINE INCLOCK_REQD() = (RAM_MODES()
+	& (	MEM_REG_DATAIN_CLK0 # MEM_REG_WADDR_CLK0 # MEM_REG_WCTRL_CLK0
+		# MEM_REG_RADDR_CLK0 # MEM_REG_RCTRL_CLK0)) != 0 ? 1 : 0;
+
+% Is "outclock" required, given the parameter settings? %
+DEFINE OUTCLOCK_REQD() = (RAM_MODES()
+	& (	MEM_REG_DATAOUT_CLK1 # MEM_REG_RADDR_CLK1 # MEM_REG_RCTRL_CLK1)) != 0 ? 1 : 0;
+
+% Is one of the read inputs using inclock? %
+DEFINE RDINPUTS_NEED_INCLOCK() = (RAM_MODES()
+	& (MEM_REG_RADDR_CLK0 # MEM_REG_RCTRL_CLK0)) != 0 ? 1 : 0;
+
+% Is one of the read inputs using outclock? %
+DEFINE RDINPUTS_NEED_OUTCLOCK() = (RAM_MODES()
+	& (MEM_REG_RADDR_CLK1 # MEM_REG_RCTRL_CLK1)) != 0 ? 1 : 0;
+
+% mode bits for aclr only %
+DEFINE ACLR_BITS() = (RAM_MODES()
+	& (	MEM_REG_DATAIN_USE_CLRN0 # MEM_REG_WADDR_USE_CLRN0 # MEM_REG_WCTRL_USE_CLRN0
+		# MEM_REG_DATAOUT_USE_CLRN0 # MEM_REG_RADDR_USE_CLRN0 # MEM_REG_RCTRL_USE_CLRN0));
+
+% Are the address inputs registered? %
+DEFINE INDATA_IS_REGD() = USED(inclock) & INDATA_REG == "INCLOCK";
+DEFINE WRADDR_IS_REGD() = USED(inclock) & WRADDRESS_REG == "INCLOCK";
+DEFINE WREN_IS_REGD() = USED(inclock) & WRCONTROL_REG == "INCLOCK";
+DEFINE RDADDR_IS_REGD() =
+	  (USED(inclock) & RDADDRESS_REG == "INCLOCK")
+	# (USED(outclock) & RDADDRESS_REG == "OUTCLOCK");
+DEFINE RDEN_IS_REGD() = USED(rden)
+	& (
+		  (USED(inclock) & RDCONTROL_REG == "INCLOCK")
+		# (USED(outclock) & RDCONTROL_REG == "OUTCLOCK")
+	  );
+DEFINE NEED_RDEN_LATCH_EMULATION() = FAMILY_HAS_DUALPORT_EAB() == 1 & USE_EAB == "ON"
+									 & EXTRA_ADDR_BITS > 0 & USED(rden)
+									 & RDADDRESS_REG != "UNREGISTERED" & RDADDRESS_REG == RDCONTROL_REG;
+DEFINE RDEN_EMU_D_ACLR() = (USED(aclr) & RDADDRESS_ACLR == "ON") ? "ACLR" : "NONE";
+DEFINE RDEN_EMU_E_ACLR() = (USED(aclr) & RDCONTROL_ACLR == "ON") ? "ACLR" : "NONE";
+DEFINE Q_IS_REGD() = USED(outclock) & OUTDATA_REG == "OUTCLOCK";
+DEFINE RDCLK_IS_USED() = RDADDR_IS_REGD() # RDEN_IS_REGD();
+
+-- macros for Mercury
+DEFINE INDATA_REG_CLOCK() = (INDATA_REG != "UNREGISTERED") ? "INCLOCK_A" : "UNREGISTERED";
+DEFINE WRITE_LOGIC_CLOCK() = (WRCONTROL_REG != "UNREGISTERED") ? "INCLOCK_A" : "UNREGISTERED";
+DEFINE RDADDRESS_CLOCK() = (RDADDRESS_REG == "UNREGISTERED") ? "UNREGISTERED" :
+															(RDADDRESS_REG == "INCLOCK") ? "INCLOCK_A" :
+															"OUTCLOCK_A";
+DEFINE RDCONTROL_CLOCK_INT() = (RDCONTROL_REG == "UNREGISTERED") ? "UNREGISTERED" :
+															(RDCONTROL_REG == "INCLOCK") ? "INCLOCK_A" :
+															"OUTCLOCK_A";
+DEFINE RDCONTROL_CLOCK() = USED(rden) ? RDCONTROL_CLOCK_INT() : "UNUSED";
+DEFINE OUTDATA_CLOCK() = (OUTDATA_REG == "UNREGISTERED") ? "UNREGISTERED" : "OUTCLOCK_A";
+
+DEFINE INDATA_CLEAR() = ((INDATA_REG_CLOCK() != "UNREGISTERED") & (INDATA_ACLR == "ON") & USED(aclr)) ? "INACLR_A" : "NONE";
+DEFINE WRCONTROL_CLEAR() = ((WRITE_LOGIC_CLOCK() != "UNREGISTERED") & (WRCONTROL_ACLR == "ON") & USED(aclr)) ? "INACLR_A" : "NONE";
+DEFINE WRADDRESS_CLEAR() = ((WRITE_LOGIC_CLOCK() != "UNREGISTERED") & (WRADDRESS_ACLR == "ON") & USED(aclr)) ? "INACLR_A" : "NONE";
+DEFINE RDCONTROL_CLEAR_INT() = ((RDCONTROL_CLOCK() != "UNREGISTERED") & (RDCONTROL_ACLR == "ON") & USED(aclr)) ? "INACLR_A" : "NONE";
+DEFINE RDCONTROL_CLEAR() = USED(rden) ? RDCONTROL_CLEAR_INT() : "UNUSED";
+DEFINE RDADDRESS_CLEAR() = ((RDADDRESS_CLOCK() != "UNREGISTERED") & (RDADDRESS_ACLR == "ON") & USED(aclr)) ? "INACLR_A" : "NONE";
+DEFINE OUTDATA_CLEAR() = ((OUTDATA_CLOCK() != "UNREGISTERED") & (OUTDATA_ACLR == "ON") & USED(aclr)) ? "INACLR_A" : "NONE";
+DEFINE INIT_FILE_VALUE() = ((FILE == NO_FILE) ? ((LPM_FILE == NO_FILE) ? "UNUSED" : LPM_FILE) : FILE);
+-- STRATIX RAM
+DEFINE STRATIX_RAM_POSSIBLE() 		= 	(USED(inclock) & INDATA_REG == "INCLOCK" & RDADDRESS_REG != "UNREGISTERED" & WRADDRESS_REG == "INCLOCK" &  (!(USED(rden) & (RDCONTROL_REG == "UNREGISTERED"))) & WRCONTROL_REG == "INCLOCK") ? 1 : 0; 
+DEFINE NO_BENCHMARKING() 		= 	(FAMILY_SUPPORTS_RAM_BENCHMARKING() != 1) & ENABLE_RAM_BENCHMARKING_MODE == "OFF" ? 1 : 0;
+DEFINE STRATIX_RAM_NOT_IMPOSSIBLE() 	=	(USED(inclock) # USED(outclock)) & (NO_BENCHMARKING() != 1);
+DEFINE YGR_OUTDATA_CLOCK_1()		=	(OUTDATA_REG == "INCLOCK" ? "CLOCK0" : (OUTDATA_REG == "OUTCLOCK" ? (USED(inclock) ? (USED(outclock) ? "CLOCK1" : "CLOCK0" ): "CLOCK0"): "UNREGISTERED"));
+DEFINE YGR_READ_SIDE_CLOCK_1()		=	(RDADDRESS_REG == "INCLOCK" ? "CLOCK0" : (RDADDRESS_REG == "OUTCLOCK" ? (USED(inclock) ? (USED(outclock) ? "CLOCK1" : "CLOCK0" ) : "CLOCK0"): "CLOCK0")); 
+DEFINE STRATIX_SPECIAL_CASE()		=	(!USED(aclr) & !USED(rden) & (WRADDRESS_REG != "UNREGISTERED") & (WRCONTROL_REG != "UNREGISTERED") & (RDADDRESS_REG == "UNREGISTERED") & (OUTDATA_REG != "UNREGISTERED")) ? 1 : 0;
+DEFINE YGR_READ_SIDE_CLOCK()		=	STRATIX_SPECIAL_CASE() ? YGR_CONVERT_OUTDATA_CLK() : YGR_READ_SIDE_CLOCK_1();
+DEFINE YGR_OUTDATA_CLOCK()			=	STRATIX_SPECIAL_CASE() ? "UNREGISTERED" : YGR_OUTDATA_CLOCK_1();
+DEFINE YGR_CONVERT_OUTDATA_CLK()	=	OUTDATA_REG == "INCLOCK" ? "CLOCK0" : "CLOCK1";
+DEFINE YGR_NEED_CLEAR0()			=	(USED(aclr) & INDATA_ACLR == "ON") # (USED(aclr) & OUTDATA_ACLR == "ON") # (USED(aclr) & WRADDRESS_ACLR == "ON") # (USED(aclr) & RDADDRESS_ACLR == "ON") # (USED(aclr) & WRCONTROL_ACLR == "ON") # (USED(aclr) & USED(rden) & RDCONTROL_ACLR == "ON");
+
+DEFINE CBX_MODE()	= (FAMILY_STRATIXIII() == 1) & (USE_EAB == "ON") & ((RAM_BLOCK_TYPE == "LUTRAM") # (RAM_BLOCK_TYPE == lutram)) ? 1 : 0;
+
+SUBDESIGN altdpram
+(
+	wren					: INPUT;
+	data[WIDTH-1..0]		: INPUT;
+	wraddress[WIDTHAD-1..0]	: INPUT;
+	inclock					: INPUT = VCC;
+	inclocken				: INPUT = VCC;
+	rden					: INPUT = VCC;
+	rdaddress[WIDTHAD-1..0]	: INPUT;
+	outclock				: INPUT = VCC;
+	outclocken				: INPUT = VCC;
+	aclr					: INPUT = GND;
+	byteena[WIDTH_BYTEENA-1..0]			: INPUT = VCC;
+	wraddressstall			: INPUT = GND;
+	rdaddressstall			: INPUT = GND;
+	q[WIDTH-1..0]			: OUTPUT;
+)
+
+VARIABLE
+	IF (CBX_MODE() == 1 & CBXI_PARAMETER != "NOTHING") GENERATE
+		auto_generated : @CBXI_PARAMETER WITH (CBXI_PARAMETER = "NOTHING");
+	ELSE GENERATE
+	IF (FAMILY_STRATIX() == 1) & (USE_EAB == "ON") & (FAMILY_MAXII() != 1) GENERATE
+		IF STRATIX_RAM_POSSIBLE() # STRATIX_SPECIAL_CASE() GENERATE
+			ram_block : altsyncram WITH (
+							WIDTH_A = WIDTH,
+							WIDTHAD_A = WIDTHAD,
+							WIDTH_B = WIDTH,
+							WIDTHAD_B = WIDTHAD,	
+							NUMWORDS_A = REAL_NUMWORDS,
+							NUMWORDS_B = REAL_NUMWORDS,
+							INIT_FILE = INIT_FILE_VALUE(),
+							ADDRESS_REG_B = YGR_READ_SIDE_CLOCK(),
+							RDCONTROL_REG_B = YGR_READ_SIDE_CLOCK(),
+							INDATA_ACLR_A = USED(aclr) & (INDATA_ACLR == "ON") ? "CLEAR0" : "NONE",
+							ADDRESS_ACLR_A = USED(aclr) & (WRADDRESS_ACLR == "ON")	? "CLEAR0" : "NONE",
+							WRCONTROL_ACLR_A = USED(aclr) & (WRCONTROL_ACLR == "ON") ? "CLEAR0" : "NONE",
+							ADDRESS_ACLR_B = USED(aclr) & (RDADDRESS_ACLR == "ON") ? "CLEAR0" : "NONE",
+							RDCONTROL_ACLR_B = USED(aclr) & (RDCONTROL_ACLR == "ON") ? "CLEAR0" : "NONE",
+							OUTDATA_ACLR_B = USED(aclr) & (OUTDATA_ACLR == "ON") ? "CLEAR0" : "NONE",													
+							OUTDATA_REG_B = YGR_OUTDATA_CLOCK(),
+							OUTDATA_ACLR_A = "NONE",
+							OUTDATA_REG_A = "UNREGISTERED",
+							OPERATION_MODE = "DUAL_PORT",
+							MAXIMUM_DEPTH = USED(MAXIMUM_DEPTH) ? MAXIMUM_DEPTH : "UNUSED",
+							ENABLE_POF = "ON",
+							WIDTH_BYTEENA_A = 1,
+							WIDTH_BYTEENA_B = 1		
+						);						
+		ELSE GENERATE
+			IF STRATIX_RAM_NOT_IMPOSSIBLE() GENERATE
+				ram_block : altsyncram WITH (
+							WIDTH_A = WIDTH,
+							WIDTHAD_A = WIDTHAD,
+							WIDTH_B = WIDTH,
+							WIDTHAD_B = WIDTHAD,	
+							NUMWORDS_A = REAL_NUMWORDS,
+							NUMWORDS_B = REAL_NUMWORDS,
+							INIT_FILE = INIT_FILE_VALUE(),
+							ADDRESS_REG_B = YGR_READ_SIDE_CLOCK(),
+							RDCONTROL_REG_B = YGR_READ_SIDE_CLOCK(),
+							INDATA_ACLR_A = USED(aclr) & (INDATA_ACLR == "ON") ? "CLEAR0" : "NONE",
+							ADDRESS_ACLR_A = USED(aclr) & (WRADDRESS_ACLR == "ON")	? "CLEAR0" : "NONE",
+							WRCONTROL_ACLR_A = USED(aclr) & (WRCONTROL_ACLR == "ON") ? "CLEAR0" : "NONE",
+							ADDRESS_ACLR_B = USED(aclr) & (RDADDRESS_ACLR == "ON") ? "CLEAR0" : "NONE",
+							RDCONTROL_ACLR_B = USED(aclr) & (RDCONTROL_ACLR == "ON") ? "CLEAR0" : "NONE",
+							OUTDATA_ACLR_B = USED(aclr) & (OUTDATA_ACLR == "ON") ? "CLEAR0" : "NONE",													
+							OUTDATA_REG_B = YGR_OUTDATA_CLOCK(),
+							OUTDATA_ACLR_A = "NONE",
+							OUTDATA_REG_A = "UNREGISTERED",							
+							OPERATION_MODE = "DUAL_PORT",
+							MAXIMUM_DEPTH = USED(MAXIMUM_DEPTH) ? MAXIMUM_DEPTH : "UNUSED",
+							ENABLE_POF = "OFF",
+							WIDTH_BYTEENA_A = 1,
+							WIDTH_BYTEENA_B = 1		
+						);						
+			END GENERATE;
+		END GENERATE;
+	ELSE GENERATE
+	IF (FAMILY_USES_ALTQPRAM()) & (USE_EAB == "ON") GENERATE
+		altqpram_dual_port	:	altqpram WITH	(
+													OPERATION_MODE = "DUAL_PORT",
+													INIT_FILE = INIT_FILE_VALUE(),
+													WIDTH_WRITE_A = WIDTH,
+													WIDTHAD_WRITE_A = WIDTHAD,
+													NUMWORDS_WRITE_A = REAL_NUMWORDS,
+													INDATA_REG_A = INDATA_REG_CLOCK(),
+													WRCONTROL_WRADDRESS_REG_A = WRITE_LOGIC_CLOCK(),
+													INDATA_ACLR_A = INDATA_CLEAR(),
+													WRCONTROL_ACLR_A = WRCONTROL_CLEAR(),
+													WRADDRESS_ACLR_A = WRADDRESS_CLEAR(),
+													WIDTH_READ_A = WIDTH,
+													WIDTHAD_READ_A = WIDTHAD,
+													NUMWORDS_READ_A = REAL_NUMWORDS,
+													RDADDRESS_REG_A = RDADDRESS_CLOCK(),
+													RDCONTROL_REG_A = RDCONTROL_CLOCK(),
+													OUTDATA_REG_A = OUTDATA_CLOCK(),
+													RDADDRESS_ACLR_A = RDADDRESS_CLEAR(),
+													RDCONTROL_ACLR_A = RDCONTROL_CLEAR(),
+													OUTDATA_ACLR_A = OUTDATA_CLEAR(),
+													RDCONTROL_ACLR_B = "NONE",
+													RDADDRESS_ACLR_B = "NONE",
+													OUTDATA_ACLR_B = "NONE",
+													OUTDATA_REG_B = "UNREGISTERED",
+													RDADDRESS_REG_B = "UNREGISTERED",
+													RDCONTROL_REG_B = "UNREGISTERED"
+												);
+	ELSE GENERATE
+		IF (FAMILY_HAS_DUALPORT_EAB() == 1 & USE_EAB == "ON") GENERATE
+			IF (FILE == NO_FILE) GENERATE
+				IF (LPM_FILE == NO_FILE) GENERATE
+					content	: MEMORY
+					(
+						width			= WIDTH;
+						depth			= REAL_NUMWORDS;
+						segmentsize		= WORDS_PER_EAB;
+						mode			= RAM_MODES();
+					)
+					OF SEGMENTS
+					(
+						segment[RAM_DEPTH_IN_EABS-1..0][Width-1..0]
+					);
+				ELSE GENERATE % With initialization file, using LPM_FILE parameter %
+					content	: MEMORY
+					(
+						width			= WIDTH;
+						depth			= REAL_NUMWORDS;
+						segmentsize		= WORDS_PER_EAB;
+						mode			= RAM_MODES() # MEM_INITIALIZED;
+						file			= LPM_FILE;
+					)
+					OF SEGMENTS
+					(
+						segment[RAM_DEPTH_IN_EABS-1..0][WIDTH-1..0]
+					);
+				END GENERATE;
+			ELSE GENERATE % With initialization file, using FILE parameter %
+				content	: MEMORY
+				(
+					width			= WIDTH;
+					depth			= REAL_NUMWORDS;
+					segmentsize		= WORDS_PER_EAB;
+					mode			= RAM_MODES() # MEM_INITIALIZED;
+					file			= FILE;
+				)
+				OF SEGMENTS
+				(
+					segment[RAM_DEPTH_IN_EABS-1..0][WIDTH-1..0]
+				);
+			END GENERATE;
+
+			IF (EXTRA_ADDR_BITS > 0) GENERATE
+				% Extra address bits must be registered twice if both input and output are registred %
+				IF (Q_IS_REGD()) GENERATE
+					xoaddr[EXTRA_ADDR_BITS-1..0]	: DFFE;
+				ELSE GENERATE
+					xoaddr[EXTRA_ADDR_BITS-1..0]	: NODE;
+				END GENERATE;
+			
+				-- Extra read address bits gated by xre are needed for output muxing
+				-- If the rden port is used, must latch the extra read address bits
+				IF (USED(rden) & !NEED_RDEN_LATCH_EMULATION()) GENERATE
+					xladdr[EXTRA_ADDR_BITS-1..0]		: LATCH;
+				ELSE GENERATE
+					xladdr[EXTRA_ADDR_BITS-1..0]		: NODE;
+				END GENERATE;
+
+				-- If both rden and rdaddress are registered with the same clock
+				-- then we need to remove the latch and emulate it with a safe circuit
+				IF (NEED_RDEN_LATCH_EMULATION()) GENERATE
+					xlemu : a_rdenreg WITH (WIDTH=EXTRA_ADDR_BITS,
+											D_ACLR=RDEN_EMU_D_ACLR(),
+											E_ACLR=RDEN_EMU_E_ACLR());
+				END GENERATE;
+				
+				wdecoder	: lpm_decode WITH (	LPM_WIDTH=EXTRA_ADDR_BITS,
+												LPM_DECODES=RAM_DEPTH_IN_EABS);
+				mux			: lpm_mux WITH (LPM_WIDTH=WIDTH,
+											LPM_SIZE=RAM_DEPTH_IN_EABS,
+											LPM_WIDTHS=EXTRA_ADDR_BITS);
+			END GENERATE;
+		
+			real_we[RAM_DEPTH_IN_EABS-1..0]	: node;
+		ELSE GENERATE
+			IF (REAL_NUMWORDS <= LE_RAM_MAX_NUM_WORDS # DISABLE_LE_RAM_LIMIT_CHECK == "ON") GENERATE
+				IF (WREN_IS_REGD()) GENERATE
+					-- dffe array
+					cells[REAL_NUMWORDS-1..0][WIDTH-1..0]		: DFFE;
+				ELSE GENERATE
+					-- latch array
+					cells[REAL_NUMWORDS-1..0][WIDTH-1..0]		: LATCH;
+				END GENERATE;
+				mux		: lpm_mux WITH (LPM_WIDTH=WIDTH,
+										LPM_SIZE=REAL_NUMWORDS,
+										LPM_WIDTHS=WIDTHAD);
+				wdecoder	: lpm_decode WITH (	LPM_WIDTH=WIDTHAD,
+												LPM_DECODES=REAL_NUMWORDS);
+
+				-- If the rden port is used, must latch the read mux output
+				IF (USED(rden)) GENERATE
+					IF RDADDR_IS_REGD() & RDEN_IS_REGD() GENERATE
+						latch_emulator : alt_le_rden_reg WITH (DATA_WIDTH = WIDTH);
+						xql[WIDTH - 1..0] : NODE;
+					ELSE GENERATE
+						xql[WIDTH-1..0]	: LATCH;
+					END GENERATE;
+				ELSE GENERATE
+					xql[WIDTH-1..0]	: NODE;
+				END GENERATE;
+
+				-- If necessary, register the Data port
+				IF ( WREN_IS_REGD() == 0 & INDATA_IS_REGD() ) GENERATE
+					xdata[WIDTH-1..0]	: DFFE;
+				ELSE GENERATE
+					xdata[WIDTH-1..0]	: NODE;
+				END GENERATE;
+		
+				-- If necessary, register the Q port
+				IF (Q_IS_REGD()) GENERATE
+					xq[WIDTH-1..0]		: DFFE;
+				ELSE GENERATE
+					xq[WIDTH-1..0]		: NODE;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+
+		-- Common parts of the RAM structure
+		-- Some external registers are common to both EAB-based and LCELL-based RAM designs
+		IF ((FAMILY_HAS_DUALPORT_EAB() == 1 & USE_EAB == "ON" # REAL_NUMWORDS <= LE_RAM_MAX_NUM_WORDS # DISABLE_LE_RAM_LIMIT_CHECK == "ON")
+		  & (EXTRA_ADDR_BITS > 0)) GENERATE
+			% Extra write address bits are needed for we decoding %
+			IF ( WRADDR_IS_REGD() & !WREN_IS_REGD() ) GENERATE
+				xwaddr[EXTRA_ADDR_BITS-1..0]	: DFFE;
+			ELSE GENERATE
+				xwaddr[EXTRA_ADDR_BITS-1..0]	: NODE;
+			END GENERATE;
+
+			% Which clock (if any) should be used for the read port? %
+			IF ( RDCLK_IS_USED() ) GENERATE
+				rdclk 	: node;
+				rdclken	: node;
+			END GENERATE;
+		
+			% Extra read address bits are needed for output muxing. %
+			% These may be provided by the latch emulation circuit %
+			IF ( !NEED_RDEN_LATCH_EMULATION() ) GENERATE
+				IF ( RDADDR_IS_REGD() ) GENERATE
+					xraddr[EXTRA_ADDR_BITS-1..0]	: DFFE;
+				ELSE GENERATE
+					xraddr[EXTRA_ADDR_BITS-1..0]	: NODE;
+				END GENERATE;
+
+				IF (USED(rden)) GENERATE
+					xre		: NODE;
+					% If the rden is registered, then must also register it externally for output mux control %
+					IF (RDEN_IS_REGD()) GENERATE
+						xrer	: a_hdffe;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+	END GENERATE; -- ! FAMILY_STRATIX
+	END GENERATE; -- Stratix III
+BEGIN
+	IF (FAMILY_MAXII() != 1 & CBX_MODE() != 1) GENERATE
+
+	-- CAUSE : 	The design contains altdpram megafunction, but the selected device or device family
+	-- 			is the Stratix device family. The altdpram megafunction does not support Stratix device family. The Quartus II
+	--			software is attempting to convert the altdpram megafunction implementations to altsyncram megafunction.
+	--			However the power up states will be different and also read during write behavior for Stratix devices.
+	-- ACTION : No action is necessary. To avoid receiving this message in future, set SUPPRESS_MEMORY_CONVERSION_WARNINGS to ON
+	ASSERT (FAMILY_STRATIX_MEMBER(INTENDED_DEVICE_FAMILY) # USE_EAB == "OFF" # ((FAMILY_STRATIX() & (STRATIX_RAM_POSSIBLE() # STRATIX_SPECIAL_CASE()) & SUPPRESS_MEMORY_CONVERSION_WARNINGS == "ON") # FAMILY_STRATIX() != 1 # (STRATIX_RAM_POSSIBLE()!= 1 & STRATIX_SPECIAL_CASE()!= 1)))
+		REPORT "altdpram does not support % device family -- attempting best-case memory conversions, but power-up states and read during write behavior will be different for % devices" DEVICE_FAMILY, DEVICE_FAMILY
+		SEVERITY WARNING
+		HELP_ID FAMILY_STRATIX_CONVERSION_WARNING;
+
+	-- CAUSE : 	The design contains altdpram megafunction, but the selected device or device family
+	-- 			is the Stratix device family. The altdpram megafunction does not support Stratix device family. The Quartus II
+	--			software is not able to convert the altdpram megafunction implementations to altsyncram megafunction, and is not 
+	--			able to implement it using benchmarking mode, because the ROM is asynchronous.
+	-- ACTION : Use at least one clock for input or output and compile again to allow the Quartus II software to attempt to implement using benchmarking mode. 
+	ASSERT (USE_EAB == "OFF" # ((FAMILY_STRATIX() & (STRATIX_RAM_POSSIBLE() # STRATIX_RAM_NOT_IMPOSSIBLE() # STRATIX_SPECIAL_CASE())) # FAMILY_STRATIX() != 1))				
+		REPORT "Can't convert dual-port RAM for % device family using altsyncram megafunction because % supports only synchronous dual-port RAM" DEVICE_FAMILY, DEVICE_FAMILY
+		SEVERITY ERROR
+		HELP_ID FAMILY_STRATIX_ROM_NOT_POSSIBLE;
+
+
+	-- CAUSE : 	The design contains altdpram megafunction, but the selected device or device family
+	-- 			is the Stratix device family. The altdpram megafunction does not support Stratix device family. The Quartus II
+	--			software is not able to convert the altdpram megafunction implementations to altsyncram megafunction, because the RAM inputs are
+	--			not synchronous. The Quartus II software is attempting to implement dual-portRAM using benchmarking mode and by using existing clocks
+	-- 			to make it synchronous; however, the output behavior will be different from the original version.
+	-- ACTION : No action is required.
+	ASSERT (USE_EAB == "OFF" # ((FAMILY_STRATIX() & !STRATIX_RAM_POSSIBLE() & !STRATIX_RAM_NOT_IMPOSSIBLE()) # FAMILY_STRATIX() != 1 # STRATIX_RAM_POSSIBLE() # STRATIX_SPECIAL_CASE()))				
+		REPORT "Can't convert dual-portRAM for % device family using altsyncram megafunction -- implementing dual-port RAM using benchmarking mode and attempting to tie up inputs using available clocks, which will cause output behavior to be different.  Programming file output will not be generated." DEVICE_FAMILY
+		SEVERITY WARNING
+		HELP_ID FAMILY_STRATIX_RAM_NOT_IMPOSSIBLE;
+
+	END GENERATE;
+		
+	ASSERT FAMILY_STRATIX() == 1 # (FAMILY_USES_ALTQPRAM() & USE_EAB == "ON") # !USED(MAXIMUM_DEPTH) # (MAXIMUM_DEPTH == 0) # ((MAXIMUM_DEPTH MOD 2 == 0) & (MAXIMUM_DEPTH >= 2^7) & (MAXIMUM_DEPTH <= FAMILY_EAB_MAX_DEPTH()))
+		REPORT "MAXIMUM_DEPTH(%) is at an illegal value. Using the legal maximum depth of %" MAXIMUM_DEPTH, FAMILY_EAB_MAX_DEPTH()
+		SEVERITY WARNING
+		HELP_ID ALTDPRAM_MAXIMUM_DEPTH;
+
+	ASSERT (WIDTH > 0)
+			REPORT "Value of WIDTH parameter value must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID ALTDPRAM_WIDTH;
+
+	ASSERT (WIDTHAD > 0)
+			REPORT "Value of WIDTHAD parameter value must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID ALTDPRAM_WIDTHAD;
+
+	ASSERT (REAL_NUMWORDS > 0)
+			REPORT "Value of NUMWORDS parameter value must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID ALTDPRAM_NUMWORDS;
+
+	ASSERT (FAMILY_HAS_DUALPORT_EAB() == 1 # REAL_NUMWORDS <= LE_RAM_MAX_NUM_WORDS # DISABLE_LE_RAM_LIMIT_CHECK == "ON")
+               REPORT  "Current device family (%) does not support more than % memory words" DEVICE_FAMILY, LE_RAM_MAX_NUM_WORDS
+			SEVERITY ERROR
+			HELP_ID	ALTDPRAM_NUMWORDS256;
+
+	ASSERT (FAMILY_HAS_DUALPORT_EAB() == 0 # USE_EAB == "ON" # REAL_NUMWORDS <= LE_RAM_MAX_NUM_WORDS # DISABLE_LE_RAM_LIMIT_CHECK == "ON")
+               REPORT  "Current device family (%) does not support more than % memory words unless the USE_EAB parameter is not turned off" DEVICE_FAMILY, LE_RAM_MAX_NUM_WORDS
+			SEVERITY ERROR
+			HELP_ID	ALTDPRAM_NUMWORDS256_10K;
+
+
+	ASSERT (REAL_NUMWORDS > 2^(WIDTHAD-1) & REAL_NUMWORDS <= 2^WIDTHAD)
+			REPORT "Value of NUMWORDS parameter requires % address lines, but WIDTHAD value, which defines the number of address lines, is %"
+				CEIL(LOG2(REAL_NUMWORDS)), WIDTHAD
+			SEVERITY ERROR
+			HELP_ID ALTDPRAM_NUMWORDS_TOO_BIG;
+
+	-- Data[] port registering parameters
+	ASSERT (  (INDATA_ACLR == "ON")
+			# (INDATA_ACLR == "OFF"))
+			REPORT "Illegal value for INDATA_ACLR parameter (%) -- value must be ON or OFF"
+				INDATA_ACLR
+			SEVERITY ERROR
+			HELP_ID ALTDPRAM_INVALID_INDATA_ACLR_VALUE;
+
+	ASSERT (  (INDATA_REG == "INCLOCK")
+			# (INDATA_REG == "UNREGISTERED"))
+			REPORT "Illegal value for INDATA_REG parameter (%) -- value must be INCLOCK or UNREGISTERED" 
+				INDATA_REG
+			SEVERITY ERROR
+			HELP_ID ALTDPRAM_INVALID_INDATA_REG_VALUE;
+
+	-- WrAddress[] port registering parameters
+	ASSERT (  (WRADDRESS_ACLR == "ON")
+			# (WRADDRESS_ACLR == "OFF"))
+			REPORT "Illegal value for WRADDRESS_ACLR parameter (%) -- value must be ON or OFF"
+				WRADDRESS_ACLR
+			SEVERITY ERROR
+			HELP_ID ALTDPRAM_INVALID_WRADDRESS_ACLR_VALUE;
+
+	ASSERT (  (WRADDRESS_REG == "INCLOCK")
+			# (WRADDRESS_REG == "UNREGISTERED"))
+			REPORT "Illegal value for WRADDRESS_REG parameter (%) -- value must be INCLOCK or UNREGISTERED" 
+				WRADDRESS_REG
+			SEVERITY ERROR
+			HELP_ID ALTDPRAM_INVALID_WRADDRESS_REG_VALUE;
+
+	-- WrEn port registering parameters
+	ASSERT (  (WRCONTROL_ACLR == "ON")
+			# (WRCONTROL_ACLR == "OFF"))
+			REPORT "Illegal value for WRCONTROL_ACLR parameter (%) -- value must be ON or OFF"
+				WRCONTROL_ACLR
+			SEVERITY ERROR
+			HELP_ID ALTDPRAM_INVALID_WRCONTROL_ACLR_VALUE;
+
+	ASSERT (  (WRCONTROL_REG == "INCLOCK")
+			# (WRCONTROL_REG == "UNREGISTERED"))
+			REPORT "Illegal value for WRCONTROL_REG parameter (%) -- value must be INCLOCK or UNREGISTERED" 
+				WRCONTROL_REG
+			SEVERITY ERROR
+			HELP_ID ALTDPRAM_INVALID_WRCONTROL_REG_VALUE;
+
+	-- Q[] port registering parameters
+	ASSERT (  (OUTDATA_ACLR == "ON")
+			# (OUTDATA_ACLR == "OFF"))
+			REPORT "Illegal value for OUTDATA_ACLR parameter (%) -- value must be ON or OFF"
+				OUTDATA_ACLR
+			SEVERITY ERROR
+			HELP_ID ALTDPRAM_INVALID_OUTDATA_ACLR_VALUE;
+
+	ASSERT (  (OUTDATA_REG == "OUTCLOCK")
+			# (OUTDATA_REG == "UNREGISTERED")
+			# (CBX_MODE() == 1))
+			REPORT "Illegal value for OUTDATA_REG parameter (%) -- value must be OUTCLOCK or UNREGISTERED" 
+				OUTDATA_REG
+			SEVERITY ERROR
+			HELP_ID ALTDPRAM_INVALID_OUTDATA_REG_VALUE;
+
+	-- RdAddress[] port registering parameters
+	ASSERT (  (RDADDRESS_ACLR == "ON")
+			# (RDADDRESS_ACLR == "OFF"))
+			REPORT "Illegal value for RDADDRESS_ACLR parameter (%) -- value must be ON or OFF"
+				RDADDRESS_ACLR
+			SEVERITY ERROR
+			HELP_ID ALTDPRAM_INVALID_RDADDRESS_ACLR_VALUE;
+
+	ASSERT (  (RDADDRESS_REG == "INCLOCK")
+			# (RDADDRESS_REG == "OUTCLOCK")
+			# (RDADDRESS_REG == "UNREGISTERED"))
+			REPORT "Illegal value for RDADDRESS_REG parameter (%) -- value must be INCLOCK, OUTCLOCK or UNREGISTERED" 
+				RDADDRESS_REG
+			SEVERITY ERROR
+			HELP_ID ALTDPRAM_INVALID_RDADDRESS_REG_VALUE;
+
+	-- RdEn port registering parameters
+	ASSERT (  (RDCONTROL_ACLR == "ON")
+			# (RDCONTROL_ACLR == "OFF"))
+			REPORT "Illegal value for RDCONTROL_ACLR parameter (%) -- value must be ON or OFF"
+				RDCONTROL_ACLR
+			SEVERITY ERROR
+			HELP_ID ALTDPRAM_INVALID_RDCONTROL_ACLR_VALUE;
+
+	ASSERT (  (RDCONTROL_REG == "INCLOCK")
+			# (RDCONTROL_REG == "OUTCLOCK")
+			# (RDCONTROL_REG == "UNREGISTERED"))
+			REPORT "Illegal value for RDCONTROL_REG parameter (%) -- value must be INCLOCK, OUTCLOCK or UNREGISTERED" 
+				RDCONTROL_REG
+			SEVERITY ERROR
+			HELP_ID ALTDPRAM_INVALID_RDCONTROL_REG_VALUE;
+	ASSERT (USED(inclock) # (INCLOCK_REQD() == 0))
+			REPORT "Value of parameter INDATA_REG, WRADDRESS_REG, WRCONTROL_REG, RDADDRESS_REG, or RDCONTROL_REG is not consistent with the use of the inclock port"
+			SEVERITY ERROR
+			HELP_ID ALTDPRAM_REG_NEEDS_INCLOCK;
+
+	ASSERT (USED(outclock) # (OUTCLOCK_REQD() == 0))
+			REPORT "Value of parameter OUTDATA_REG, RDADDRESS_REG, or RDCONTROL_REG is not consistent with the use of the outclock port"
+			SEVERITY ERROR
+			HELP_ID ALTDPRAM_REG_NEEDS_OUTCLOCK;
+
+	ASSERT ((RDINPUTS_NEED_INCLOCK() == 0) # (RDINPUTS_NEED_OUTCLOCK() == 0))
+		REPORT "Both rdaddress and rden are registered, but are connected to different clocks -- make sure that they are connected to the same clock"
+		SEVERITY ERROR
+		HELP_ID ALTDPRAM_MIXED_CLOCKS;
+
+	-- When external registers are needed to mirror wa and we (i.e. the depth is greater than 1 EAB),
+	-- then an async clear of wa may affect all the we's of the multiple EABs.  If the we is not
+	-- clearable in this case, then there is no way to correctly set the we's.
+	ASSERT ((EXTRA_ADDR_BITS == 0) # (WRADDR_IS_REGD() == 0) # (WREN_IS_REGD() == 0)
+			# (WRADDRESS_ACLR == "OFF") # (WRCONTROL_ACLR == "ON"))
+		REPORT "Value of WRADDRESS_ACLR parameter (%) requires the value of WRCONTROL_ACLR parameter to be ON" WRADDRESS_ACLR
+		SEVERITY ERROR
+		HELP_ID ALTDPRAM_MIXED_WRACLR;
+
+	ASSERT (FAMILY_HAS_DUALPORT_EAB() == 1 # WREN_IS_REGD())
+		REPORT "Current device family (%) does not support dual-port asynchronous RAM -- implementing the asynchronous RAM as a latch array instead"
+			DEVICE_FAMILY
+		SEVERITY WARNING
+		HELP_ID ALTDPRAM_LATCH;
+
+	ASSERT (FAMILY_HAS_DUALPORT_EAB() == 1 # WREN_IS_REGD() == 0)
+		REPORT "Current device family (%) does not support dual-port synchronous RAM -- implementing the synchronous RAM as a DFFE array instead"
+			DEVICE_FAMILY
+		SEVERITY WARNING
+		HELP_ID ALTDPRAM_DFFE;
+
+	ASSERT (FAMILY_HAS_DUALPORT_EAB() == 1 & USE_EAB == "ON"
+			# WRCONTROL_REG == "UNREGISTERED"
+			# (WRCONTROL_REG == WRADDRESS_REG & WRCONTROL_REG == INDATA_REG))
+			REPORT "Can't create synchronous RAM from a DFFE array unless all inputs are registered"
+			SEVERITY ERROR
+			HELP_ID ALTDPRAM_DFFE_ALL_SYNC;
+
+	ASSERT ((ACLR_BITS() != 0) # (USED(aclr) == 0))
+		REPORT "Port aclr is connected, but no registered ports use it"
+		SEVERITY ERROR
+		HELP_ID ALTDPRAM_ACLR_NOT_USEFUL;
+
+	--ASSERT ((RDEN_IS_REGD() == 0) # (FAMILY_HAS_DUALPORT_EAB() == 1 & USE_EAB == "ON"))
+	--	REPORT "Memory output will power-up to an unknown state because the rden port is registered"
+	--	SEVERITY WARNING
+	--	HELP_ID ALTDPRAM_Q_POWERUP;
+
+	ASSERT (FILE == NO_FILE & LPM_FILE == NO_FILE
+			# FAMILY_HAS_DUALPORT_EAB() == 1 & USE_EAB == "ON")
+			REPORT "Ignored FILE parameter -- the % device family (for LE implementation) does not support RAM initialization"
+				DEVICE_FAMILY
+			SEVERITY WARNING
+			HELP_ID ALTDPRAM_INIT_FILE;
+
+	ASSERT (FAMILY_IS_KNOWN() == 1)
+		REPORT "Megafunction altdpram does not recognize the current device family (%) -- ensure that you are using the newest version of the megafunction"
+			DEVICE_FAMILY
+		SEVERITY WARNING
+		HELP_ID ALTDPRAM_FAMILY_UNKNOWN;
+
+	-- special assertions for MERCURY registering
+	IF (FAMILY_USES_ALTQPRAM()) & (USE_EAB == "ON") & (REAL_NUMWORDS > LE_RAM_MAX_NUM_WORDS # DISABLE_LE_RAM_LIMIT_CHECK == "ON") GENERATE
+		ASSERT (WRCONTROL_REG == WRADDRESS_REG)
+			-- Cause: The Mercury ESB does not support having the write enable and the write address having different
+			--			registering
+			-- Action: Change to a different device or set the registering so that it is the same
+			REPORT "For Mercury device family, the values of WRCONTROL_REG (%) and WRADDRESS_REG (%) must be the same" WRCONTROL_REG, WRADDRESS_REG
+			SEVERITY ERROR
+			HELP_ID DPRAM_MERCURY_WRITE_LOGIC_MISMATCH;
+	END GENERATE;
+
+	IF (CBX_MODE() & CBXI_PARAMETER != "NOTHING") GENERATE
+		IF USED(wren) GENERATE
+			auto_generated.wren = wren;
+		END GENERATE;
+		IF USED(data) GENERATE
+			auto_generated.data[] = data[];
+		END GENERATE;
+		IF USED(wraddress) GENERATE
+			auto_generated.wraddress[] = wraddress[];
+		END GENERATE;
+		IF USED(inclock) GENERATE
+			auto_generated.inclock = inclock;
+		END GENERATE;
+		IF USED(inclocken) GENERATE
+			auto_generated.inclocken = inclocken;
+		END GENERATE;
+		IF USED(rden) GENERATE
+			auto_generated.rden = rden;
+		END GENERATE;
+		IF USED(rdaddress) GENERATE
+			auto_generated.rdaddress[] = rdaddress[];
+		END GENERATE;
+		IF USED(outclock) GENERATE
+			auto_generated.outclock = outclock;
+		END GENERATE;
+		IF USED(outclocken) GENERATE
+			auto_generated.outclocken = outclocken;
+		END GENERATE;
+		IF USED(aclr) GENERATE
+			auto_generated.aclr = aclr;
+		END GENERATE;
+		IF USED(byteena) GENERATE
+			auto_generated.byteena[] = byteena[];
+		END GENERATE;
+		IF USED(wraddressstall) GENERATE
+			auto_generated.wraddressstall = wraddressstall;
+		END GENERATE;
+		IF USED(rdaddressstall) GENERATE
+			auto_generated.rdaddressstall = rdaddressstall;
+		END GENERATE;
+		IF USED(q) GENERATE
+			q[] = auto_generated.q[];
+		END GENERATE;		
+	% Generate the RAM structure %
+	-- Stratix cases
+	ELSE GENERATE
+	IF (FAMILY_STRATIX() == 1) & (USE_EAB == "ON") & (FAMILY_MAXII() != 1) GENERATE
+		IF STRATIX_RAM_POSSIBLE() # STRATIX_SPECIAL_CASE() GENERATE
+			ram_block.clock0 = inclock;
+			IF USED(inclocken) GENERATE
+				ram_block.clocken0 = inclocken;
+			END GENERATE;
+			IF YGR_READ_SIDE_CLOCK() == "CLOCK1" # YGR_OUTDATA_CLOCK() == "CLOCK1" GENERATE
+				ram_block.clock1 = outclock;
+				IF USED(outclocken) GENERATE
+					ram_block.clocken1 = outclocken;
+				END GENERATE;
+			END GENERATE;
+			IF USED(aclr) GENERATE
+				IF YGR_NEED_CLEAR0() GENERATE
+					ram_block.aclr0 = aclr;
+				END GENERATE;
+			END GENERATE;
+			IF USED(rden) GENERATE
+				ram_block.rden_b = rden;
+			END GENERATE;
+			ram_block.wren_a = wren;
+			ram_block.data_a[] = data[];
+			q[] = ram_block.q_b[];
+			ram_block.address_a[] = wraddress[];
+			ram_block.address_b[] = rdaddress[];
+		ELSE GENERATE
+			IF STRATIX_RAM_NOT_IMPOSSIBLE() GENERATE
+				IF USED(inclock) GENERATE
+					ram_block.clock0 = inclock;
+					IF USED(inclocken) GENERATE
+						ram_block.clocken0 = inclocken;
+					END GENERATE;
+					IF YGR_READ_SIDE_CLOCK() == "CLOCK1" # YGR_OUTDATA_CLOCK() == "CLOCK1" GENERATE
+						ram_block.clock1 = outclock;
+						IF USED(outclocken) GENERATE
+							ram_block.clocken1 = outclocken;
+						END GENERATE;
+					END GENERATE;
+					-- CAUSE: inclock is used to clock inputs to the dual-port RAM for Stratix device family
+					-- ACTION: None.
+					ASSERT (0)
+					REPORT "Inclock is used to clock wraddress port, data port and wren port to the dual port ram in benchmarking mode"
+					SEVERITY INFO;
+				ELSE GENERATE
+					ram_block.clock0 = outclock;
+					IF USED(outclock) GENERATE
+						ram_block.clocken0 = outclocken;
+					END GENERATE;
+					-- CAUSE: outclock is used to clock inputs to the dual-port RAM for Stratix device family
+					-- ACTION: None.
+					ASSERT (0)
+					REPORT "Outclock is used to clock wraddress port, data port and wren port to the dual port ram in benchmarking mode"
+					SEVERITY INFO;
+				END GENERATE;
+				IF USED(aclr) GENERATE
+					ram_block.aclr0 = aclr;
+				END GENERATE;
+				IF USED(rden) GENERATE
+					ram_block.rden_b = rden;
+				END GENERATE;
+				ram_block.wren_a = wren;
+				ram_block.data_a[] = data[];
+				q[] = ram_block.q_b[];
+				ram_block.address_a[] = wraddress[];
+				ram_block.address_b[] = rdaddress[];
+			END GENERATE;
+		END GENERATE;
+	ELSE GENERATE
+	-- Mercury is special case
+	IF(FAMILY_USES_ALTQPRAM()) & (USE_EAB == "ON") GENERATE
+		-- only connect the clocks and enables that are needed to reduce routing
+		IF USED(inclock) GENERATE
+			altqpram_dual_port.inclock_a = inclock;
+		END GENERATE;
+		IF USED(inclocken) GENERATE
+			altqpram_dual_port.inclocken_a = inclocken;
+		END GENERATE;
+		IF USED(outclock) GENERATE
+			altqpram_dual_port.outclock_a = outclock;
+		END GENERATE;
+		IF USED(outclocken) GENERATE
+			altqpram_dual_port.outclocken_a = outclocken;
+		END GENERATE;
+		IF USED(aclr) GENERATE
+			altqpram_dual_port.inaclr_a = aclr;
+		END GENERATE;
+		IF USED(rden) GENERATE
+			altqpram_dual_port.rden_a = rden;
+		END GENERATE;
+
+		-- common signals
+		altqpram_dual_port.wren_a = wren;
+		altqpram_dual_port.data_a[] = data[];
+		altqpram_dual_port.wraddress_a[] = wraddress[];
+		altqpram_dual_port.rdaddress_a[] = rdaddress[];
+		q[] = altqpram_dual_port.q_a[];
+	ELSE GENERATE
+
+		IF (FAMILY_HAS_DUALPORT_EAB() == 1 & USE_EAB == "ON" # REAL_NUMWORDS <= LE_RAM_MAX_NUM_WORDS # DISABLE_LE_RAM_LIMIT_CHECK == "ON") GENERATE
+			% Select the read clock and clock enable, if any, for external registers %
+			IF (EXTRA_ADDR_BITS > 0) GENERATE
+				IF (USED(inclock) & (RDADDRESS_REG == "INCLOCK" # RDCONTROL_REG == "INCLOCK")) GENERATE
+					rdclk = inclock;
+					IF (USED(inclocken)) GENERATE
+						rdclken = inclocken;
+					ELSE GENERATE
+						rdclken = VCC;
+					END GENERATE;
+				ELSE GENERATE
+					IF (USED(outclock) & (RDADDRESS_REG == "OUTCLOCK" # RDCONTROL_REG == "OUTCLOCK")) GENERATE
+						rdclk = outclock;
+						IF (USED(outclocken)) GENERATE
+							rdclken = outclocken;
+						ELSE GENERATE
+							rdclken = VCC;
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+		
+				--
+				-- Some external registers are the same in both EAB-based and LCELL-based RAM designs
+				--
+				% Read address extra bits for output muxing %
+				IF ( !NEED_RDEN_LATCH_EMULATION() ) GENERATE
+					xraddr[] = rdaddress[WIDTHAD-1..WIDTHAD-EXTRA_ADDR_BITS];
+					IF (RDADDR_IS_REGD()) GENERATE
+						xraddr[].clk = rdclk;
+						xraddr[].ena = rdclken;
+						IF (USED(aclr) & RDADDRESS_ACLR == "ON") GENERATE
+							xraddr[].clrn = !aclr;
+						END GENERATE;
+					END GENERATE;
+		
+					% Read enable for output muxing %
+					IF (USED(rden)) GENERATE
+						IF (RDEN_IS_REGD()) GENERATE
+							xrer.d = rden;
+							xrer.clk = rdclk;
+							xrer.ena = rdclken;
+							IF (USED(aclr) & RDCONTROL_ACLR == "ON") GENERATE
+								xrer.clrn = !aclr;
+							END GENERATE;
+							xre = xrer.q;
+						ELSE GENERATE
+							xre = rden;
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+				
+				% Extra write address bits may need to be registered %
+				xwaddr[] = wraddress[WIDTHAD-1..WIDTHAD-EXTRA_ADDR_BITS];
+				IF ( WRADDR_IS_REGD() & !WREN_IS_REGD() ) GENERATE
+					xwaddr[].clk = inclock;
+					xwaddr[].ena = inclocken;
+					IF (USED(aclr) & WRADDRESS_ACLR == "ON") GENERATE
+						xwaddr[].clrn = !aclr;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+		
+			-- If dual-port EABs are available, use those unless specifically directed not to use them
+			IF (FAMILY_HAS_DUALPORT_EAB() == 1 & USE_EAB == "ON") GENERATE
+				IF (EXTRA_ADDR_BITS > 0) GENERATE
+					% Connect address decoders %
+					wdecoder.data[] = xwaddr[];
+					wdecoder.enable = wren;
+		
+					% bank select logic for WE signal %
+					real_we[] = wdecoder.eq[];
+					
+					% Read address extra bits gated by rden for output muxing %
+					-- When both rdaddress (xraddr[]) and rden (xre) are registered with
+					-- the same clock, the data and enable to the xladdr[] latches may
+					-- change simultaneously, giving unpredictable results.
+					-- Instead, use the latch emulation circuit.
+					IF ( NEED_RDEN_LATCH_EMULATION() ) GENERATE
+						xlemu.d[] = rdaddress[WIDTHAD-1..WIDTHAD-EXTRA_ADDR_BITS];
+						xlemu.(e, clk, ena) = (rden, rdclk, rdclken);
+						IF (USED(aclr)) GENERATE
+							xlemu.aclr = aclr;
+						END GENERATE;
+						xladdr[] = xlemu.q[];
+					ELSE GENERATE
+						xladdr[] = xraddr[];
+						IF (USED(rden)) GENERATE
+							xladdr[].ena = xre;
+						END GENERATE;
+					END GENERATE;
+		
+					% Read address extra bits for output muxing (extra reg) %
+					xoaddr[] = xladdr[];
+					IF ( Q_IS_REGD() ) GENERATE
+						xoaddr[].clk = outclock;
+						IF ( USED(outclocken) ) GENERATE
+							xoaddr[].ena = outclocken;
+						END GENERATE;
+						IF (USED(aclr) & OUTDATA_ACLR == "ON") GENERATE
+							xoaddr[].clrn = !aclr;
+						END GENERATE;
+					END GENERATE;
+		
+					% Connect multiplexer select port %
+					mux.sel[] = xoaddr[];
+				ELSE GENERATE
+					real_we[0] = wren;
+				END GENERATE;
+		
+				-- Connect RAM ports
+		
+				% Connect the rden port %
+				segment[][].re = rden;
+				
+				% Using input clock? %
+				IF (USED(inclock)) GENERATE
+					segment[][].clk0 = inclock;
+					IF (USED(inclocken)) GENERATE
+						segment[][].ena0 = inclocken;
+					END GENERATE;
+				END GENERATE;
+		
+				% Using an asynchronous clear? %
+				IF (USED(aclr)) GENERATE
+					segment[][].clrn0 = !aclr;
+				END GENERATE;
+		
+				% Using a clock for read operations? %
+				IF (USED(outclock)) GENERATE
+					segment[][].clk1 = outclock;
+					IF (USED(outclocken)) GENERATE
+						segment[][].ena1 = outclocken;
+					END GENERATE;
+				END GENERATE;
+		
+				FOR bank IN 0 TO RAM_DEPTH_IN_EABS-1 GENERATE
+					segment[bank][].d 		= data[];
+					FOR bit IN 0 TO WIDTH-1 GENERATE
+						segment[bank][bit].ra[] 	= rdaddress[LOG2(WORDS_PER_EAB)-1..0];
+						segment[bank][bit].wa[] 	= wraddress[LOG2(WORDS_PER_EAB)-1..0];
+		
+						% connect decoded WE signal %
+						segment[bank][bit].we 	= real_we[bank];
+					END GENERATE;
+		
+					% define multiplexer inputs %
+					IF (EXTRA_ADDR_BITS > 0) GENERATE
+						mux.data[bank][] = segment[bank][].q;
+					END GENERATE;
+				END GENERATE;
+		
+				% define the output group %
+				IF (EXTRA_ADDR_BITS > 0) GENERATE
+					q[] = mux.result[];
+				ELSE GENERATE
+					q[] = segment[0][].q;
+				END GENERATE;
+			ELSE GENERATE
+		
+				--
+				--	The device family doesn't support dual-port RAM, so use DFFE or latch array
+				--
+		
+				-- If necessary, register the Data port
+				xdata[] = data[];
+				IF ( WREN_IS_REGD() == 0 & INDATA_IS_REGD() ) GENERATE
+					xdata[].clk = inclock;
+					xdata[].ena = inclocken;
+					IF (USED(aclr) & INDATA_ACLR == "ON") GENERATE
+						xdata[].clrn = !aclr;
+					END GENERATE;
+				END GENERATE;
+		
+				-- Define write enables for the RAM core
+				wdecoder.data[] = xwaddr[];
+				IF ( WREN_IS_REGD() ) GENERATE
+					% Using a DFFE array to mimic a synchronous RAM %
+					cells[][].clk = inclock;
+					IF (USED(aclr) & WRCONTROL_ACLR == "ON") GENERATE
+						wdecoder.enable = wren & inclocken & !aclr;
+					ELSE GENERATE
+						wdecoder.enable = wren & inclocken;
+					END GENERATE;
+				ELSE GENERATE
+					wdecoder.enable = wren;
+				END GENERATE;
+		
+				-- Connect decoded write enables
+				FOR eword IN 0 TO REAL_NUMWORDS-1 GENERATE
+					cells[eword][].d = xdata[];
+					cells[eword][].ena = wdecoder.eq[eword];
+				END GENERATE;
+		
+				-- Connect RAM core outputs to a mux for the read port
+				mux.data[][] = cells[][].q;
+				mux.sel[] = xraddr[];
+		
+				% Add the RdEn latch on the mux output %
+				-- When both rdaddress (xraddr[]) and rden (xre) are registered with
+				-- the same clock, the data and enable to the xladdr[] latches may
+				-- change simultaneously, giving unpredictable results.
+				-- Instead, use the latch emulation circuit.
+				IF ( RDADDR_IS_REGD() & RDEN_IS_REGD() ) GENERATE
+					latch_emulator.mux_value[] = mux.result[];
+					latch_emulator.rden = rden;
+					latch_emulator.clock = rdclk;
+					latch_emulator.ena = rdclken;
+					
+					IF RDCONTROL_ACLR == "ON" GENERATE
+						latch_emulator.aclr = aclr;
+					END GENERATE;
+					xql[] = latch_emulator.q[];
+				ELSE GENERATE
+					xql[] = mux.result[];
+				END GENERATE;
+				IF (USED(rden)) & (RDADDR_IS_REGD() !& RDEN_IS_REGD()) GENERATE
+					xql[].ena = xre;
+				END GENERATE;
+		
+				-- If necessary, register the Q port
+				xq[] = xql[];
+				IF (Q_IS_REGD()) GENERATE
+					xq[].clk = outclock;
+					xq[].ena = outclocken;
+					IF (USED(aclr) & OUTDATA_ACLR == "ON") GENERATE
+						xq[].clrn = !aclr;
+					END GENERATE;
+				END GENERATE;
+				q[] = xq[];
+			END GENERATE;
+		ELSE GENERATE	-- error case, try to reduce the number of warnings
+			q[] = data[];
+			q0 = rdaddress[] == wraddress[];
+			q0 = rden # wren # inclock # inclocken # outclock # outclocken # aclr;
+		END GENERATE;
+	END GENERATE;
+	END GENERATE;-- !FAMILY_STRATIX
+	END GENERATE; -- Stratix III
+	IF !USED(q) GENERATE
+		q[] = GND;
+	END GENERATE;
+END;

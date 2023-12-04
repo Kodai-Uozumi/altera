@@ -1,0 +1,69 @@
+TITLE "Top-level file for the 74191 macrofunction.  Chooses a device-family optimized implementation."; 
+FUNCTION p74191 (clk, gn, ldn, dnup, d, c, b, a)
+    RETURNS (qd, qc, qb, qa, mxmn, rcon);
+FUNCTION f74191 (clk, gn, ldn, dnup, d, c, b, a)
+    RETURNS (qd, qc, qb, qa, mxmn, rcon);
+
+PARAMETERS
+(
+	DEVICE_FAMILY
+);
+INCLUDE "aglobal.inc";
+
+SUBDESIGN 74191
+(
+	clk              : INPUT = GND;
+	gn               : INPUT = GND;
+	ldn              : INPUT = VCC;
+	dnup             : INPUT = VCC;
+	d                : INPUT = GND;
+	c                : INPUT = GND;
+	b                : INPUT = GND;
+	a                : INPUT = GND;
+	qd               : OUTPUT;
+	qc               : OUTPUT;
+	qb               : OUTPUT;
+	qa               : OUTPUT;
+	mxmn             : OUTPUT;
+	rcon             : OUTPUT;
+)
+
+VARIABLE
+	IF (FAMILY_FLEX() == 1) GENERATE
+		sub  : f74191;
+	ELSE GENERATE
+		sub  : p74191;
+	END GENERATE;
+
+BEGIN
+	IF (USED(clk)) GENERATE
+		sub.clk = clk;
+	END GENERATE;
+	IF (USED(gn)) GENERATE
+		sub.gn = gn;
+	END GENERATE;
+	IF (USED(ldn)) GENERATE
+		sub.ldn = ldn;
+	END GENERATE;
+	IF (USED(dnup)) GENERATE
+		sub.dnup = dnup;
+	END GENERATE;
+	IF (USED(d)) GENERATE
+		sub.d = d;
+	END GENERATE;
+	IF (USED(c)) GENERATE
+		sub.c = c;
+	END GENERATE;
+	IF (USED(b)) GENERATE
+		sub.b = b;
+	END GENERATE;
+	IF (USED(a)) GENERATE
+		sub.a = a;
+	END GENERATE;
+	qd = sub.qd;
+	qc = sub.qc;
+	qb = sub.qb;
+	qa = sub.qa;
+	mxmn = sub.mxmn;
+	rcon = sub.rcon;
+END;

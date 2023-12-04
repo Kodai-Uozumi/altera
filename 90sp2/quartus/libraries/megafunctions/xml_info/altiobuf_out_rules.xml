@@ -1,0 +1,105 @@
+<?xml version="1.0"?>
+<ROOT>
+	<INCLUDE>
+		<FILE> mfam_family_macros.xml </FILE>
+	</INCLUDE>
+	<!-- macros -->
+	<MACROS>
+		<MACRO NAME="m_titan_style_io"  DEFINITION="(mfam_family_stratixiii || mfam_family_cycloneiii)" />
+		<MACRO NAME="m_stratixiii"  DEFINITION="mfam_family_stratixiii" />
+		<MACRO NAME="m_cycloneiii"  DEFINITION="mfam_family_cycloneiii" />
+		<MACRO NAME="m_arriaii"  DEFINITION="mfam_family_arriaii" />
+		<MACRO NAME="m_use_diff_mode_false"	DEFINITION="USE_DIFFERENTIAL_MODE == FALSE" />
+		<MACRO NAME="m_use_oe_false" DEFINITION="USE_OE == FALSE" />
+		<MACRO NAME="m_use_tc_false"	DEFINITION="USE_TERMINATION_CONTROL == FALSE" />
+		<MACRO NAME="m_ptc_unused" DEFINITION="m_use_tc_false || m_cycloneiii || m_arriaii" />
+		<MACRO NAME="m_use_out_ddchain1_false" DEFINITION="USE_OUT_DYNAMIC_DELAY_CHAIN1 == FALSE" />
+		<MACRO NAME="m_use_out_ddchain2_false" DEFINITION="USE_OUT_DYNAMIC_DELAY_CHAIN2 == FALSE" />
+		<MACRO NAME="m_use_ddchains_false" DEFINITION="m_use_out_ddchain1_false and m_use_out_ddchain2_false" />		
+		<MACRO NAME="m_use_ddchains_true" DEFINITION="(USE_OUT_DYNAMIC_DELAY_CHAIN1 == TRUE) || (USE_OUT_DYNAMIC_DELAY_CHAIN2 == TRUE)" />		
+	</MACROS>
+
+	<!-- ports -->
+	<PORT_RULES>
+		<!-- input ports -->
+		<PORT NAME="datain" TYPE="INPUT" />
+		<PORT NAME="oe" TYPE="INPUT" USAGE="VARIABLE">
+			<STATE V="UNUSED" WHEN="m_use_oe_false" ELSE="USED" />
+		</PORT>
+		<PORT NAME="seriesterminationcontrol" TYPE="INPUT" USAGE="VARIABLE">
+			<STATE V="UNUSED" WHEN="m_use_tc_false" ELSE="USED" />
+		</PORT>
+		<PORT NAME="parallelterminationcontrol" TYPE="INPUT" USAGE="VARIABLE">
+			<STATE V="UNUSED" WHEN="m_ptc_unused" ELSE="USED" />
+		</PORT>
+		<PORT NAME="oe_b" TYPE="INPUT" USAGE="VARIABLE">
+			<STATE V="UNUSED" WHEN="m_use_oe_false || m_use_diff_mode_false" ELSE="USED" />
+		</PORT>
+		<PORT NAME="seriesterminationcontrol_b" TYPE="INPUT" USAGE="VARIABLE">
+			<STATE V="UNUSED" WHEN="m_use_tc_false || m_use_diff_mode_false" ELSE="USED" />
+		</PORT>
+		<PORT NAME="parallelterminationcontrol_b" TYPE="INPUT" USAGE="VARIABLE">
+			<STATE V="UNUSED" WHEN="m_ptc_unused || m_use_diff_mode_false" ELSE="USED" />
+		</PORT>
+		<PORT NAME="io_config_datain" TYPE="INPUT" USAGE="VARIABLE">
+			<STATE V="UNUSED" WHEN="m_use_ddchains_false" />
+			<STATE V="USED" WHEN="m_use_ddchains_true" />
+		</PORT>
+		<PORT NAME="io_config_clk" TYPE="INPUT" USAGE="VARIABLE">
+			<STATE V="UNUSED" WHEN="m_use_ddchains_false" />
+			<STATE V="USED" WHEN="m_use_ddchains_true" />
+		</PORT>
+		<PORT NAME="io_config_clkena" TYPE="INPUT" USAGE="VARIABLE">
+			<STATE V="UNUSED" WHEN="m_use_ddchains_false" />
+		</PORT>
+		<PORT NAME="io_config_update" TYPE="INPUT" USAGE="VARIABLE">
+			<STATE V="UNUSED" WHEN="m_use_ddchains_false" />
+			<STATE V="USED" WHEN="m_use_ddchains_true" />
+		</PORT>
+		
+		<!-- output ports -->
+		<PORT NAME="dataout" TYPE="OUTPUT" />
+		<PORT NAME="dataout_b" TYPE="OUTPUT" USAGE="VARIABLE">
+			<STATE V="UNUSED" WHEN="m_use_diff_mode_false" ELSE="USED" />
+		</PORT>
+	</PORT_RULES>
+
+	<!-- parameters -->
+	<PARAMETER_RULES>
+		<PARAMETER NAME="WIDTH_STC" TYPE="INTEGER">
+			<FORCE_VALUE TO="14" WHEN="m_stratixiii" />
+			<FORCE_VALUE TO="16" WHEN="m_cycloneiii" />
+		</PARAMETER>
+		<PARAMETER NAME="WIDTH_PTC" TYPE="INTEGER">
+			<FORCE_VALUE TO="14" WHEN="m_stratixiii" />
+			<!-- <FORCE_VALUE TO="UNUSED" WHEN="m_cycloneiii" /> -->
+		</PARAMETER>
+		<PARAMETER NAME="USE_TERMINATION_CONTROL" TYPE="STRING">
+			<FORCE_VALUE TO="FALSE" WHEN="mfam_family_cycloneiii" />
+		</PARAMETER>
+		<PARAMETER NAME="NUMBER_OF_CHANNELS" TYPE="INTEGER" DEFAULT_VALUE="1">
+			<FORCE_RANGE MIN="1" />
+		</PARAMETER>
+		<PARAMETER NAME="USE_OUT_DYNAMIC_DELAY_CHAIN1" TYPE="STRING">
+			<FORCE_VALUE TO="FALSE" WHEN="m_cycloneiii || m_arriaii" />
+		</PARAMETER>
+		<PARAMETER NAME="USE_OUT_DYNAMIC_DELAY_CHAIN2" TYPE="STRING">
+			<FORCE_VALUE TO="FALSE" WHEN="m_cycloneiii || m_arriaii" />
+		</PARAMETER>
+		<PARAMETER NAME="PSEUDO_DIFFERENTIAL_MODE" TYPE="STRING" >
+			<FORCE_VALUE TO="FALSE" WHEN="m_cycloneiii || m_arriaii || m_use_diff_mode_false" />
+			<FORCE_VALUE TO="TRUE" WHEN="!m_use_diff_mode_false and !m_use_oe_false" />
+		</PARAMETER>
+	
+		<PARAMETER NAME="ENABLE_BUS_HOLD" TYPE="STRING">
+			<FORCE_VALUE TO="FALSE" WHEN="!m_use_diff_mode_false" />
+		</PARAMETER>
+		<PARAMETER NAME="USE_OE" TYPE="STRING">
+			<FORCE_VALUE TO="FALSE" WHEN="m_cycloneiii || m_arriaii" />
+		</PARAMETER>		
+		<PARAMETER NAME="OPEN_DRAIN_OUTPUT" TYPE="STRING">
+			<FORCE_VALUE TO="FALSE" WHEN="!m_use_diff_mode_false" />
+		</PARAMETER>		
+	</PARAMETER_RULES>
+
+</ROOT>

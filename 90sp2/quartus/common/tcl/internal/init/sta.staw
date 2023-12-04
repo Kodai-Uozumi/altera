@@ -1,0 +1,454 @@
+enable_sdc_extension_collections [-off] [-on]
+ -off: Disable this setting.
+ -on: Enable this setting.
+use_timequest_style_escaping [-off] [-on]
+ -off: Disable this setting.
+ -on: Enable this setting.
+enable_ccpp_removal [-off] [-on]
+ -off: Disable this setting.
+ -on: Enable this setting.
+update_timing_netlist [-full]
+ -full: Forces creation of an updated timing netlist to ensure correctness
+create_timing_netlist [-force_dat] [-model <fast|slow>] [-no_latch] [-post_map] [-speed <speed>] [-temperature <value_in_C>] [-voltage <value_in_mV>] [-zero_ic_delays] [<operating_conditions>]
+ -force_dat: Option to force delay annotation
+ -model <fast|slow>: Option to specify timing model
+ -no_latch: Option to disable the analysis of latches as synchronous elements
+ -post_map: Option to perform timing analysis on the post-synthesis netlist
+ -speed <speed>: Speed grade
+ -temperature <value_in_C>: Operating temperature
+ -voltage <value_in_mV>: Operating voltage
+ -zero_ic_delays: Option to set all IC delays to zero
+ <operating_conditions>: Operating conditions Tcl object name string
+delete_timing_netlist
+timing_netlist_exist
+get_path_info [-arrival_points] [-arrival_time] [-ccpp] [-clock_relationship] [-clock_skew] [-data_delay] [-from] [-from_clock] [-from_clock_is_inverted] [-hold_end_multicycle] [-hold_start_multicycle] [-latch_time] [-launch_time] [-num_logic_levels] [-required_points] [-required_time] [-setup_end_multicycle] [-setup_start_multicycle] [-slack] [-to] [-to_clock] [-to_clock_is_inverted] [-type] <path_ref>
+ -arrival_points: Return a collection of point objects for the arrival path
+ -arrival_time: Return the data arrival time for the path
+ -ccpp: Return the common clock path pessimism for the path
+ -clock_relationship: Return the clock relationship for the path
+ -clock_skew: Return the clock skew for the path
+ -data_delay: Return the data delay for the path
+ -from: Return the source node ID
+ -from_clock: Return the source clock ID
+ -from_clock_is_inverted: Return 1 if the source clock is inverted, 0 otherwise
+ -hold_end_multicycle: Return the hold end multicycle for the path
+ -hold_start_multicycle: Return the hold start multicycle for the path
+ -latch_time: Return the latch time for the path
+ -launch_time: Return the launch time for the path
+ -num_logic_levels: Return the number of logic levels on the path between the to node and from node
+ -required_points: Return a collection of point objects for the required path
+ -required_time: Return the data required time for the path
+ -setup_end_multicycle: Return the setup end multicycle for the path
+ -setup_start_multicycle: Return the setup start multicycle for the path
+ -slack: Return the slack for the path
+ -to: Return the destination node ID
+ -to_clock: Return the destination clock ID
+ -to_clock_is_inverted: Return 1 if the destination clock is inverted, 0 otherwise
+ -type: Return the type of this path.  Possible return values are: "setup", "hold", "recovery", "removal", "max_path", "min_path"
+ <path_ref>: Path object
+get_point_info [-edge] [-incremental_delay] [-location] [-node] [-number_of_fanout] [-rise_fall] [-total_delay] [-type] <point_ref>
+ -edge: Return the edge ID for the edge associated with this point.  If the point has no edge, this returns an empty string
+ -incremental_delay: Return the incremental delay through this point
+ -location: Return a string indicating the location of the point's node, if there is one, else an empty string
+ -node: Return the node ID for the node associated with this point.  If the point has no node, this returns an empty string
+ -number_of_fanout: Return the number of fanout that this point has in the netlist
+ -rise_fall: Return a string indicating the rise_fall type of this point.  Return values are r, f, rr, rf, fr, ff, or an empty string for undefined
+ -total_delay: Return the total delay of the path at this point.  This includes the incremental delay for the point itself
+ -type: Return a string indicating the type of the point
+ <point_ref>: Point object
+get_timing_paths [-detail <summary|path_only|path_and_clock|full_path>] [-fall_from_clock <names>] [-fall_to_clock <names>] [-false_path] [-from <names>] [-from_clock <names>] [-hold] [-less_than_slack <slack limit>] [-npaths <number>] [-nworst <number>] [-pairs_only] [-recovery] [-removal] [-rise_from_clock <names>] [-rise_to_clock <names>] [-setup] [-show_routing] [-through <names>] [-to <names>] [-to_clock <names>]
+ -detail <summary|path_only|path_and_clock|full_path>: Option to determine how much detail should be shown in the path report
+ -fall_from_clock <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+ -fall_to_clock <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+ -false_path: Report only paths that are cut by a false path assignment
+ -from <names>: Valid sources (string patterns are matched using Tcl string matching)
+ -from_clock <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+ -hold: Option to report clock hold paths
+ -less_than_slack <slack limit>: Limit the paths reported to those with slack values less than the specified limit.
+ -npaths <number>: Specifies the number of paths to report (default=1, or the same value as nworst, if nworst is specified)
+ -nworst <number>: Specifies the maximum number of paths to report for each endpoint.  If unspecified, there is no limit.  If nworst is specified, but npaths is not, npaths defaults to the same value as nworst
+ -pairs_only: When set, paths with the same start and end points are considered equivalent.  Only the worst case path for each unique combination is displayed.
+ -recovery: Option to report recovery paths
+ -removal: Option to report removal paths
+ -rise_from_clock <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+ -rise_to_clock <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+ -setup: Option to report clock setup paths
+ -show_routing: Option to display detailed routing in the path
+ -through <names>: Valid through nodes (string patterns are matched using Tcl string matching)
+ -to <names>: Valid destinations (string patterns are matched using Tcl string matching)
+ -to_clock <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+get_path [-from <names>] [-min_path] [-npaths <number>] [-nworst <number>] [-pairs_only] [-show_routing] [-through <names>] [-to <names>]
+ -from <names>: Valid sources (string patterns are matched using Tcl string matching)
+ -min_path: Find the minimum delay path(s)
+ -npaths <number>: Specifies the number of paths to report. The default value is 1 or the same value as nworst, if nworst is specified
+ -nworst <number>: Specifies the maximum number of paths to report for each endpoint.  If unspecified, there is no limit.  If nworst is specified, but npaths is not, npaths defaults to the same value as nworst
+ -pairs_only: When set, paths with the same start and end points are considered equivalent.  Only the longest delay path for each unique combination is displayed.
+ -show_routing: Option to display detailed routing in the path
+ -through <names>: Valid through nodes (string patterns are matched using Tcl string matching)
+ -to <names>: Valid destinations (string patterns are matched using Tcl string matching)
+report_timing [-append] [-detail <summary|path_only|path_and_clock|full_path>] [-fall_from_clock <names>] [-fall_to_clock <names>] [-false_path] [-file <name>] [-from <names>] [-from_clock <names>] [-hold] [-less_than_slack <slack limit>] [-npaths <number>] [-nworst <number>] [-pairs_only] [-panel_name <name>] [-recovery] [-removal] [-rise_from_clock <names>] [-rise_to_clock <names>] [-setup] [-show_routing] [-stdout] [-through <names>] [-to <names>] [-to_clock <names>]
+ -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+ -detail <summary|path_only|path_and_clock|full_path>: Option to determine how much detail should be shown in the path report
+ -fall_from_clock <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+ -fall_to_clock <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+ -false_path: Report only paths that are cut by a false path assignment
+ -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+ -from <names>: Valid sources (string patterns are matched using Tcl string matching)
+ -from_clock <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+ -hold: Option to report clock hold paths
+ -less_than_slack <slack limit>: Limit the paths reported to those with slack values less than the specified limit.
+ -npaths <number>: Specifies the number of paths to report (default=1, or the same value as nworst, if nworst is specified)
+ -nworst <number>: Specifies the maximum number of paths to report for each endpoint.  If unspecified, there is no limit.  If nworst is specified, but npaths is not, npaths defaults to the same value as nworst
+ -pairs_only: When set, paths with the same start and end points are considered equivalent.  Only the worst case path for each unique combination is displayed.
+ -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+ -recovery: Option to report recovery paths
+ -removal: Option to report removal paths
+ -rise_from_clock <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+ -rise_to_clock <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+ -setup: Option to report clock setup paths
+ -show_routing: Option to display detailed routing in the path
+ -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+ -through <names>: Valid through nodes (string patterns are matched using Tcl string matching)
+ -to <names>: Valid destinations (string patterns are matched using Tcl string matching)
+ -to_clock <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+report_path [-append] [-file <name>] [-from <names>] [-min_path] [-npaths <number>] [-nworst <number>] [-pairs_only] [-panel_name <name>] [-show_routing] [-stdout] [-summary] [-through <names>] [-to <names>]
+ -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+ -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+ -from <names>: Valid sources (string patterns are matched using Tcl string matching)
+ -min_path: Find the minimum delay path(s)
+ -npaths <number>: Specifies the number of paths to report (default=1, or the same value as nworst, if nworst is specified)
+ -nworst <number>: Specifies the maximum number of paths to report for each endpoint.  If unspecified, there is no limit.  If nworst is specified, but npaths is not, npaths defaults to the same as nworst
+ -pairs_only: When set, paths with the same start and end points will be considered to be equivalent.  Only the longest delay path for each unique combination will be displayed.
+ -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+ -show_routing: Option to display detailed routing in the path
+ -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+ -summary: Create a single table with a summary of each path found
+ -through <names>: Valid through nodes (string patterns are matched using Tcl string matching)
+ -to <names>: Valid destinations (string patterns are matched using Tcl string matching)
+report_tccs [-append] [-file <name>] [-panel_name <name>] [-stdout]
+ -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+ -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+ -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+ -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+report_rskm [-append] [-file <name>] [-panel_name <name>] [-stdout]
+ -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+ -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+ -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+ -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+report_min_pulse_width [-append] [-detail <summary|full_path>] [-file <name>] [-nworst <number>] [-panel_name <name>] [-stdout] [<targets>]
+ -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+ -detail <summary|full_path>: Option to determine how much detail should be shown in the report
+ -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+ -nworst <number>: Specifies the number of pulse width checks to report (default=1)
+ -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+ -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+ <targets>: Registers or ports
+get_min_pulse_width [-nworst <number>] [<targets>]
+ -nworst <number>: Specifies the number of pulse width checks to report (default=1)
+ <targets>: Registers or ports
+report_datasheet [-append] [-expand_bus] [-file <name>] [-panel_name <name>] [-stdout]
+ -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+ -expand_bus: If set, bus is reported as individual ports
+ -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+ -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+ -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+get_datasheet
+report_ucp [-append] [-file <name>] [-panel_name <name>] [-stdout] [-summary]
+ -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+ -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+ -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+ -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+ -summary: Generate only the summary panel.
+report_clocks [-append] [-desc] [-file <name>] [-panel_name <name>] [-stdout] [-summary] [-waveform]
+ -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+ -desc: Sort the clocks by name in descending order (ascending order is default)
+ -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+ -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+ -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+ -summary: Create a single table with a summary of each clock
+ -waveform: Display the clocks graphically as waveforms
+report_metastability [-append] [-file <name>] [-panel_name <name>] [-stdout]
+ -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+ -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+ -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+ -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+create_timing_summary [-append] [-file <name>] [-hold] [-panel_name <name>] [-recovery] [-removal] [-setup] [-stdout]
+ -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+ -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+ -hold: Hold Analysis
+ -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+ -recovery: Recovery Analysis
+ -removal: Removal Analysis
+ -setup: Setup Analysis
+ -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+get_clock_domain_info [-hold] [-recovery] [-removal] [-setup]
+ -hold: Hold Analysis
+ -recovery: Recovery Analysis
+ -removal: Removal Analysis
+ -setup: Setup Analysis (Default)
+get_edge_slacks [-hold] [-recovery] [-removal] [-setup]
+ -hold: Hold analysis
+ -recovery: Recovery analysis
+ -removal: Removal analysis
+ -setup: Setup analysis
+get_clock_fmax_info
+report_clock_fmax_summary [-append] [-file <name>] [-panel_name <name>] [-stdout]
+ -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+ -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+ -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+ -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+report_advanced_io_timing [-append] [-file <name>] [-panel_name <name>] [-stdout]
+ -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+ -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+ -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+ -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+check_timing [-append] [-file <name>] [-include <check_list>] [-panel_name <name>] [-stdout]
+ -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+ -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+ -include <check_list>: Checks to perform
+ -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+ -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+create_slack_histogram [-append] -clock_name <name> [-file <name>] [-hold] [-max_slack <max_slack>] [-min_slack <min_slack>] [-num_bins <num_bins>] [-panel_name <name>] [-recovery] [-removal] [-setup] [-stdout]
+ -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+ -clock_name <name>: Name of the Clock Domain
+ -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+ -hold: Hold Analysis
+ -max_slack <max_slack>: Maximum slack value of the created histogram
+ -min_slack <min_slack>: Minimum slack value of the created histogram
+ -num_bins <num_bins>: Number of bins
+ -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+ -recovery: Recovery Analysis
+ -removal: Removal Analysis
+ -setup: Setup Analysis
+ -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+report_clock_transfers [-append] [-file <name>] [-hold] [-panel_name <name>] [-recovery] [-removal] [-setup] [-stdout]
+ -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+ -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+ -hold: Creates a clock transfer summary for hold analysis
+ -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+ -recovery: Creates a clock transfer summary for recovery analysis
+ -removal: Creates a clock transfer summary for removal analysis
+ -setup: Creates a clock transfer summary for setup analysis
+ -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+report_net_timing [-append] [-file <name>] [-nworst_delay <number>] [-nworst_fanout <number>] [-panel_name <name>] [-stdout] <name>
+ -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+ -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+ -nworst_delay <number>: Report worst net delays
+ -nworst_fanout <number>: Report worst fanout nets
+ -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+ -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+ <name>: Signal or collection name
+report_sdc [-append] [-file <name>] [-ignored] [-panel_name <name>] [-stdout]
+ -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+ -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+ -ignored: Reports full history of assignments to locate ignored ones
+ -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+ -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+write_sdc [-expand] [-history] [<file_name>]
+ -expand: Generate SDC file by expanding the macros
+ -history: Reports full history of assignments
+ <file_name>: Name of output file
+read_sdc [-hdl] [<file_name>]
+ -hdl: Read SDC commands embedded in HDL
+ <file_name>: Name of the SDC file
+get_default_sdc_file_names
+get_object_info [-name] [-type] <object>
+ -name: Return the object name
+ -type: Return the object type
+ <object>: Object
+get_clock_info [-divide_by] [-duty_cycle] [-edge_shifts] [-edges] [-fall] [-is_inverted] [-latency] [-master_clock] [-master_clock_pin] [-max] [-min] [-multiply_by] [-name] [-nreg_neg] [-nreg_pos] [-offset] [-period] [-phase] [-rise] [-targets] [-type] [-waveform] <clk_object>
+ -divide_by: Return the frequency divider (to the base clock)
+ -duty_cycle: Return the duty cycle
+ -edge_shifts: Return a list of edge shifts that the specified edges are to undergo to yield the final generated clock waveform
+ -edges: Return a list of integer representing edges from the source clock that are to form edges of the generated clock
+ -fall: Return clock fall latency
+ -is_inverted: Return a boolean value to indicate if the generated clock is inverted
+ -latency: Return clock latency
+ -master_clock: Return the master clock name
+ -master_clock_pin: Return the master clock source pin
+ -max: Return max clock latency
+ -min: Return min clock latency
+ -multiply_by: Return the frequency multiplier (to the base clock)
+ -name: Return the clock name
+ -nreg_neg: Return number of registers negatively clocked by clock
+ -nreg_pos: Return number of registers positively clocked by clock
+ -offset: Return the clock offset
+ -period: Return the clock period
+ -phase: Return the clock phase
+ -rise: Return clock rise latency
+ -targets: Return the clock targets collection
+ -type: Return the clock type
+ -waveform: Return the waveform (rise time and fall time)
+ <clk_object>: Clock object
+get_node_info [-asynch_edges] [-cell] [-clock_edges] [-fanout_edges] [-location] [-name] [-synch_edges] [-type] <node_object>
+ -asynch_edges: Return a list of asynchronous edge IDs
+ -cell: Return the host cell
+ -clock_edges: Return a list of clock edge IDs
+ -fanout_edges: Return a list of fanout edge IDs
+ -location: Return the atom location in device
+ -name: Return the node name
+ -synch_edges: Return a list of synchronous edge IDs
+ -type: Return the node type
+ <node_object>: Node object
+get_port_info [-edge_rate] [-is_inout_port] [-is_input_port] [-is_output_port] [-name] [-type] <port_object>
+ -edge_rate: Return the edge_rate value
+ -is_inout_port: Return true if it is an inout port, or false otherwise
+ -is_input_port: Return true if it is an input port, or false otherwise
+ -is_output_port: Return true if it is an output port, or false otherwise
+ -name: Return the port name
+ -type: Return the port type
+ <port_object>: Port object
+get_register_info [-asynch_edges] [-clock_edges] [-fanout_edges] [-is_latch] [-name] [-synch_edges] [-tch] [-tcl] [-tco] [-th] [-tmin] [-tsu] [-type] <reg_object>
+ -asynch_edges: Return a list of asynchronous edge IDs
+ -clock_edges: Return a list of clock edge IDs
+ -fanout_edges: Return a list of fanout edge IDs
+ -is_latch: Return "1" if this is a latch node, or "0" otherwise
+ -name: Return the object name
+ -synch_edges: Return a list of synchronous edge IDs
+ -tch: Return the Tch value
+ -tcl: Return the Tcl value
+ -tco: Return the Tco value
+ -th: Return the Th value
+ -tmin: Return the Tmin value
+ -tsu: Return the Tsu value
+ -type: Return the object type
+ <reg_object>: Register object
+report_exceptions [-append] [-detail <summary|path_summary|path_only|path_and_clock|full_path>] [-fall_from_clock <names>] [-fall_to_clock <names>] [-file <name>] [-from <names>] [-from_clock <names>] [-hold] [-less_than_slack <slack limit>] [-npaths <number>] [-nworst <number>] [-pairs_only] [-panel_name <name>] [-recovery] [-removal] [-rise_from_clock <names>] [-rise_to_clock <names>] [-setup] [-stdout] [-through <names>] [-to <names>] [-to_clock <names>]
+ -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+ -detail <summary|path_summary|path_only|path_and_clock|full_path>: Option to determine how much detail should be shown in the path report
+ -fall_from_clock <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+ -fall_to_clock <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+ -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+ -from <names>: Valid sources (string patterns are matched using Tcl string matching)
+ -from_clock <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+ -hold: Option to report clock hold paths
+ -less_than_slack <slack limit>: Limit the paths reported to those with slack values less than the specified limit.
+ -npaths <number>: Specifies the number of paths to report (default=1, or the same value as nworst, if nworst is specified)
+ -nworst <number>: Specifies the maximum number of paths to report for each endpoint.  If unspecified, there is no limit.  If nworst is specified, but npaths is not, npaths defaults to the same value as nworst
+ -pairs_only: When set, paths with the same start and end points are considered equivalent.  Only the worst case path for each unique combination is displayed.
+ -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+ -recovery: Option to report recovery paths
+ -removal: Option to report removal paths
+ -rise_from_clock <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+ -rise_to_clock <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+ -setup: Option to report clock setup paths
+ -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+ -through <names>: Valid through nodes (string patterns are matched using Tcl string matching)
+ -to <names>: Valid destinations (string patterns are matched using Tcl string matching)
+ -to_clock <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+get_cell_info [-buried_nodes] [-buried_regs] [-in_pin_names] [-in_pins] [-location] [-name] [-out_pin_names] [-out_pins] [-pin_names] [-pins] [-type] [-wysiwyg_type] <cell_object>
+ -buried_nodes: Return a collection of buried node IDs
+ -buried_regs: Return a collection of buried register IDs
+ -in_pin_names: Return a list of input pin names
+ -in_pins: Return a collection of input pin IDs
+ -location: Return the atom location in device
+ -name: Return the cell name
+ -out_pin_names: Return a list of output pin names
+ -out_pins: Return a collection of output pin IDs
+ -pin_names: Return a list of input and output pin names
+ -pins: Return a collection of input and output pin IDs
+ -type: Return the cell type
+ -wysiwyg_type: Return the WYSIWYG type of the cell
+ <cell_object>: Cell object
+get_pin_info [-is_clock_pin] [-is_in_pin] [-is_out_pin] [-name] [-net] [-parent_cell] [-suffix] [-type] <pin_object>
+ -is_clock_pin: Return true if it is a clock pin, or false otherwise
+ -is_in_pin: Return true if it is an input pin, or false otherwise
+ -is_out_pin: Return true if it is an output pin, or false otherwise
+ -name: Return the pin name
+ -net: Return the net ID if this is an output pin
+ -parent_cell: Return the parent cell ID
+ -suffix: Return the suffix of the pin
+ -type: Return the pin type
+ <pin_object>: Pin object
+get_net_info [-name] [-pin] [-type] <net_object>
+ -name: Return the net name
+ -pin: Return the pin ID of this net
+ -type: Return the net type.
+ <net_object>: Net object
+get_edge_info [-delay] [-delay_type] [-dst] [-ff] [-fr] [-max] [-min] [-name] [-rf] [-rr] [-src] [-type] [-unateness] <edge_object>
+ -delay: Return the delay.
+ -delay_type: Return the type of the delay (ic/cell).
+ -dst: Return the destination node ID.
+ -ff: Return the fall-to-fall delay
+ -fr: Return the fall-to-rise delay
+ -max: Max delay
+ -min: Min delay
+ -name: Return the edge name
+ -rf: Return the rise-to-fall delay
+ -rr: Return the rise-to-rise delay
+ -src: Return the source node ID
+ -type: Return the edge type.
+ -unateness: Return the unateness.
+ <edge_object>: Edge object
+query_collection [-all] [-limit <limit_value>] [-list_format] [-report_format] <collection>
+ -all: Return all the collection objects.
+ -limit <limit_value>: Set number of collection objects to return.
+ -list_format: Return collection objects in a list format.
+ -report_format: Return collection objects in a format of one element per line.
+ <collection>: Object collection
+locate [-chip] [-color <black|blue|brown|green|grey|light_grey|orange|purple|red|white>] [-cps] [-label <label>] [-rpe] [-tmv] <items>
+ -chip: Locate the object in the Chip Planner
+ -color <black|blue|brown|green|grey|light_grey|orange|purple|red|white>: Specify the color to be used to identify the objects you are locating
+ -cps: Locate the object in the Critical Path Settings dialog of the Chip Planner
+ -label <label>: Specify a label used to identify the objects you are locating
+ -rpe: Locate in the Resource Property Editor
+ -tmv: Locate the object in the Technology Map Viewer
+ <items>: Items to locate.  Any collection or object (such as paths, points, nodes, nets, keepers, registers, etc) may be located by passing a reference to the corresponding collection or object.
+get_partition_info [-child] [-name] [-parent] [-type] <partition_object>
+ -child: Return child partition name(s)
+ -name: Return the partition name
+ -parent: Return parent partition name
+ -type: Return the partition type
+ <partition_object>: Partition object
+set_operating_conditions [-force_dat] [-grade <c|i|m|e|a>] [-model <fast|slow>] [-speed <speed>] [-temperature <value_in_C>] [-voltage <value_in_mV>] [<operating_conditions>]
+ -force_dat: Option to force delay annotation
+ -grade <c|i|m|e|a>: Option to specify temperature grade
+ -model <fast|slow>: Option to specify timing model
+ -speed <speed>: Speed grade
+ -temperature <value_in_C>: Operating temperature
+ -voltage <value_in_mV>: Operating voltage
+ <operating_conditions>: Operating conditions Tcl object
+get_available_operating_conditions [-all]
+ -all: Returns all available operating conditions
+get_operating_conditions_info [-display_name] [-model] [-name] [-speed] [-temperature] [-voltage] <operating_condition>
+ -display_name: Returns the operating conditions display name
+ -model: Returns the operating corner
+ -name: Returns the operating conditions Tcl_Obj name
+ -speed: Returns the speed grade of the current device
+ -temperature: Returns the operating temperature
+ -voltage: Returns the operating voltage
+ <operating_condition>: Operating condition object
+get_operating_conditions
+report_ddr [-append] [-file <name>] [-panel_name <name>] [-stdout]
+ -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+ -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+ -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+ -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+report_net_delay [-append] [-file <name>] [-nworst <number>] [-panel_name <name>] [-stdout]
+ -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+ -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+ -nworst <number>: Specifies the maximum number of paths to report for each analysis.  If unspecified, there is no limit.
+ -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+ -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+report_max_skew [-append] [-detail <summary|path_only|path_and_clock|full_path>] [-file <name>] [-less_than_slack <slack limit>] [-npaths <number>] [-panel_name <name>] [-show_routing] [-stdout]
+ -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+ -detail <summary|path_only|path_and_clock|full_path>: Option to determine how much detail should be shown in the path report
+ -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+ -less_than_slack <slack limit>: Limit the paths reported to those with slack values less than the specified limit.
+ -npaths <number>: Specifies the number of paths to report for each latest and earliest arrival skew result per set_max_skew assignment (default=1)
+ -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+ -show_routing: Option to display detailed routing in the path report
+ -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+report_bottleneck [-cmetric <cmetric_name>] [-details] [-metric <default|tns|num_paths|num_fpaths|num_fanins|num_fanouts>] [-nworst <number>] [-panel_name <panel_name>] [-stdout] [<paths>]
+ -cmetric <cmetric_name>: Custom metric function to evaluate individual nodes
+ -details: Show the detailed information (number of failing edges, number of fanins, etc)
+ -metric <default|tns|num_paths|num_fpaths|num_fanins|num_fanouts>: Indicate the metric to use to rate individual nodes
+ -nworst <number>: Specifies the maximum number of nodes to report.  If unspecified, there is no limit
+ -panel_name <panel_name>: Sends the results to the panel and specifies the name of the new panel
+ -stdout: Output the result onto stdout
+ <paths>: Paths to be analyzed
+report_partitions [-nworst <number>] [-panel_name <name>] [-stdout]
+ -nworst <number>: Specifies the maximum number of paths to report between partitions.  If unspecified, the limit defaults to 1000
+ -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+ -stdout: Output the result onto stdout
+EOF

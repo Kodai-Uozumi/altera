@@ -1,0 +1,1293 @@
+<?xml version="1.0"?>
+<ROOT>
+	<INCLUDE FILE="mfam_family_macros.xml"/>
+	<FUNCTION_INFORMATION>
+		<VHDL_LIBRARY NAME="altera_mf.altera_mf_components"/>
+	</FUNCTION_INFORMATION>
+	<MACROS>
+		<MACRO NAME="m_always_signed_output" DEFINITION="((REPRESENTATION_A == SIGNED) and !is_used(signa)) || ((REPRESENTATION_B == SIGNED) and !is_used(signb))" />
+		<MACRO NAME="m_clock0_used_int" DEFINITION="is_used(clock0) ? 1 : 0"/>
+		<MACRO NAME="m_clock1_used_int" DEFINITION="is_used(clock1) ? 1 : 0"/>
+		<MACRO NAME="m_clock2_used_int" DEFINITION="is_used(clock2) ? 1 : 0"/>
+		<MACRO NAME="m_clock3_used_int" DEFINITION="is_used(clock3) ? 1 : 0"/>
+		<MACRO NAME="m_clock_count" DEFINITION="m_clock0_used_int + m_clock1_used_int + m_clock2_used_int + m_clock3_used_int"/>
+		<MACRO NAME="m_cycloneii_dsp_block" DEFINITION="(DEDICATED_MULTIPLIER_CIRCUITRY == YES || DEDICATED_MULTIPLIER_CIRCUITRY == AUTO || USE_WIZARD == ON) and (mfam_family_cycloneii)"/>
+		<MACRO NAME="m_titan_dsp_block" DEFINITION="(DEDICATED_MULTIPLIER_CIRCUITRY == YES || DEDICATED_MULTIPLIER_CIRCUITRY == AUTO || USE_WIZARD == ON) and mfam_family_stratixiii"/>
+		<MACRO NAME="m_base_stratixii_features">
+			<DEFINITION>
+				is_used(mult01_round) ||is_used(mult01_saturation) ||
+				is_used(mult23_round) ||is_used(mult23_saturation) ||
+				is_used(addnsub1_round) ||is_used(addnsub3_round) ||
+				MULTIPLIER01_ROUNDING == "yes" || MULTIPLIER01_SATURATION == "yes" ||
+				MULTIPLIER23_ROUNDING == "yes" || MULTIPLIER23_SATURATION == "yes" ||
+				ADDER1_ROUNDING == "yes" || ADDER3_ROUNDING == "yes"
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_stratixii_features">
+			<DEFINITION>
+				m_base_stratixii_features
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_bit_extend">
+			<DEFINITION>
+				(NUMBER_OF_MULTIPLIERS gt 2) ? 2 : ((NUMBER_OF_MULTIPLIERS == 1) ? 0 : 1)
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_scanchain_a">
+			<DEFINITION>
+				INPUT_SOURCE_A0 == str(SCANA) || INPUT_SOURCE_A1 == str(SCANA) 
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_scanchain_b">
+			<DEFINITION>
+				(INPUT_SOURCE_B0 == str(SCANB) || INPUT_SOURCE_B1 == str(SCANB)) 
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_asud_max_width_1">
+			<DEFINITION>
+				((WIDTH_A + WIDTH_B + 16) gt 36) ? 36 : (WIDTH_A + WIDTH_B + 16)
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_asud_max_width">
+			<DEFINITION>
+				(WIDTH_RESULT) lt (WIDTH_A + WIDTH_B + 16) ? (m_asud_max_width_1 + WIDTH_RESULT - (WIDTH_A + WIDTH_B + 16)) : m_asud_max_width_1
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_use_sign_extend">
+			<DEFINITION>
+				(ACCUMULATOR == YES || CHAINOUT_ADDER == YES) and ((WIDTH_RESULT gt (WIDTH_A + WIDTH_B + 8)) || (output_saturation != NO || chainout_saturation != NO))
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_44_res">
+			<DEFINITION>
+				(ACCUMULATOR == YES || CHAINOUT_ADDER == YES)  
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_no_saturate">
+			<DEFINITION>
+				 ((WIDTH_RESULT lt 29) and m_44_res) || (WIDTH_A gt 18) || (WIDTH_B gt 18) || (WIDTH_RESULT gt 44)
+				|| m_unsigned_out || m_base_stratixii_features || (SHIFT_MODE != NO) || INPUT_SOURCE_B0 == str(LOOPBACK)
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_no_round">
+			<DEFINITION>
+				(((WIDTH_A + WIDTH_B) lt 15) and !m_44_res )||(m_use_sign_extend and ((WIDTH_A + WIDTH_B) lt 7))||(!m_use_sign_extend and (WIDTH_RESULT lt 15))
+				|| (WIDTH_A gt 18) || (WIDTH_B gt 18) || (WIDTH_RESULT gt 44) || m_unsigned_out || m_base_stratixii_features || SHIFT_MODE != NO 
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_round_max_acc_no_sign_extend">
+			<DEFINITION>
+				((m_out_width_shift + 30) gt WIDTH_RESULT) ? WIDTH_RESULT : (m_out_width_shift) + 30
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_round_min_acc_sign_extend">
+			<DEFINITION>
+				(WIDTH_RESULT gt 21) ? WIDTH_RESULT - 21 :0
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_round_max_no_acc">
+			<DEFINITION>
+				(WIDTH_RESULT gt (29 + m_out_width_shift)) ? (29 + m_out_width_shift) : WIDTH_RESULT
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_sat_max_no_acc">
+			<DEFINITION>
+				(WIDTH_A + WIDTH_B) gt 7 ? (7 + m_out_width_shift): (WIDTH_A + WIDTH_B + m_out_width_shift)
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_sat_min_no_acc">
+			<DEFINITION>
+				(m_out_width_shift + 2 - m_bit_extend) gt 2 ? (m_out_width_shift + 2 - m_bit_extend) : 2
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_out_width_shift">
+			<DEFINITION>
+				WIDTH_RESULT - (WIDTH_A + WIDTH_B)
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_no_dynamic_sign">
+			<DEFINITION>
+				((WIDTH_RESULT gt 44) and (m_44_res)) || (WIDTH_RESULT gt (WIDTH_A + WIDTH_B))
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_unsigned_out">
+			<DEFINITION>
+				(REPRESENTATION_A == UNSIGNED) and (REPRESENTATION_B == UNSIGNED) <!-- remove dynamic sign for Q61. only -->
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_double_signed_input">
+			<DEFINITION>
+				(REPRESENTATION_A == SIGNED) and (REPRESENTATION_B == SIGNED)
+			</DEFINITION>
+		</MACRO>
+
+		<MACRO NAME="m_one_level_adder_in_one_atom">
+			<DEFINITION>
+				((REPRESENTATION_A == SIGNED) and (REPRESENTATION_B == SIGNED) and (WIDTH_A == 18) and (WIDTH_B== 18)) || ((WIDTH_A lt 18) and (WIDTH_B lt 18)) 
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_one_atom">
+			<DEFINITION>
+				(WIDTH_A lt 18) and (WIDTH_B lt 18) and  m_one_level_adder_in_one_atom
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_possible_54_mode">
+			<DEFINITION>
+				((WIDTH_A gt 36) and (WIDTH_A lt 55)) and  ((WIDTH_B gt 36) and (WIDTH_B lt 55)) and !is_used(signa) and !is_used(signb) and (m_double_signed_input || m_unsigned_out) and m_titan_dsp_block and (number_of_multipliers == 1)
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_accum_width_with_overflow">
+			<DEFINITION>
+				((WIDTH_A + WIDTH_B + 8) == WIDTH_RESULT) and m_titan_dsp_block and (ACCUMULATOR == YES ) and (output_saturation == NO)
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_sym_sat_allowed">
+			<DEFINITION>
+				((WIDTH_A + WIDTH_B) == 36) || (((WIDTH_A + WIDTH_B) gt 15) and ((WIDTH_A + WIDTH_B) lt 30))
+			</DEFINITION>
+		</MACRO>
+
+		<MACRO NAME="m_use_full_mac">
+			<DEFINITION>
+				is_used(mult01_round) ||is_used(mult01_saturation) ||
+				is_used(mult23_round) ||is_used(mult23_saturation) ||
+				is_used(addnsub1_round) ||is_used(addnsub3_round) ||
+				MULTIPLIER01_ROUNDING == "yes" || MULTIPLIER01_SATURATION == "YES" ||
+				MULTIPLIER23_ROUNDING == "YES" || MULTIPLIER23_SATURATION == "YES" ||
+				ADDER1_ROUNDING == "YES" || ADDER3_ROUNDING == "YES"
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_clock0_used">
+			<DEFINITION>
+					(INPUT_REGISTER_A0 == "clock0") ||(INPUT_REGISTER_A1 == "CLOCK0") ||(INPUT_REGISTER_A2 == "clock0") ||(INPUT_REGISTER_A3 == "clock0") || 
+					(INPUT_REGISTER_B0 == "clock0") ||(INPUT_REGISTER_B1 == "clock0") ||(INPUT_REGISTER_B2 == "clock0") ||(INPUT_REGISTER_B3 == "clock0") || 
+					(MULTIPLIER_REGISTER0 == "clock0") ||(MULTIPLIER_REGISTER1 == "clock0") ||
+					(MULTIPLIER_REGISTER2 == "clock0") ||(MULTIPLIER_REGISTER3 == "clock0") || 
+					OUTPUT_REGISTER == "clock0" ||
+					SIGNED_REGISTER_A == "clock0" || SIGNED_PIPELINE_REGISTER_A == "clock0" ||
+					SIGNED_REGISTER_B == "clock0" || SIGNED_PIPELINE_REGISTER_B == "clock0" ||
+					ADDNSUB_MULTIPLIER_REGISTER1 == "clock0" || ADDNSUB_MULTIPLIER_REGISTER3 == "clock0" ||
+					ADDNSUB_MULTIPLIER_PIPELINE_REGISTER1 == "clock0" || ADDNSUB_MULTIPLIER_PIPELINE_REGISTER3 == "clock0" ||
+					MULT01_ROUND_REGISTER== "clock0" || MULT23_ROUND_REGISTER== "clock0" ||
+					MULT01_SATURATION_REGISTER== "clock0" || MULT23_SATURATION_REGISTER== "clock0" ||
+					ADDNSUB1_ROUND_REGISTER == "clock0" || ADDNSUB3_ROUND_REGISTER == "clock0"||
+					ADDNSUB1_ROUND_PIPELINE_REGISTER == "clock0" || ADDNSUB3_ROUND_PIPELINE_REGISTER == "clock0"||
+					SCANOUTA_REGISTER == "clock0" ||CHAINOUT_REGISTER == "clock0" ||                           
+					OUTPUT_ROUND_REGISTER == "clock0" || OUTPUT_ROUND_PIPELINE_REGISTER == "clock0" ||                 
+					OUTPUT_SATURATE_REGISTER == "clock0" || OUTPUT_SATURATE_PIPELINE_REGISTER == "clock0" ||                
+					CHAINOUT_ROUND_REGISTER == "clock0" || CHAINOUT_ROUND_PIPELINE_REGISTER == "clock0" || CHAINOUT_ROUND_OUTPUT_REGISTER == "clock0" ||        
+					CHAINOUT_SATURATE_REGISTER == "clock0" || CHAINOUT_SATURATE_PIPELINE_REGISTER == "clock0" || CHAINOUT_SATURATE_OUTPUT_REGISTER == "clock0" ||                
+					ZERO_CHAINOUT_OUTPUT_REGISTER == "clock0" ||                    
+					ZERO_LOOPBACK_REGISTER == "clock0" ||ZERO_LOOPBACK_PIPELINE_REGISTER == "clock0" || ZERO_LOOPBACK_OUTPUT_REGISTER == "clock0" ||                      
+					ACCUM_SLOAD_REGISTER == "clock0" || ACCUM_SLOAD_PIPELINE_REGISTER == "clock0" ||                      
+					ROTATE_REGISTER == "clock0" || ROTATE_PIPELINE_REGISTER == "clock0" || ROTATE_OUTPUT_REGISTER == "clock0" ||                              
+					SHIFT_RIGHT_REGISTER == "clock0" || SHIFT_RIGHT_PIPELINE_REGISTER == "clock0" || SHIFT_RIGHT_OUTPUT_REGISTER == "clock0"                      
+	
+
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_clock1_used">
+			<DEFINITION>
+
+					(INPUT_REGISTER_A0 == "clock1") ||(INPUT_REGISTER_A1 == "clock1") ||(INPUT_REGISTER_A2 == "clock1") ||(INPUT_REGISTER_A3 == "clock1") || 
+					(INPUT_REGISTER_B0 == "clock1") ||(INPUT_REGISTER_B1 == "clock1") ||(INPUT_REGISTER_B2 == "clock1") ||(INPUT_REGISTER_B3 == "clock1") || 
+					(MULTIPLIER_REGISTER0 == "clock1") ||(MULTIPLIER_REGISTER1 == "clock1") ||
+					(MULTIPLIER_REGISTER2 == "clock1") ||(MULTIPLIER_REGISTER3 == "clock1") || 
+					OUTPUT_REGISTER == "clock1" ||
+					SIGNED_REGISTER_A == "clock1" || SIGNED_PIPELINE_REGISTER_A == "clock1" ||
+					SIGNED_REGISTER_B == "clock1" || SIGNED_PIPELINE_REGISTER_B == "clock1" ||
+					ADDNSUB_MULTIPLIER_REGISTER1 == "clock1" || ADDNSUB_MULTIPLIER_REGISTER3 == "clock1" ||
+					ADDNSUB_MULTIPLIER_PIPELINE_REGISTER1 == "clock1" || ADDNSUB_MULTIPLIER_PIPELINE_REGISTER3 == "clock1" ||
+					MULT01_ROUND_REGISTER== "clock1" || MULT23_ROUND_REGISTER== "clock1" ||
+					MULT01_SATURATION_REGISTER== "clock1" || MULT23_SATURATION_REGISTER== "clock1" ||
+					ADDNSUB1_ROUND_REGISTER == "clock1" || ADDNSUB3_ROUND_REGISTER == "clock1"||
+					ADDNSUB1_ROUND_PIPELINE_REGISTER == "clock1" || ADDNSUB3_ROUND_PIPELINE_REGISTER == "clock1"||
+					SCANOUTA_REGISTER == "clock1" ||CHAINOUT_REGISTER == "clock1" ||                           
+					OUTPUT_ROUND_REGISTER == "clock1" || OUTPUT_ROUND_PIPELINE_REGISTER == "clock1" ||                 
+					OUTPUT_SATURATE_REGISTER == "clock1" || OUTPUT_SATURATE_PIPELINE_REGISTER == "clock1" ||                
+					CHAINOUT_ROUND_REGISTER == "clock1" || CHAINOUT_ROUND_PIPELINE_REGISTER == "clock1" || CHAINOUT_ROUND_OUTPUT_REGISTER == "clock1" ||        
+					CHAINOUT_SATURATE_REGISTER == "clock1" || CHAINOUT_SATURATE_PIPELINE_REGISTER == "clock1" || CHAINOUT_SATURATE_OUTPUT_REGISTER == "clock1" ||                
+					ZERO_CHAINOUT_OUTPUT_REGISTER == "clock1" ||                    
+					ZERO_LOOPBACK_REGISTER == "clock1" ||ZERO_LOOPBACK_PIPELINE_REGISTER == "clock1" || ZERO_LOOPBACK_OUTPUT_REGISTER == "clock1" ||                      
+					ACCUM_SLOAD_REGISTER == "clock1" || ACCUM_SLOAD_PIPELINE_REGISTER == "clock1" ||                      
+					ROTATE_REGISTER == "clock1" || ROTATE_PIPELINE_REGISTER == "clock1" || ROTATE_OUTPUT_REGISTER == "clock1" ||                              
+					SHIFT_RIGHT_REGISTER == "clock1" || SHIFT_RIGHT_PIPELINE_REGISTER == "clock1" || SHIFT_RIGHT_OUTPUT_REGISTER == "clock1"                      
+
+	
+
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_clock2_used">
+			<DEFINITION>
+					(INPUT_REGISTER_A0 == "clock2") ||(INPUT_REGISTER_A1 == "clock2") ||(INPUT_REGISTER_A2 == "clock2") ||(INPUT_REGISTER_A3 == "clock2") || 
+					(INPUT_REGISTER_B0 == "clock2") ||(INPUT_REGISTER_B1 == "clock2") ||(INPUT_REGISTER_B2 == "clock2") ||(INPUT_REGISTER_B3 == "clock2") || 
+					(MULTIPLIER_REGISTER0 == "clock2") ||(MULTIPLIER_REGISTER1 == "clock2") ||
+					(MULTIPLIER_REGISTER2 == "clock2") ||(MULTIPLIER_REGISTER3 == "clock2") || 
+					OUTPUT_REGISTER == "clock2" ||
+					SIGNED_REGISTER_A == "clock2" || SIGNED_PIPELINE_REGISTER_A == "clock2" ||
+					SIGNED_REGISTER_B == "clock2" || SIGNED_PIPELINE_REGISTER_B == "clock2" ||
+					ADDNSUB_MULTIPLIER_REGISTER1 == "clock2" || ADDNSUB_MULTIPLIER_REGISTER3 == "clock2" ||
+					ADDNSUB_MULTIPLIER_PIPELINE_REGISTER1 == "clock2" || ADDNSUB_MULTIPLIER_PIPELINE_REGISTER3 == "clock2" ||
+					MULT01_ROUND_REGISTER== "clock2" || MULT23_ROUND_REGISTER== "clock2" ||
+					MULT01_SATURATION_REGISTER== "clock2" || MULT23_SATURATION_REGISTER== "clock2" ||
+					ADDNSUB1_ROUND_REGISTER == "clock2" || ADDNSUB3_ROUND_REGISTER == "clock2"||
+					ADDNSUB1_ROUND_PIPELINE_REGISTER == "clock2" || ADDNSUB3_ROUND_PIPELINE_REGISTER == "clock2"||
+					SCANOUTA_REGISTER == "clock2" ||CHAINOUT_REGISTER == "clock2" ||                           
+					OUTPUT_ROUND_REGISTER == "clock2" || OUTPUT_ROUND_PIPELINE_REGISTER == "clock2" ||                 
+					OUTPUT_SATURATE_REGISTER == "clock2" || OUTPUT_SATURATE_PIPELINE_REGISTER == "clock2" ||                
+					CHAINOUT_ROUND_REGISTER == "clock2" || CHAINOUT_ROUND_PIPELINE_REGISTER == "clock2" || CHAINOUT_ROUND_OUTPUT_REGISTER == "clock2" ||        
+					CHAINOUT_SATURATE_REGISTER == "clock2" || CHAINOUT_SATURATE_PIPELINE_REGISTER == "clock2" || CHAINOUT_SATURATE_OUTPUT_REGISTER == "clock2" ||                
+					ZERO_CHAINOUT_OUTPUT_REGISTER == "clock2" ||                    
+					ZERO_LOOPBACK_REGISTER == "clock2" ||ZERO_LOOPBACK_PIPELINE_REGISTER == "clock2" || ZERO_LOOPBACK_OUTPUT_REGISTER == "clock2" ||                      
+					ACCUM_SLOAD_REGISTER == "clock2" || ACCUM_SLOAD_PIPELINE_REGISTER == "clock2" ||                      
+					ROTATE_REGISTER == "clock2" || ROTATE_PIPELINE_REGISTER == "clock2" || ROTATE_OUTPUT_REGISTER == "clock2" ||                              
+					SHIFT_RIGHT_REGISTER == "clock2" || SHIFT_RIGHT_PIPELINE_REGISTER == "clock2" || SHIFT_RIGHT_OUTPUT_REGISTER == "clock2"                      
+
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_clock3_used">
+			<DEFINITION>
+					(INPUT_REGISTER_A0 == "clock3") ||(INPUT_REGISTER_A1 == "clock3") ||(INPUT_REGISTER_A2 == "clock3") ||(INPUT_REGISTER_A3 == "clock3") || 
+					(INPUT_REGISTER_B0 == "clock3") ||(INPUT_REGISTER_B1 == "clock3") ||(INPUT_REGISTER_B2 == "clock3") ||(INPUT_REGISTER_B3 == "clock3") || 
+					(MULTIPLIER_REGISTER0 == "clock3") ||(MULTIPLIER_REGISTER1 == "clock3") ||
+					(MULTIPLIER_REGISTER2 == "clock3") ||(MULTIPLIER_REGISTER3 == "clock3") || 
+					OUTPUT_REGISTER == "clock3" ||
+					SIGNED_REGISTER_A == "clock3" || SIGNED_PIPELINE_REGISTER_A == "clock3" ||
+					SIGNED_REGISTER_B == "clock3" || SIGNED_PIPELINE_REGISTER_B == "clock3" ||
+					ADDNSUB_MULTIPLIER_REGISTER1 == "clock3" || ADDNSUB_MULTIPLIER_REGISTER3 == "clock3" ||
+					ADDNSUB_MULTIPLIER_PIPELINE_REGISTER1 == "clock3" || ADDNSUB_MULTIPLIER_PIPELINE_REGISTER3 == "clock3" ||
+					MULT01_ROUND_REGISTER== "clock3" || MULT23_ROUND_REGISTER== "clock3" ||
+					MULT01_SATURATION_REGISTER== "clock3" || MULT23_SATURATION_REGISTER== "clock3" ||
+					ADDNSUB1_ROUND_REGISTER == "clock3" || ADDNSUB3_ROUND_REGISTER == "clock3"||
+					ADDNSUB1_ROUND_PIPELINE_REGISTER == "clock3" || ADDNSUB3_ROUND_PIPELINE_REGISTER == "clock3"||
+					SCANOUTA_REGISTER == "clock3" ||CHAINOUT_REGISTER == "clock3" ||                           
+					OUTPUT_ROUND_REGISTER == "clock3" || OUTPUT_ROUND_PIPELINE_REGISTER == "clock3" ||                 
+					OUTPUT_SATURATE_REGISTER == "clock3" || OUTPUT_SATURATE_PIPELINE_REGISTER == "clock3" ||                
+					CHAINOUT_ROUND_REGISTER == "clock3" || CHAINOUT_ROUND_PIPELINE_REGISTER == "clock3" || CHAINOUT_ROUND_OUTPUT_REGISTER == "clock3" ||        
+					CHAINOUT_SATURATE_REGISTER == "clock3" || CHAINOUT_SATURATE_PIPELINE_REGISTER == "clock3" || CHAINOUT_SATURATE_OUTPUT_REGISTER == "clock3" ||                
+					ZERO_CHAINOUT_OUTPUT_REGISTER == "clock3" ||                    
+					ZERO_LOOPBACK_REGISTER == "clock3" ||ZERO_LOOPBACK_PIPELINE_REGISTER == "clock3" || ZERO_LOOPBACK_OUTPUT_REGISTER == "clock3" ||                      
+					ACCUM_SLOAD_REGISTER == "clock3" || ACCUM_SLOAD_PIPELINE_REGISTER == "clock3" ||                      
+					ROTATE_REGISTER == "clock3" || ROTATE_PIPELINE_REGISTER == "clock3" || ROTATE_OUTPUT_REGISTER == "clock3" ||                              
+					SHIFT_RIGHT_REGISTER == "clock3" || SHIFT_RIGHT_PIPELINE_REGISTER == "clock3" || SHIFT_RIGHT_OUTPUT_REGISTER == "clock3"                      
+		
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_aclr0_used">
+			<DEFINITION>
+					(INPUT_ACLR_A0 == "aclr0") ||(INPUT_ACLR_A1 == "aclr0") ||(INPUT_ACLR_A2 == "aclr0") ||(INPUT_ACLR_A3 == "aclr0") || 
+					(INPUT_ACLR_B0 == "aclr0") ||(INPUT_ACLR_B1 == "aclr0") ||(INPUT_ACLR_B2 == "aclr0") ||(INPUT_ACLR_B3 == "aclr0") || 
+					(MULTIPLIER_ACLR0 == "aclr0") ||(MULTIPLIER_ACLR1 == "aclr0") ||
+					(MULTIPLIER_ACLR2 == "aclr0") ||(MULTIPLIER_ACLR3 == "aclr0") || 
+					OUTPUT_ACLR == "aclr0" ||
+					sign_aclr_a == "aclr0" || sign_pipeline_aclr_a == "aclr0" ||
+					sign_aclr_b == "aclr0" || sign_pipeline_aclr_b == "aclr0" ||
+					ADDNSUB_MULTIPLIER_ACLR1 == "aclr0" || ADDNSUB_MULTIPLIER_ACLR3 == "aclr0" ||
+					ADDNSUB_MULTIPLIER_PIPELINE_ACLR1 == "aclr0" || ADDNSUB_MULTIPLIER_PIPELINE_ACLR3 == "aclr0" ||
+					MULT01_ROUND_ACLR== "aclr0" || MULT23_ROUND_ACLR== "aclr0" ||
+					mult01_saturation_aclr== "aclr0" || mult23_saturation_aclr== "aclr0" ||
+					addnsub1_round_aclr == "aclr0" || addnsub3_round_aclr == "aclr0"||
+					addnsub1_round_pipeline_aclr == "aclr0" || addnsub3_round_pipeline_aclr == "aclr0"||
+					SCANOUTA_ACLR == "aclr0" ||CHAINOUT_ACLR == "aclr0" ||                           
+					OUTPUT_ROUND_ACLR == "aclr0" || OUTPUT_ROUND_PIPELINE_ACLR == "aclr0" ||                 
+					OUTPUT_SATURATE_ACLR == "aclr0" || OUTPUT_SATURATE_PIPELINE_ACLR == "aclr0" ||                
+					CHAINOUT_ROUND_ACLR == "aclr0" || CHAINOUT_ROUND_PIPELINE_ACLR == "aclr0" || CHAINOUT_ROUND_OUTPUT_ACLR == "aclr0" ||        
+					CHAINOUT_SATURATE_ACLR == "aclr0" || CHAINOUT_SATURATE_PIPELINE_ACLR == "aclr0" || CHAINOUT_SATURATE_OUTPUT_ACLR == "aclr0" ||                
+					ZERO_CHAINOUT_OUTPUT_ACLR == "aclr0" ||                    
+					ZERO_LOOPBACK_ACLR == "aclr0" ||ZERO_LOOPBACK_PIPELINE_ACLR == "aclr0" || ZERO_LOOPBACK_OUTPUT_ACLR == "aclr0" ||                      
+					ACCUM_SLOAD_ACLR == "aclr0" || ACCUM_SLOAD_PIPELINE_ACLR == "aclr0" ||                      
+					ROTATE_ACLR == "aclr0" || ROTATE_PIPELINE_ACLR == "aclr0" || ROTATE_OUTPUT_ACLR == "aclr0" ||                              
+					SHIFT_RIGHT_ACLR == "aclr0" || SHIFT_RIGHT_PIPELINE_ACLR == "aclr0" || SHIFT_RIGHT_OUTPUT_ACLR == "aclr0"                      
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_aclr1_used">
+			<DEFINITION>
+					(INPUT_ACLR_A0 == "aclr1") ||(INPUT_ACLR_A1 == "aclr1") ||(INPUT_ACLR_A2 == "aclr1") ||(INPUT_ACLR_A3 == "aclr1") || 
+					(INPUT_ACLR_B0 == "aclr1") ||(INPUT_ACLR_B1 == "aclr1") ||(INPUT_ACLR_B2 == "aclr1") ||(INPUT_ACLR_B3 == "aclr1") || 
+					(MULTIPLIER_ACLR0 == "aclr1") ||(MULTIPLIER_ACLR1 == "aclr1") ||
+					(MULTIPLIER_ACLR2 == "aclr1") ||(MULTIPLIER_ACLR3 == "aclr1") || 
+					OUTPUT_ACLR == "aclr1" ||
+					sign_aclr_a == "aclr1" || sign_pipeline_aclr_a == "aclr1" ||
+					sign_aclr_b == "aclr1" || sign_pipeline_aclr_b == "aclr1" ||
+					ADDNSUB_MULTIPLIER_ACLR1 == "aclr1" || ADDNSUB_MULTIPLIER_ACLR3 == "aclr1" ||
+					ADDNSUB_MULTIPLIER_PIPELINE_ACLR1 == "aclr1" || ADDNSUB_MULTIPLIER_PIPELINE_ACLR3 == "aclr1" ||
+					MULT01_ROUND_ACLR== "aclr1" || MULT23_ROUND_ACLR== "aclr1" ||
+					mult01_saturation_aclr== "aclr1" || mult23_saturation_aclr== "aclr1" ||
+					addnsub1_round_aclr == "aclr1" || addnsub3_round_aclr == "aclr1"||
+					addnsub1_round_pipeline_aclr == "aclr1" || addnsub3_round_pipeline_aclr == "aclr1"||
+					SCANOUTA_ACLR == "aclr1" ||CHAINOUT_ACLR == "aclr1" ||                           
+					OUTPUT_ROUND_ACLR == "aclr1" || OUTPUT_ROUND_PIPELINE_ACLR == "aclr1" ||                 
+					OUTPUT_SATURATE_ACLR == "aclr1" || OUTPUT_SATURATE_PIPELINE_ACLR == "aclr1" ||                
+					CHAINOUT_ROUND_ACLR == "aclr1" || CHAINOUT_ROUND_PIPELINE_ACLR == "aclr1" || CHAINOUT_ROUND_OUTPUT_ACLR == "aclr1" ||        
+					CHAINOUT_SATURATE_ACLR == "aclr1" || CHAINOUT_SATURATE_PIPELINE_ACLR == "aclr1" || CHAINOUT_SATURATE_OUTPUT_ACLR == "aclr1" ||                
+					ZERO_CHAINOUT_OUTPUT_ACLR == "aclr1" ||                    
+					ZERO_LOOPBACK_ACLR == "aclr1" ||ZERO_LOOPBACK_PIPELINE_ACLR == "aclr1" || ZERO_LOOPBACK_OUTPUT_ACLR == "aclr1" ||                      
+					ACCUM_SLOAD_ACLR == "aclr1" || ACCUM_SLOAD_PIPELINE_ACLR == "aclr1" ||                      
+					ROTATE_ACLR == "aclr1" || ROTATE_PIPELINE_ACLR == "aclr1" || ROTATE_OUTPUT_ACLR == "aclr1" ||                              
+					SHIFT_RIGHT_ACLR == "aclr1" || SHIFT_RIGHT_PIPELINE_ACLR == "aclr1" || SHIFT_RIGHT_OUTPUT_ACLR == "aclr1"                      
+
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_aclr2_used">
+			<DEFINITION>
+					(INPUT_ACLR_A0 == "aclr2") ||(INPUT_ACLR_A1 == "aclr2") ||(INPUT_ACLR_A2 == "aclr2") ||(INPUT_ACLR_A3 == "aclr2") || 
+					(INPUT_ACLR_B0 == "aclr2") ||(INPUT_ACLR_B1 == "aclr2") ||(INPUT_ACLR_B2 == "aclr2") ||(INPUT_ACLR_B3 == "aclr2") || 
+					(MULTIPLIER_ACLR0 == "aclr2") ||(MULTIPLIER_ACLR1 == "aclr2") ||
+					(MULTIPLIER_ACLR2 == "aclr2") ||(MULTIPLIER_ACLR3 == "aclr2") || 
+					OUTPUT_ACLR == "aclr2" ||
+					sign_aclr_a == "aclr2" || sign_pipeline_aclr_a == "aclr2" ||
+					sign_aclr_b == "aclr2" || sign_pipeline_aclr_b == "aclr2" ||
+					ADDNSUB_MULTIPLIER_ACLR1 == "aclr2" || ADDNSUB_MULTIPLIER_ACLR3 == "aclr2" ||
+					ADDNSUB_MULTIPLIER_PIPELINE_ACLR1 == "aclr2" || ADDNSUB_MULTIPLIER_PIPELINE_ACLR3 == "aclr2" ||
+					MULT01_ROUND_ACLR== "aclr2" || MULT23_ROUND_ACLR== "aclr2" ||
+					mult01_saturation_aclr== "aclr2" || mult23_saturation_aclr== "aclr2" ||
+					addnsub1_round_aclr == "aclr2" || addnsub3_round_aclr == "aclr2"||
+					addnsub1_round_pipeline_aclr == "aclr2" || addnsub3_round_pipeline_aclr == "aclr2"||
+					SCANOUTA_ACLR == "aclr2" ||CHAINOUT_ACLR == "aclr2" ||                           
+					OUTPUT_ROUND_ACLR == "aclr2" || OUTPUT_ROUND_PIPELINE_ACLR == "aclr2" ||                 
+					OUTPUT_SATURATE_ACLR == "aclr2" || OUTPUT_SATURATE_PIPELINE_ACLR == "aclr2" ||                
+					CHAINOUT_ROUND_ACLR == "aclr2" || CHAINOUT_ROUND_PIPELINE_ACLR == "aclr2" || CHAINOUT_ROUND_OUTPUT_ACLR == "aclr2" ||        
+					CHAINOUT_SATURATE_ACLR == "aclr2" || CHAINOUT_SATURATE_PIPELINE_ACLR == "aclr2" || CHAINOUT_SATURATE_OUTPUT_ACLR == "aclr2" ||                
+					ZERO_CHAINOUT_OUTPUT_ACLR == "aclr2" ||                    
+					ZERO_LOOPBACK_ACLR == "aclr2" ||ZERO_LOOPBACK_PIPELINE_ACLR == "aclr2" || ZERO_LOOPBACK_OUTPUT_ACLR == "aclr2" ||                      
+					ACCUM_SLOAD_ACLR == "aclr2" || ACCUM_SLOAD_PIPELINE_ACLR == "aclr2" ||                      
+					ROTATE_ACLR == "aclr2" || ROTATE_PIPELINE_ACLR == "aclr2" || ROTATE_OUTPUT_ACLR == "aclr2" ||                              
+					SHIFT_RIGHT_ACLR == "aclr2" || SHIFT_RIGHT_PIPELINE_ACLR == "aclr2" || SHIFT_RIGHT_OUTPUT_ACLR == "aclr2"                      
+	
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_aclr3_used">
+			<DEFINITION>
+
+					(INPUT_ACLR_A0 == "aclr3") ||(INPUT_ACLR_A1 == "aclr3") ||(INPUT_ACLR_A2 == "aclr3") ||(INPUT_ACLR_A3 == "aclr3") || 
+					(INPUT_ACLR_B0 == "aclr3") ||(INPUT_ACLR_B1 == "aclr3") ||(INPUT_ACLR_B2 == "aclr3") ||(INPUT_ACLR_B3 == "aclr3") || 
+					(MULTIPLIER_ACLR0 == "aclr3") ||(MULTIPLIER_ACLR1 == "aclr3") ||
+					(MULTIPLIER_ACLR2 == "aclr3") ||(MULTIPLIER_ACLR3 == "aclr3") || 
+					OUTPUT_ACLR == "aclr3" ||
+					sign_aclr_a == "aclr3" || sign_pipeline_aclr_a == "aclr3" ||
+					sign_aclr_b == "aclr3" || sign_pipeline_aclr_b == "aclr3" ||
+					ADDNSUB_MULTIPLIER_ACLR1 == "aclr3" || ADDNSUB_MULTIPLIER_ACLR3 == "aclr3" ||
+					ADDNSUB_MULTIPLIER_PIPELINE_ACLR1 == "aclr3" || ADDNSUB_MULTIPLIER_PIPELINE_ACLR3 == "aclr3" ||
+					MULT01_ROUND_ACLR== "aclr3" || MULT23_ROUND_ACLR== "aclr3" ||
+					mult01_saturation_aclr== "aclr3" || mult23_saturation_aclr== "aclr3" ||
+					addnsub1_round_aclr == "aclr3" || addnsub3_round_aclr == "aclr3"||
+					addnsub1_round_pipeline_aclr == "aclr3" || addnsub3_round_pipeline_aclr == "aclr3"||
+					SCANOUTA_ACLR == "aclr3" ||CHAINOUT_ACLR == "aclr3" ||                           
+					OUTPUT_ROUND_ACLR == "aclr3" || OUTPUT_ROUND_PIPELINE_ACLR == "aclr3" ||                 
+					OUTPUT_SATURATE_ACLR == "aclr3" || OUTPUT_SATURATE_PIPELINE_ACLR == "aclr3" ||                
+					CHAINOUT_ROUND_ACLR == "aclr3" || CHAINOUT_ROUND_PIPELINE_ACLR == "aclr3" || CHAINOUT_ROUND_OUTPUT_ACLR == "aclr3" ||        
+					CHAINOUT_SATURATE_ACLR == "aclr3" || CHAINOUT_SATURATE_PIPELINE_ACLR == "aclr3" || CHAINOUT_SATURATE_OUTPUT_ACLR == "aclr3" ||                
+					ZERO_CHAINOUT_OUTPUT_ACLR == "aclr3" ||                    
+					ZERO_LOOPBACK_ACLR == "aclr3" ||ZERO_LOOPBACK_PIPELINE_ACLR == "aclr3" || ZERO_LOOPBACK_OUTPUT_ACLR == "aclr3" ||                      
+					ACCUM_SLOAD_ACLR == "aclr3" || ACCUM_SLOAD_PIPELINE_ACLR == "aclr3" ||                      
+					ROTATE_ACLR == "aclr3" || ROTATE_PIPELINE_ACLR == "aclr3" || ROTATE_OUTPUT_ACLR == "aclr3" ||                              
+					SHIFT_RIGHT_ACLR == "aclr3" || SHIFT_RIGHT_PIPELINE_ACLR == "aclr3" || SHIFT_RIGHT_OUTPUT_ACLR == "aclr3"                      
+			</DEFINITION>
+		</MACRO>
+
+	</MACROS>
+	<FUNCTION_INFORMATION>
+		<VHDL_LIBRARY NAME="altera_mf.altera_mf_components"/>
+	</FUNCTION_INFORMATION>
+	<PARAMETER_RULES>
+		<PARAMETER NAME="CHAINOUT_ADDER" DEFAULT_VALUE="NO">
+			<FORCE_VALUE TO="NO" WHEN="!m_titan_dsp_block"/>
+		</PARAMETER>
+		<PARAMETER NAME="ACCUMULATOR" DEFAULT_VALUE="NO">
+			<FORCE_VALUE TO="NO" WHEN="!m_titan_dsp_block"/>
+		</PARAMETER>
+		<PARAMETER NAME="SHIFT_MODE" DEFAULT_VALUE="NO">
+			<FORCE_VALUE TO="NO" WHEN="!m_titan_dsp_block"/>
+			<FORCE_VALUE TO="NO" WHEN="m_titan_dsp_block and (CHAINOUT_ADDER == YES || ACCUMULATOR == YES) || (number_of_multipliers gt 1)"/>
+		</PARAMETER>
+		<PARAMETER NAME="NUMBER_OF_MULTIPLIERS" VALUE="1-4" DEFAULT_VALUE="1">
+		</PARAMETER>
+		<PARAMETER NAME="WIDTH_A" DEFAULT_VALUE="16" VALUE="2-52">
+			<FORCE_VALUE TO="16" WHEN="m_base_stratixii_features"/>
+			<FORCE_RANGE MAX="18" MIN="4" WHEN="m_titan_dsp_block and (ACCUMULATOR == YES || CHAINOUT_ADDER == YES)"/>
+			<FORCE_VALUE TO="32" WHEN="m_titan_dsp_block and SHIFT_MODE != NO"/>
+		</PARAMETER>
+
+		<PARAMETER NAME="WIDTH_B" DEFAULT_VALUE="16" VALUE="2-52">
+			<FORCE_VALUE TO="16" WHEN="m_base_stratixii_features"/>
+			<FORCE_RANGE MAX="18" MIN="4" WHEN="m_titan_dsp_block and (ACCUMULATOR == YES || CHAINOUT_ADDER == YES)"/>
+			<FORCE_VALUE TO="32" WHEN="m_titan_dsp_block and SHIFT_MODE != NO"/>
+			<VALUE_RULE> ( ( (WIDTH_A + WIDTH_B) gt 17) and m_base_stratixii_features) || !m_base_stratixii_features </VALUE_RULE>
+		</PARAMETER>
+		<PARAMETER NAME="WIDTH_RESULT" VALUE="2-52" DEFAULT_VALUE="32" >
+			<FORCE_VALUE TO="32" WHEN="m_base_stratixii_features"/>
+			<FORCE_VALUE TO="WIDTH_A + WIDTH_B + m_bit_extend" WHEN="!m_titan_dsp_block"/>
+			<FORCE_RANGE MAX="44" MIN="WIDTH_A + WIDTH_B - 5" WHEN="m_titan_dsp_block and (ACCUMULATOR == YES )"/>
+			<FORCE_RANGE MAX="WIDTH_A + WIDTH_B + 18" MIN="WIDTH_A + WIDTH_B - 5" WHEN="m_titan_dsp_block and SHIFT_MODE == NO and ACCUMULATOR == NO and CHAINOUT_ADDER == NO "/>
+			<FORCE_RANGE TO="44" WHEN="m_titan_dsp_block and CHAINOUT_ADDER == YES"/>
+			<FORCE_VALUE TO="32" WHEN="m_titan_dsp_block and SHIFT_MODE != NO"/>
+			<FORCE_VALUE TO="WIDTH_A + WIDTH_B + 16" WHEN="!m_base_stratixii_features and mfam_family_base_stratixii"/>
+			<VALUE_RULE> WIDTH_RESULT gt 0 </VALUE_RULE>
+		</PARAMETER>
+		<PARAMETER NAME="WIDTH_CHAININ" DEFAULT_VALUE="1" >
+			<FORCE_VALUE TO="WIDTH_RESULT" WHEN="m_titan_dsp_block and CHAINOUT_ADDER == YES"/>
+			<FORCE_VALUE TO="1" WHEN="!m_titan_dsp_block || CHAINOUT_ADDER == NO"/>
+		</PARAMETER>
+		<PARAMETER NAME="EXTRA_LATENCY" VALUE="0-8" DEFAULT_VALUE="0" >
+			<FORCE_VALUE TO="0" WHEN="!m_titan_dsp_block || (!m_one_atom and !m_possible_54_mode) || CHAINOUT_ADDER == YES || OUTPUT_REGISTER == unregistered"/>
+		</PARAMETER>
+
+	
+		<PARAMETER NAME="INPUT_REGISTER_A0">
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block"/>
+			<FORCE_RANGE TO="str(CLOCK0)|str(CLOCK1)|str(CLOCK2)|str(CLOCK3)" WHEN="m_scanchain_a || m_scanchain_b"/>
+		</PARAMETER>
+		<PARAMETER NAME="INPUT_ACLR_A0">
+			<FORCE_VALUE TO="str(ACLR0)" WHEN="m_cycloneii_dsp_block and (INPUT_REGISTER_A0 != unregistered)"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="INPUT_REGISTER_A0 == unregistered"/>
+		</PARAMETER>
+		<PARAMETER NAME="INPUT_REGISTER_B0" DEFAULT_VALUE="INPUT_REGISTER_A0" >
+			<FORCE_RANGE TO="UNREGISTERED|INPUT_REGISTER_A0" WHEN="m_titan_dsp_block and !m_scanchain_b"/>
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block"/>
+			<FORCE_RANGE TO="INPUT_REGISTER_A0" WHEN="m_scanchain_b || m_possible_54_mode || USE_WIZARD == ON"/>
+		</PARAMETER>
+		<PARAMETER NAME="INPUT_ACLR_B0">
+			<FORCE_VALUE TO="str(ACLR0)" WHEN="m_cycloneii_dsp_block and (INPUT_REGISTER_B0 != unregistered)"/>
+			<FORCE_VALUE TO="INPUT_ACLR_A0" WHEN="m_titan_dsp_block and INPUT_REGISTER_B0 != UNREGISTERED"/>
+			<FORCE_VALUE TO="INPUT_ACLR_A0" WHEN="(m_titan_dsp_block and m_possible_54_mode) || USE_WIZARD == ON"/> 
+			<FORCE_VALUE TO="UNUSED" WHEN="INPUT_REGISTER_B0 == unregistered"/>
+		</PARAMETER>
+
+		<PARAMETER NAME="INPUT_REGISTER_A1">
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block"/>
+			<FORCE_RANGE TO="UNREGISTERED|INPUT_REGISTER_A0" WHEN="m_titan_dsp_block and !m_scanchain_a"/>
+			<FORCE_VALUE TO="INPUT_REGISTER_A0" WHEN="m_scanchain_a || m_possible_54_mode || USE_WIZARD == ON"/>
+		</PARAMETER>
+		<PARAMETER NAME="INPUT_ACLR_A1">
+			<FORCE_VALUE TO="str(ACLR0)" WHEN="m_cycloneii_dsp_block and (INPUT_REGISTER_A1 != unregistered)"/>
+			<FORCE_VALUE TO="INPUT_ACLR_A0" WHEN="(m_titan_dsp_block and INPUT_REGISTER_A1 != UNREGISTERED)"/>
+			<FORCE_VALUE TO="INPUT_ACLR_A0" WHEN="(m_titan_dsp_block and m_possible_54_mode) || USE_WIZARD == ON"/> 
+			<FORCE_VALUE TO="UNUSED" WHEN="INPUT_REGISTER_A1 == unregistered"/>
+		</PARAMETER>
+		<PARAMETER NAME="INPUT_REGISTER_B1">
+			<FORCE_RANGE TO="UNREGISTERED|INPUT_REGISTER_A0" WHEN="(m_titan_dsp_block and !m_scanchain_b) "/>
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block"/>
+			<FORCE_VALUE TO="INPUT_REGISTER_A0" WHEN="m_scanchain_b || m_possible_54_mode || USE_WIZARD == ON"/>
+		</PARAMETER>
+		<PARAMETER NAME="INPUT_ACLR_B1">
+			<FORCE_VALUE TO="INPUT_ACLR_A0" WHEN="m_titan_dsp_block and INPUT_REGISTER_B1 != UNREGISTERED"/>
+			<FORCE_VALUE TO="INPUT_ACLR_A0" WHEN="(m_titan_dsp_block and m_possible_54_mode) || USE_WIZARD == ON"/> 
+			<FORCE_VALUE TO="str(ACLR0)" WHEN="m_cycloneii_dsp_block and (INPUT_REGISTER_B1 != unregistered)"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="INPUT_REGISTER_B1 == unregistered"/>
+		</PARAMETER>
+
+		<PARAMETER NAME="INPUT_REGISTER_A2">
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block"/>
+			<FORCE_RANGE TO="UNREGISTERED|INPUT_REGISTER_A0" WHEN="m_titan_dsp_block and !m_scanchain_a"/>
+			<FORCE_VALUE TO="INPUT_REGISTER_A0" WHEN="m_scanchain_a || m_possible_54_mode || USE_WIZARD == ON"/>
+		</PARAMETER>
+		<PARAMETER NAME="INPUT_ACLR_A2">
+			<FORCE_VALUE TO="str(ACLR0)" WHEN="m_cycloneii_dsp_block and (INPUT_REGISTER_A2 != unregistered)"/>
+			<FORCE_VALUE TO="INPUT_ACLR_A0" WHEN="(m_titan_dsp_block and m_possible_54_mode) || USE_WIZARD == ON"/> 
+			<FORCE_VALUE TO="INPUT_ACLR_A0" WHEN="m_titan_dsp_block and INPUT_REGISTER_A2 != UNREGISTERED"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="INPUT_REGISTER_A2 == unregistered"/>
+		</PARAMETER>
+		<PARAMETER NAME="INPUT_REGISTER_B2">
+			<FORCE_RANGE TO="UNREGISTERED|INPUT_REGISTER_A0" WHEN="m_titan_dsp_block and !m_scanchain_b"/>
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block"/>
+			<FORCE_VALUE TO="INPUT_REGISTER_A0" WHEN="m_scanchain_b || m_possible_54_mode || USE_WIZARD == ON"/>
+		</PARAMETER>
+		<PARAMETER NAME="INPUT_ACLR_B2">
+			<FORCE_VALUE TO="str(ACLR0)" WHEN="m_cycloneii_dsp_block and (INPUT_REGISTER_B2 != unregistered)"/>
+			<FORCE_VALUE TO="INPUT_ACLR_A0" WHEN="(m_titan_dsp_block and m_possible_54_mode) || USE_WIZARD == ON"/> 
+			<FORCE_VALUE TO="INPUT_ACLR_A0" WHEN="m_titan_dsp_block and INPUT_REGISTER_B2 != UNREGISTERED"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="INPUT_REGISTER_B2 == unregistered"/>
+		</PARAMETER>
+
+
+		<PARAMETER NAME="INPUT_REGISTER_A3">
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block"/>
+			<FORCE_RANGE TO="UNREGISTERED|INPUT_REGISTER_A0" WHEN="m_titan_dsp_block and !m_scanchain_a"/>
+			<FORCE_VALUE TO="INPUT_REGISTER_A0" WHEN="m_scanchain_a || m_possible_54_mode || USE_WIZARD == ON"/>
+		</PARAMETER>
+		<PARAMETER NAME="INPUT_ACLR_A3">
+			<FORCE_VALUE TO="str(ACLR0)" WHEN="m_cycloneii_dsp_block and (INPUT_REGISTER_A3 != unregistered)"/>
+			<FORCE_VALUE TO="INPUT_ACLR_A0" WHEN="(m_titan_dsp_block and m_possible_54_mode) || USE_WIZARD == ON"/> 
+			<FORCE_VALUE TO="INPUT_ACLR_A0" WHEN="m_titan_dsp_block and INPUT_REGISTER_A3 != UNREGISTERED"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="INPUT_REGISTER_A3 == unregistered"/>
+		</PARAMETER>
+		<PARAMETER NAME="INPUT_REGISTER_B3">
+			<FORCE_RANGE TO="UNREGISTERED|INPUT_REGISTER_A0" WHEN="m_titan_dsp_block and !m_scanchain_b"/>
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block"/>
+			<FORCE_VALUE TO="INPUT_REGISTER_A0" WHEN="m_scanchain_b || m_possible_54_mode || USE_WIZARD == ON"/>
+		</PARAMETER>
+		<PARAMETER NAME="INPUT_ACLR_B3">
+			<FORCE_VALUE TO="str(ACLR0)" WHEN="m_cycloneii_dsp_block and (INPUT_REGISTER_B3 != unregistered)"/>
+			<FORCE_VALUE TO="INPUT_ACLR_A0" WHEN="(m_titan_dsp_block and m_possible_54_mode) || USE_WIZARD == ON"/> 
+			<FORCE_VALUE TO="INPUT_ACLR_A0" WHEN="m_titan_dsp_block and INPUT_REGISTER_B3 != UNREGISTERED"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="INPUT_REGISTER_B3 == unregistered"/>
+		</PARAMETER>
+
+		<PARAMETER NAME="SCANOUTA_REGISTER">
+			<FORCE_RANGE TO="INPUT_REGISTER_A0" WHEN="(m_titan_dsp_block and is_used(scanouta) and m_scanchain_a and CHAINOUT_ADDER == YES and WIDTH_A == 18)"/>
+			<FORCE_RANGE TO="UNREGISTERED" WHEN="!m_titan_dsp_block || !m_scanchain_a || !is_used(scanouta) || CHAINOUT_ADDER == NO || WIDTH_A != 18"/>
+		</PARAMETER>
+		<PARAMETER NAME="SCANOUTA_ACLR">
+			<FORCE_VALUE TO="INPUT_ACLR_A0" WHEN="m_titan_dsp_block and SCANOUTA_REGISTER != UNREGISTERED and is_used(scanouta)"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="SCANOUTA_REGISTER == unregistered"/>
+		</PARAMETER>
+		<PARAMETER NAME="MULTIPLIER_REGISTER0">
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block"/>
+			<FORCE_RANGE TO="UNREGISTERED|INPUT_REGISTER_A0" WHEN="m_titan_dsp_block and m_possible_54_mode"/>
+		</PARAMETER>
+		<PARAMETER NAME="MULTIPLIER_ACLR0">
+			<FORCE_RANGE TO="str(ACLR0)" WHEN="m_cycloneii_dsp_block and (MULTIPLIER_REGISTER0 != UNREGISTERED)"/>
+			<FORCE_VALUE TO="INPUT_ACLR_A0" WHEN="m_titan_dsp_block and m_possible_54_mode"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="MULTIPLIER_REGISTER0== unregistered"/>
+		</PARAMETER>
+		<PARAMETER NAME="MULTIPLIER_REGISTER1">
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block"/>
+			<FORCE_RANGE TO="MULTIPLIER_REGISTER0" WHEN="m_titan_dsp_block || USE_WIZARD == ON"/>
+			<FORCE_RANGE TO="UNREGISTERED" WHEN="NUMBER_OF_MULTIPLIERS lt 2"/>
+		</PARAMETER>
+		<PARAMETER NAME="MULTIPLIER_ACLR1">
+			<FORCE_RANGE TO="str(ACLR0)" WHEN="m_cycloneii_dsp_block and (MULTIPLIER_REGISTER1 != UNREGISTERED)"/>
+			<FORCE_VALUE TO="MULTIPLIER_ACLR0" WHEN="(m_titan_dsp_block and MULTIPLIER_REGISTER1 != UNREGISTERED) || USE_WIZARD == ON"/>  
+			<FORCE_VALUE TO="INPUT_ACLR_A0" WHEN="m_titan_dsp_block and m_possible_54_mode"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="MULTIPLIER_REGISTER1== unregistered"/>
+		</PARAMETER>
+		<PARAMETER NAME="MULTIPLIER_REGISTER2">
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block"/>
+			<FORCE_RANGE TO="MULTIPLIER_REGISTER0" WHEN="m_titan_dsp_block || USE_WIZARD == ON"/>
+			<FORCE_RANGE TO="UNREGISTERED" WHEN="NUMBER_OF_MULTIPLIERS lt 3"/>
+		</PARAMETER>
+		<PARAMETER NAME="MULTIPLIER_ACLR2">
+			<FORCE_RANGE TO="str(ACLR0)" WHEN="m_cycloneii_dsp_block and (MULTIPLIER_REGISTER2 != UNREGISTERED)"/>
+			<FORCE_VALUE TO="MULTIPLIER_ACLR0" WHEN="(m_titan_dsp_block and MULTIPLIER_REGISTER2 != UNREGISTERED) || USE_WIZARD == ON"/>  
+			<FORCE_VALUE TO="INPUT_ACLR_A0" WHEN="m_titan_dsp_block and m_possible_54_mode"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="MULTIPLIER_REGISTER2== unregistered"/>
+		</PARAMETER>
+		<PARAMETER NAME="MULTIPLIER_REGISTER3">
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block"/>
+			<FORCE_RANGE TO="MULTIPLIER_REGISTER0" WHEN="m_titan_dsp_block || USE_WIZARD == ON"/>
+			<FORCE_RANGE TO="UNREGISTERED" WHEN="NUMBER_OF_MULTIPLIERS lt 4"/>
+		</PARAMETER>
+		<PARAMETER NAME="MULTIPLIER_ACLR3">
+			<FORCE_RANGE TO="str(ACLR0)" WHEN="m_cycloneii_dsp_block and (MULTIPLIER_REGISTER3 != UNREGISTERED)"/>
+			<FORCE_VALUE TO="MULTIPLIER_ACLR0" WHEN="(m_titan_dsp_block and MULTIPLIER_REGISTER3 != UNREGISTERED) || USE_WIZARD == ON"/>  
+			<FORCE_VALUE TO="INPUT_ACLR_A0" WHEN="m_titan_dsp_block and m_possible_54_mode"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="MULTIPLIER_REGISTER3== unregistered"/>
+		</PARAMETER>
+
+		<PARAMETER NAME="OUTPUT_REGISTER">
+			<FORCE_VALUE TO="str(CLOCK0)" WHEN="m_cycloneii_dsp_block"/>
+			<FORCE_RANGE TO="str(CLOCK0)|str(CLOCK1)|str(CLOCK2)|str(CLOCK3)" WHEN="m_titan_dsp_block and (ACCUMULATOR == YES)"/>
+			<FORCE_RANGE TO="str(CLOCK0)|str(CLOCK1)|str(CLOCK2)|str(CLOCK3)" WHEN="m_titan_dsp_block and INPUT_SOURCE_B0 == str(LOOPBACK) and INPUT_REGISTER_B0 == unregistered and MULTIPLIER_REGISTER0 == unregistered"/>
+			<FORCE_RANGE TO="UNREGISTERED|INPUT_REGISTER_A0" WHEN="m_titan_dsp_block and m_possible_54_mode"/>
+		</PARAMETER>
+		<PARAMETER NAME="OUTPUT_ACLR">
+			<FORCE_RANGE TO="str(ACLR0)" WHEN="m_cycloneii_dsp_block and OUTPUT_REGISTER != unregistered"/>
+			<FORCE_VALUE TO="INPUT_ACLR_A0" WHEN="m_titan_dsp_block and m_possible_54_mode"/>
+			<FORCE_RANGE TO="UNUSED" WHEN="OUTPUT_REGISTER== unregistered"/>
+		</PARAMETER>
+
+
+		<PARAMETER NAME="CHAINOUT_REGISTER">
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!m_titan_dsp_block || (CHAINOUT_ADDER == no)"/>
+		</PARAMETER>
+		<PARAMETER NAME="CHAINOUT_ACLR">
+			<FORCE_RANGE TO="UNUSED" WHEN="CHAINOUT_REGISTER== unregistered"/>
+		</PARAMETER>
+
+
+		<PARAMETER NAME="REPRESENTATION_A">
+			<FORCE_VALUE TO="SIGNED" WHEN="m_base_stratixii_features"/>
+			<FORCE_VALUE To="UNSIGNED" WHEN="is_used(signa)"/>
+			<FORCE_VALUE To="UNSIGNED" WHEN="SHIFT_MODE == ROTATION"/>
+		</PARAMETER>
+		<PARAMETER NAME="REPRESENTATION_B">
+			<FORCE_VALUE TO="SIGNED" WHEN="m_base_stratixii_features"/>
+			<FORCE_VALUE To="UNSIGNED" WHEN="is_used(signb)"/>
+			<FORCE_VALUE To="REPRESENTATION_A" WHEN="SHIFT_MODE != NO"/>
+			<FORCE_VALUE To="UNSIGNED" WHEN="SHIFT_MODE == ROTATION"/>
+		</PARAMETER>
+
+		<PARAMETER NAME="SIGNED_REGISTER_A">
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block"/>
+			<FORCE_RANGE TO="UNREGISTERED|INPUT_REGISTER_A0" WHEN="m_titan_dsp_block and is_used(signa)"/>
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(signa)"/>
+			</PARAMETER>
+		<PARAMETER NAME="SIGNED_ACLR_A">
+			<FORCE_VALUE TO="str(ACLR0)" WHEN="m_cycloneii_dsp_block and (SIGNED_REGISTER_A != UNREGISTERED)"/>
+			<FORCE_VALUE TO="INPUT_ACLR_A0" WHEN="m_titan_dsp_block and SIGNED_REGISTER_A!=UNREGISTERED"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(signa) || SIGNED_REGISTER_A == unregistered"/>
+		</PARAMETER>
+		<PARAMETER NAME="SIGNED_PIPELINE_REGISTER_A">
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block"/>
+			<FORCE_RANGE TO="MULTIPLIER_REGISTER0" WHEN="m_titan_dsp_block and is_used(signa)"/>
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(signa)"/>
+		</PARAMETER>
+		<PARAMETER NAME="SIGNED_PIPELINE_ACLR_A">
+			<FORCE_RANGE TO="str(ACLR0)" WHEN="m_cycloneii_dsp_block and SIGNED_PIPELINE_REGISTER_A != unregistered"/>
+			<FORCE_VALUE TO="MULTIPLIER_ACLR0" WHEN="m_titan_dsp_block and SIGNED_PIPELINE_REGISTER_A != UNREGISTERED"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(signa) || SIGNED_PIPELINE_REGISTER_A == unregistered"/>
+		</PARAMETER>
+
+		<PARAMETER NAME="SIGNED_REGISTER_B">
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block"/>
+			<FORCE_RANGE TO="UNREGISTERED|INPUT_REGISTER_A0" WHEN="m_titan_dsp_block and is_used(signb)"/>
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(signb)"/>
+		</PARAMETER>
+		<PARAMETER NAME="SIGNED_ACLR_B">
+			<FORCE_VALUE TO="str(ACLR0)" WHEN="m_cycloneii_dsp_block and (SIGNED_REGISTER_B != UNREGISTERED)"/>
+			<FORCE_VALUE TO="INPUT_ACLR_A0" WHEN="m_titan_dsp_block and SIGNED_REGISTER_B != UNREGISTERED"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(signb) || SIGNED_REGISTER_B == unregistered"/>
+		</PARAMETER>
+		<PARAMETER NAME="SIGNED_PIPELINE_REGISTER_B">
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block"/>
+			<FORCE_RANGE TO="MULTIPLIER_REGISTER0" WHEN="m_titan_dsp_block and is_used(signb)"/>
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(signb)"/>
+		</PARAMETER>
+		<PARAMETER NAME="SIGNED_PIPELINE_ACLR_B">
+			<FORCE_RANGE TO="str(ACLR0)" WHEN="m_cycloneii_dsp_block and SIGNED_PIPELINE_REGISTER_B != unregistered"/>
+			<FORCE_VALUE TO="MULTIPLIER_ACLR0" WHEN="m_titan_dsp_block and SIGNED_PIPELINE_REGISTER_B !=UNREGISTERED"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(signb) || SIGNED_PIPELINE_REGISTER_B == unregistered"/>
+		</PARAMETER>
+
+
+		<PARAMETER NAME="ADDNSUB_MULTIPLIER_REGISTER1">
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block"/>
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(addnsub1)"/>
+		</PARAMETER>
+		<PARAMETER NAME="ADDNSUB_MULTIPLIER_ACLR1">
+			<FORCE_RANGE TO="str(ACLR0)" WHEN="m_cycloneii_dsp_block and ADDNSUB_MULTIPLIER_REGISTER1 != unregistered"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(addnsub1) || ADDNSUB_MULTIPLIER_REGISTER1 == unregistered"/>
+		</PARAMETER>
+		<PARAMETER NAME="ADDNSUB_MULTIPLIER_PIPELINE_REGISTER1">
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block"/>
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(addnsub1)"/>
+		</PARAMETER>
+		<PARAMETER NAME="ADDNSUB_MULTIPLIER_PIPELINE_ACLR1">
+			<FORCE_RANGE TO="str(ACLR0)" WHEN="m_cycloneii_dsp_block and ADDNSUB_MULTIPLIER_PIPELINE_REGISTER1 != unregistered"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(addnsub1) || ADDNSUB_MULTIPLIER_PIPELINE_REGISTER1 == unregistered"/>
+		</PARAMETER>
+		<PARAMETER NAME="ADDNSUB_MULTIPLIER_REGISTER3">
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block"/>
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(addnsub3)"/>
+		</PARAMETER>
+		<PARAMETER NAME="ADDNSUB_MULTIPLIER_ACLR3">
+			<FORCE_RANGE TO="str(ACLR0)" WHEN="m_cycloneii_dsp_block and ADDNSUB_MULTIPLIER_REGISTER3 != unregistered"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(addnsub3) || ADDNSUB_MULTIPLIER_REGISTER3 == unregistered"/>
+		</PARAMETER>
+		<PARAMETER NAME="ADDNSUB_MULTIPLIER_PIPELINE_REGISTER3">
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block"/>
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(addnsub3)"/>
+		</PARAMETER>
+		<PARAMETER NAME="ADDNSUB_MULTIPLIER_PIPELINE_ACLR3">
+			<FORCE_RANGE TO="str(ACLR0)" WHEN="m_cycloneii_dsp_block and ADDNSUB_MULTIPLIER_PIPELINE_REGISTER3 != unregistered"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(addnsub3) || ADDNSUB_MULTIPLIER_PIPELINE_REGISTER3 == unregistered"/>
+		</PARAMETER>
+		<PARAMETER NAME="ACCUM_DIRECTION">
+			<FORCE_VALUE TO="ADD" WHEN="is_used(addnsub1) || ACCUMULATOR == NO || m_unsigned_out"/> <!-- removed unsigned substrattion for Q6.1 only-->
+		</PARAMETER>
+<!--		<PARAMETER NAME="multiplier1_direction">
+			<FORCE_VALUE TO="ADD" WHEN="m_titan_dsp_block and m_unsigned_out"/>  removed unsigned substrattion for Q6.1 only
+		</PARAMETER> -->
+		<PARAMETER NAME="MULTIPLIER3_DIRECTION">
+			<FORCE_VALUE TO="ADD" WHEN="m_titan_dsp_block and m_unsigned_out"/> <!-- removed unsigned substrattion for Q6.1 only-->
+		</PARAMETER>
+
+		<PARAMETER NAME="ACCUM_SLOAD_REGISTER">
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block"/>
+			<FORCE_RANGE TO="UNREGISTERED|INPUT_REGISTER_A0" WHEN="m_titan_dsp_block and is_used(accum_sload) and !is_used(output_round)"/>
+			<FORCE_RANGE TO="OUTPUT_ROUND_REGISTER" WHEN="m_titan_dsp_block and is_used(accum_sload) and is_used(output_round)"/>
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(accum_sload)"/>
+		</PARAMETER>
+		<PARAMETER NAME="ACCUM_SLOAD_ACLR">
+			<FORCE_RANGE TO="str(ACLR0)" WHEN="m_cycloneii_dsp_block and ACCUM_SLOAD_REGISTER != unregistered"/>
+			<FORCE_VALUE TO="INPUT_ACLR_A0" WHEN="m_titan_dsp_block and ACCUM_SLOAD_REGISTER != UNREGISTERED and is_used(accum_sload)"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(accum_sload) || ACCUM_SLOAD_REGISTER == unregistered"/>
+		</PARAMETER>
+		<PARAMETER NAME="ACCUM_SLOAD_PIPELINE_REGISTER">
+			<FORCE_RANGE TO="UNREGISTERED|str(CLOCK0)" WHEN="m_cycloneii_dsp_block"/>
+			<FORCE_RANGE TO="UNREGISTERED|MULTIPLIER_REGISTER0" WHEN="m_titan_dsp_block and is_used(accum_sload)and !is_used(output_round)"/>
+			<FORCE_RANGE TO="OUTPUT_ROUND_PIPELINE_REGISTER" WHEN="m_titan_dsp_block and is_used(accum_sload) and is_used(output_round)"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(accum_sload)"/>
+		</PARAMETER>
+		<PARAMETER NAME="ACCUM_SLOAD_PIPELINE_ACLR">
+			<FORCE_RANGE TO="str(ACLR0)" WHEN="m_cycloneii_dsp_block and ACCUM_SLOAD_PIPELINE_REGISTER != unregistered"/>
+			<FORCE_VALUE TO="MULTIPLIER_ACLR0" WHEN="m_titan_dsp_block and ACCUM_SLOAD_PIPELINE_REGISTER!= UNREGISTERED and is_used(accum_sload)"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(accum_sload) || ACCUM_SLOAD_PIPELINE_REGISTER == unregistered"/>
+		</PARAMETER>
+
+		<PARAMETER NAME="ZERO_LOOPBACK_REGISTER">
+			<FORCE_RANGE TO="UNREGISTERED|INPUT_REGISTER_A0" WHEN="m_titan_dsp_block and is_used(zero_loopback)"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(zero_loopback)"/>
+		</PARAMETER>
+		<PARAMETER NAME="ZERO_LOOPBACK_ACLR">
+			<FORCE_VALUE TO="INPUT_ACLR_A0" WHEN="m_titan_dsp_block and ZERO_LOOPBACK_REGISTER != UNREGISTERED and is_used(zero_loopback)"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(zero_loopback) || ZERO_LOOPBACK_REGISTER == unregistered"/>
+		</PARAMETER>
+		<PARAMETER NAME="ZERO_LOOPBACK_PIPELINE_REGISTER">
+			<FORCE_RANGE TO="UNREGISTERED|MULTIPLIER_REGISTER0" WHEN="m_titan_dsp_block and is_used(zero_loopback)"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(zero_loopback)"/>
+			</PARAMETER>
+		<PARAMETER NAME="ZERO_LOOPBACK_PIPELINE_ACLR">
+			<FORCE_VALUE TO="MULTIPLIER_ACLR0" WHEN="m_titan_dsp_block and ZERO_LOOPBACK_PIPELINE_REGISTER != UNREGISTERED and is_used(zero_loopback)"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(zero_loopback) || ZERO_LOOPBACK_PIPELINE_REGISTER == unregistered"/>
+		</PARAMETER>
+		<PARAMETER NAME="ZERO_LOOPBACK_OUTPUT_REGISTER">
+			<FORCE_RANGE TO="UNREGISTERED|OUTPUT_REGISTER" WHEN="m_titan_dsp_block and is_used(zero_loopback)"/>
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(zero_loopback)"/>
+		</PARAMETER>
+		<PARAMETER NAME="ZERO_LOOPBACK_OUTPUT_ACLR">
+			<FORCE_VALUE TO="OUTPUT_ACLR" WHEN="m_titan_dsp_block and ZERO_LOOPBACK_OUTPUT_REGISTER != UNREGISTERED and is_used(zero_loopback)"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(zero_loopback) || ZERO_LOOPBACK_OUTPUT_REGISTER== unregistered"/>
+		</PARAMETER>
+
+		<PARAMETER NAME="ZERO_CHAINOUT_OUTPUT_REGISTER">
+			<!--Q6.1 regtest  only, waiting for spr225867--> 
+			<!--FORCE_RANGE TO="UNREGISTERED|CHAINOUT_REGISTER" WHEN="m_titan_dsp_block and is_used(zero_chainout)"/-->
+			<FORCE_RANGE TO="CHAINOUT_REGISTER" WHEN="m_titan_dsp_block and is_used(zero_chainout)"/>
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="CHAINOUT_ADDER == NO || !is_used(zero_chainout)"/>
+		</PARAMETER>
+		<PARAMETER NAME="ZERO_CHAINOUT_OUTPUT_ACLR">
+			<FORCE_VALUE TO="CHAINOUT_ACLR" WHEN="m_titan_dsp_block and ZERO_CHAINOUT_OUTPUT_REGISTER != UNREGISTERED and is_used(zero_chainout)" ELSE="UNUSED" />
+		</PARAMETER>
+
+		
+		<PARAMETER NAME="SHIFT_RIGHT_REGISTER">
+			<FORCE_RANGE TO="UNREGISTERED|INPUT_REGISTER_A0" WHEN="m_titan_dsp_block and is_used(shift_right)"/>
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(shift_right)"/>
+		</PARAMETER>
+		<PARAMETER NAME="SHIFT_RIGHT_ACLR">
+			<FORCE_VALUE TO="INPUT_ACLR_A0" WHEN="m_titan_dsp_block and SHIFT_RIGHT_REGISTER != UNREGISTERED and is_used(shift_right)"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(shift_right) || SHIFT_RIGHT_REGISTER == unregistered"/>
+		</PARAMETER>
+		<PARAMETER NAME="SHIFT_RIGHT_PIPELINE_REGISTER">
+			<FORCE_RANGE TO="UNREGISTERED|MULTIPLIER_REGISTER0" WHEN="m_titan_dsp_block and is_used(shift_right)"/>
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(shift_right)"/>
+		</PARAMETER>
+		<PARAMETER NAME="SHIFT_RIGHT_PIPELINE_ACLR">
+			<FORCE_VALUE TO="MULTIPLIER_ACLR0" WHEN="m_titan_dsp_block and SHIFT_RIGHT_PIPELINE_REGISTER != UNREGISTERED and is_used(shift_right)"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(shift_right) || SHIFT_RIGHT_PIPELINE_REGISTER == unregistered"/>
+		</PARAMETER>
+		<PARAMETER NAME="SHIFT_RIGHT_OUTPUT_REGISTER">
+			<FORCE_RANGE TO="UNREGISTERED|OUTPUT_REGISTER" WHEN="m_titan_dsp_block and is_used(shift_right)"/>
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(shift_right)"/>
+		</PARAMETER>
+		<PARAMETER NAME="SHIFT_RIGHT_OUTPUT_ACLR">
+			<FORCE_VALUE TO="OUTPUT_ACLR" WHEN="m_titan_dsp_block and SHIFT_RIGHT_OUTPUT_REGISTER != UNREGISTERED and is_used(shift_right)"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(shift_right) || SHIFT_RIGHT_OUTPUT_REGISTER == unregistered"/>
+		</PARAMETER>
+
+		<PARAMETER NAME="ROTATE_REGISTER">
+			<FORCE_RANGE TO="UNREGISTERED|INPUT_REGISTER_A0" WHEN="m_titan_dsp_block and is_used(rotate)"/>
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(rotate)"/>
+		</PARAMETER>
+		<PARAMETER NAME="ROTATE_ACLR">
+			<FORCE_VALUE TO="INPUT_ACLR_A0" WHEN="m_titan_dsp_block and ROTATE_REGISTER != UNREGISTERED and is_used(rotate)"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(rotate) || ROTATE_REGISTER == unregistered"/>
+		</PARAMETER>
+		<PARAMETER NAME="ROTATE_PIPELINE_REGISTER">
+			<FORCE_RANGE TO="UNREGISTERED|MULTIPLIER_REGISTER0" WHEN="m_titan_dsp_block and is_used(rotate)"/>
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(rotate)"/>
+		</PARAMETER>
+		<PARAMETER NAME="ROTATE_PIPELINE_ACLR">
+			<FORCE_VALUE TO="MULTIPLIER_ACLR0" WHEN="m_titan_dsp_block and ROTATE_PIPELINE_REGISTER != UNREGISTERED and is_used(rotate)"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(rotate) || ROTATE_PIPELINE_REGISTER == unregistered"/>
+		</PARAMETER>
+		<PARAMETER NAME="ROTATE_OUTPUT_REGISTER">
+			<FORCE_RANGE TO="UNREGISTERED|OUTPUT_REGISTER" WHEN="m_titan_dsp_block and is_used(rotate)"/>
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(rotate)"/>
+		</PARAMETER>
+		<PARAMETER NAME="ROTATE_OUTPUT_ACLR">
+			<FORCE_VALUE TO="OUTPUT_ACLR" WHEN="m_titan_dsp_block and ROTATE_OUTPUT_REGISTER != UNREGISTERED and is_used(rotate)"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(rotate) || ROTATE_OUTPUT_REGISTER == unregistered"/>
+		</PARAMETER>
+
+		
+		<PARAMETER NAME="MULTIPLIER01_ROUNDING">
+			<FORCE_VALUE TO="VARIABLE" WHEN="is_used(mult01_round)"/>
+			<FORCE_VALUE TO="YES|NO" WHEN="!is_used(mult01_round)"/>
+			<FORCE_VALUE TO="NO" WHEN="!mfam_family_base_stratixii || m_titan_dsp_block"/>
+		</PARAMETER>
+		<PARAMETER NAME="MULTIPLIER23_ROUNDING">
+			<FORCE_VALUE TO="VARIABLE" WHEN="is_used(mult23_round)"/>
+			<FORCE_VALUE TO="YES|NO" WHEN="!is_used(mult23_round)"/>
+			<FORCE_VALUE TO="NO" WHEN="NUMBER_OF_MULTIPLIERS lt 3"/>
+			<FORCE_VALUE TO="NO" WHEN="!mfam_family_base_stratixii || m_titan_dsp_block"/>
+		</PARAMETER>
+		<PARAMETER NAME="MULTIPLIER01_SATURATION">
+			<FORCE_VALUE TO="VARIABLE" WHEN="is_used(mult01_saturation)"/>
+			<FORCE_VALUE TO="YES|NO" WHEN="!is_used(mult01_saturation)"/>
+			<FORCE_VALUE TO="NO" WHEN="!mfam_family_base_stratixii|| m_titan_dsp_block "/>
+			</PARAMETER>
+		<PARAMETER NAME="MULTIPLIER23_SATURATION">
+			<FORCE_VALUE TO="VARIABLE" WHEN="is_used(mult23_saturation)"/>
+			<FORCE_VALUE TO="YES|NO" WHEN="!is_used(mult23_saturation)"/>
+			<FORCE_VALUE TO="NO" WHEN="NUMBER_OF_MULTIPLIERS lt 3"/>
+			<FORCE_VALUE TO="NO" WHEN="!mfam_family_base_stratixii|| m_titan_dsp_block "/>
+			</PARAMETER>
+		<PARAMETER NAME="ADDER1_ROUNDING">
+			<FORCE_VALUE TO="VARIABLE" WHEN="is_used(addnsub1_round)"/>
+			<FORCE_VALUE TO="YES|NO" WHEN="!is_used(addnsub1_round)"/>
+			<FORCE_VALUE TO="NO" WHEN="!mfam_family_base_stratixii || m_titan_dsp_block || NUMBER_OF_MULTIPLIERS lt 2"/>
+			</PARAMETER>
+		<PARAMETER NAME="ADDER3_ROUNDING">
+			<FORCE_VALUE TO="VARIABLE" WHEN="is_used(addnsub3_round)"/>
+			<FORCE_VALUE TO="YES|NO" WHEN="!is_used(addnsub3_round)"/>
+			<FORCE_VALUE TO="NO" WHEN="NUMBER_OF_MULTIPLIERS lt 3"/>
+			<FORCE_VALUE TO="NO" WHEN="!mfam_family_base_stratixii|| m_titan_dsp_block || NUMBER_OF_MULTIPLIERS lt 4"/>
+			</PARAMETER>
+		<PARAMETER NAME="OUTPUT_ROUNDING">
+			<FORCE_VALUE TO="NO" WHEN="(!m_titan_dsp_block) || SHIFT_MODE != NO || CHAINOUT_ADDER == YES || ACCUMULATOR == YES || m_no_round"/>
+			<FORCE_VALUE TO="NO" WHEN="WIDTH_A == 18 and WIDTH_B == 18 and WIDTH_RESULT gt 36 and NUMBER_OF_MULTIPLIERS == 2 and m_titan_dsp_block"/>
+		</PARAMETER>
+		<PARAMETER NAME="OUTPUT_SATURATION">
+			<FORCE_VALUE TO="NO" WHEN="!m_titan_dsp_block || SHIFT_MODE != NO || m_no_saturate"/>
+			<FORCE_VALUE TO="NO" WHEN="(m_titan_dsp_block) and WIDTH_A == 18 and WIDTH_B == 18 and WIDTH_RESULT gt 36 and NUMBER_OF_MULTIPLIERS == 2"/>
+		</PARAMETER>
+		<PARAMETER NAME="CHAINOUT_ROUNDING">
+			<FORCE_VALUE TO="NO" WHEN="!m_titan_dsp_block || CHAINOUT_ADDER == NO || SHIFT_MODE != NO || m_no_round"/>
+		</PARAMETER>
+		<PARAMETER NAME="CHAINOUT_SATURATION">
+			<FORCE_VALUE TO="NO" WHEN="!m_titan_dsp_block || CHAINOUT_ADDER == NO || m_no_saturate"/>
+			</PARAMETER>
+
+		<PARAMETER NAME="OUTPUT_ROUND_TYPE">
+			<FORCE_VALUE TO="NEAREST_INTEGER" WHEN="!m_titan_dsp_block"/>
+		</PARAMETER>
+		<PARAMETER NAME="OUTPUT_SATURATE_TYPE">
+			<FORCE_VALUE TO="ASYMMETRIC" WHEN="!m_titan_dsp_block"/>
+			<FORCE_VALUE TO="ASYMMETRIC" WHEN="m_titan_dsp_block and (m_no_round || CHAINOUT_ROUNDING != NO || !m_sym_sat_allowed )"/>
+		</PARAMETER>
+
+		<PARAMETER NAME="WIDTH_MSB">
+			<FORCE_VALUE TO="17" WHEN="mfam_family_base_stratixii and !m_titan_dsp_block"/>
+			<FORCE_RANGE MAX="WIDTH_RESULT - 6" MIN="m_round_min_acc_sign_extend" WHEN="m_titan_dsp_block and (ACCUMULATOR == YES || CHAINOUT_ADDER == YES) and (m_use_sign_extend || OUTPUT_ROUNDING != NO) and (OUTPUT_ROUNDING != NO || CHAINOUT_ROUNDING != NO)"/>
+			<FORCE_RANGE MAX="m_round_max_acc_no_sign_extend" MIN="m_out_width_shift + 15" WHEN="m_titan_dsp_block and (ACCUMULATOR == YES || CHAINOUT_ADDER == YES) and !m_use_sign_extend and (OUTPUT_ROUNDING != NO || CHAINOUT_ROUNDING != NO)"/>
+			<FORCE_RANGE MAX="m_round_max_no_acc" MIN="m_out_width_shift + 15" WHEN="m_titan_dsp_block and (ACCUMULATOR == NO and CHAINOUT_ADDER == NO and SHIFT_MODE == NO ) and (OUTPUT_ROUNDING != NO || CHAINOUT_ROUNDING != NO)"/>
+			<FORCE_VALUE TO="18" WHEN="m_titan_dsp_block and INPUT_SOURCE_B0 == str(LOOPBACK)"/>
+		</PARAMETER>
+		<PARAMETER NAME="WIDTH_SATURATE_SIGN">
+			<FORCE_VALUE TO="1" WHEN="mfam_family_base_stratixii and !m_titan_dsp_block"/>
+			<FORCE_RANGE MAX="WIDTH_RESULT - 28" MIN="1" WHEN="m_titan_dsp_block and (ACCUMULATOR == YES || CHAINOUT_ADDER == YES) and m_use_sign_extend and (OUTPUT_SATURATION != NO || CHAINOUT_SATURATION != NO)"/>
+			<FORCE_RANGE MAX="m_sat_max_no_acc" MIN="m_sat_min_no_acc" WHEN="m_titan_dsp_block and (ACCUMULATOR == NO and CHAINOUT_ADDER == NO and SHIFT_MODE == NO ) and (OUTPUT_SATURATION != NO || CHAINOUT_SATURATION != NO)"/>
+			<FORCE_RANGE MAX="8" MIN="2" WHEN="m_titan_dsp_block and INPUT_SOURCE_B0 == str(LOOPBACK)"/>
+		</PARAMETER>
+
+		<PARAMETER NAME="CHAINOUT_ROUND_REGISTER">
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(chainout_round)"/>
+			<FORCE_RANGE TO="UNREGISTERED|INPUT_REGISTER_A0" WHEN="is_used(chainout_round)"/>
+			</PARAMETER>
+		<PARAMETER NAME="CHAINOUT_ROUND_ACLR">
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(chainout_round) || CHAINOUT_ROUND_REGISTER == unregistered"/>
+			<FORCE_VALUE TO="INPUT_ACLR_A0" WHEN="is_used(chainout_round) and CHAINOUT_ROUND_REGISTER != UNREGISTERED"/>
+		</PARAMETER>
+		<PARAMETER NAME="CHAINOUT_ROUND_PIPELINE_REGISTER">
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(chainout_round)"/>
+			<FORCE_RANGE TO="UNREGISTERED|MULTIPLIER_REGISTER0" WHEN="is_used(chainout_round)"/>
+			</PARAMETER>
+		<PARAMETER NAME="CHAINOUT_ROUND_PIPELINE_ACLR">
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(chainout_round) || CHAINOUT_ROUND_PIPELINE_REGISTER == unregistered"/>
+			<FORCE_RANGE TO="MULTIPLIER_ACLR0" WHEN="is_used(chainout_round) and CHAINOUT_ROUND_PIPELINE_REGISTER != UNREGISTERED"/>
+		</PARAMETER>
+		<PARAMETER NAME="CHAINOUT_ROUND_OUTPUT_REGISTER">
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(chainout_round)"/>
+			<FORCE_RANGE TO="UNREGISTERED|CHAINOUT_REGISTER" WHEN="is_used(chainout_round)"/>
+		</PARAMETER>
+		<PARAMETER NAME="CHAINOUT_ROUND_OUTPUT_ACLR">
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(chainout_round) || CHAINOUT_ROUND_OUTPUT_REGISTER == unregistered"/>
+			<FORCE_VALUE TO="CHAINOUT_ACLR" WHEN="is_used(chainout_round) and CHAINOUT_ROUND_OUTPUT_REGISTER != UNREGISTERED"/>
+		</PARAMETER>
+		<PARAMETER NAME="CHAINOUT_SATURATE_REGISTER">
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(chainout_saturate)"/>
+			<FORCE_RANGE TO="UNREGISTERED|INPUT_REGISTER_A0" WHEN="is_used(chainout_saturate)"/>
+			</PARAMETER>
+		<PARAMETER NAME="CHAINOUT_SATURATE_ACLR">
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(chainout_saturate) || CHAINOUT_SATURATE_REGISTER == unregistered"/>
+			<FORCE_VALUE TO="INPUT_ACLR_A0" WHEN="is_used(chainout_saturate) and CHAINOUT_SATURATE_REGISTER != UNREGISTERED"/>
+		</PARAMETER>
+		<PARAMETER NAME="CHAINOUT_SATURATE_PIPELINE_REGISTER">
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(chainout_saturate)"/>
+			<FORCE_RANGE TO="UNREGISTERED|MULTIPLIER_REGISTER0" WHEN="is_used(chainout_saturate)"/>
+		</PARAMETER>
+		<PARAMETER NAME="CHAINOUT_SATURATE_PIPELINE_ACLR">
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(chainout_saturate) || CHAINOUT_SATURATE_PIPELINE_REGISTER == unregistered"/>
+			<FORCE_VALUE TO="MULTIPLIER_ACLR0" WHEN="is_used(chainout_saturate) and CHAINOUT_SATURATE_PIPELINE_REGISTER != unregistered"/>
+		</PARAMETER>
+		<PARAMETER NAME="CHAINOUT_SATURATE_OUTPUT_REGISTER">
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(chainout_saturate)"/>
+			<FORCE_RANGE TO="UNREGISTERED|CHAINOUT_REGISTER" WHEN="is_used(chainout_saturate)"/>
+		</PARAMETER>
+		<PARAMETER NAME="CHAINOUT_SATURATE_OUTPUT_ACLR">
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(chainout_saturate) || CHAINOUT_SATURATE_OUTPUT_REGISTER == unregistered"/>
+			<FORCE_VALUE TO="CHAINOUT_ACLR" WHEN="is_used(chainout_saturate) and CHAINOUT_SATURATE_OUTPUT_REGISTER != UNREGISTERED"/>
+		</PARAMETER>
+
+
+
+		<PARAMETER NAME="PORT_MULT0_IS_SATURATED">
+			<FORCE_VALUE TO="USED" WHEN="is_used(mult0_is_saturated)"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(mult0_is_saturated)"/>
+			</PARAMETER>
+		<PARAMETER NAME="PORT_MULT1_IS_SATURATED">
+			<FORCE_VALUE TO="USED" WHEN="is_used(mult1_is_saturated)"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(mult1_is_saturated)"/>
+		</PARAMETER>
+		<PARAMETER NAME="PORT_MULT2_IS_SATURATED">
+			<FORCE_VALUE TO="USED" WHEN="is_used(mult2_is_saturated)"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(mult2_is_saturated)"/>
+		</PARAMETER>
+		<PARAMETER NAME="PORT_MULT3_IS_SATURATED">
+			<FORCE_VALUE TO="USED" WHEN="is_used(mult3_is_saturated)"/>
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(mult3_is_saturated)"/>
+		</PARAMETER>
+
+		<PARAMETER NAME="PORT_OUTPUT_IS_OVERFLOW">
+			<FORCE_VALUE TO="PORT_USED" WHEN="is_used(overflow)"/>
+			<FORCE_VALUE TO="PORT_UNUSED" WHEN="!is_used(overflow)"/>
+		</PARAMETER>
+		<PARAMETER NAME="PORT_CHAINOUT_SAT_IS_OVERFLOW">
+			<FORCE_VALUE TO="PORT_USED" WHEN="is_used(chainout_sat_overflow)"/>
+			<FORCE_VALUE TO="PORT_UNUSED" WHEN="!is_used(chainout_sat_overflow)"/>
+		</PARAMETER>
+
+		<PARAMETER NAME="MULT01_ROUND_REGISTER">
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(mult01_round)"/>
+		</PARAMETER>
+		<PARAMETER NAME="MULT23_ROUND_REGISTER">
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(mult23_round)"/>
+			</PARAMETER>
+		<PARAMETER NAME="MULT01_ROUND_ACLR">
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(mult01_round) || MULT01_ROUND_REGISTER == unregistered"/>
+		</PARAMETER>
+		<PARAMETER NAME="MULT23_ROUND_ACLR">
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(mult23_round) || MULT23_ROUND_REGISTER == unregistered"/>
+		</PARAMETER>
+
+		<PARAMETER NAME="MULT01_SATURATION_REGISTER">
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(mult01_saturation)"/>
+		</PARAMETER>
+		<PARAMETER NAME="MULT23_SATURATION_REGISTER">
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(mult23_saturation)"/>
+		</PARAMETER>
+		<PARAMETER NAME="mult01_saturation_aclr">
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(mult01_saturation) || MULT01_SATURATION_REGISTER == unregistered"/>
+		</PARAMETER>
+		<PARAMETER NAME="mult23_saturation_aclr">
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(mult23_saturation) || MULT23_SATURATION_REGISTER == unregistered"/>
+		</PARAMETER>
+
+		<PARAMETER NAME="ADDNSUB1_ROUND_REGISTER">
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(addnsub1_round)"/>
+		</PARAMETER>
+		<PARAMETER NAME="ADDNSUB3_ROUND_REGISTER">
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(addnsub3_round)"/>
+		</PARAMETER>
+		<PARAMETER NAME="ADDNSUB1_ROUND_ACLR">
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(addnsub1_round) || ADDNSUB1_ROUND_REGISTER == unregistered"/>
+		</PARAMETER>
+		<PARAMETER NAME="ADDNSUB3_ROUND_ACLR">
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(addnsub3_round) || ADDNSUB3_ROUND_REGISTER == unregistered"/>
+		</PARAMETER>
+		<PARAMETER NAME="ADDNSUB1_ROUND_PIPELINE_REGISTER">
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(addnsub1_round)"/>
+			<FORCE_VALUE TO="MULTIPLIER_REGISTER0" WHEN="is_used(addnsub1_round)"/> 
+		</PARAMETER>
+		<PARAMETER NAME="ADDNSUB3_ROUND_PIPELINE_REGISTER">
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(addnsub3_round)"/>
+			<FORCE_VALUE TO="MULTIPLIER_REGISTER2" WHEN="is_used(addnsub3_round)"/> 
+		</PARAMETER>
+		<PARAMETER NAME="ADDNSUB1_ROUND_PIPELINE_ACLR">
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(addnsub1_round) || ADDNSUB1_ROUND_PIPELINE_REGISTER == unregistered"/>
+			<FORCE_VALUE TO="MULTIPLIER_ACLR0" WHEN="is_used(addnsub1_round) and ADDNSUB1_ROUND_PIPELINE_REGISTER == registered"/> 
+		</PARAMETER>
+		<PARAMETER NAME="ADDNSUB3_ROUND_PIPELINE_ACLR">
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(addnsub3_round) || ADDNSUB3_ROUND_PIPELINE_REGISTER == unregistered"/>
+			<FORCE_VALUE TO="MULTIPLIER_ACLR2" WHEN="is_used(addnsub3_round) and ADDNSUB3_ROUND_PIPELINE_REGISTER == registered"/> 
+		</PARAMETER>
+
+		<PARAMETER NAME="OUTPUT_ROUND_REGISTER">
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(output_round)"/>
+			<FORCE_RANGE TO="UNREGISTERED|INPUT_REGISTER_A0" WHEN="is_used(output_round)"/>
+		</PARAMETER>
+		<PARAMETER NAME="OUTPUT_ROUND_ACLR">
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(output_round) || OUTPUT_ROUND_REGISTER == unregistered"/>
+			<FORCE_VALUE TO="INPUT_ACLR_A0" WHEN="is_used(output_round) and OUTPUT_ROUND_REGISTER!= UNREGISTERED"/>
+		</PARAMETER>
+		<PARAMETER NAME="OUTPUT_ROUND_PIPELINE_REGISTER">
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(output_round)"/>
+			<FORCE_RANGE TO="UNREGISTERED|MULTIPLIER_REGISTER0" WHEN="is_used(output_round)"/>
+		</PARAMETER>
+		<PARAMETER NAME="OUTPUT_ROUND_PIPELINE_ACLR">
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(output_round) || OUTPUT_ROUND_PIPELINE_REGISTER == unregistered"/>
+			<FORCE_VALUE TO="MULTIPLIER_ACLR0" WHEN="is_used(output_round) and OUTPUT_ROUND_PIPELINE_REGISTER!= UNREGISTERED"/>
+		</PARAMETER>
+		<PARAMETER NAME="OUTPUT_SATURATE_REGISTER">
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(output_saturate)"/>
+			<FORCE_RANGE TO="UNREGISTERED|INPUT_REGISTER_A0" WHEN="is_used(output_saturate)"/>
+		</PARAMETER>
+		<PARAMETER NAME="OUTPUT_SATURATE_ACLR">
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(output_saturate) || OUTPUT_SATURATE_REGISTER == unregistered"/>
+			<FORCE_VALUE TO="INPUT_ACLR_A0" WHEN="is_used(output_saturate) and OUTPUT_SATURATE_REGISTER != UNREGISTERED"/>
+		</PARAMETER>
+		<PARAMETER NAME="OUTPUT_SATURATE_PIPELINE_REGISTER">
+			<FORCE_VALUE TO="UNREGISTERED" WHEN="!is_used(output_saturate)"/>
+			<FORCE_RANGE TO="UNREGISTERED|MULTIPLIER_REGISTER0" WHEN="is_used(output_saturate)"/>
+		</PARAMETER>
+		<PARAMETER NAME="OUTPUT_SATURATE_PIPELINE_ACLR">
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(output_saturate) || OUTPUT_SATURATE_PIPELINE_REGISTER == unregistered"/>
+			<FORCE_VALUE TO="MULTIPLIER_ACLR0" WHEN="is_used(output_saturate) and OUTPUT_SATURATE_PIPELINE_REGISTER != UNREGISTERED"/>
+		</PARAMETER>
+
+		<PARAMETER NAME="PORT_SIGNA">
+			<FORCE_VALUE TO="PORT_USED" WHEN="is_used(signa)" ELSE="PORT_UNUSED"/>
+		</PARAMETER>
+
+		<PARAMETER NAME="PORT_SIGNB">
+			<FORCE_VALUE TO="PORT_USED" WHEN="is_used(signb)" ELSE="PORT_UNUSED"/>
+		</PARAMETER>
+		<PARAMETER NAME="PORT_ADDNSUB1">
+			<FORCE_VALUE TO="PORT_USED" WHEN="is_used(addnsub1)" ELSE="PORT_UNUSED"/>
+		</PARAMETER>
+		<PARAMETER NAME="PORT_ADDNSUB3">
+			<FORCE_VALUE TO="PORT_USED" WHEN="is_used(addnsub3)" ELSE="PORT_UNUSED"/>
+		</PARAMETER>
+
+		<PARAMETER NAME="INPUT_SOURCE_A0">
+			<!--this is because regetest_rule file failed to set the specific value.
+			<FORCE_RANGE TO="str(DATAA)|str(SCANA)|str(VARIABLE)" WHEN="mfam_family_base_stratixii"/>
+			<FORCE_RANGE TO="str(DATAA)|str(SCANA)" WHEN="!mfam_family_base_stratixii"/-->
+			<FORCE_VALUE TO="str(DATAA)"/>
+		</PARAMETER>
+		<PARAMETER NAME="INPUT_SOURCE_A1">
+			<FORCE_VALUE TO="INPUT_SOURCE_A0" WHEN="(INPUT_SOURCE_A0 != str(DATAA)) and (NUMBER_OF_MULTIPLIERS gt 1)"/>
+			<FORCE_RANGE TO="str(SCANA)|str(DATAA)" WHEN="m_titan_dsp_block and (INPUT_SOURCE_A0 == str(DATAA))"/>
+			<FORCE_VALUE TO="str(DATAA)" WHEN="INPUT_SOURCE_B0 == str(LOOPBACK)"/>
+			<FORCE_VALUE TO="str(DATAA)" WHEN="!mfam_family_stratixii"/>
+			<FORCE_VALUE TO="str(DATAA)" WHEN="(NUMBER_OF_MULTIPLIERS lt 2)"/>
+		</PARAMETER>
+		<PARAMETER NAME="INPUT_SOURCE_A2">
+			<FORCE_VALUE TO="INPUT_SOURCE_A1" WHEN="NUMBER_OF_MULTIPLIERS gt 2"/>
+			<FORCE_VALUE TO="str(DATAA)" WHEN="!mfam_family_stratixii"/>
+			<FORCE_VALUE TO="str(DATAA)" WHEN="NUMBER_OF_MULTIPLIERS lt 3"/>
+		</PARAMETER>
+		<PARAMETER NAME="INPUT_SOURCE_A3">
+			<FORCE_VALUE TO="INPUT_SOURCE_A1" WHEN="NUMBER_OF_MULTIPLIERS gt 3"/>
+			<FORCE_VALUE TO="str(DATAA)" WHEN="!mfam_family_stratixii"/>
+			<FORCE_VALUE TO="str(DATAA)" WHEN="NUMBER_OF_MULTIPLIERS lt 4"/>
+		</PARAMETER>
+		<PARAMETER NAME="INPUT_SOURCE_B0">
+			<!--this is because regetest_rule file failed to set the specific value.
+			<FORCE_RANGE TO="str(DATAB)|str(SCANB)|str(VARIABLE)" WHEN="mfam_family_base_stratixii"/>
+			<FORCE_RANGE TO="str(DATAB)|str(SCANB)" WHEN="!mfam_family_stratixii"/>
+			<FORCE_RANGE TO="str(DATAB)|str(SCANB)|str(LOOPBACK)" WHEN="mfam_family_stratixiii and INPUT_SOURCE_A0 != SCANA and (number_of_multipliers lt 3) and (WIDTH_A lt 18) and (WIDTH_B lt 19)"/>
+			<FORCE_RANGE TO="str(DATAB)|str(LOOPBACK)" WHEN="mfam_family_stratixiii and INPUT_SOURCE_A0 == SCANA and (number_of_multipliers lt 3) and (WIDTH_A lt 18) and (WIDTH_B lt 19)"/
+			<FORCE_RANGE TO="str(DATAB)" WHEN="mfam_family_stratixiii and ((number_of_multipliers != 2) || (WIDTH_A != 18) || (WIDTH_B != 18) || (WIDTH_RESULT != 36) || (ACCUMULATOR == YES) || (CHAINOUT_ADDER == YES))"/>-->
+			<FORCE_RANGE TO="str(DATAB)" WHEN="m_titan_dsp_block"/>
+			<FORCE_RANGE TO="str(DATAB)|str(LOOPBACK)" WHEN="m_titan_dsp_block and (NUMBER_OF_MULTIPLIERS == 2) and (WIDTH_A lt 19) and (WIDTH_B lt 19) and (WIDTH_RESULT == (18 + WIDTH_A)) and m_titan_dsp_block"/>
+			<FORCE_RANGE TO="str(DATAB)" WHEN="m_titan_dsp_block and ((ACCUMULATOR == YES) || (CHAINOUT_ADDER == YES) || (SHIFT_MODE == YES))"/>
+			<FORCE_RANGE TO="str(DATAB)" WHEN="(WIDTH_A gt 18)  || (WIDTH_B > 18) "/>
+			<FORCE_RANGE TO="str(DATAB)" WHEN="!m_titan_dsp_block"/>
+		</PARAMETER>
+		<PARAMETER NAME="INPUT_SOURCE_B1">
+			<FORCE_VALUE TO="INPUT_SOURCE_B0" WHEN="(INPUT_SOURCE_B0 != str(DATAB)) and (INPUT_SOURCE_B0 != str(LOOPBACK)) and (NUMBER_OF_MULTIPLIERS gt 1)"/>
+			<FORCE_RANGE TO="str(DATAB)|str(SCANB)" WHEN="(mfam_family_base_stratixii) and (INPUT_SOURCE_B0 == str(DATAB))"/>
+			<FORCE_RANGE TO="str(DATAB)|str(SCANB)" WHEN="m_titan_dsp_block"/>
+			<FORCE_RANGE TO="str(DATAB)" WHEN="m_titan_dsp_block and (m_scanchain_a || INPUT_SOURCE_B0 == str(LOOPBACK) || is_used(scanouta))"/>
+			<FORCE_VALUE TO="str(DATAB)" WHEN="m_titan_dsp_block and (NUMBER_OF_MULTIPLIERS gt 1) and INPUT_SOURCE_B0 == str(LOOPBACK) "/>
+			<FORCE_RANGE TO="str(DATAB)" WHEN="(!mfam_family_base_stratixii) and NUMBER_OF_MULTIPLIERS gt 1 and (INPUT_SOURCE_B0 == str(LOOPBACK))"/>
+			<FORCE_VALUE TO="str(DATAB)" WHEN="NUMBER_OF_MULTIPLIERS lt 2"/>
+			<FORCE_RANGE TO="str(DATAB)" WHEN="!mfam_family_stratixii"/>
+		</PARAMETER>
+		<PARAMETER NAME="INPUT_SOURCE_B2">
+			<FORCE_VALUE TO="INPUT_SOURCE_B1" WHEN="NUMBER_OF_MULTIPLIERS gt 2"/>
+			<FORCE_VALUE TO="str(DATAB)" WHEN="NUMBER_OF_MULTIPLIERS lt 3"/>
+			<FORCE_RANGE TO="str(DATAB)" WHEN="!mfam_family_stratixii"/>
+		</PARAMETER>
+		<PARAMETER NAME="INPUT_SOURCE_B3">
+			<FORCE_VALUE TO="INPUT_SOURCE_B1" WHEN="NUMBER_OF_MULTIPLIERS gt 2"/>
+			<FORCE_VALUE TO="str(DATAB)" WHEN="NUMBER_OF_MULTIPLIERS lt 3"/>
+			<FORCE_RANGE TO="str(DATAB)" WHEN="!mfam_family_stratixii"/>
+		</PARAMETER>
+
+	</PARAMETER_RULES>
+	<PORT_RULES>
+		<PORT NAME="dataa" USAGE="USED"/>
+		<PORT NAME="datab" USAGE="USED"/>
+		<PORT NAME="result" USAGE="USED"/>
+		<PORT NAME="clock0" USAGE="VARIABLE">
+			<STATE TO="USED" WHEN="m_clock0_used"/>
+			<STATE TO="UNUSED" WHEN="!m_clock0_used"/>
+		</PORT>
+		<PORT NAME="clock1" USAGE="VARIABLE">
+			<STATE TO="USED" WHEN="m_clock1_used"/>
+			<STATE TO="UNUSED" WHEN="!m_clock1_used"/>
+		</PORT>
+		<PORT NAME="clock2" USAGE="VARIABLE">
+			<STATE TO="USED" WHEN="m_clock2_used"/>
+			<STATE TO="UNUSED" WHEN="!m_clock2_used"/>
+		</PORT>
+		<PORT NAME="clock3" USAGE="VARIABLE">
+			<STATE TO="USED" WHEN="m_clock3_used"/>
+			<STATE TO="UNUSED" WHEN="!m_clock3_used"/>
+		</PORT>
+
+		<PORT NAME="ena0" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="!is_used(clock0)"/>
+		</PORT>
+		<PORT NAME="ena1" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="!is_used(clock1)"/>
+			<STATE TO="USED" WHEN="(USE_WIZARD == ON) and is_used(clock1) and is_used(ena0)"/>
+			<STATE TO="UNUSED" WHEN="(USE_WIZARD == ON) and is_used(clock1) and !is_used(ena0) and is_used(clock0)"/>
+		</PORT>
+		<PORT NAME="ena2" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="!is_used(clock2)"/>
+			<STATE TO="USED" WHEN="(USE_WIZARD == ON) and is_used(clock2) and (is_used(ena0) || is_used(ena1))"/>
+			<STATE TO="UNUSED" WHEN="(USE_WIZARD == ON) and is_used(clock2) and ((!is_used(ena0) and is_used(clock0)) || (!is_used(ena1) and is_used(clock1)))"/>
+		</PORT>
+		<PORT NAME="ena3" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="!is_used(clock3)"/>
+			<STATE TO="USED" WHEN="(USE_WIZARD == ON) and is_used(clock3) and (is_used(ena0) || is_used(ena1) || is_used(ena2))"/>
+			<STATE TO="UNUSED" WHEN="(USE_WIZARD == ON) and is_used(clock3) and ((!is_used(ena0) and is_used(clock0)) || (!is_used(ena1) and is_used(clock1)) || (!is_used(ena2) and is_used(clock2)))"/>
+		</PORT>
+
+		<PORT NAME="aclr1" USAGE="VARIABLE">
+			<STATE TO="USED" WHEN="m_aclr1_used"/>
+			<STATE TO="UNUSED" WHEN="!m_aclr1_used"/>
+		</PORT>
+		<PORT NAME="aclr2" USAGE="VARIABLE">
+			<STATE TO="USED" WHEN="m_aclr2_used"/>
+			<STATE TO="UNUSED" WHEN="!m_aclr2_used"/>
+		</PORT>
+		<PORT NAME="aclr3" USAGE="VARIABLE">
+			<STATE TO="USED" WHEN="m_aclr3_used"/>
+			<STATE TO="UNUSED" WHEN="!m_aclr3_used"/>
+		</PORT>
+		<PORT NAME="aclr0" USAGE="VARIABLE">
+			<STATE TO="USED" WHEN="m_aclr0_used"/>
+			<STATE TO="UNUSED" WHEN="!m_aclr0_used"/>
+		</PORT>
+
+		<PORT NAME="addnsub1" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="m_titan_dsp_block"/>
+			<STATE TO="UNUSED" WHEN="NUMBER_OF_MULTIPLIERS == 1"/>
+		</PORT>
+		<PORT NAME="addnsub3" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="m_titan_dsp_block"/>
+			<STATE TO="UNUSED" WHEN="NUMBER_OF_MULTIPLIERS != 4"/>
+		</PORT>
+		<PORT NAME="accum_sload" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="ACCUMULATOR == NO"/>
+			<STATE TO="USED" WHEN="is_used(output_round) and ACCUMULATOR == YES"/>
+		</PORT>
+
+		<PORT NAME="signa" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="m_base_stratixii_features"/>
+			<STATE TO="UNUSED" WHEN="m_no_dynamic_sign"/>
+		</PORT>
+		<PORT NAME="signb" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="m_base_stratixii_features"/>
+			<STATE TO="UNUSED" WHEN="m_no_dynamic_sign"/>
+		</PORT>
+	
+		<PORT NAME="mult01_round" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="!mfam_family_base_stratixii || m_titan_dsp_block "/>
+		</PORT>
+		<PORT NAME="mult23_round" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="(!mfam_family_base_stratixii || m_titan_dsp_block) || (NUMBER_OF_MULTIPLIERS lt 3) "/>
+		</PORT>
+		<PORT NAME="addnsub1_round" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="!mfam_family_base_stratixii || m_titan_dsp_block || (NUMBER_OF_MULTIPLIERS lt 2)  "/>
+		</PORT>
+		<PORT NAME="addnsub3_round" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="(!mfam_family_base_stratixii || m_titan_dsp_block) || (NUMBER_OF_MULTIPLIERS lt 3) "/>
+		</PORT>
+		<PORT NAME="mult01_saturation" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="!mfam_family_base_stratixii || m_titan_dsp_block "/>
+		</PORT>
+		<PORT NAME="mult23_saturation" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="(!mfam_family_base_stratixii|| m_titan_dsp_block) || (NUMBER_OF_MULTIPLIERS lt 3) "/>
+		</PORT>
+		<PORT NAME="output_round" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="OUTPUT_ROUNDING != VARIABLE"/>
+			<STATE TO="USED" WHEN="OUTPUT_ROUNDING == VARIABLE"/>
+			
+		</PORT>
+		<PORT NAME="output_saturate" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="OUTPUT_SATURATION != VARIABLE"/>
+			<STATE TO="USED" WHEN="OUTPUT_SATURATION == VARIABLE"/>
+		</PORT>
+		<PORT NAME="chainout_round" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="CHAINOUT_ROUNDING != VARIABLE"/>
+			<STATE TO="USED" WHEN="CHAINOUT_ROUNDING == VARIABLE"/>
+		</PORT>
+		<PORT NAME="chainout_saturate" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="CHAINOUT_SATURATION != VARIABLE"/>
+			<STATE TO="USED" WHEN="CHAINOUT_SATURATION == VARIABLE"/>
+		</PORT>
+
+		<PORT NAME="zero_chainout" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="!m_titan_dsp_block || CHAINOUT_ADDER == NO "/>
+		</PORT>
+		<PORT NAME="rotate" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="!m_titan_dsp_block || (SHIFT_MODE != VARIABLE) || ((SHIFT_MODE == VARIABLE) and m_always_signed_output)"/>
+			<STATE TO="USED" WHEN="m_titan_dsp_block and SHIFT_MODE == VARIABLE"/>
+		</PORT>
+		<PORT NAME="shift_right" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="!m_titan_dsp_block || SHIFT_MODE != VARIABLE"/>
+			<STATE TO="USED" WHEN="m_titan_dsp_block and SHIFT_MODE == VARIABLE"/>
+		</PORT>
+
+		<PORT NAME="overflow" USAGE="VARIABLE">
+			<STATE TO="UNUSED">
+				<WHEN> "((OUTPUT_SATURATION == NO and ACCUMULATOR == NO))" </WHEN>
+			</STATE>
+		</PORT>
+		<PORT NAME="chainout_sat_overflow" USAGE="VARIABLE">
+			<STATE TO="UNUSED">
+				<WHEN> "(!m_titan_dsp_block) || (CHAINOUT_ADDER == NO || CHAINOUT_SATURATION == NO) " </WHEN>
+			</STATE>
+		</PORT>
+		<PORT NAME="mult0_is_saturated" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="!m_stratixii_features || m_titan_dsp_block|| (MULTIPLIER01_SATURATION == NO) "/>
+		</PORT>
+		<PORT NAME="mult1_is_saturated" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="!m_stratixii_features || m_titan_dsp_block|| (MULTIPLIER01_SATURATION == NO) || (NUMBER_OF_MULTIPLIERS lt 2) "/>
+		</PORT>
+		<PORT NAME="mult2_is_saturated" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="!m_stratixii_features || m_titan_dsp_block|| (MULTIPLIER23_SATURATION == NO) || (NUMBER_OF_MULTIPLIERS lt 3) "/>
+		</PORT>
+		<PORT NAME="mult3_is_saturated" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="!m_stratixii_features || m_titan_dsp_block|| (MULTIPLIER23_SATURATION == NO) || (NUMBER_OF_MULTIPLIERS lt 4) "/>
+		</PORT>
+
+		<PORT NAME="scanouta" USAGE="VARIABLE">
+			<state TO="UNUSED" WHEN="(NUMBER_OF_MULTIPLIERS == 3 and !m_titan_dsp_block) || (SHIFT_MODE == YES) || (WIDTH_A gt 18) || (WIDTH_B gt 18) || INPUT_SOURCE_B0 == str(LOOPBACK) "/>
+		</PORT>
+		<PORT NAME="scanoutb" USAGE="VARIABLE">
+			<state TO="UNUSED" WHEN="(NUMBER_OF_MULTIPLIERS == 3 and !m_titan_dsp_block) || (SHIFT_MODE == YES) || (WIDTH_A gt 18) || (WIDTH_B gt 18) || INPUT_SOURCE_B0 == str(LOOPBACK) "/>
+			<STATE TO="UNUSED" WHEN=" (INPUT_SOURCE_A1 == str(scana) || is_used(scanouta)) and m_titan_dsp_block"/>
+		</PORT>
+		<PORT NAME="zero_loopback" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="!m_titan_dsp_block || INPUT_SOURCE_B0 != str(LOOPBACK)"/>
+		</PORT>
+		<PORT NAME="scanina" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="INPUT_SOURCE_A0 != SCANA"/>
+			<STATE TO="USED" WHEN="INPUT_SOURCE_A0 == SCANA"/>
+		</PORT>
+		<PORT NAME="scaninb" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="INPUT_SOURCE_B0 != SCANB"/>
+			<STATE TO="USED" WHEN="INPUT_SOURCE_B0 == SCANB"/>
+		</PORT>
+		<PORT NAME="sourcea" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="INPUT_SOURCE_A0 != VARIABLE"/>
+			<STATE TO="USED" WHEN="INPUT_SOURCE_A0 == VARIABLE"/>
+		</PORT>
+		<PORT NAME="sourceb" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="INPUT_SOURCE_B0 != VARIABLE"/>
+			<STATE TO="USED" WHEN="INPUT_SOURCE_B0 == VARIABLE"/>
+		</PORT>
+		<PORT NAME="chainin" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="!m_titan_dsp_block"/>
+		</PORT>
+
+	</PORT_RULES>
+</ROOT>

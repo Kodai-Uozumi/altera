@@ -1,0 +1,556 @@
+<<<<versions>>>>
+1.0
+1.1
+<<<</versions>>>>
+<<<<1.0>>>>
+<execute_flow>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: execute_flow [-h | -help] [-long_help] [-analysis_and_elaboration] [-check_ios] [-check_netlist] [-compile] [-compile_and_simulate] [-create_companion_revision] [-dont_export_assignments] [-early_timing_estimate] [-eco] [-export_database] [-fast_model] [-generate_functional_sim_netlist] [-import_database] [-incremental_compilation_export] [-incremental_compilation_import] [-signalprobe] [-vqm_writer]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -analysis_and_elaboration: Option to run Analysis & Elaboration
+        -check_ios: Option to run I/O assignment analysis
+        -check_netlist: Option to run Check and Save Netlist
+        -compile: Option to run a full compilation
+        -compile_and_simulate: Option to run a full compilation followed by a simulation
+        -create_companion_revision: Option to run HardCopy Create Companion Revision
+        -dont_export_assignments: Option not to export assignments to file. By default, this command exports assignments before running command-line executables.
+        -early_timing_estimate: Option to run an Early Timing Estimate
+        -eco: Option to run a Fitter ECO compilation
+        -export_database: Option to export a version-compatible database
+        -fast_model: Option to run Classic Timing Analyzer (Fast Timing Model)
+        -generate_functional_sim_netlist: Option to generate a functional simulation netlist
+        -import_database: Option to import a version-compatible database
+        -incremental_compilation_export: Option to export a design partition into a Quartus II Exported Partition (QXP) file
+        -incremental_compilation_import: Option to import one or more Quartus II Exported Partition (QXP) files into the design partitions of the current project
+        -signalprobe: Option to run a SignalProbe compilation
+        -vqm_writer: Option to run VQM Writer
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::flow 1.0
+
+------------
+Description:
+------------
+
+
+Runs one or more of the command-line executables using one of the
+predefined flows, such as "-compile" or "-signalprobe". You can run
+only one flow at a time, so you must use only one option.
+
+Some flows have limited device support or other limitations based on
+the features used. See documentation for the features in question for
+details.
+
+The "-export_database" and "-import_database" options use the value of
+the VER_COMPATIBLE_DB_DIR assignment for the version-compatible
+database files directory, defaulting to "export_db".
+
+The "-incremental_compilation_export" option uses the value of the
+INCREMENTAL_COMPILATION_EXPORT_FILE global assignment for the path of
+the Quartus II Exported Partition (QXP) file to be created. The value
+of the INCREMENTAL_COMPILATION_EXPORT_PARTITION_NAME global assignment
+should specify the name of the partition to be exported. The value of
+the INCREMENTAL_COMPILATION_EXPORT_NETLIST_TYPE global assignment
+(which can either have value POST_SYNTH or POST_FIT) determines
+whether post-synthesis or post-fitting results should be
+exported. Finally, the value of the
+INCREMENTAL_COMPILATION_EXPORT_ROUTING global assignment specifies
+whether routing should be exported when a post-fit netlist is
+generated.
+
+The "-incremental_compilation_import" option uses the following
+partition assignments to determine the location of the QXP files, and
+how importation should be performed, on a per-partition basis:
+
+PARTITION_IMPORT_FILE	
+PARTITION_IMPORT_PROMOTE_ASSIGNMENTS
+PARTITION_IMPORT_NEW_ASSIGNMENTS
+PARTITION_IMPORT_EXISTING_ASSIGNMENTS
+PARTITION_IMPORT_EXISTING_LOGICLOCK_REGIONS
+
+The "-vqm_writer" option uses the value of the
+LOGICLOCK_INCREMENTAL_COMPILE_FILE assignment for the VQM output
+directory, defaulting to "atom_netlists".
+
+All assignments are exported first automatically, as if you
+called the "export_assignments" command first, unless the
+-dont_export_assignments option is specified.
+
+You must use the Tcl command "catch" to determine whether the
+predefined flow ran successfully or not, as in the following example:
+
+if {[catch {execute_flow -compile} result]} {
+	puts "\nResult: $result\n"
+	puts "ERROR: Compilation failed. See report files.\n"
+} else {
+	puts "\nINFO: Compilation was successful.\n"
+}
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# To run quartus_map, quartus_fit, quartus_tan, quartus_asm
+# or other executables based on options. (Refer to "Using 
+# Compilation Flows," "Compiling Designs," and "Specifying 
+# Compiler Settings" in Quartus(R) II online Help for more 
+# information.)
+execute_flow -compile 
+
+# To determine if compilation was successful or not
+# and print out a personalized message.
+if {[catch {execute_flow -compile} result]} {
+	puts "\nResult: $result\n"
+	puts "ERROR: Compilation failed. See report files.\n"
+} else {
+	puts "\nINFO: Compilation was successful.\n"
+}
+
+# To perform a full compilation followed by a simulation
+execute_flow -compile_and_simulate 		
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't run multiple flows simultaneously. Wait for current flow to complete.
+TCL_ERROR	1   	ERROR: Only one flow option is allowed. Only one flow can be run for a single command call. If multiple flows are required, use multiple commands.
+TCL_ERROR	1   	ERROR: Can't find active revision. Make sure there is an open, active revision name. Use the "-revision" option of "project_open", "project_new", or use "set_current_revision".
+TCL_ERROR	1   	ERROR: No project is currently open. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Error(s) found while running an executable. See report file(s) for error message(s). Message log indicates which executable was run last.
+TCL_ERROR	1   	ERROR: Option "-<string>" is illegal in the Quartus II User Interface. Specify a different option or use a similar command from the "Processing" menu.
+TCL_ERROR	1   	ERROR: At least one option is required. Specify at least one option.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</execute_flow>
+
+<execute_module>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: execute_module [-h | -help] [-long_help] [-args <arguments>] [-dont_export_assignments] [-tool <asm|cdb|drc|eda|fit|map|pow|sta|sim|tan|si|cpf>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -args <arguments>: Option to specify arguments for the executable
+        -dont_export_assignments: Option not to export assignments to file. By default, this command exports assignments before running command-line executables.
+        -tool <asm|cdb|drc|eda|fit|map|pow|sta|sim|tan|si|cpf>: Option to run the specified executable
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::flow 1.0
+
+------------
+Description:
+------------
+
+Runs one of the command-line executables, such as quartus_map or
+quartus_fit. If the -args option is specified, the arguments are
+passed to the command-line executable.
+
+All assignments are exported automatically first, as if the
+"export_assignments" command was called first, unless
+-dont_export_assignments option is specified.
+
+You must use the Tcl command "catch" to determine whether the
+command-line executable ran successfully or not, as in the following
+example:
+
+if {[catch {execute_module -tool map} result]} {
+	puts "\nResult: $result\n"
+	puts "ERROR: Analysis & Synthesis failed. See the report file.\n"
+} else {
+	puts "\nINFO: Analysis & Synthesis was successful.\n"
+}
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Run quartus_map using device family Stratix and device part EP1S10B672C6.
+execute_module -tool map -args "--family=Stratix --part=EP1S10B672C6"
+
+# Compile using a set of executables
+execute_module -tool map
+execute_module -tool fit
+execute_module -tool tan
+execute_module -tool asm
+execute_module -tool eda
+
+# To determine if Analysis & Synthesis was successful or not
+# and print out a personalized message.
+if {[catch {execute_module -tool map} result]} {
+	puts "\nResult: $result\n"
+	puts "ERROR: Analysis & Synthesis failed. See the report file.\n"
+} else {
+	puts "\nINFO: Analysis & Synthesis was successful.\n"
+}
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't run multiple flows simultaneously. Wait for current flow to complete.
+TCL_ERROR	1   	ERROR: Can't find active revision. Make sure there is an open, active revision name. Use the "-revision" option of "project_open", "project_new", or use "set_current_revision".
+TCL_ERROR	1   	ERROR: No project is currently open. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Error(s) found while running an executable. See report file(s) for error message(s). Message log indicates which executable was run last.
+TCL_ERROR	1   	ERROR: Option is required: -tool. Specify the -tool option.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</execute_module>
+
+<<<</1.0>>>>
+<<<<1.1>>>>
+<execute_flow>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: execute_flow [-h | -help] [-long_help] [-analysis_and_elaboration] [-check_ios] [-check_netlist] [-compile] [-compile_and_simulate] [-create_companion_revision] [-dont_export_assignments] [-early_timing_estimate] [-eco] [-export_database] [-fast_model] [-generate_functional_sim_netlist] [-import_database] [-incremental_compilation_export] [-incremental_compilation_import] [-signalprobe] [-vqm_writer]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -analysis_and_elaboration: Option to run Analysis & Elaboration
+        -check_ios: Option to run I/O assignment analysis
+        -check_netlist: Option to run Check and Save Netlist
+        -compile: Option to run a full compilation
+        -compile_and_simulate: Option to run a full compilation followed by a simulation
+        -create_companion_revision: Option to run HardCopy Create Companion Revision
+        -dont_export_assignments: Option not to export assignments to file. By default, this command exports assignments before running command-line executables.
+        -early_timing_estimate: Option to run an Early Timing Estimate
+        -eco: Option to run a Fitter ECO compilation
+        -export_database: Option to export a version-compatible database
+        -fast_model: Option to run Classic Timing Analyzer (Fast Timing Model)
+        -generate_functional_sim_netlist: Option to generate a functional simulation netlist
+        -import_database: Option to import a version-compatible database
+        -incremental_compilation_export: Option to export a design partition into a Quartus II Exported Partition (QXP) file
+        -incremental_compilation_import: Option to import one or more Quartus II Exported Partition (QXP) files into the design partitions of the current project
+        -signalprobe: Option to run a SignalProbe compilation
+        -vqm_writer: Option to run VQM Writer
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::flow 1.1
+
+------------
+Description:
+------------
+
+
+Runs one or more of the command-line executables using one of the
+predefined flows, such as "-compile" or "-signalprobe". You can run
+only one flow at a time, so you must use only one option.
+
+Some flows have limited device support or other limitations based on
+the features used. See documentation for the features in question for
+details.
+
+The "-export_database" and "-import_database" options use the value of
+the VER_COMPATIBLE_DB_DIR assignment for the version-compatible
+database files directory, defaulting to "export_db".
+
+The "-incremental_compilation_export" option uses the value of the
+INCREMENTAL_COMPILATION_EXPORT_FILE global assignment for the path of
+the Quartus II Exported Partition (QXP) file to be created. The value
+of the INCREMENTAL_COMPILATION_EXPORT_PARTITION_NAME global assignment
+should specify the name of the partition to be exported. The value of
+the INCREMENTAL_COMPILATION_EXPORT_NETLIST_TYPE global assignment
+(which can either have value POST_SYNTH or POST_FIT) determines
+whether post-synthesis or post-fitting results should be
+exported. Finally, the value of the
+INCREMENTAL_COMPILATION_EXPORT_ROUTING global assignment specifies
+whether routing should be exported when a post-fit netlist is
+generated.
+
+The "-incremental_compilation_import" option uses the following
+partition assignments to determine the location of the QXP files, and
+how importation should be performed, on a per-partition basis:
+
+PARTITION_IMPORT_FILE	
+PARTITION_IMPORT_PROMOTE_ASSIGNMENTS
+PARTITION_IMPORT_NEW_ASSIGNMENTS
+PARTITION_IMPORT_EXISTING_ASSIGNMENTS
+PARTITION_IMPORT_EXISTING_LOGICLOCK_REGIONS
+
+The "-vqm_writer" option uses the value of the
+LOGICLOCK_INCREMENTAL_COMPILE_FILE assignment for the VQM output
+directory, defaulting to "atom_netlists".
+
+All assignments are exported first automatically, as if you
+called the "export_assignments" command first, unless the
+-dont_export_assignments option is specified.
+
+You must use the Tcl command "catch" to determine whether the
+predefined flow ran successfully or not, as in the following example:
+
+if {[catch {execute_flow -compile} result]} {
+	puts "\nResult: $result\n"
+	puts "ERROR: Compilation failed. See report files.\n"
+} else {
+	puts "\nINFO: Compilation was successful.\n"
+}
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# To run quartus_map, quartus_fit, quartus_tan, quartus_asm
+# or other executables based on options. (Refer to "Using 
+# Compilation Flows," "Compiling Designs," and "Specifying 
+# Compiler Settings" in Quartus(R) II online Help for more 
+# information.)
+execute_flow -compile 
+
+# To determine if compilation was successful or not
+# and print out a personalized message.
+if {[catch {execute_flow -compile} result]} {
+	puts "\nResult: $result\n"
+	puts "ERROR: Compilation failed. See report files.\n"
+} else {
+	puts "\nINFO: Compilation was successful.\n"
+}
+
+# To perform a full compilation followed by a simulation
+execute_flow -compile_and_simulate 		
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't run multiple flows simultaneously. Wait for current flow to complete.
+TCL_ERROR	1   	ERROR: Only one flow option is allowed. Only one flow can be run for a single command call. If multiple flows are required, use multiple commands.
+TCL_ERROR	1   	ERROR: Can't find active revision. Make sure there is an open, active revision name. Use the "-revision" option of "project_open", "project_new", or use "set_current_revision".
+TCL_ERROR	1   	ERROR: No project is currently open. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Error(s) found while running an executable. See report file(s) for error message(s). Message log indicates which executable was run last.
+TCL_ERROR	1   	ERROR: Option "-<string>" is illegal in the Quartus II User Interface. Specify a different option or use a similar command from the "Processing" menu.
+TCL_ERROR	1   	ERROR: At least one option is required. Specify at least one option.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</execute_flow>
+
+<execute_module>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: execute_module [-h | -help] [-long_help] [-args <arguments>] [-dont_export_assignments] [-tool <asm|cdb|drc|eda|fit|map|pow|sta|sim|tan|si|cpf>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -args <arguments>: Option to specify arguments for the executable
+        -dont_export_assignments: Option not to export assignments to file. By default, this command exports assignments before running command-line executables.
+        -tool <asm|cdb|drc|eda|fit|map|pow|sta|sim|tan|si|cpf>: Option to run the specified executable
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::flow 1.1
+
+------------
+Description:
+------------
+
+Runs one of the command-line executables, such as quartus_map or
+quartus_fit. If the -args option is specified, the arguments are
+passed to the command-line executable.
+
+All assignments are exported automatically first, as if the
+"export_assignments" command was called first, unless
+-dont_export_assignments option is specified.
+
+You must use the Tcl command "catch" to determine whether the
+command-line executable ran successfully or not, as in the following
+example:
+
+if {[catch {execute_module -tool map} result]} {
+	puts "\nResult: $result\n"
+	puts "ERROR: Analysis & Synthesis failed. See the report file.\n"
+} else {
+	puts "\nINFO: Analysis & Synthesis was successful.\n"
+}
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Run quartus_map using device family Stratix and device part EP1S10B672C6.
+execute_module -tool map -args "--family=Stratix --part=EP1S10B672C6"
+
+# Compile using a set of executables
+execute_module -tool map
+execute_module -tool fit
+execute_module -tool tan
+execute_module -tool asm
+execute_module -tool eda
+
+# To determine if Analysis & Synthesis was successful or not
+# and print out a personalized message.
+if {[catch {execute_module -tool map} result]} {
+	puts "\nResult: $result\n"
+	puts "ERROR: Analysis & Synthesis failed. See the report file.\n"
+} else {
+	puts "\nINFO: Analysis & Synthesis was successful.\n"
+}
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't run multiple flows simultaneously. Wait for current flow to complete.
+TCL_ERROR	1   	ERROR: Can't find active revision. Make sure there is an open, active revision name. Use the "-revision" option of "project_open", "project_new", or use "set_current_revision".
+TCL_ERROR	1   	ERROR: No project is currently open. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Error(s) found while running an executable. See report file(s) for error message(s). Message log indicates which executable was run last.
+TCL_ERROR	1   	ERROR: Option is required: -tool. Specify the -tool option.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</execute_module>
+
+<execute_hc>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: execute_hc [-h | -help] [-long_help] [-archive <file name>] [-compare] [-create_companion <revision name>] [-handoff_report] [-hc_ready] [-min_archive]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -archive <file name>: Option to archive HardCopy Handoff Files into the specified file name
+        -compare: Option to run HardCopy Companion Revision Comparison
+        -create_companion <revision name>: Option to create/overwrite the specified companion revision
+        -handoff_report: Option to run HardCopy Handoff Report
+        -hc_ready: Option to generate HardCopy Design Readiness Check report
+        -min_archive: Option to exclude design files when archiving HardCopy Handoff Files
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::flow 1.1
+
+------------
+Description:
+------------
+
+Runs one of the predefined HardCopy flows.
+
+All created or modified Quartus II Settings File (.qsf) assignments
+are automatically exported before running the predefined flow, as if
+you called the "export_assignments" command beforehand.
+
+You must use the Tcl command "catch" to determine whether the
+predefined flow ran successfully or not, as in the following example:
+
+if {[catch {execute_hc -compare} result]} {
+	post_message "Result: $result"
+	post_message -type error "HardCopy Companion Revision Comparison failed. See report files."
+} else {
+	post_message "HardCopy Companion Revision Comparison was successful."
+}
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+   # Load the ::quartus::flow Tcl package
+load_package flow
+
+   # Open the FPGA revision named "my_fpga"
+project_open my_design -revision my_fpga
+
+   # Compile the FPGA "my_fpga" revision
+execute_flow -compile
+
+   # Create a HardCopy companion revision named "my_hcii"
+execute_hc -create_companion my_hcii
+
+   # Set "my_hcii" as the current revision before compiling it
+set_current_revision my_hcii
+
+   # Compile the HardCopy "my_hcii" revision
+execute_flow -compile
+
+   # Compare the two HardCopy companion revisions
+execute_hc -compare
+
+   # Generate HardCopy Design Readiness Check report
+execute_hc -hc_ready
+
+   # Generate a HardCopy Handoff Report
+execute_hc -handoff_report
+
+   # Archive the HardCopy Handoff Files into
+   # the file named "my_hcii_handoff.qar"
+execute_hc -archive my_hcii_handoff.qar
+
+   # Close the project
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't run multiple flows simultaneously. Wait for current flow to complete.
+TCL_ERROR	1   	ERROR: The -<string> option is required in order to generate the HardCopy Handoff Files archive
+TCL_ERROR	1   	ERROR: Can't find active revision. Make sure there is an open, active revision name. Use the "-revision" option of "project_open", "project_new", or use "set_current_revision".
+TCL_ERROR	1   	ERROR: The current license file does not support the -<string> option
+TCL_ERROR	1   	ERROR: No project is currently open. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Error(s) found while running an executable. See report file(s) for error message(s). Message log indicates which executable was run last.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</execute_hc>
+
+<<<</1.1>>>>

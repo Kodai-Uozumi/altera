@@ -1,0 +1,34 @@
+%===================================================================%
+% Design Name:			csa_cell									%
+% Function: 			1-level carry_save adder					%
+% Feature(s):			unsigned			 						%
+% Creation Date:		12/26/95									%
+% Last Modification:	04/23/96									%
+%===================================================================%
+
+PARAMETERS 
+(
+	SIZE = 6
+);
+ 
+SUBDESIGN csa_cell
+( 
+	data[2..0][SIZE-1..0]	: INPUT = GND;
+ 	sum_out[SIZE-1..0] 		: OUTPUT;
+ 	carry_out[SIZE-1..0] 	: OUTPUT;
+)
+
+BEGIN
+	sum_out[]   = data[0][] $ data[1][] $ data[2][];
+	carry_out[] = (data[0][] & data[1][]) # 
+				  (data[0][] & !data[1][] & data[2][]) # 
+				  (!data[0][] & data[1][] & data[2][]); 	
+	IF !USED(sum_out) GENERATE
+		sum_out[] = GND;
+	END GENERATE;
+	IF !USED(carry_out) GENERATE
+		carry_out[] = GND;
+	END GENERATE;
+END;
+
+

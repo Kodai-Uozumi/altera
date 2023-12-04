@@ -1,0 +1,148 @@
+PARAMETERS
+(
+	USING_LOADABLE_ACCUM = "NO",
+	LOADABLE_ACCUM_SUPPORTED = "NO"
+);
+FUNCTION alt_mac_out	(
+							dataa[DATAA_WIDTH - 1..0],
+							datab[((!((OPERATION_MODE == "TWO_LEVEL_ADDER") # (OPERATION_MODE == "36_BIT_MULTIPLY") # (OPERATION_MODE == "ONE_LEVEL_ADDER") # (OPERATION_MODE == "ACCUMULATOR"))) ? 1 : DATAB_WIDTH == 0 ? 1 : DATAB_WIDTH) - 1..0],
+							datac[((OPERATION_MODE == "TWO_LEVEL_ADDER") !# (OPERATION_MODE == "36_BIT_MULTIPLY")) ? 1 : DATAC_WIDTH - 1..0],
+							datad[((OPERATION_MODE == "TWO_LEVEL_ADDER") !# (OPERATION_MODE == "36_BIT_MULTIPLY")) ? 1 : DATAD_WIDTH - 1..0],
+							zeroacc,
+							addnsub0,
+							addnsub1,
+							round,
+							round0,
+							round1,
+							saturate,
+							multabsaturate,
+							multcdsaturate,
+							signa,
+							signb,
+							clk[3..0],
+							aclr[3..0],
+							ena[3..0],
+							mode0,
+							mode1,
+							zeroacc1,
+							saturate1,
+							chainin[((OPERATION_MODE == "TWO_LEVEL_ADDER_CHAIN_OUT")	?	((DATAA_WIDTH > DATAB_WIDTH) ? DATAA_WIDTH : DATAB_WIDTH) + 10 :
+										%OTHERWISE%									DATAA_WIDTH + DATAB_WIDTH + DATAC_WIDTH + DATAD_WIDTH)
+										-1..0],
+							zerochainout,
+							roundchainout,
+							saturatechainout
+						)
+						WITH
+						(
+							OPERATION_MODE,
+							DATAA_WIDTH,
+							DATAB_WIDTH,
+							DATAC_WIDTH,
+							DATAD_WIDTH,
+							ADDNSUB0_CLOCK,
+							ADDNSUB1_CLOCK,
+							ROUND0_CLOCK,
+							ROUND1_CLOCK,
+							SATURATE_CLOCK,
+							MULTABSATURATE_CLOCK,
+							MULTCDSATURATE_CLOCK,							
+							ZEROACC_CLOCK,
+							SIGNA_CLOCK,
+							SIGNB_CLOCK,
+							OUTPUT_CLOCK,
+							ADDNSUB0_CLEAR,
+							ADDNSUB1_CLEAR,
+							ROUND0_CLEAR,
+							ROUND1_CLEAR,
+							SATURATE_CLEAR,
+							MULTABSATURATE_CLEAR,
+							MULTCDSATURATE_CLEAR,							
+							ZEROACC_CLEAR,
+							SIGNA_CLEAR,
+							SIGNB_CLEAR,
+							OUTPUT_CLEAR,
+							ADDNSUB0_PIPELINE_CLOCK,
+							ADDNSUB1_PIPELINE_CLOCK,
+							
+							USING_LOADABLE_ACCUM,
+							LOADABLE_ACCUM_SUPPORTED,
+							ROUND0_PIPELINE_CLOCK,
+							ROUND1_PIPELINE_CLOCK,
+							SATURATE_PIPELINE_CLOCK,
+							MULTABSATURATE_PIPELINE_CLOCK,
+							MULTCDSATURATE_PIPELINE_CLOCK,							
+							
+							ZEROACC_PIPELINE_CLOCK,
+							SIGNA_PIPELINE_CLOCK,
+							SIGNB_PIPELINE_CLOCK,
+							ADDNSUB0_PIPELINE_CLEAR,
+							ADDNSUB1_PIPELINE_CLEAR,
+							
+							ROUND0_PIPELINE_CLEAR,
+							ROUND1_PIPELINE_CLEAR,
+							SATURATE_PIPELINE_CLEAR,
+							MULTABSATURATE_PIPELINE_CLEAR,
+							MULTCDSATURATE_PIPELINE_CLEAR,
+							
+							ZEROACC_PIPELINE_CLEAR,
+							SIGNA_PIPELINE_CLEAR,
+							SIGNB_PIPELINE_CLEAR,
+							
+							MODE0_CLOCK,
+							MODE1_CLOCK,
+							ZEROACC1_CLOCK,
+							SATURATE1_CLOCK,
+							OUTPUT1_CLOCK,
+							OUTPUT2_CLOCK,
+							OUTPUT3_CLOCK,
+							OUTPUT4_CLOCK,
+							OUTPUT5_CLOCK,
+							OUTPUT6_CLOCK,
+							OUTPUT7_CLOCK,
+							MODE0_CLEAR,
+							MODE1_CLEAR,
+							ZEROACC1_CLEAR,
+							SATURATE1_CLEAR,
+							OUTPUT1_CLEAR,
+							OUTPUT2_CLEAR,
+							OUTPUT3_CLEAR,
+							OUTPUT4_CLEAR,
+							OUTPUT5_CLEAR,
+							OUTPUT6_CLEAR,
+							OUTPUT7_CLEAR,
+							MODE0_PIPELINE_CLOCK,
+							MODE1_PIPELINE_CLOCK,
+							ZEROACC1_PIPELINE_CLOCK,
+							SATURATE1_PIPELINE_CLOCK,
+							MODE0_PIPELINE_CLEAR,
+							MODE1_PIPELINE_CLEAR,
+							ZEROACC1_PIPELINE_CLEAR,
+							SATURATE1_PIPELINE_CLEAR,
+							FIRST_ADDER0_CLOCK,
+							FIRST_ADDER1_CLOCK,
+							FIRST_ADDER0_CLEAR,
+							FIRST_ADDER1_CLEAR,
+							
+							DATAA_FORCED_TO_ZERO,
+							DATAC_FORCED_TO_ZERO,
+
+							USING_CHAINOUT,
+							CHAININ_WIDTH,
+							CHAINOUT_PIPELINE_CLOCK,
+							CHAINOUT_PIPELINE_CLEAR
+						)
+						RETURNS
+						(
+							dataout[	((OPERATION_MODE == "OUTPUT_ONLY")		?	DATAA_WIDTH :
+										(OPERATION_MODE == "ADDER_CHAIN")		?	DATAA_WIDTH :
+										(OPERATION_MODE == "ACCUMULATOR")		?	((LOADABLE_ACCUM_SUPPORTED== "YES") ? DATAB_WIDTH + 16 : DATAA_WIDTH + 16) :
+										(OPERATION_MODE == "ONE_LEVEL_ADDER")	?	((DATAA_WIDTH > DATAB_WIDTH) ? DATAA_WIDTH : DATAB_WIDTH) + 1 :
+										(OPERATION_MODE == "TWO_LEVEL_ADDER")	?	((DATAA_WIDTH > DATAB_WIDTH) ? DATAA_WIDTH : DATAB_WIDTH) + 2 :
+										(OPERATION_MODE == "TWO_LEVEL_ADDER_CHAIN_OUT")	?	((DATAA_WIDTH > DATAB_WIDTH) ? DATAA_WIDTH : DATAB_WIDTH) + 10 :
+										(OPERATION_MODE == "36_BIT_MULTIPLY")	?	DATAA_WIDTH + DATAB_WIDTH:
+										%OTHERWISE%									DATAA_WIDTH + DATAB_WIDTH + DATAC_WIDTH + DATAD_WIDTH)
+										- 1..0],
+							accoverflow
+						);
+										

@@ -1,0 +1,1061 @@
+--------------------------------------------------------------------
+--
+--	ALTLVDS_TX Parameterized Megafunction
+--
+--
+--	Version 2.0
+--
+--------------------------------------------------------------------
+INCLUDE "apex20ke_lvds_transmitter.inc";
+INCLUDE "apex20ke_pll.inc";
+INCLUDE "mercury_hssi_transmitter.inc";
+INCLUDE "mercury_hssi_pll.inc";
+INCLUDE "apexii_hsdi_transmitter.inc";
+INCLUDE "apexii_pll.inc";
+INCLUDE "aglobal90.inc";
+INCLUDE "stratix_pll.inc";
+INCLUDE "stratix_lvds_transmitter.inc";
+INCLUDE "stratixii_lvds_transmitter.inc";
+INCLUDE "stratixgx_lvds_transmitter.inc";
+INCLUDE "stratixgx_pll.inc";
+INCLUDE "stratixii_clkctrl.inc";
+INCLUDE "altddio_out.inc";
+
+OPTIONS ALTERA_INTERNAL_OPTION = "SUPPRESS_DA_RULE_INTERNAL=C106";
+OPTIONS NAME_SUBSTITUTION = ON;
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+PARAMETERS
+(
+	NUMBER_OF_CHANNELS,
+	DESERIALIZATION_FACTOR = 4,
+	REGISTERED_INPUT = "ON", -- choices for STRATIX are ON, OFF, TX_CLKIN or TX_CORECLK
+	MULTI_CLOCK = "OFF",		-- "ON" means that sync_inclock is also used -- not used for STRATIX
+	INCLOCK_PERIOD = 0,				-- required parameter, e.g. "50MHz" or "20000" (no unit defaults to ps)
+	OUTCLOCK_DIVIDE_BY = 1,	-- Used only for MERCURY & STRATIX
+	INCLOCK_BOOST = 0,			-- Used for MERCURY and APEX II
+	CENTER_ALIGN_MSB = "UNUSED",					-- Used only in APEX II
+--	CLOCK_SETTING = "UNUSED",	-- optional clock assignment name
+	INTENDED_DEVICE_FAMILY = "APEX20KE",
+	DEVICE_FAMILY,
+	-- STRATIX parameters
+	OUTPUT_DATA_RATE = 0, -- used only for STRATIX
+	INCLOCK_DATA_ALIGNMENT = "EDGE_ALIGNED",
+	OUTCLOCK_ALIGNMENT = "EDGE_ALIGNED",
+	INCLOCK_PHASE_SHIFT = 0,
+	OUTCLOCK_PHASE_SHIFT = 0,
+	COMMON_RX_TX_PLL = "ON",
+	OUTCLOCK_RESOURCE = "AUTO",
+	USE_EXTERNAL_PLL = "OFF", -- Stratixii only, choices are ON and OFF
+	PREEMPHASIS_SETTING = 0, -- StratixII only pre-emphasis parameters
+	VOD_SETTING = 0,
+	DIFFERENTIAL_DRIVE = 0,
+	CORECLOCK_DIVIDE_BY = 2,
+	ENABLE_CLK_LATENCY = "OFF",
+	OUTCLOCK_DUTY_CYCLE = 50,
+	PLL_BANDWIDTH_TYPE = "AUTO",
+	IMPLEMENT_IN_LES = "OFF", 	-- Stratix and StratixII only, choices are "ON" and "OFF"
+	PLL_SELF_RESET_ON_LOSS_LOCK = "OFF",
+	CBXI_PARAMETER = "NOTHING"
+
+);
+
+FUNCTION @CBXI_PARAMETER (pll_areset, sync_inclock, tx_enable, tx_in[DESERIALIZATION_FACTOR*NUMBER_OF_CHANNELS-1..0], tx_inclock, tx_pll_enable, tx_syncclock)
+RETURNS (tx_coreclock, tx_locked, tx_out[NUMBER_OF_CHANNELS-1..0], tx_outclock);
+
+FUNCTION stratixii_lvds_pll(inclk[1..0], ena, areset)
+	WITH(PLL_TYPE, VCO_MULTIPLY_BY, VCO_DIVIDE_BY, IN_PHASE_SHIFT, CLK0_MULTIPLY_BY, CLK0_DIVIDE_BY, OUT_PHASE_SHIFT, CLK1_MULTIPLY_BY, CLK1_DIVIDE_BY, INCLK0_INPUT_FREQUENCY, COMPENSATE_CLOCK, OPERATION_MODE, COMMON_RX_TX, RX_OUTCLOCK_RESOURCE)
+    RETURNS(clk[5..0], locked, sclkout[5..0], enable[1..0]);
+
+
+CONSTANT INT_DEVICE_FAMILY = USED(INTENDED_DEVICE_FAMILY) ? INTENDED_DEVICE_FAMILY :
+															DEVICE_FAMILY;
+DEFINE SIMILAR_DEVICE_FAMILY()	=	family_is_same() # 
+								(((family_base_stratix_member(INT_DEVICE_FAMILY) == 1) & (family_base_stratix_member(DEVICE_FAMILY) == 1)) ? 1 : 0) #
+								(((family_base_stratixii_member(INT_DEVICE_FAMILY) == 1) & (family_base_stratixii_member(DEVICE_FAMILY) == 1)) ? 1 : 0) #
+								(((family_base_stratixiii_member(INT_DEVICE_FAMILY) == 1) & (family_base_stratixiii_member(DEVICE_FAMILY) == 1)) ? 1 : 0) #
+								(((family_base_cyclone_member(INT_DEVICE_FAMILY) == 1) & (family_base_cyclone_member(DEVICE_FAMILY) == 1)) ? 1 : 0) #
+								(((family_base_cycloneii_member(INT_DEVICE_FAMILY) == 1) & (family_base_cycloneii_member(DEVICE_FAMILY) == 1)) ? 1 : 0) #
+								(((family_base_cycloneiii_member(INT_DEVICE_FAMILY) == 1) & (family_base_cycloneiii_member(DEVICE_FAMILY) == 1)) ? 1 : 0);
+
+DEFINE BOOL2INT(x) = (x) ? 1 : 0;
+DEFINE APEX20KE_TX_STYLE() = FAMILY_APEX20KE();	-- A APEX20KE type of LVDS?
+DEFINE MERCURY_TX_STYLE() = FAMILY_MERCURY();	-- A Mercury type of LVDS?
+DEFINE APEXII_TX_STYLE() = FAMILY_APEXII();		-- A APEXII type of LVDS?
+DEFINE VALID_TX_FAMILY() =  BOOL2INT(FAMILY_MERCURY() == 1 # 
+									 FAMILY_APEX20KE() == 1 # FAMILY_APEXII() == 1);
+DEFINE VALID_DDIO_FAMILY() = BOOL2INT(FAMILY_MERCURY() == 1 # FAMILY_APEXII() == 1 # FAMILY_STRATIX() == 1);									
+CONSTANT INT_OUTCLOCK_DIVIDE_BY = (APEX20KE_TX_STYLE() == 1) ? DESERIALIZATION_FACTOR :
+								((OUTCLOCK_DIVIDE_BY == 0 # !USED(OUTCLOCK_DIVIDE_BY)) ? DESERIALIZATION_FACTOR : OUTCLOCK_DIVIDE_BY);
+									
+CONSTANT INT_INCLOCK_BOOST = (APEX20KE_TX_STYLE() == 1) ? DESERIALIZATION_FACTOR : 
+								(INCLOCK_BOOST == 0 ? DESERIALIZATION_FACTOR : INCLOCK_BOOST);
+DEFINE INT_CENTER_ALIGN_MSB() = (CENTER_ALIGN_MSB == "UNUSED" # !USED(CENTER_ALIGN_MSB)) ? "OFF" : CENTER_ALIGN_MSB;
+DEFINE WYSIWYG_CENTER_ALIGN() = (INT_CENTER_ALIGN_MSB() == "OFF") ? "off" : "on";
+
+									
+
+--------------------------------------------------
+-- Parameters specific to the APEX20KE LVDS Tx	--
+--------------------------------------------------
+DEFINE APEX20KE_TX_DESER_VALID() = BOOL2INT(DESERIALIZATION_FACTOR == 4 #
+								 			DESERIALIZATION_FACTOR == 7 # 
+								 			DESERIALIZATION_FACTOR == 8 # DESERIALIZATION_FACTOR == 1);
+
+DEFINE APEX20KE_TX_NEED_HOLDREG() = BOOL2INT(DESERIALIZATION_FACTOR >= 7);
+
+--------------------------------------------------
+-- Parameters specific to the APEXII LVDS Tx	--
+--------------------------------------------------
+DEFINE APEXII_TX_DESER_VALID() = BOOL2INT(DESERIALIZATION_FACTOR >= 4 &
+								   		  DESERIALIZATION_FACTOR <= 10 # DESERIALIZATION_FACTOR == 1  # DESERIALIZATION_FACTOR == 2);
+
+DEFINE APEXII_TX_INCLOCKBOOST_VALID() = BOOL2INT(INT_INCLOCK_BOOST == 1 #
+												 INT_INCLOCK_BOOST == 2 #
+												 (INT_INCLOCK_BOOST >= 4 &
+								   		  		  INT_INCLOCK_BOOST <= 10));
+
+DEFINE APEXII_TX_NEED_HOLDREG() = BOOL2INT(DESERIALIZATION_FACTOR >= 5);
+
+--------------------------------------------------
+-- Parameters specific to the Mercury LVDS Tx	--
+--------------------------------------------------
+DEFINE MERCURY_TX_DESER_VALID() = BOOL2INT( DESERIALIZATION_FACTOR == 4 #
+										   (DESERIALIZATION_FACTOR >= 7 &
+								    		DESERIALIZATION_FACTOR <= 12) #
+								    		DESERIALIZATION_FACTOR == 14  # 
+								    		DESERIALIZATION_FACTOR == 16  #
+								    		DESERIALIZATION_FACTOR == 18  # 
+								    		DESERIALIZATION_FACTOR == 20 # DESERIALIZATION_FACTOR == 1  # DESERIALIZATION_FACTOR == 2);
+
+DEFINE MERCURY_TX_NEED_HOLDREG() = BOOL2INT(DESERIALIZATION_FACTOR >= 7);
+-- some alignment constants
+CONSTANT ALIGNMENT_0 = "EDGE_ALIGNED";
+CONSTANT ALIGNMENT_45 = "45_DEGREES";
+CONSTANT ALIGNMENT_90 = "90_DEGREES";
+CONSTANT ALIGNMENT_135 = "135_DEGREES";
+CONSTANT ALIGNMENT_180 = "180_DEGREES";
+CONSTANT ALIGNMENT_225 = "225_DEGREES";
+CONSTANT ALIGNMENT_270 = "270_DEGREES";
+CONSTANT ALIGNMENT_315 = "315_DEGREES";
+CONSTANT ALIGNMENT_CENTER = "CENTER_ALIGNED";
+
+DEFINE CBX_IMPL()	= FAMILY_HAS_FLEXIBLE_LVDS() # FAMILY_STRATIXII() # ((FAMILY_STRATIX() # FAMILY_STRATIXGX()) & (IMPLEMENT_IN_LES == "ON" # USED(INCLOCK_PHASE_SHIFT) # USED(OUTCLOCK_PHASE_SHIFT)));
+
+-- 2 functions for computing a phase shift for the wysiwyg from the alignment parameter
+DEFINE PHASE_CALC_45(i) 	=	CEIL((i * INCLOCK_PERIOD) / 8); -- The 8 is from 360 / 8 = 45
+DEFINE PHASE_SHIFT(param)		=	(param == ALIGNMENT_0)		? PHASE_CALC_45(0) :
+									(param == ALIGNMENT_45)		? PHASE_CALC_45(1) :
+									(param == ALIGNMENT_90)		? PHASE_CALC_45(2) :
+									(param == ALIGNMENT_135)	? PHASE_CALC_45(3) :
+									(param == ALIGNMENT_180)	? PHASE_CALC_45(4) :
+									(param == ALIGNMENT_CENTER) ? PHASE_CALC_45(4) :
+									(param == ALIGNMENT_225)	? PHASE_CALC_45(5) :
+									(param == ALIGNMENT_270)	? PHASE_CALC_45(6) :
+									%(param == ALIGNMENT_315)	% PHASE_CALC_45(7);
+-- this is for testing if an alignment parameter was set to a legal value
+DEFINE LEGAL_ALIGNMENT(param)	= 	(param == ALIGNMENT_0) # (param == ALIGNMENT_45) # (param == ALIGNMENT_90) #
+									(param == ALIGNMENT_135) # (param == ALIGNMENT_180) # (param == ALIGNMENT_225) #
+									(param == ALIGNMENT_CENTER) # (param == ALIGNMENT_270) # (param == ALIGNMENT_315);
+DEFINE STRATIX_M_VALUE_ACT()		=	FLOOR((OUTPUT_DATA_RATE * INCLOCK_PERIOD + 5*100000) / (1000000));
+DEFINE STRATIX_M_VALUE()			=	USED(OUTPUT_DATA_RATE) ? STRATIX_M_VALUE_ACT() : (USED(INCLOCK_BOOST) ? INCLOCK_BOOST : DESERIALIZATION_FACTOR);
+DEFINE STRATIX_DESER_VALID()		=	BOOL2INT(DESERIALIZATION_FACTOR >= 4 & DESERIALIZATION_FACTOR <= 10 # DESERIALIZATION_FACTOR == 1  # DESERIALIZATION_FACTOR == 2);
+DEFINE STRATIXII_DESER_VALID()		=	STRATIX_DESER_VALID() # BOOL2INT(DESERIALIZATION_FACTOR == 3);
+DEFINE IN_PHASE_SHIFT()			=	CEIL(PHASE_SHIFT(INCLOCK_DATA_ALIGNMENT) / STRATIX_M_VALUE());
+--DEFINE OUT_PHASE_SHIFT		=	CEIL(PHASE_SHIFT(OUTCLOCK_ALIGNMENT) / STRATIX_M_VALUE());
+DEFINE YGR_VALID_OUTCLOCK_DIV()	=	OUTCLOCK_DIVIDE_BY == 1 # 
+									(DESERIALIZATION_FACTOR == 4 & (OUTCLOCK_DIVIDE_BY == 2 # OUTCLOCK_DIVIDE_BY == 4)) #
+									(DESERIALIZATION_FACTOR == 7 & (OUTCLOCK_DIVIDE_BY == 7)) #									
+									(DESERIALIZATION_FACTOR == 6 & (OUTCLOCK_DIVIDE_BY == 2 # OUTCLOCK_DIVIDE_BY == 6)) #
+									(DESERIALIZATION_FACTOR == 8 & (OUTCLOCK_DIVIDE_BY == 2 # OUTCLOCK_DIVIDE_BY == 4 # OUTCLOCK_DIVIDE_BY == 8)) #											
+									(DESERIALIZATION_FACTOR == 10 & (OUTCLOCK_DIVIDE_BY == 2 # OUTCLOCK_DIVIDE_BY == 10));
+DEFINE STXII_VALID_OUTCLOCK_DIV()	=	YGR_VALID_OUTCLOCK_DIV() #
+										(DESERIALIZATION_FACTOR == 6 & (OUTCLOCK_DIVIDE_BY == 2 # OUTCLOCK_DIVIDE_BY == 6));									
+DEFINE BYPASS_NEEDED()			=	OUTCLOCK_DIVIDE_BY == 1 ? "TRUE" : "FALSE";
+
+-----------------TX OUTCLOCK ALIGNMENT COMPUTATION FOR STRATIX AND STRATIX-GX ----------------
+
+--Falling-edge = 180-degrees = center-aligned for SDR (fast-clock = datarate)
+--For 0, 45, 90 and 135 set the same phase on the out-clock
+--For 180, set the 0 phase on the out-clock and also use falling_edge (0 + 180 = 180)
+--For 225, set the 45 phase on the out-clock and also use falling_edge (45 + 180 = 225)
+--For 270 set the 90 phase on the out-clock and also use falling_edge (90 + 180 = 270)
+--For 315 set the 135 phase on the out-clock and also use falling_edge (135 + 180 = 315)
+--If B=1 then use the same phase 
+DEFINE OUT_PHASE_SHIFT() = 	USED(tx_outclock) ? ((OUTCLOCK_DIVIDE_BY == 1) & (OUTCLOCK_ALIGNMENT != ALIGNMENT_180) & (OUTCLOCK_ALIGNMENT != ALIGNMENT_CENTER) ? (CEIL(PHASE_SHIFT(OUTCLOCK_ALIGNMENT) / STRATIX_M_VALUE()) + IN_PHASE_SHIFT()): 
+
+							((OUTCLOCK_ALIGNMENT == ALIGNMENT_45)  # (OUTCLOCK_ALIGNMENT == ALIGNMENT_90)  #
+							 (OUTCLOCK_ALIGNMENT == ALIGNMENT_135)) ? (CEIL(PHASE_SHIFT(OUTCLOCK_ALIGNMENT) / STRATIX_M_VALUE()) + IN_PHASE_SHIFT()) : 
+							
+							(OUTCLOCK_ALIGNMENT == ALIGNMENT_180) ? IN_PHASE_SHIFT() : 
+							(OUTCLOCK_ALIGNMENT == ALIGNMENT_CENTER) ? IN_PHASE_SHIFT() : 
+							(OUTCLOCK_ALIGNMENT == ALIGNMENT_225) ? (CEIL(PHASE_SHIFT(ALIGNMENT_45) / STRATIX_M_VALUE()) + IN_PHASE_SHIFT()): 
+							(OUTCLOCK_ALIGNMENT == ALIGNMENT_270) ? (CEIL(PHASE_SHIFT(ALIGNMENT_90) / STRATIX_M_VALUE()) + IN_PHASE_SHIFT()): 
+							(OUTCLOCK_ALIGNMENT == ALIGNMENT_315) ? (CEIL(PHASE_SHIFT(ALIGNMENT_135) / STRATIX_M_VALUE()) + IN_PHASE_SHIFT()): 
+							
+							IN_PHASE_SHIFT()) : IN_PHASE_SHIFT();
+
+DEFINE FALLING_CLOCK_EDGE_NEEDED() = ((OUTCLOCK_ALIGNMENT == ALIGNMENT_180) # 
+									  (OUTCLOCK_ALIGNMENT == ALIGNMENT_CENTER) # 
+									  (OUTCLOCK_ALIGNMENT == ALIGNMENT_225) #
+									  (OUTCLOCK_ALIGNMENT == ALIGNMENT_270) #
+									  (OUTCLOCK_ALIGNMENT == ALIGNMENT_315) 																		
+									 )
+									 ? "TRUE" : "FALSE";
+
+DEFINE INVERT_CLOCK_EDGE_NEEDED() = ( (OUTCLOCK_DIVIDE_BY == 1) & 
+									  ((OUTCLOCK_ALIGNMENT == ALIGNMENT_180) # (OUTCLOCK_ALIGNMENT == ALIGNMENT_CENTER))
+									 )
+									 ? "TRUE" : "FALSE";
+
+
+CONSTANT TXDATA_FROM_PHASE_SHIFT_4_2 = 10;
+CONSTANT TXDATA_FROM_PHASE_SHIFT_4_4 = 3;
+CONSTANT TXDATA_FROM_PHASE_SHIFT_6_2 = 42;
+CONSTANT TXDATA_FROM_PHASE_SHIFT_6_6 = 35;
+CONSTANT TXDATA_FROM_PHASE_SHIFT_8_2 = 170;
+CONSTANT TXDATA_FROM_PHASE_SHIFT_8_4 = 51;
+CONSTANT TXDATA_FROM_PHASE_SHIFT_8_8 = 195;
+CONSTANT TXDATA_FROM_PHASE_SHIFT_10_2 =	682;
+CONSTANT TXDATA_FROM_PHASE_SHIFT_10_10 = 899;
+CONSTANT TXDATA_FROM_PHASE_SHIFT_7_7 = 99;
+
+CONSTANT STXII_TXDATA_FROM_PHASE_SHIFT_4_2 = 10;
+CONSTANT STXII_TXDATA_FROM_PHASE_SHIFT_4_4 = 12;
+CONSTANT STXII_TXDATA_FROM_PHASE_SHIFT_6_2 = 42;
+CONSTANT STXII_TXDATA_FROM_PHASE_SHIFT_6_6 = 56;
+CONSTANT STXII_TXDATA_FROM_PHASE_SHIFT_7_7 = 120;
+CONSTANT STXII_TXDATA_FROM_PHASE_SHIFT_8_2 = 170;
+CONSTANT STXII_TXDATA_FROM_PHASE_SHIFT_8_4 = 204;
+CONSTANT STXII_TXDATA_FROM_PHASE_SHIFT_8_8 = 240;
+CONSTANT STXII_TXDATA_FROM_PHASE_SHIFT_10_2 = 682;
+CONSTANT STXII_TXDATA_FROM_PHASE_SHIFT_10_10 = 992;
+
+
+DEFINE RX_OUTCLOCK_RESOURCE_VALUE() = OUTCLOCK_RESOURCE == "Global Clock" ? "GCLK" : (OUTCLOCK_RESOURCE == "Regional Clock" ? "LCLK" : "AUTO");
+
+DEFINE OUTCLOCK_FREQUENCY() = OUTPUT_DATA_RATE / OUTCLOCK_DIVIDE_BY;
+
+DEFINE ARM_NEEDS_CLOCK1() = (OUT_PHASE_SHIFT() == IN_PHASE_SHIFT()) ? 0 : 1;
+
+SUBDESIGN altlvds_tx
+(
+	tx_in[DESERIALIZATION_FACTOR*NUMBER_OF_CHANNELS-1..0]	: INPUT;
+	tx_inclock						: INPUT;
+	tx_syncclock						: INPUT = GND;
+	tx_enable						: INPUT = VCC;
+	sync_inclock					: INPUT = GND;
+	tx_pll_enable					: INPUT = VCC;
+	pll_areset						: INPUT = GND;
+	
+	tx_out[NUMBER_OF_CHANNELS-1..0]	: OUTPUT;
+	tx_outclock						: OUTPUT;
+	tx_coreclock					: OUTPUT;
+	tx_locked						: OUTPUT;
+)
+
+VARIABLE
+	IF (DESERIALIZATION_FACTOR == 1) & (FAMILY_HAS_SERDES_BLOCK() # FAMILY_HAS_FLEXIBLE_LVDS()) GENERATE
+		IF (REGISTERED_INPUT == "ON") GENERATE
+			txreg[NUMBER_OF_CHANNELS-1..0] : DFF;
+		END GENERATE;
+	ELSE GENERATE
+	IF (DESERIALIZATION_FACTOR == 2) & (FAMILY_HAS_DDIO() == 1) GENERATE
+		tx_deser_2 : altddio_out WITH (
+									WIDTH = NUMBER_OF_CHANNELS,
+									INTENDED_DEVICE_FAMILY = INTENDED_DEVICE_FAMILY	 );		
+		ddio_out_node[2*NUMBER_OF_CHANNELS-1..0] : NODE;
+		IF (REGISTERED_INPUT == "ON") GENERATE
+			txreg[2*NUMBER_OF_CHANNELS-1..0] : DFF;
+		END GENERATE;
+		IF USED(tx_outclock) GENERATE
+			outclock_ddio : altddio_out WITH (WIDTH = 1);
+		END GENERATE;
+	ELSE GENERATE
+	IF (CBX_IMPL()) & (CBXI_PARAMETER != "NOTHING") GENERATE
+		auto_generated : @CBXI_PARAMETER WITH ( CBXI_PARAMETER = "NOTHING" );		
+	ELSE GENERATE
+	IF (VALID_TX_FAMILY()) GENERATE
+		-- This function becomes just a wire if DESERIALIZATION_FACTOR is 1
+		IF (DESERIALIZATION_FACTOR > 1) GENERATE
+			-- for renaming the port
+			locked : WIRE;
+			-- Instatiate LVDS transmitter channels
+			IF (APEX20KE_TX_STYLE() == 1) GENERATE
+				-- APEX20Ke transmitter/PLL
+				tx[NUMBER_OF_CHANNELS-1..0]	: apex20ke_lvds_transmitter WITH 
+											(CHANNEL_WIDTH = DESERIALIZATION_FACTOR);
+			
+				pll	: apex20ke_pll WITH (clk0_multiply_by = DESERIALIZATION_FACTOR, 
+										 clk1_multiply_by = 1, 
+										 input_frequency = INCLOCK_PERIOD,
+										 operation_mode = "lvds");
+				
+			ELSE GENERATE
+				IF (APEXII_TX_STYLE() == 1) GENERATE
+					-- APEX II transmitter/PLL	
+					IF (NUMBER_OF_CHANNELS > 1) GENERATE
+						tx[NUMBER_OF_CHANNELS-2..0]	: apexii_hsdi_transmitter WITH 
+													(CHANNEL_WIDTH = DESERIALIZATION_FACTOR,
+													 CENTER_ALIGN = "off");
+					END GENERATE;
+					
+					msb	: apexii_hsdi_transmitter WITH 
+									(CHANNEL_WIDTH = DESERIALIZATION_FACTOR,
+									 CENTER_ALIGN = WYSIWYG_CENTER_ALIGN());
+					
+					pll	: apexii_pll WITH (clk0_multiply_by = INT_INCLOCK_BOOST, 
+										   clk1_multiply_by = 1,
+										   clk2_multiply_by = INT_INCLOCK_BOOST,
+										   clk2_divide_by = DESERIALIZATION_FACTOR,
+										   input_frequency = INCLOCK_PERIOD,
+										   operation_mode = "lvds");
+											
+					coreclock_node	: GLOBAL;
+					
+				ELSE GENERATE
+					IF (MERCURY_TX_STYLE() == 1) GENERATE
+						-- Mercury transmitter/PLL
+						tx[NUMBER_OF_CHANNELS-1..0]	: mercury_hssi_transmitter WITH 
+													(channel_width = DESERIALIZATION_FACTOR,
+													 operation_mode = "lvds");
+															
+						pll	: mercury_hssi_pll WITH (clk0_multiply_by = INT_INCLOCK_BOOST,
+													 clk1_divide_by = INT_OUTCLOCK_DIVIDE_BY,
+													 input_frequency = INCLOCK_PERIOD);
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+	
+			-- Need to register the inputs?
+			IF (REGISTERED_INPUT == "ON") GENERATE
+				txreg[DESERIALIZATION_FACTOR*NUMBER_OF_CHANNELS-1..0] : DFF;
+			ELSE GENERATE
+				txreg[DESERIALIZATION_FACTOR*NUMBER_OF_CHANNELS-1..0] : NODE;
+			END GENERATE;
+					
+			-- Need hold time registers
+			IF ((APEX20KE_TX_STYLE() == 1 & APEX20KE_TX_NEED_HOLDREG() == 1) #
+				(APEXII_TX_STYLE() == 1 & APEXII_TX_NEED_HOLDREG() == 1) #
+				(MERCURY_TX_STYLE() == 1 & MERCURY_TX_NEED_HOLDREG() == 1)) GENERATE
+				holdreg[DESERIALIZATION_FACTOR*NUMBER_OF_CHANNELS-1..0] : DFF;
+			ELSE GENERATE
+				holdreg[DESERIALIZATION_FACTOR*NUMBER_OF_CHANNELS-1..0] : NODE;
+			END GENERATE;
+		END GENERATE;
+	ELSE GENERATE
+		IF FAMILY_STRATIX() == 1 GENERATE
+			IF FAMILY_STRATIXGX() == 1 GENERATE
+				tx[NUMBER_OF_CHANNELS-1..0] : stratixgx_lvds_transmitter WITH
+															(
+															CHANNEL_WIDTH = DESERIALIZATION_FACTOR
+															);
+			ELSE GENERATE
+			IF FAMILY_STRATIXII() == 1 GENERATE
+				tx[NUMBER_OF_CHANNELS-1..0] : stratixii_lvds_transmitter WITH
+															(
+															CHANNEL_WIDTH = DESERIALIZATION_FACTOR,
+															PREEMPHASIS_SETTING = PREEMPHASIS_SETTING,
+															VOD_SETTING = VOD_SETTING,
+															DIFFERENTIAL_DRIVE = DIFFERENTIAL_DRIVE
+															);
+			ELSE GENERATE
+				tx[NUMBER_OF_CHANNELS-1..0] : stratix_lvds_transmitter WITH
+															(
+															CHANNEL_WIDTH = DESERIALIZATION_FACTOR
+															);
+			END GENERATE;
+			END GENERATE;
+			IF FAMILY_STRATIXGX() == 1 GENERATE
+				pll		:	stratixgx_pll WITH
+							(
+							PLL_TYPE = "FAST",
+							CLK0_MULTIPLY_BY = STRATIX_M_VALUE(),
+							CLK0_DIVIDE_BY = 1,
+							INCLK0_INPUT_FREQUENCY = INCLOCK_PERIOD,
+							CLK0_PHASE_SHIFT = IN_PHASE_SHIFT(),
+							CLK1_MULTIPLY_BY = STRATIX_M_VALUE(),
+							CLK1_DIVIDE_BY = 1,
+							CLK1_PHASE_SHIFT = OUT_PHASE_SHIFT(),
+							CLK2_MULTIPLY_BY = STRATIX_M_VALUE(),
+							CLK2_DIVIDE_BY = DESERIALIZATION_FACTOR,
+							CLK2_PHASE_SHIFT = IN_PHASE_SHIFT(),
+							OPERATION_MODE = "NORMAL",
+							COMPENSATE_CLOCK = "LVDSCLK",
+							COMMON_RX_TX = COMMON_RX_TX_PLL,
+							RX_OUTCLOCK_RESOURCE = RX_OUTCLOCK_RESOURCE_VALUE()							
+							);
+			ELSE GENERATE
+			IF FAMILY_STRATIXII() == 1 GENERATE
+				IF (USE_EXTERNAL_PLL == "OFF") GENERATE
+					IF (ARM_NEEDS_CLOCK1()) GENERATE
+						pll		:	stratixii_lvds_pll WITH
+									(
+									PLL_TYPE = "FAST",
+									VCO_MULTIPLY_BY = STRATIX_M_VALUE(),
+									VCO_DIVIDE_BY = 1,
+									INCLK0_INPUT_FREQUENCY = INCLOCK_PERIOD,
+									IN_PHASE_SHIFT = IN_PHASE_SHIFT(),
+									OUT_PHASE_SHIFT = OUT_PHASE_SHIFT(),
+									CLK0_MULTIPLY_BY = STRATIX_M_VALUE(),
+									CLK0_DIVIDE_BY = DESERIALIZATION_FACTOR,
+									CLK1_MULTIPLY_BY = STRATIX_M_VALUE(),
+									CLK1_DIVIDE_BY = DESERIALIZATION_FACTOR,
+									OPERATION_MODE = "NORMAL",
+									COMPENSATE_CLOCK = "LVDSCLK",
+									COMMON_RX_TX = COMMON_RX_TX_PLL,
+									RX_OUTCLOCK_RESOURCE = RX_OUTCLOCK_RESOURCE_VALUE()							
+									);
+					ELSE GENERATE
+						pll		:	stratixii_lvds_pll WITH
+									(
+									PLL_TYPE = "FAST",
+									VCO_MULTIPLY_BY = STRATIX_M_VALUE(),
+									VCO_DIVIDE_BY = 1,
+									INCLK0_INPUT_FREQUENCY = INCLOCK_PERIOD,
+									IN_PHASE_SHIFT = IN_PHASE_SHIFT(),
+									CLK0_MULTIPLY_BY = STRATIX_M_VALUE(),
+									CLK0_DIVIDE_BY = DESERIALIZATION_FACTOR,
+									OPERATION_MODE = "NORMAL",
+									COMPENSATE_CLOCK = "LVDSCLK",
+									COMMON_RX_TX = COMMON_RX_TX_PLL,
+									RX_OUTCLOCK_RESOURCE = RX_OUTCLOCK_RESOURCE_VALUE()							
+									);
+					END GENERATE;
+					coreclk_buf : stratixii_clkctrl WITH
+										(clock_type = RX_OUTCLOCK_RESOURCE_VALUE());
+				END GENERATE;
+			ELSE GENERATE
+				pll		:	stratix_pll WITH
+							(
+							PLL_TYPE = "FAST",
+							CLK0_MULTIPLY_BY = STRATIX_M_VALUE(),
+							CLK0_DIVIDE_BY = 1,
+							INCLK0_INPUT_FREQUENCY = INCLOCK_PERIOD,
+							CLK0_PHASE_SHIFT = IN_PHASE_SHIFT(),
+							CLK1_MULTIPLY_BY = STRATIX_M_VALUE(),
+							CLK1_DIVIDE_BY = 1,
+							CLK1_PHASE_SHIFT = OUT_PHASE_SHIFT(),
+							CLK2_MULTIPLY_BY = STRATIX_M_VALUE(),
+							CLK2_DIVIDE_BY = DESERIALIZATION_FACTOR,
+							CLK2_PHASE_SHIFT = IN_PHASE_SHIFT(),
+							OPERATION_MODE = "NORMAL",
+							COMPENSATE_CLOCK = "LVDSCLK",
+							COMMON_RX_TX = COMMON_RX_TX_PLL,
+							RX_OUTCLOCK_RESOURCE = RX_OUTCLOCK_RESOURCE_VALUE()							
+							);
+			END GENERATE;
+			END GENERATE;
+			IF REGISTERED_INPUT != "OFF" GENERATE
+				txreg[DESERIALIZATION_FACTOR*NUMBER_OF_CHANNELS-1..0] : DFF;
+			END GENERATE;
+			IF USED(tx_outclock) GENERATE
+			IF FAMILY_STRATIXGX() == 1 GENERATE
+				outclock_tx 	:	stratixgx_lvds_transmitter WITH
+											(CHANNEL_WIDTH = DESERIALIZATION_FACTOR,
+											BYPASS_SERIALIZER = BYPASS_NEEDED(),
+											USE_FALLING_CLOCK_EDGE = FALLING_CLOCK_EDGE_NEEDED(),
+											INVERT_CLOCK = INVERT_CLOCK_EDGE_NEEDED()
+											);
+			ELSE GENERATE
+--			IF (USE_EXTERNAL_PLL == "OFF") GENERATE
+			IF FAMILY_STRATIXII() == 1 GENERATE
+				outclock_tx 	:	stratixii_lvds_transmitter WITH
+											(CHANNEL_WIDTH = DESERIALIZATION_FACTOR,
+											BYPASS_SERIALIZER = BYPASS_NEEDED(),
+											USE_FALLING_CLOCK_EDGE = FALLING_CLOCK_EDGE_NEEDED(),
+											INVERT_CLOCK = INVERT_CLOCK_EDGE_NEEDED()
+											);
+		
+			ELSE GENERATE
+				outclock_tx 	:	stratix_lvds_transmitter WITH
+											(CHANNEL_WIDTH = DESERIALIZATION_FACTOR,
+											BYPASS_SERIALIZER = BYPASS_NEEDED(),
+											USE_FALLING_CLOCK_EDGE = FALLING_CLOCK_EDGE_NEEDED(),
+											INVERT_CLOCK = INVERT_CLOCK_EDGE_NEEDED()
+											);
+			END GENERATE;
+--			END GENERATE;
+			END GENERATE;
+			END GENERATE; -- USED(tx_outclock)
+		END GENERATE;
+	END GENERATE;
+	END GENERATE;
+	END GENERATE;
+	END GENERATE;
+BEGIN
+	ASSERT (FAMILY_STRATIX() == 1) & (INVERT_CLOCK_EDGE_NEEDED() == "FALSE") # (FAMILY_STRATIX() != 1) # (FAMILY_HAS_SERDES_BLOCK() == 0)
+	REPORT "The megafunction uses a outclock alignment of 0_DEGREES and an inverted clock on the transmitter atoms to achieve % outclock alignment" OUTCLOCK_ALIGNMENT
+	SEVERITY INFO
+	HELP_ID ALTLVDS_INVERT_PHASE_SHIFT;
+
+	-- Cause: The specified alignment parameter was set to an illegal value.
+	-- Action: Set the value to one of the legal values: "CENTER_ALIGNED",
+	--			"EDGE_ALIGNED", "45_DEGREES", "135_DEGREES", "180_DEGREES",
+	--			"225_DEGREES", "270_DEGREES", "315_DEGREES"
+	ASSERT LEGAL_ALIGNMENT(INCLOCK_DATA_ALIGNMENT)
+		REPORT "INCLOCK_DATA_ALIGNMENT(%) is set to an illegal value." INCLOCK_DATA_ALIGNMENT
+		SEVERITY ERROR
+		HELP_ID ALTLVDS_ILLEGAL_ALIGNMENT;
+
+	ASSERT USED(tx_outclock) & LEGAL_ALIGNMENT(OUTCLOCK_ALIGNMENT) # !USED(tx_outclock)
+		REPORT "OUTCLOCK_ALIGNMENT(%) is set to an illegal value." OUTCLOCK_ALIGNMENT
+		SEVERITY ERROR
+		HELP_ID ALTLVDS_ILLEGAL_ALIGNMENT;
+
+	-- Cause: The user has assigned zero or a negative value to this parameter 
+	-- Action: Choose a positive integer for this parameter
+	ASSERT (NUMBER_OF_CHANNELS > 0)
+			REPORT "Value of NUMBER_OF_CHANNELS parameter must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID ALTLVDS_TX_CHANNEL_NUM;
+
+	-- Cause: The only legal values for APEX20KE DESERIALIZATION_FACTOR are 4, 7, 8
+	-- Action: Chose one of these values
+	ASSERT (!((APEX20KE_TX_STYLE() == 1 & APEX20KE_TX_DESER_VALID() == 0)))
+		REPORT "Illegal value for DESERIALIZATION_FACTOR parameter (%) -- value must be 4, 7, or 8"
+			DESERIALIZATION_FACTOR
+		SEVERITY ERROR
+		HELP_ID ALTLVDS_TX_DESERIALIZATION_FACTOR;
+
+	-- Cause: The only legal values for APEX II DESERIALIZATION_FACTOR are 4-10
+	-- Action: Chose one of these values
+	ASSERT (!((APEXII_TX_STYLE() == 1 & APEXII_TX_DESER_VALID() == 0)))
+		REPORT "Illegal value for DESERIALIZATION_FACTOR parameter (%) -- value must be in the range 4 to 10, inclusive"
+			DESERIALIZATION_FACTOR
+		SEVERITY ERROR
+		HELP_ID ALTLVDS_TX_APEXII_DESERIALIZATION_FACTOR;
+
+	-- Cause: The only legal values for INCLOCK_BOOST in APEX II are 1, 2, 4-10
+	-- Action: Chose one of these values
+	ASSERT (!(APEXII_TX_STYLE() == 1 & APEXII_TX_INCLOCKBOOST_VALID() == 0))
+		REPORT "Illegal value for INCLOCK_BOOST parameter (%) -- value must be 1, 2, or in the range 4 to 10, inclusive"
+			INCLOCK_BOOST
+		SEVERITY ERROR
+		HELP_ID ALTLVDS_TX_APEXII_LVDS_INCLOCK_BOOST_FACTOR;
+
+	-- Cause: Use of CENTER_ALIGN_MSB parameter is not supported in a non-APEX II logic family device
+	-- Action: Do not use this parameter for non-APEX II logic families. Otherwise, it will be ignored
+	ASSERT (!(APEXII_TX_STYLE() != 1 & USED(CENTER_ALIGN_MSB)))
+    	    REPORT "CENTER_ALIGN_MSB parameter is supported only in APEX II logic device family. The parameter is ignored"
+        	SEVERITY WARNING
+        	HELP_ID ALTLVDS_TX_CENTER_ALIGN_MSB_USED;
+
+	-- Cause: The user has assigned an invalid value to the CENTER_ALIGN_MSB parameter 
+	-- Action: Choose "SINGLE_BIT", "MULTI_BIT", or "UNUSED"			
+	ASSERT (!(APEXII_TX_STYLE() == 1 & !(CENTER_ALIGN_MSB == "UNUSED" # CENTER_ALIGN_MSB == "OFF" # CENTER_ALIGN_MSB == "ON")))
+			REPORT "Illegal value for CENTER_ALIGN_MSB parameter (%) -- value must be OFF (the default), ON, or UNUSED"
+				CENTER_ALIGN_MSB
+			SEVERITY ERROR
+			HELP_ID ALTLVDS_TX_CENTER_ALIGN_MSB;
+
+	-- Cause: The only legal values for Mercury DESERIALIZATION_FACTOR are 4, 7-12, 14, 16, 18, 20
+	-- Action: Chose one of these values
+	ASSERT (!(MERCURY_TX_STYLE() == 1 & MERCURY_TX_DESER_VALID() == 0))
+		REPORT "Illegal value for DESERIALIZATION_FACTOR parameter (%) -- value must be in the range 7 to 12, inclusive, or must be one of 4, 14, 16, 18, or 20"
+			DESERIALIZATION_FACTOR
+		SEVERITY ERROR
+		HELP_ID ALTLVDS_TX_MERCURY_DESERIALIZATION_FACTOR;
+
+	-- Cause: The user has connected the sync_inclock input but the MULT_CLOCK parameter is set to "OFF"
+	--		  or the parameter is set to "ON" when sync_inclock input port is not connected
+	-- Action: Set MULTI_CLOCK to "ON" is sync_inclock input port is used, and set to "OFF" otherwise
+	ASSERT (!((USED(sync_inclock) & MULTI_CLOCK == "OFF") # (!USED(sync_inclock) & MULTI_CLOCK == "ON")))
+		REPORT "Value of MULTI_CLOCK parameter (%) is not consistent with the use of the sync_inclock port"
+			MULTI_CLOCK
+		SEVERITY ERROR
+		HELP_ID ALTLVDS_TX_MULTI_CLOCK;
+
+	-- Cause: The user has specified the APEX20KE device logic family but has connected the tx_coreclock output pin.
+	--		  This pin is not suppoerted for the above logic family and should be left unconnected 
+	-- Action: Remove the connection to the tx_coreclock output pin
+	ASSERT (!(APEX20KE_TX_STYLE() == 1 & USED(tx_coreclock)))
+		REPORT "The tx_coreclock output port is not supported in APEX20KE device logic family and should be left unconnected"
+		SEVERITY ERROR
+		HELP_ID ALTLVDS_TX_MERCURY_CORECLOCK;
+
+	-- Cause: The user has specified the APEX20KE device logic family but has assigned a value to the OUTCLOCK_DIVIDE_BY parameter.
+	-- Action: Do not assign any value to this parameter
+	ASSERT (!(APEX20KE_TX_STYLE() == 1 & USED(OUTCLOCK_DIVIDE_BY) & OUTCLOCK_DIVIDE_BY != 0))
+		REPORT "The OUTCLOCK_DIVIDE_BY parameter is not supported in APEX20KE device logic family and should be left unused"
+		SEVERITY ERROR
+		HELP_ID ALTLVDS_TX_MERCURY_OUTCLOCK_DIVIDE_BY;
+
+	-- Cause: The user has specified the APEX20KE device logic family but has assigned a value to the INCLOCK_BOOST parameter.
+	-- Action: Do not assign any value to this parameter
+	ASSERT (!(APEX20KE_TX_STYLE() == 1 & USED(INCLOCK_BOOST) & INCLOCK_BOOST != 0))
+		REPORT "The INCLOCK_BOOST parameter is not supported in APEX20KE device logic family and should be left unused"
+		SEVERITY ERROR
+		HELP_ID ALTLVDS_TX_MERCURY_INCLOCK_BOOST;
+
+	-- Cause: The user has assigned an invalid value to the REGISTERED_INPUT parameter 
+	-- Action: Choose "ON" (for registered inputs) or "OFF" (for unregistered inputs)
+	ASSERT (REGISTERED_INPUT == "ON" # REGISTERED_INPUT == "OFF" # REGISTERED_INPUT == "TX_CORECLK" # REGISTERED_INPUT == "TX_CLKIN")
+			REPORT "Illegal value for REGISTERED_INPUT parameter (%) -- value must be ON (the default) or OFF"
+				REGISTERED_INPUT
+			SEVERITY ERROR
+			HELP_ID ALTLVDS_TX_REGISTERED_INPUT;
+
+	-- Cause: The user has assigned an invalid value to the MULTI_CLOCK parameter 
+	-- Action: Choose "ON" (for registered outputs) or "OFF" (for unregistered outputs)			
+	ASSERT (MULTI_CLOCK == "ON" # MULTI_CLOCK == "OFF")
+			REPORT "Illegal value for MULTI_CLOCK parameter (%) -- value must be OFF (the default) or ON"
+				MULTI_CLOCK
+			SEVERITY ERROR
+			HELP_ID ALTLVDS_TX_MULTI_CLOCK;
+
+	-- Cause: The user has specified a non- APEX20KE, Mercury, or Stratix logic family for this megafunction.
+	--		  ALTLVDS_TX is currently supported only in APEX20KE, APEX II, Mercury, and Stratix logic families.
+	-- Action: Change the logic family setting to APEX20KE or Mercury
+	ASSERT (FAMILY_HAS_SERDES_BLOCK() # FAMILY_HAS_FLEXIBLE_LVDS())
+		REPORT "Megafunction altlvds_tx is not supported in %" DEVICE_FAMILY
+		SEVERITY ERROR
+		HELP_ID ALTLVDS_TX_INVALID_FAMILY;
+
+	-- Cause: The user has specified a logic family for this megafunction different
+	--		  from the intended one.
+	-- Action: Change the logic family setting to the intended logic family
+	ASSERT (INT_DEVICE_FAMILY == DEVICE_FAMILY # SIMILAR_DEVICE_FAMILY() == 1)
+			REPORT "Megafunction altlvds_tx is expecting device logic family % but is being compiled for %"
+				INTENDED_DEVICE_FAMILY, DEVICE_FAMILY
+			SEVERITY WARNING
+			HELP_ID ALTLVDS_TX_INTENDED_FAMILY;
+
+	IF (FAMILY_STRATIX() == 1) & (CBX_IMPL() != 1) GENERATE
+		
+		-- Cause: The only legal values for STRATIX DESERIALIZATION_FACTOR are 4 -10
+		-- Action: Chose one of these values
+		ASSERT (FAMILY_STRATIX() == 1 & STRATIX_DESER_VALID() # FAMILY_STRATIXII() == 1 & STRATIXII_DESER_VALID() # FAMILY_STRATIX() != 1)
+		REPORT "Illegal value for DESERIALIZATION_FACTOR parameter (%) for % device family" DESERIALIZATION_FACTOR, DEVICE_FAMILY
+		SEVERITY ERROR
+		HELP_ID ALTLVDS_TX_YGR_INVALID_DESER;
+
+		-- Cause: Output data rate and Inclock period have to be chosen in such a way that data rate / frequency is between 1 and 30
+		-- Action: Choose one of those values
+		ASSERT (FAMILY_STRATIX() == 1 & STRATIX_M_VALUE() >= 1 & STRATIX_M_VALUE() <= 30 # FAMILY_STRATIX() != 1) 
+		REPORT "Illegal values for OUTPUT_DATA_RATE parameter and INCLOCK_PERIOD parameter for % device family. OUTPUT_DATA_RATE (in Mbps) * INCLOCK_PERIOD (in microseconds) must be an integer (1 to 30)" DEVICE_FAMILY
+		SEVERITY ERROR
+		HELP_ID ALTLVDS_TX_YGR_INVALID_M_VALUE;
+
+		-- Cause : Sync_inclock port cannot be used for stratix
+		-- Action: None
+		ASSERT (FAMILY_STRATIX() == 1 & !USED(sync_inclock) # FAMILY_STRATIX() != 1)
+		REPORT "sync_inclock port not used for Stratix LVDS"
+		SEVERITY WARNING
+		HELP_ID ALTLVDS_TX_YGR_SYNCINCLK_PORT_NOT_USED;
+
+		-- Cause : Outclock divide by value is not valid for the stratix family
+		-- Action: Choose one of the valid values
+		IF (FAMILY_STRATIXII() == 1) GENERATE
+			ASSERT (USED(tx_outclock) & FAMILY_STRATIXII() == 1 & STXII_VALID_OUTCLOCK_DIV() # FAMILY_STRATIXII() != 1 # !USED(tx_outclock))
+			REPORT "Illegal value for OUTCLOCK_DIVIDE_BY parameter for Stratix II"
+			SEVERITY ERROR
+			HELP_ID ALTLVDS_TX_STXII_INVALID_OUTCLK_DIV_VALUE;
+		ELSE GENERATE
+			ASSERT (USED(tx_outclock) & FAMILY_STRATIX() == 1 & YGR_VALID_OUTCLOCK_DIV() # FAMILY_STRATIX() != 1 # !USED(tx_outclock))
+			REPORT "Illegal value for OUTCLOCK_DIVIDE_BY parameter for Stratix"
+			SEVERITY ERROR
+			HELP_ID ALTLVDS_TX_YGR_INVALID_OUTCLK_DIV_VALUE;
+		END GENERATE;
+
+--		ASSERT (FAMILY_STRATIX() == 1 & OUTCLOCK_FREQUENCY() <= 717 & USED(tx_outclock) # !USED(tx_outclock) # FAMILY_STRATIX() != 1)
+--		REPORT "Illegal value for Output clock frequency % Mhz. Output clock frequency (OUTPUT_DATA_RATE / OUTCLOCK_DIVIDE_BY) should be less than 717 Mhz" OUTCLOCK_FREQUENCY()
+--		SEVERITY ERROR
+--		HELP_ID ALTLVDS_TX_YGR_INVALID_OUTCLOCK_FREQ;
+
+	END GENERATE;
+	ASSERT (USED(pll_areset) & FAMILY_STRATIX() == 1 # !USED(pll_areset))
+		REPORT "pll_areset port is valid only for Stratix device families"
+		SEVERITY ERROR
+		HELP_ID ALTLVDS_PLL_ARESET_USE;
+		
+	ASSERT (FAMILY_STRATIXII() == 1 # CBX_IMPL() == 1 # (FAMILY_STRATIXII() != 1 & CBX_IMPL() != 1 & USE_EXTERNAL_PLL == "OFF"))
+	REPORT "USE_EXTERNAL_PLL parameter must be set to OFF for % family. A PLL is always generated by megafunction to drive SERDES atoms" DEVICE_FAMILY
+	SEVERITY WARNING
+	HELP_ID ALTLVDS_NO_EXTERNAL_PLL;
+
+	IF (DESERIALIZATION_FACTOR == 1) & (FAMILY_HAS_SERDES_BLOCK() # FAMILY_HAS_FLEXIBLE_LVDS()) GENERATE
+		-- deser factor == 1
+		IF REGISTERED_INPUT == "ON" GENERATE
+			txreg[].d = tx_in[];
+			IF (MULTI_CLOCK == "OFF") GENERATE
+				txreg[].clk = tx_inclock;
+			ELSE GENERATE
+				txreg[].clk = sync_inclock;			
+			END GENERATE;
+			tx_out[] = txreg[].q;
+		ELSE GENERATE
+			tx_out[] = tx_in[];
+		END GENERATE;
+		tx_outclock = tx_inclock;
+		tx_locked = VCC # sync_inclock & GND # tx_pll_enable;
+		tx_coreclock = GND;
+	ELSE GENERATE
+	IF (DESERIALIZATION_FACTOR == 2) & (FAMILY_HAS_DDIO()) GENERATE
+		-- DDIO instance.
+		IF REGISTERED_INPUT == "ON" GENERATE
+			txreg[].d = tx_in[];
+			IF (MULTI_CLOCK == "OFF") GENERATE
+				txreg[].clk = tx_inclock;
+			ELSE GENERATE
+				txreg[].clk = sync_inclock;			
+			END GENERATE;
+			ddio_out_node[] = txreg[].q;
+		ELSE GENERATE
+			ddio_out_node[] = tx_in[];
+		END GENERATE;
+		tx_deser_2.outclock = tx_inclock;
+		IF USED(tx_outclock) GENERATE
+			outclock_ddio.datain_l[] = GND;
+			outclock_ddio.datain_h[] = VCC;
+			outclock_ddio.outclock = tx_inclock;
+		    tx_outclock = outclock_ddio.dataout[] ;
+		END GENERATE;
+		tx_out[] = tx_deser_2.dataout[];
+		FOR i IN 0 TO NUMBER_OF_CHANNELS-1 GENERATE
+			tx_deser_2.datain_l[i] = ddio_out_node[i*2];
+			tx_deser_2.datain_h[i] = ddio_out_node[i*2+1];
+		END GENERATE;
+		tx_locked = VCC # sync_inclock & GND # tx_pll_enable;
+		tx_coreclock = GND;
+	ELSE GENERATE
+	IF (CBX_IMPL()) & (CBXI_PARAMETER != "NOTHING") GENERATE
+		IF USED(pll_areset) GENERATE
+			auto_generated.pll_areset = pll_areset;
+		END GENERATE;
+		IF USED(sync_inclock) GENERATE
+			auto_generated.sync_inclock = sync_inclock;
+		END GENERATE;
+		IF USED(tx_coreclock) GENERATE
+			tx_coreclock = auto_generated.tx_coreclock;
+		END GENERATE;
+		IF USED(tx_enable) GENERATE
+			auto_generated.tx_enable = tx_enable;
+		END GENERATE;
+		IF USED(tx_in) GENERATE
+			auto_generated.tx_in[] = tx_in[];
+		END GENERATE;
+		IF USED(tx_inclock) GENERATE
+			auto_generated.tx_inclock = tx_inclock;
+		END GENERATE;
+		IF USED(tx_syncclock) GENERATE
+			auto_generated.tx_syncclock = tx_syncclock;
+		END GENERATE;
+		IF USED(tx_locked) GENERATE
+			tx_locked = auto_generated.tx_locked;
+		END GENERATE;
+		IF USED(tx_out) GENERATE
+			tx_out[] = auto_generated.tx_out[];
+		END GENERATE;
+		IF USED(tx_outclock) GENERATE
+			tx_outclock = auto_generated.tx_outclock;
+		END GENERATE;
+		IF USED(tx_pll_enable) GENERATE
+			auto_generated.tx_pll_enable = tx_pll_enable;
+		END GENERATE;
+	ELSE GENERATE
+	IF VALID_TX_FAMILY() GENERATE
+		-- regular lvds_tx megafunction
+		IF (DESERIALIZATION_FACTOR > 1) GENERATE
+			-- Connect input data to synchronization registers if requested
+			txreg[] = tx_in[];
+			IF (REGISTERED_INPUT == "ON") GENERATE
+				IF (MULTI_CLOCK == "OFF") GENERATE
+					txreg[].clk = tx_inclock;
+				ELSE GENERATE
+					txreg[].clk = sync_inclock;
+				END GENERATE;
+			END GENERATE;
+
+			-- Connect possibly synchronized input data to hold registers if needed
+			holdreg[] = txreg[];
+
+			IF (MERCURY_TX_STYLE() == 1) GENERATE
+				-- Drive LVDS channels from synchronization registers
+				tx[].datain[] = holdreg[];
+				tx_out[] = tx[].dataout;
+
+				IF (MERCURY_TX_NEED_HOLDREG() == 1) GENERATE
+					IF (MULTI_CLOCK == "OFF") GENERATE
+						holdreg[].clk = !tx[0].clkout;	-- core clock clocks hold regs
+					ELSE GENERATE
+						holdreg[].clk = !sync_inclock;
+					END GENERATE;
+				END GENERATE;
+
+				pll.clk = tx_inclock;
+				pll.areset = !tx_pll_enable;
+				tx[].clk = pll.clk0;
+				tx_outclock = pll.clk1;
+				tx_coreclock = tx[0].clkout;
+				
+			ELSE GENERATE			
+				IF (APEXII_TX_STYLE() == 1) GENERATE
+					-- Drive LVDS channels from synchronization registers
+					IF (NUMBER_OF_CHANNELS > 1) GENERATE
+						(msb.datain[], tx[].datain[]) = holdreg[];
+						tx_out[] = (msb.dataout, tx[].dataout);
+						(msb, tx[]).clk0 = pll.clk0;
+						(msb, tx[]).clk1 = pll.clk2;
+					ELSE GENERATE
+						msb.datain[] = holdreg[];
+						tx_out[] = msb.dataout;
+						msb.clk0 = pll.clk0;
+						msb.clk1 = pll.clk2;
+					END GENERATE;
+					
+					IF (APEXII_TX_NEED_HOLDREG() == 1) GENERATE
+						IF (MULTI_CLOCK == "OFF") GENERATE
+							holdreg[].clk = !tx_inclock;
+						ELSE GENERATE
+							holdreg[].clk = !sync_inclock;
+						END GENERATE;
+					END GENERATE;
+
+					-- Connect LVDS PLL block
+					pll.clk = tx_inclock;
+					pll.ena = tx_pll_enable;
+					tx_outclock = pll.clk1;
+					coreclock_node = pll.clk2;
+					tx_coreclock = coreclock_node;
+					
+				ELSE GENERATE
+					-- Drive LVDS channels from synchronization registers
+					tx[].datain[] = holdreg[];
+					tx_out[] = tx[].dataout;
+
+					IF (APEX20KE_TX_NEED_HOLDREG() == 1) GENERATE
+						IF (MULTI_CLOCK == "OFF") GENERATE
+							holdreg[].clk = !tx_inclock;
+						ELSE GENERATE
+							holdreg[].clk = !sync_inclock;
+						END GENERATE;
+					END GENERATE;
+
+					-- Connect LVDS PLL block
+					pll.clk = tx_inclock;
+					pll.ena = tx_pll_enable;
+					tx[].clk0 = pll.clk0;
+					tx[].clk1 = pll.clk1;
+					tx_outclock = pll.clk1;
+					tx_coreclock = GND;	 -- its use will be blocked by an assertion, though
+				END GENERATE;
+			END GENERATE;
+			
+			-- To LVDS output pins
+			locked = pll.locked;
+			tx_locked = locked # sync_inclock & GND;
+		
+		ELSE GENERATE
+			tx_out[] = tx_in[];
+			tx_outclock = tx_inclock;
+			tx_locked = VCC # sync_inclock & GND # tx_pll_enable;
+			tx_coreclock = GND;
+		END GENERATE;
+	ELSE GENERATE
+		IF FAMILY_STRATIX() == 1 GENERATE
+			tx_out[] = tx[].dataout;
+			IF (FAMILY_STRATIXII() == 1) GENERATE
+				IF (USE_EXTERNAL_PLL == "ON") GENERATE
+					tx[].clk0 = tx_inclock;
+					tx[].enable0 = tx_enable;			
+					IF USED(tx_outclock) GENERATE
+						outclock_tx.enable0 = tx_enable;
+						outclock_tx.clk0 = tx_inclock;			
+					END GENERATE;
+					IF REGISTERED_INPUT != "OFF" GENERATE
+						txreg[] = tx_in[];
+						tx[].datain[] =  txreg[];
+						IF REGISTERED_INPUT == "ON" # REGISTERED_INPUT == "TX_CORECLK" GENERATE
+							txreg[].clk = tx_inclock;
+						ELSE GENERATE
+							IF REGISTERED_INPUT == "TX_CLKIN" GENERATE
+								txreg[].clk = tx_inclock;
+							END GENERATE;
+						END GENERATE;
+					ELSE GENERATE
+					tx[].datain[] = tx_in[];
+					END GENERATE;
+				ELSE GENERATE
+					IF REGISTERED_INPUT != "OFF" GENERATE
+						txreg[] = tx_in[];
+						tx[].datain[] =  txreg[];
+						IF REGISTERED_INPUT == "ON" # REGISTERED_INPUT == "TX_CORECLK" GENERATE
+							txreg[].clk = coreclk_buf.outclk;
+						ELSE GENERATE
+							IF REGISTERED_INPUT == "TX_CLKIN" GENERATE
+								txreg[].clk = tx_inclock;
+							END GENERATE;
+						END GENERATE;
+					ELSE GENERATE
+					tx[].datain[] = tx_in[];
+					END GENERATE;
+					pll.inclk0 = tx_inclock;
+					pll.ena = tx_pll_enable;
+					tx[].clk0 = pll.sclkout[0];			
+					tx[].enable0 = pll.enable0;
+					tx_coreclock = coreclk_buf.outclk;
+					coreclk_buf.ena = VCC;
+					coreclk_buf.clkselect[] = GND;
+					coreclk_buf.inclk[0] = pll.clk[0];
+					IF USED(pll_areset) GENERATE
+						pll.areset = pll_areset;
+					END GENERATE;
+					IF USED(tx_locked) GENERATE
+						tx_locked = pll.locked;
+					END GENERATE;
+					IF USED(tx_outclock) GENERATE
+					IF (ARM_NEEDS_CLOCK1()) GENERATE
+						outclock_tx.enable0 = pll.enable1;
+						outclock_tx.clk0 = pll.sclkout[1];
+					ELSE GENERATE
+						outclock_tx.enable0 = pll.enable0;
+						outclock_tx.clk0 = pll.sclkout[0];
+					END GENERATE;
+					END GENERATE;
+				END GENERATE;
+			ELSE GENERATE
+				IF REGISTERED_INPUT != "OFF" GENERATE
+					txreg[] = tx_in[];
+					tx[].datain[] =  txreg[];
+					IF REGISTERED_INPUT == "ON" # REGISTERED_INPUT == "TX_CORECLK" GENERATE
+						txreg[].clk = pll.clk[2];
+					ELSE GENERATE
+						IF REGISTERED_INPUT == "TX_CLKIN" GENERATE
+							txreg[].clk = tx_inclock;
+						END GENERATE;
+					END GENERATE;
+				ELSE GENERATE
+				tx[].datain[] = tx_in[];
+				END GENERATE;
+				pll.inclk0 = tx_inclock;
+				pll.ena = tx_pll_enable;
+				tx[].clk0 = pll.clk[0];			
+				tx[].enable0 = pll.enable1;
+				tx_coreclock = pll.clk[2];
+				IF USED(pll_areset) GENERATE
+					pll.areset = pll_areset;
+				END GENERATE;
+				IF USED(tx_locked) GENERATE
+					tx_locked = !pll.locked;
+				END GENERATE;
+				IF USED(tx_outclock) GENERATE
+					outclock_tx.enable0 = pll.enable1;
+					outclock_tx.clk0 = pll.clk[1];
+				END GENERATE;
+			END GENERATE;
+			IF (USED(tx_outclock)) GENERATE
+			tx_outclock = outclock_tx.dataout;
+			IF OUTCLOCK_DIVIDE_BY > 1 GENERATE
+				IF (FAMILY_STRATIXII() == 1) GENERATE
+					IF DESERIALIZATION_FACTOR == 4 GENERATE
+						IF OUTCLOCK_DIVIDE_BY == 2 GENERATE
+							outclock_tx.datain[] = STXII_TXDATA_FROM_PHASE_SHIFT_4_2;
+						END GENERATE;
+						IF OUTCLOCK_DIVIDE_BY == 4 GENERATE
+							outclock_tx.datain[] = STXII_TXDATA_FROM_PHASE_SHIFT_4_4;
+						END GENERATE;
+					END GENERATE;
+
+					IF DESERIALIZATION_FACTOR == 8 GENERATE
+						IF OUTCLOCK_DIVIDE_BY == 2 GENERATE
+							outclock_tx.datain[] = STXII_TXDATA_FROM_PHASE_SHIFT_8_2;
+						END GENERATE;
+						IF OUTCLOCK_DIVIDE_BY == 4 GENERATE
+							outclock_tx.datain[] = STXII_TXDATA_FROM_PHASE_SHIFT_8_4;
+						END GENERATE;
+						IF OUTCLOCK_DIVIDE_BY == 8 GENERATE
+							outclock_tx.datain[] = STXII_TXDATA_FROM_PHASE_SHIFT_8_8;
+						END GENERATE;
+					END GENERATE;
+
+					IF DESERIALIZATION_FACTOR == 10 GENERATE
+						IF OUTCLOCK_DIVIDE_BY == 2 GENERATE
+							outclock_tx.datain[] = STXII_TXDATA_FROM_PHASE_SHIFT_10_2;
+						END GENERATE;
+						IF OUTCLOCK_DIVIDE_BY == 10 GENERATE
+							outclock_tx.datain[] = STXII_TXDATA_FROM_PHASE_SHIFT_10_10;
+						END GENERATE;
+					END GENERATE;
+					
+					IF DESERIALIZATION_FACTOR == 7 GENERATE
+						IF OUTCLOCK_DIVIDE_BY == 7 GENERATE
+							outclock_tx.datain[] = STXII_TXDATA_FROM_PHASE_SHIFT_7_7;
+						END GENERATE;
+					END GENERATE;
+
+					IF DESERIALIZATION_FACTOR == 6 GENERATE
+						IF OUTCLOCK_DIVIDE_BY == 2 GENERATE
+							outclock_tx.datain[] = STXII_TXDATA_FROM_PHASE_SHIFT_6_2;
+						END GENERATE;
+						IF OUTCLOCK_DIVIDE_BY == 6 GENERATE
+							outclock_tx.datain[] = STXII_TXDATA_FROM_PHASE_SHIFT_6_6;
+						END GENERATE;
+					END GENERATE;
+					
+				ELSE GENERATE
+					IF DESERIALIZATION_FACTOR == 4 GENERATE
+						IF OUTCLOCK_DIVIDE_BY == 2 GENERATE
+							outclock_tx.datain[] = TXDATA_FROM_PHASE_SHIFT_4_2;
+						END GENERATE;
+						IF OUTCLOCK_DIVIDE_BY == 4 GENERATE
+							outclock_tx.datain[] = TXDATA_FROM_PHASE_SHIFT_4_4;
+						END GENERATE;
+					END GENERATE;
+
+					IF DESERIALIZATION_FACTOR == 8 GENERATE
+						IF OUTCLOCK_DIVIDE_BY == 2 GENERATE
+							outclock_tx.datain[] = TXDATA_FROM_PHASE_SHIFT_8_2;
+						END GENERATE;
+						IF OUTCLOCK_DIVIDE_BY == 4 GENERATE
+							outclock_tx.datain[] = TXDATA_FROM_PHASE_SHIFT_8_4;
+						END GENERATE;
+						IF OUTCLOCK_DIVIDE_BY == 8 GENERATE
+							outclock_tx.datain[] = TXDATA_FROM_PHASE_SHIFT_8_8;
+						END GENERATE;
+					END GENERATE;
+
+					IF DESERIALIZATION_FACTOR == 10 GENERATE
+						IF OUTCLOCK_DIVIDE_BY == 2 GENERATE
+							outclock_tx.datain[] = TXDATA_FROM_PHASE_SHIFT_10_2;
+						END GENERATE;
+						IF OUTCLOCK_DIVIDE_BY == 10 GENERATE
+							outclock_tx.datain[] = TXDATA_FROM_PHASE_SHIFT_10_10;
+						END GENERATE;
+					END GENERATE;
+					
+					IF DESERIALIZATION_FACTOR == 7 GENERATE
+						IF OUTCLOCK_DIVIDE_BY == 7 GENERATE
+							outclock_tx.datain[] = TXDATA_FROM_PHASE_SHIFT_7_7;
+						END GENERATE;
+					END GENERATE;
+					IF DESERIALIZATION_FACTOR == 6 GENERATE
+						IF OUTCLOCK_DIVIDE_BY == 2 GENERATE
+							outclock_tx.datain[] = TXDATA_FROM_PHASE_SHIFT_6_2;
+						END GENERATE;
+						IF OUTCLOCK_DIVIDE_BY == 6 GENERATE
+							outclock_tx.datain[] = TXDATA_FROM_PHASE_SHIFT_6_6;
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;									
+			END GENERATE;
+			END GENERATE; -- !use_external_pll
+		END GENERATE;
+	END GENERATE;
+	END GENERATE;
+	END GENERATE;
+	END GENERATE;
+	IF !USED(tx_outclock) GENERATE
+		tx_outclock = GND;
+	END GENERATE;
+	IF !USED(tx_locked) GENERATE
+		tx_locked = GND;
+	END GENERATE;
+	IF !USED(tx_out) GENERATE
+		tx_out[] = GND;
+	END GENERATE;
+	IF !USED(tx_coreclock) GENERATE
+		tx_coreclock = GND;
+	END GENERATE;
+END;
+
+

@@ -1,0 +1,338 @@
+<?xml version="1.0" ?>
+<ROOT>
+	<PARAMETER_RULES>
+		<PARAMETER NAME="number_of_channels">
+			<FORCE_RANGE MIN="1" MAX="20" WHEN="!mfam_family_tgx" />
+			<FORCE_RANGE MIN="1" MAX="32" WHEN="mfam_family_tgx" />
+      <FORCE_RANGE MIN="1" MAX="16" WHEN="mfam_family_arriaii" />
+      <FORCE_RANGE MIN="1" MAX="24" WHEN="mfam_family_tgx and m_basic_pma_direct_xN" />
+      <FORCE_RANGE TO="4|8|12|16|20" WHEN="(m_pciex4 || m_xaui) and !mfam_family_tgx" />
+			<FORCE_RANGE TO="4|8|12|16|20|24|28|32" WHEN="(m_pciex4 || m_xaui) and mfam_family_tgx" />
+      <FORCE_RANGE TO="4|8|12|16" WHEN="(m_pciex4 || m_xaui) and mfam_family_arriaii" />      
+			<FORCE_RANGE TO="8|16" WHEN="m_pciex8 and !mfam_family_tgx" />
+			<FORCE_RANGE TO="8|16|24|32" WHEN="m_pciex8 and mfam_family_tgx" />
+      <FORCE_RANGE TO="8|16" WHEN="m_pciex8 and mfam_family_arriaii" />
+      <FORCE_RANGE TO="5..8|13..16|21..24|29..32" WHEN="m_basic_x8" />
+      <FORCE_RANGE TO="5..8|13..16" WHEN="m_basic_x8 and mfam_family_arriaii" />
+    </PARAMETER>
+		<PARAMETER NAME="rx_channel_width">
+			<FORCE_VALUE TO="8" WHEN="m_sonet12 || m_gige" />
+			<FORCE_VALUE TO="16" WHEN="m_sonet48 || m_srio || m_xaui" />
+			<FORCE_VALUE TO="32" WHEN="m_sonet96 || m_cei" />
+			<FORCE_VALUE TO="20" WHEN="m_sdi_3g" />
+			<FORCE_RANGE TO="10|20" WHEN="m_sdi_hd" />
+			<FORCE_RANGE TO="8|16" WHEN="m_pcie_gen1" />
+			<FORCE_VALUE TO="16" WHEN="m_pcie_gen2 || (m_pcie_gen1 and mfam_family_arriaii)" />
+			<FORCE_RANGE TO="8|10|16|20" WHEN="m_basic and single_mode" />
+			<FORCE_RANGE TO="16|20|32|40" WHEN="m_basic and double_mode" />
+			<FORCE_RANGE TO="8|10" WHEN="m_basic_pma_direct and single_mode" />
+			<FORCE_RANGE TO="16|20" WHEN="m_basic_pma_direct and double_mode" />
+			<FORCE_RANGE TO="8|10" WHEN="(m_cpri) and single_mode" />
+			<FORCE_RANGE TO="16|20" WHEN="(m_cpri) and double_mode" />
+			<FORCE_VALUE TO="16" WHEN="m_bist" />
+			<FORCE_RANGE TO="8|10" WHEN="m_prbs and single_mode" />
+			<FORCE_RANGE TO="16|20" WHEN="m_prbs and double_mode" />
+      <FORCE_RANGE TO="16|20" WHEN="m_aii_double_cpri_mode" />
+		</PARAMETER>
+		<PARAMETER NAME="tx_channel_width">
+			<FORCE_VALUE TO="8" WHEN="m_sonet12 || m_gige" />
+			<FORCE_VALUE TO="16" WHEN="m_sonet48 || m_srio || m_xaui" />
+			<FORCE_VALUE TO="32" WHEN="m_sonet96 || m_cei" />
+			<FORCE_VALUE TO="20" WHEN="m_sdi_3g" />
+			<FORCE_RANGE TO="10|20" WHEN="m_sdi_hd" />
+			<FORCE_RANGE TO="8|16" WHEN="m_pcie_gen1" />
+			<FORCE_VALUE TO="16" WHEN="m_pcie_gen2 || (m_pcie_gen1 and mfam_family_arriaii)" />			
+			<FORCE_RANGE TO="8|10|16|20" WHEN="m_basic and single_mode" />
+			<FORCE_RANGE TO="16|20|32|40" WHEN="m_basic and double_mode" />
+			<FORCE_RANGE TO="8|10" WHEN="m_basic_pma_direct and single_mode" />
+			<FORCE_RANGE TO="16|20" WHEN="m_basic_pma_direct and double_mode" />
+			<FORCE_RANGE TO="8|10" WHEN="(m_cpri) and single_mode" />
+			<FORCE_RANGE TO="16|20" WHEN="(m_cpri) and double_mode" />
+			<FORCE_VALUE TO="16" WHEN="m_bist" />
+			<FORCE_RANGE TO="8|10" WHEN="m_prbs and single_mode" />
+			<FORCE_RANGE TO="16|20" WHEN="m_prbs and double_mode" />
+      <FORCE_RANGE TO="16|20" WHEN="m_aii_double_cpri_mode" />
+    </PARAMETER>
+		<PARAMETER NAME="operation_mode">
+			<FORCE_RANGE TO="RX|TX|DUPLEX" />
+			<FORCE_RANGE TO="TX|DUPLEX" WHEN="m_gige || m_basic_x4 || m_basic_x8 || m_basic_pma_direct_xN || m_cpri_x4" />
+			<FORCE_VALUE TO="DUPLEX" WHEN="m_pcie || m_xaui || m_bist || m_prbs" />
+		</PARAMETER>
+<!-- PMA controls -->
+		<PARAMETER NAME="rx_use_deserializer_double_data_mode">
+			<FORCE_RANGE TO="true|false" WHEN="m_basic" />
+			<FORCE_VALUE TO="false" WHEN="m_sonet12 || m_sonet48 || m_pcie || m_srio || m_sdi || m_gige || m_xaui" />
+			<FORCE_VALUE TO="true" WHEN="m_sonet96 || m_cei" />
+			<FORCE_VALUE TO="false" WHEN="mfam_family_arriaii" />
+      <FORCE_VALUE TO="true|false" WHEN="mfam_family_arriaii and m_cpri" />
+		</PARAMETER>
+		<PARAMETER NAME="tx_use_serializer_double_data_mode">
+			<FORCE_RANGE TO="true|false" WHEN="m_basic" />
+			<FORCE_VALUE TO="false" WHEN="m_sonet12 || m_sonet48 || m_pcie || m_srio || m_sdi || m_gige || m_xaui" />
+			<FORCE_VALUE TO="true" WHEN="m_sonet96 || m_cei" />
+			<FORCE_VALUE TO="false" WHEN="mfam_family_arriaii" />
+      <FORCE_VALUE TO="true|false" WHEN="mfam_family_arriaii and m_cpri" />
+    </PARAMETER>
+		<PARAMETER NAME="tx_common_mode">
+			<!--<FORCE_RANGE TO="'0.6v'" IF="tx_analog_power == '1.4v'" /> -->
+			<!-- <FORCE_RANGE TO="'0.6v'|'0.65v'|'0.7v'" /> <!-- IF="tx_analog_power == '1.5v'" /> -->
+			<!-- <FORCE_VALUE TO="'0.7v'" IF="m_pcie" /> -->
+			<FORCE_VALUE TO="'0.65v'" />
+		</PARAMETER>
+		<PARAMETER NAME="tx_analog_power">
+			<FORCE_RANGE TO="AUTO|'1.4v'|'1.5v'" />
+			<FORCE_VALUE TO="AUTO|'1.4v'" WHEN="(wiz_data_rate gt 4250)" /> 
+			<FORCE_VALUE TO="AUTO|'1.5v'" WHEN="mfam_family_arriaii" />
+      <FORCE_VALUE TO="AUTO|'1.4v'" WHEN="m_gt_device" />
+		</PARAMETER>
+		<PARAMETER NAME="loopback_mode" >
+			<FORCE_VALUE TO="none|postcdr_rslb|precdr_rslb" WHEN="m_pcie" /> 
+			<FORCE_VALUE TO="none|slb" WHEN="m_prbs" />
+      <FORCE_VALUE TO="none" WHEN="m_bist" />
+      <FORCE_RANGE TO="none|slb|postcdr_rslb" WHEN="m_gt_device" />
+		<!--	<FORCE_RANGE TO="none|slb" WHEN="!(m_pcie || m_basic)" /> -->
+		</PARAMETER> 		
+		<PARAMETER NAME="rx_channel_bonding" >
+			<FORCE_VALUE TO="indv" WHEN="m_basic_x4 || m_basic_x8" />
+			<FORCE_VALUE TO="x4" WHEN="m_pciex4 || m_xaui" />
+			<FORCE_VALUE TO="x8" WHEN="m_pciex8" />
+		</PARAMETER>
+		<PARAMETER NAME="tx_channel_bonding" >
+			<!-- FORCE_VALUE TO="indv" /-->
+			<FORCE_VALUE TO="x4" WHEN="m_pciex4 || m_xaui || m_basic_x4" />
+			<FORCE_VALUE TO="x8" WHEN="m_pciex8 || m_basic_x8" />
+		</PARAMETER>
+		<PARAMETER NAME="gxb_analog_power" TYPE="STRING" >
+			<FORCE_VALUE TO="'3.0v'|'2.5v'|AUTO" />
+			<FORCE_VALUE TO="'3.0v'|AUTO" WHEN="(m_vco_data_rate gt 4250)" />			
+			<FORCE_VALUE TO="'2.5v'|AUTO" WHEN="mfam_family_arriaii" />
+      <FORCE_VALUE TO="'3.9v'|AUTO" WHEN="m_gt_device" />
+		</PARAMETER>
+		
+	<!-- disabled PMA controls				
+		<PARAMETER NAME="vod_ctrl_setting">
+			<FORCE_RANGE MIN="0" MAX="7" />
+		</PARAMETER>
+		<PARAMETER NAME="preemphasis_ctrl_1stposttap_setting" >
+			<FORCE_RANGE MIN="1" MAX="3" WHEN="vod_ctrl_setting == 0" />
+			<FORCE_RANGE MIN="1" MAX="6" WHEN="vod_ctrl_setting == 1" />
+			<FORCE_RANGE MIN="1" MAX="10" WHEN="vod_ctrl_setting == 2" />
+			<FORCE_RANGE MIN="2" MAX="11" WHEN="vod_ctrl_setting == 3" />
+			<FORCE_RANGE MIN="3" MAX="10" WHEN="vod_ctrl_setting == 4" />
+			<FORCE_RANGE MIN="4" MAX="9" WHEN="vod_ctrl_setting == 5" />
+			<FORCE_RANGE MIN="5" MAX="8" WHEN="vod_ctrl_setting == 6" />
+			<FORCE_RANGE MIN="5" MAX="8" WHEN="vod_ctrl_setting == 7" />
+		</PARAMETER>
+		<PARAMETER NAME="preemphasis_ctrl_2ndposttap_setting" >
+			<FORCE_RANGE MIN="0" MAX="7" />
+			<FORCE_RANGE MIN="0" MAX="5" WHEN="(vod_ctrl_setting == 0) and (tx_analog_power == '1.5v')" />
+			<FORCE_VALUE TO="0" WHEN="mfam_family_arriaii" />
+		</PARAMETER>
+		<PARAMETER NAME="preemphasis_ctrl_pretap_setting" >
+			<FORCE_RANGE MIN="0" MAX="7" />
+			<FORCE_RANGE MIN="0" MAX="5" WHEN="(vod_ctrl_setting == 0) and (tx_analog_power == '1.5v')" />
+			<FORCE_VALUE TO="0" WHEN="mfam_family_arriaii" />
+		</PARAMETER>
+		<PARAMETER NAME="preemphasis_ctrl_2ndposttap_inv_setting" >
+			<FORCE_RANGE TO="true|false" />
+			<FORCE_VALUE TO="false" WHEN="mfam_family_arriaii" />
+		</PARAMETER>
+		<PARAMETER NAME="preemphasis_ctrl_pretap_inv_setting" >
+			<FORCE_RANGE TO="true|false" />
+			<FORCE_VALUE TO="false" WHEN="mfam_family_arriaii" />
+		</PARAMETER>		
+		<PARAMETER NAME="equalizer_dcgain_setting">
+			<FORCE_RANGE MIN="0" MAX="4" /> 
+		</PARAMETER>
+		<PARAMETER NAME="receiver_termination">
+			<FORCE_RANGE TO="oct_85_ohms|oct_100_ohms|oct_120_ohms|oct_150_ohms" /> 
+		</PARAMETER>
+		<PARAMETER NAME="transmitter_termination">
+			<FORCE_RANGE TO="oct_85_ohms|oct_100_ohms|oct_120_ohms|oct_150_ohms" /> 
+		</PARAMETER>
+		<PARAMETER NAME="rx_common_mode">
+			<FORCE_RANGE TO="'0.82v'|'1.1v'" /> 
+		</PARAMETER> 
+		<!--<PARAMETER NAME="tx_slew_rate" TYPE="STRING"  >
+			<FORCE_RANGE TO="off|low" WHEN="(m_data_rate gte 3000)" />
+			<FORCE_RANGE TO="low|off|medium" WHEN="(m_data_rate gte 1000) and (m_data_rate lt 3000)" />
+			<FORCE_RANGE TO="medium|low|high" WHEN="(m_data_rate lt 1000)" />						
+			<FORCE_VALUE TO="off" WHEN="m_pcie || m_cei" />
+			<FORCE_VALUE TO="medium" WHEN="m_gige" />
+			<FORCE_VALUE TO="low" WHEN="m_xaui" />
+		</PARAMETER> -->
+	
+<!-- PCS controls -->
+		<PARAMETER NAME="rx_align_pattern_length">
+			<FORCE_RANGE TO="7|8|10|16|20|32" />
+			<FORCE_VALUE TO="16" WHEN="m_sonet12 || m_sonet48" />
+			<FORCE_RANGE TO="16|32" WHEN="m_sonet96" />
+			<FORCE_VALUE TO="10" WHEN="m_srio" />
+			<FORCE_VALUE TO="16" WHEN="m_basic and (m_deser_factor == 8)" />
+			<FORCE_RANGE TO="7|10" WHEN="m_basic and (m_deser_factor == 10)" />
+      <FORCE_RANGE TO="10" WHEN="m_cpri and (m_deser_factor == 10)" />
+			<FORCE_RANGE TO="8|16|32" WHEN="m_basic and (m_deser_factor == 16)" />
+			<FORCE_RANGE TO="7|10|20" WHEN="m_basic and (m_deser_factor == 20)" />
+      <FORCE_RANGE TO="10|20" WHEN="m_cpri and (m_deser_factor == 20)" />
+      <FORCE_RANGE TO="7|10" WHEN="m_sdi || m_gige || m_xaui" />
+			<FORCE_RANGE TO="10" WHEN="m_bist and single_mode" />
+			<FORCE_RANGE TO="20" WHEN="m_bist and double_mode" />
+			<FORCE_VALUE TO="16" WHEN="m_prbs and (rx_channel_width == 8)" />
+			<FORCE_VALUE TO="10" WHEN="m_prbs and (rx_channel_width == 10)" />
+			<FORCE_VALUE TO="16" WHEN="m_prbs and (rx_channel_width == 16) and (rx_self_test_mode == prbs7)" />			
+			<FORCE_VALUE TO="32" WHEN="m_prbs and (rx_channel_width == 16) and (rx_self_test_mode == prbs23)" />						
+			<FORCE_VALUE TO="20" WHEN="m_prbs and (rx_channel_width == 20) and (rx_self_test_mode == prbs7)" />			
+			<FORCE_VALUE TO="40" WHEN="m_prbs and (rx_channel_width == 20) and (rx_self_test_mode == prbs23)" />
+      <FORCE_VALUE TO="7" WHEN="m_prbs and ((rx_self_test_mode == 'high frequency') || (rx_self_test_mode == 'low frequency'))" />
+		</PARAMETER>
+		<PARAMETER NAME="rx_align_loss_sync_error_num">
+			<FORCE_RANGE TO="1..64" />
+			<FORCE_VALUE TO="3" WHEN="m_srio" /> 
+			<FORCE_VALUE TO="1" WHEN="m_bist || m_prbs" />
+		</PARAMETER>
+		<PARAMETER NAME="rx_num_align_cons_good_data">
+			<FORCE_RANGE TO="1..256" />
+			<FORCE_VALUE TO="255" WHEN="m_srio" />			
+			<FORCE_VALUE TO="1" WHEN="m_bist || m_prbs" />
+		</PARAMETER>
+		<PARAMETER NAME="rx_num_align_cons_pat">
+			<FORCE_RANGE TO="1..256" />
+			<FORCE_VALUE TO="127" WHEN="m_srio" />		
+			<FORCE_VALUE TO="1" WHEN="m_bist || m_prbs" />	
+		</PARAMETER>
+		<PARAMETER NAME="rx_run_length_enable">
+			<FORCE_RANGE TO="false|true" /> 
+		</PARAMETER>
+		<PARAMETER NAME="rx_run_length">
+			<FORCE_VALUE TO="UNUSED" WHEN="(rx_run_length_enable == false)" />
+			<FORCE_RANGE TO="4|5|8|10|12|15|16|20|24|25|28|30|32|35|36|40|44|45|48|50|52|55|56|60|64|65|68|70|72|75|76|80|84|85|88|90|92|95|96|100|104|105|108|110|112|115|116|120|124|125|128|136|144|152|160|168|170|176|180|184|190|192|200|208|210|216|220|224|230|232|240|248|250|256|260|264|270|272|280|288|290|296|300|304|310|312|320|328|330|336|340|344|350|352|360|368|370|376|380|384|390|392|400|408|410|416|420|424|430|432|440|448|450|456|460|464|470|472|480|488|490|496|500|504|510|512|520|530|540|550|560|570|580|590|600|610|620|630|640" WHEN="(rx_run_length_enable == true)" />
+			<FORCE_RANGE TO="4|8|12|16|20|24|28|32|36|40|44|48|52|56|60|64|68|72|76|80|84|88|92|96|100|104|108|112|116|120|124|128"
+				WHEN="(m_deser_factor == 8) and (rx_run_length_enable == true)" />
+			<FORCE_RANGE TO="8|16|24|32|40|48|56|64|72|80|88|96|104|112|120|128|136|144|152|160|168|176|184|192|200|208|216|224|232|240|248|256|264|272|280|288|296|304|312|320|328|336|344|352|360|368|376|384|392|400|408|416|424|432|440|448|456|464|472|480|488|496|504|512"
+				WHEN="(m_deser_factor == 16) and (rx_run_length_enable == true)" />
+			<FORCE_RANGE TO="5|10|15|20|25|30|35|40|45|50|55|60|65|70|75|80|85|90|95|100|105|110|115|120|125|130|135|140|145|150|155|160"
+				WHEN="(m_deser_factor == 10) and (rx_run_length_enable == true)" />
+			<FORCE_RANGE TO="10|20|30|40|50|60|70|80|90|100|110|120|130|140|150|160|170|180|190|200|210|220|230|240|250|260|270|280|290|300|310|320|330|340|350|360|370|380|390|400|410|420|430|440|450|460|470|480|490|500|510|520|530|540|550|560|570|580|590|600|610|620|630|640" WHEN="(m_deser_factor == 20) and (rx_run_length_enable == true)" />
+      <FORCE_VALUE TO="m_bist_prbs_run_length" WHEN="(rx_run_length_enable == true) and (m_bist || m_prbs)" />
+      <FORCE_VALUE TO="m_cpri_run_length" WHEN="(rx_run_length_enable == true) and m_cpri" />
+    </PARAMETER> 
+		<PARAMETER NAME="rx_8b_10b_mode" >
+			<FORCE_RANGE TO="none" />
+			<FORCE_RANGE TO="none|normal" WHEN="(m_basic) and single_mode and !chn_width_10_multiple" />
+			<FORCE_RANGE TO="none|cascaded" WHEN="(m_basic) and double_mode and !chn_width_10_multiple" />
+			<FORCE_RANGE TO="normal" WHEN="m_pcie || m_xaui || m_gige || m_srio || (m_bist and single_mode) || (m_cpri and (m_chn_width == 8) and single_mode)" />
+			<FORCE_RANGE TO="cascaded" WHEN="m_bist and double_mode || (m_cpri and double_mode and (m_chn_width == 16))" />
+      <FORCE_RANGE TO="cascaded" WHEN="m_aii_double_cpri_mode and (m_chn_width == 16)" />
+			<FORCE_RANGE TO="none" WHEN="m_sonet || m_sdi || m_cei || m_prbs" />
+			<FORCE_VALUE TO="none" WHEN="m_low_latency_mode" /> 
+		</PARAMETER>
+		<PARAMETER NAME="tx_8b_10b_mode" >
+			<FORCE_RANGE TO="none" />
+			<FORCE_RANGE TO="none|normal" WHEN="(m_basic) and single_mode and !chn_width_10_multiple" />
+			<FORCE_RANGE TO="none|cascaded" WHEN="(m_basic) and double_mode and !chn_width_10_multiple" />
+			<FORCE_RANGE TO="normal" WHEN="m_pcie || m_xaui || m_gige || m_srio || (m_bist and single_mode) || (m_cpri and (m_chn_width == 8) and single_mode)" />
+			<FORCE_RANGE TO="cascaded" WHEN="m_bist and double_mode || (m_cpri and double_mode and (m_chn_width == 16))" />
+      <FORCE_RANGE TO="cascaded" WHEN="m_aii_double_cpri_mode and (m_chn_width == 16)" />
+      <FORCE_RANGE TO="none" WHEN="m_sonet || m_sdi || m_cei || m_prbs" />
+			<FORCE_VALUE TO="none" WHEN="m_low_latency_mode" />			
+		</PARAMETER>
+		<PARAMETER NAME="rx_rate_match_fifo_mode" >
+			<FORCE_RANGE TO="normal" WHEN="m_xaui || m_gige" />
+			<FORCE_RANGE TO="none" WHEN="m_basic" />
+			<FORCE_RANGE TO="none|normal" WHEN="m_basic_like and single_mode and (rx_use_align_state_machine == true and !m_no_8b10b)" />
+			<FORCE_RANGE TO="none|normal" WHEN="m_basic_like and double_mode and (rx_bitslip_enable == false and !m_no_8b10b)" />
+			<FORCE_RANGE TO="none" WHEN="m_low_latency_mode || (m_rx_only) || m_sdi || m_bist || m_cpri" />	
+		</PARAMETER>
+		<PARAMETER NAME="rx_byte_ordering_mode" TYPE="STRING" >
+			<FORCE_RANGE TO="none" />
+			<FORCE_VALUE TO="8" IF="m_sonet48" />
+			<FORCE_RANGE TO="8|none" IF="(m_basic_like and single_mode and m_deser_factor == 8) and (rx_bitslip_enable == false) and (rx_use_double_data_mode == true)" />
+			<FORCE_RANGE TO="9|none" IF="(m_basic_like and single_mode and m_deser_factor == 10) and (rx_rate_match_fifo_mode == none) and (rx_8b_10b_mode == normal) and (rx_use_align_state_machine == true) and (rx_use_double_data_mode == true)" />
+			<FORCE_RANGE TO="16|none" IF="(m_basic_like and double_mode and (m_deser_factor == 16)) and m_double_byte_order_allowed" />
+			<FORCE_RANGE TO="18|none" IF="(m_basic_like and double_mode and (m_deser_factor == 20) and !m_no_8b10b) and m_double_byte_order_allowed" />
+			<FORCE_RANGE TO="20|none" IF="m_basic_like and double_mode and (m_deser_factor == 20) and m_no_8b10b and m_double_byte_order_allowed" />
+			<FORCE_RANGE TO="9" IF="m_bist and single_mode" />
+			<FORCE_RANGE TO="none" WHEN="m_low_latency_mode || m_srio || m_sdi || m_bist and double_mode || m_prbs || m_cpri" />	
+		</PARAMETER>
+		<PARAMETER NAME="rx_byte_order_pld_ctrl_enable" TYPE="STRING" VALUE="true|false" />
+		<PARAMETER NAME="rx_bitslip_enable" >
+			<FORCE_RANGE TO="true|false" />
+			<FORCE_VALUE TO="false" WHEN="m_srio" />
+			<FORCE_VALUE TO="true" WHEN="m_sdi || m_prbs_bitslip" />
+			<FORCE_RANGE TO="false" WHEN="m_low_latency_mode || m_bist || m_prbs_auto_align || m_cpri" />	 
+		</PARAMETER>
+		<PARAMETER NAME="rx_use_align_state_machine" >
+			<FORCE_RANGE TO="true|false" />
+			<FORCE_VALUE TO="false" WHEN="(m_basic and single_mode and (rx_channel_width == 8 || rx_channel_width == 16) and (rx_8b_10b_mode == none)) || (m_basic and double_mode) || m_sdi" />
+			<FORCE_VALUE TO="true" WHEN="m_srio || m_bist and single_mode" />			
+			<FORCE_RANGE TO="false" WHEN="m_low_latency_mode || m_prbs || m_cpri" /> 
+		</PARAMETER>
+		
+		<PARAMETER NAME="rx_datapath_low_latency_mode" >
+			<FORCE_RANGE TO="false|true" WHEN="m_basic" />
+			<FORCE_VALUE TO="true" WHEN="m_basic and (m_data_rate gt 6500)" />
+			<FORCE_VALUE TO="false" WHEN="!m_basic || m_bist || m_prbs || m_cpri" />
+		</PARAMETER>
+		<PARAMETER NAME="tx_datapath_low_latency_mode" >
+			<FORCE_RANGE TO="false|true" WHEN="m_basic" />
+			<FORCE_VALUE TO="true" WHEN="m_basic and (m_data_rate gt 6500)" />
+			<FORCE_VALUE TO="false" WHEN="!m_basic || m_bist || m_prbs || m_cpri" />
+		</PARAMETER>
+	<!-- disabled PCS controls 
+		<PARAMETER NAME="tx_enable_bit_reversal">
+		<!--<FORCE_RANGE TO="true|false" WHEN="m_tx_only || m_duplex" />
+			<FORCE_RANGE TO="false" WHEN="m_rx_only || m_pcie || m_sonet" /> 
+		</PARAMETER>
+		<PARAMETER NAME="rx_enable_bit_reversal">
+			<FORCE_RANGE TO="true|false" WHEN="m_rx_only || m_duplex" />
+			<FORCE_RANGE TO="false" WHEN="m_tx_only || m_pcie || m_sonet" /> 
+		</PARAMETER> -->
+		<PARAMETER NAME="rx_enable_self_test_mode" >
+			<FORCE_VALUE TO="true" WHEN="m_bist || m_prbs" ELSE="false" />
+		</PARAMETER>
+		<PARAMETER NAME="rx_self_test_mode" >
+			<FORCE_VALUE TO="incremental" WHEN="m_bist" />
+			<FORCE_RANGE TO="prbs7|prbs8|prbs23|'high frequency'" WHEN="m_prbs and single_mode and (rx_channel_width == 8)" />
+			<FORCE_RANGE TO="prbs10|'high frequency'|'low frequency'" WHEN="m_prbs and single_mode and (rx_channel_width == 10)" />
+			<FORCE_RANGE TO="prbs7|prbs23|'high frequency'" WHEN="m_prbs and double_mode and (rx_channel_width == 16)" />
+			<FORCE_RANGE TO="prbs7|prbs23|'high frequency'|'low frequency'" WHEN="m_prbs and double_mode and (rx_channel_width == 20)" />
+		</PARAMETER>
+
+    <PARAMETER NAME="ENABLE_LC_TX_PLL" TYPE="STRING" VALUE="TRUE|FALSE">
+      <FORCE_VALUE TO="false" />
+      <FORCE_RANGE TO="true|false" WHEN="((wiz_data_rate gte 5000) and (wiz_data_rate lte 6375) and (tx_pll_vco_post_scale_divider == 1) and ((tx_pll_m_divider == 10) || (tx_pll_m_divider == 20) || (tx_pll_m_divider == 25)) and (m_basic || m_cei || m_pcie || m_basic_pma_direct))"  />
+    </PARAMETER>
+    <PARAMETER NAME="RX_PHFIFOREGMODE" TYPE="STRING" VALUE="TRUE|FALSE" >
+      <FORCE_VALUE TO="false" />
+      <FORCE_VALUE TO="true" WHEN="m_cpri" />
+    </PARAMETER>
+    <PARAMETER NAME="TX_PHFIFOREGMODE" TYPE="STRING" VALUE="TRUE|FALSE" >
+      <FORCE_VALUE TO="false" />
+      <FORCE_VALUE TO="TRUE|FALSE" WHEN="(m_cpri) and !m_rx_only" />
+    </PARAMETER>
+    <!--PARAMETER NAME="PLL_PFD_FB_MODE" >
+      <FORCE_VALUE TO="internal" />
+      <FORCE_VALUE TO="internal|iqtxrxclk" WHEN="m_cpri and !m_rx_only" />
+    </PARAMETER>-->
+      <PARAMETER NAME="rx_rate_match_back_to_back" >
+		<FORCE_VALUE TO="true|false" WHEN="m_basic and single_mode" />
+		<FORCE_VALUE TO="true" WHEN="m_basic and double_mode || m_gige || m_xaui" />
+		<FORCE_VALUE TO="false" WHEN="m_pcie || m_cpri" />
+    </PARAMETER>
+    <PARAMETER NAME="USE_GLOBAL_CLK_DIVIDER">
+      <FORCE_VALUE TO="false" WHEN="!(m_cei) || m_rx_only" />
+      <FORCE_VALUE TO="true" WHEN="(ENABLE_LC_TX_PLL == true)" />
+    </PARAMETER>
+    <PARAMETER NAME="GX_CHANNEL_TYPE" TYPE="STRING" >
+      <FORCE_VALUE TO="m_channel_type" />
+    </PARAMETER>
+    <PARAMETER NAME="rx_force_signal_detect" >
+      <FORCE_VALUE TO="true" WHEN="!m_pcie" />
+      <FORCE_VALUE TO="true" WHEN="m_gt_device" />
+    </PARAMETER>
+    <PARAMETER NAME="rx_signal_detect_threshold" >
+      <FORCE_VALUE TO="2" WHEN="!m_pcie" />
+      <FORCE_VALUE TO="0" WHEN="m_gt_device" />
+    </PARAMETER>
+  </PARAMETER_RULES>
+</ROOT>

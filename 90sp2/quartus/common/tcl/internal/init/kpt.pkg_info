@@ -1,0 +1,14 @@
+# Add ::quartus::kpt to the table of packages
+lappend quartus(package_table) {kpt quartus_sh hidden}
+
+if {[lsearch -exact [list quartus quartus_eda quartus_sh] $quartus(nameofexecutable)] != -1} {
+
+    # Make ::quartus::kpt available to load
+    set qpkg_script_auto [file join [file dirname [info script]] kpt.tcl]
+    if {[file exist $qpkg_script_auto]} {
+       source $qpkg_script_auto
+    }
+    unset qpkg_script_auto
+
+}
+

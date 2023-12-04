@@ -1,0 +1,17 @@
+INCLUDE "le_f.inc";
+SUBDESIGN f_le 
+(
+     IN1,IN2,CI : INPUT = GND;
+     LTEQ       : OUTPUT;
+)
+VARIABLE
+     	ufle:le_f with ( IGNORE_SOFT_BUFFERS = "OFF" );
+begin
+
+	ufle.in1 = IN1;
+	ufle.in2 = IN2;
+	ufle.ci = CI;
+	LTEQ = ufle.lteq;	
+end;
+
+

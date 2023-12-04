@@ -1,0 +1,22 @@
+SUBDESIGN f_csc_cnt
+(
+        CI,COUNT,UPDN : INPUT = GND;
+        CNTO : OUTPUT;
+        CO : OUTPUT;
+)
+
+Variable
+
+       iq : node;
+       int_cnt : node;
+		 csum : CARRY_SUM;
+
+begin
+
+        csum.sin = COUNT;
+		  csum.cin = CI&(UPDN!$COUNT);
+
+		  COUNT = csum.sout;
+		  CO = csum.cout;
+
+end;

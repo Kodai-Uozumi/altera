@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<ROOT>
+	<INCLUDE FILE="mfam_family_macros.xml" />
+
+	<!-- macros -->
+	<MACROS>
+		<MACRO NAME="m_stratix_fam"  DEFINITION="mfam_family_has_stratix_style_ram" />
+	</MACROS>
+	
+	<!-- parameters -->
+	<PARAMETERS>
+		<PARAMETER NAME="TAP_DISTANCE" TYPE="INTEGER">
+			<FORCE_RANGE MIN="3" />
+		</PARAMETER>
+	</PARAMETERS>
+
+	<!-- ports -->
+	<PORT_RULES>
+		<!-- input ports -->
+		<PORT NAME="clock" TYPE="INPUT" IS_CLOCK_PORT="TRUE" />
+		<PORT NAME="aclr" TYPE="INPUT" DEFAULT_VALUE="0">
+			<STATE TO="VARIABLE" IF="m_stratix_fam" ELSE="UNUSED" />
+		</PORT>
+		<PORT NAME="clken" TYPE="INPUT" DEFAULT_VALUE="1" USAGE="VARIABLE" />
+		<PORT NAME="shiftout" TYPE="OUTPUT" USAGE="USED" />
+		<PORT NAME="taps" TYPE="OUTPUT" USAGE="USED" />
+	</PORT_RULES>
+
+	<PARAMETERS>
+	</PARAMETERS>
+
+
+</ROOT>

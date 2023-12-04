@@ -1,0 +1,58 @@
+------------------------------------------------------------------
+-- stratixiii_delay_chain parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+
+FUNCTION stratixiii_delay_chain(
+	datain,
+	delayctrlin[3..0],
+	devclrn,
+	devpor,
+	finedelayctrlin
+)
+WITH(
+	delay_setting,
+	lpm_hint,
+	lpm_type,
+	sim_delayctrlin_falling_delay_0,
+	sim_delayctrlin_falling_delay_1,
+	sim_delayctrlin_falling_delay_10,
+	sim_delayctrlin_falling_delay_11,
+	sim_delayctrlin_falling_delay_12,
+	sim_delayctrlin_falling_delay_13,
+	sim_delayctrlin_falling_delay_14,
+	sim_delayctrlin_falling_delay_15,
+	sim_delayctrlin_falling_delay_2,
+	sim_delayctrlin_falling_delay_3,
+	sim_delayctrlin_falling_delay_4,
+	sim_delayctrlin_falling_delay_5,
+	sim_delayctrlin_falling_delay_6,
+	sim_delayctrlin_falling_delay_7,
+	sim_delayctrlin_falling_delay_8,
+	sim_delayctrlin_falling_delay_9,
+	sim_delayctrlin_rising_delay_0,
+	sim_delayctrlin_rising_delay_1,
+	sim_delayctrlin_rising_delay_10,
+	sim_delayctrlin_rising_delay_11,
+	sim_delayctrlin_rising_delay_12,
+	sim_delayctrlin_rising_delay_13,
+	sim_delayctrlin_rising_delay_14,
+	sim_delayctrlin_rising_delay_15,
+	sim_delayctrlin_rising_delay_2,
+	sim_delayctrlin_rising_delay_3,
+	sim_delayctrlin_rising_delay_4,
+	sim_delayctrlin_rising_delay_5,
+	sim_delayctrlin_rising_delay_6,
+	sim_delayctrlin_rising_delay_7,
+	sim_delayctrlin_rising_delay_8,
+	sim_delayctrlin_rising_delay_9,
+	sim_finedelayctrlin_falling_delay_0,
+	sim_finedelayctrlin_falling_delay_1,
+	sim_finedelayctrlin_rising_delay_0,
+	sim_finedelayctrlin_rising_delay_1,
+	use_delayctrlin,
+	use_finedelayctrlin
+)
+RETURNS(
+	dataout
+);

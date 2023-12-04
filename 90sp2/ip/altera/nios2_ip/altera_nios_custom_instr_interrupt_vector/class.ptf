@@ -1,0 +1,63 @@
+CLASS altera_nios_custom_instr_interrupt_vector
+{
+   CALIFORNIA
+   {
+       Is_Hidden = "1";
+   }
+   ASSOCIATED_FILES
+   {
+       Add_Program  = "";
+       Edit_Program = "";
+       Generator_Program = "make_interrupt_vector.pl";
+   }
+   MODULE_DEFAULTS
+   {
+      class = "altera_nios_custom_instr_interrupt_vector";
+      class_version = "7.080902";
+      iss_model_name = "nios2_custom_instruction";
+      HDL_INFO
+      {
+         Synthesis_HDL_Files = "interrupt_vector.v";
+      }
+      SLAVE interrupt_vector
+      {
+         PORT_WIRING
+         {
+         }
+         SYSTEM_BUILDER_INFO
+         {
+            Bus_Type = "nios_custom_instruction";
+            Data_Width = "32";
+            Address_Width = "0";
+            Is_Custom_Instruction = "1";
+            Is_Visible = "0";
+            Is_Enabled = "1";
+            ci_macro_name = "interrupt_vector";
+            required_ci_macro_name = "interrupt_vector";
+            ci_inst_type = "combinatorial";
+            ci_operands = "0";
+         }
+      }
+      SYSTEM_BUILDER_INFO
+      {
+         Date_Modified = "";
+         Is_Enabled = "1";
+         Is_Visible = "0";
+         Instantiate_In_System_Module = "1";
+         Is_Custom_Instruction = "1";
+      }
+      WIZARD_SCRIPT_ARGUMENTS
+      {
+         Module_Name = "interrupt_vector";
+         Synthesize_Imported_HDL = "1";
+      }
+   }
+   USER_INTERFACE
+   {
+      USER_LABELS
+      {
+          name="Nios II Interrupt Vector Instruction";
+          description="Generates vector to interrupt latency";
+      }
+   }
+}

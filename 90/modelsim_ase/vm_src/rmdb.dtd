@@ -1,0 +1,97 @@
+<!--
+  ===============================================================
+  This is the DTD for the Run Manager configuration database.
+  ===============================================================
+  -->
+
+<!--
+  The document element is "rmdb".
+  -->
+
+<!ELEMENT rmdb ( method | runnable )* >
+<!ATTLIST rmdb version NMTOKEN "1.0" >
+<!ATTLIST rmdb created CDATA #IMPLIED >
+<!ATTLIST rmdb modified CDATA #IMPLIED >
+
+<!--
+  A "method" contains a single command template used to launch a
+  given script in a specific way (for example, on a grid).
+  -->
+
+<!ELEMENT method ( usertcl+, command ) >
+<!ATTLIST method base NMTOKEN #IMPLIED >
+<!ATTLIST method maxrunning NMTOKEN #IMPLIED >
+<!ATTLIST method name NMTOKEN #REQUIRED >
+<!ATTLIST method timeout NMTOKEN #IMPLIED >
+
+<!--
+  A method can contain any number of "usertcl" elements, each of
+  which conatins some method-specific TCL procedure overrides.
+  -->
+
+<!ELEMENT usertcl ( #PCDATA ) >
+
+<!--
+  A "runnable" is a single test or group of tests or runnables.
+  Runnables may be nested in groups to any reasonable level. The
+  name of each runnable must be unique. A group may be sequential
+  (ie: type="seq") or non-sequential (ie: type="group").
+  -->
+
+<!ELEMENT runnable ( parameters?, members?, preScript?, execScript?, postScript? ) >
+<!ATTLIST runnable base NMTOKEN #IMPLIED >
+<!ATTLIST runnable foreach CDATA #IMPLIED >
+<!ATTLIST runnable if CDATA #IMPLIED >
+<!ATTLIST runnable name NMTOKEN #REQUIRED >
+<!ATTLIST runnable repeat CDATA #IMPLIED >
+<!ATTLIST runnable sequential ( yes | no ) #IMPLIED >
+<!ATTLIST runnable type ( group | task | base ) #REQUIRED >
+<!ATTLIST runnable unless CDATA #IMPLIED >
+
+<!--
+  Each runnable may define "parameter" elements which represent
+  key/value pairs used to expand the command macros. The "parameters"
+  element groups the parameters under a single element.
+  -->
+
+<!ELEMENT parameters ( parameter+ ) >
+<!ELEMENT parameter  ( #PCDATA ) >
+<!ATTLIST parameter  name NMTOKEN #REQUIRED >
+<!ATTLIST parameter  type ( tcl | text ) #IMPLIED >
+
+<!--
+  Groups contain "member" elements, each of which matches the name
+  of a single unique runnable. The "members" element groups the
+  members under a single element.
+  -->
+
+<!ELEMENT members ( member+ ) >
+<!ELEMENT member  ( #PCDATA ) >
+
+<!--
+  Each runnable may define three scripts (pre- and post-scripts
+  are only meaningful for a group). Each may consist of one or
+  more command strings (templates).
+  -->
+
+<!ELEMENT preScript  ( command+ ) >
+<!ATTLIST preScript file CDATA #IMPLIED >
+<!ATTLIST preScript launch CDATA #IMPLIED >
+<!ATTLIST preScript timeout CDATA #IMPLIED >
+
+<!ELEMENT execScript ( command+ ) >
+<!ATTLIST execScript file CDATA #IMPLIED >
+<!ATTLIST execScript launch CDATA #IMPLIED >
+<!ATTLIST execScript timeout CDATA #IMPLIED >
+
+<!ELEMENT postScript ( command+ ) >
+<!ATTLIST postScript file CDATA #IMPLIED >
+<!ATTLIST postScript launch CDATA #IMPLIED >
+<!ATTLIST postScript timeout CDATA #IMPLIED >
+
+<!--
+  A "command" element contains a single command string (template).
+  Commands may appear in both "method" and "runnable" elements.
+  -->
+
+<!ELEMENT command ( #PCDATA ) >

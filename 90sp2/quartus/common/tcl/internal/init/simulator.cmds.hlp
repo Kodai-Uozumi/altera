@@ -1,0 +1,1882 @@
+<<<<versions>>>>
+1.0
+<<<</versions>>>>
+<<<<1.0>>>>
+<initialize_simulation>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: initialize_simulation [-h | -help] [-long_help] [-cell_delay_model_type <transport | inertial>] [-check_outputs <On | Off>] [-end_time <end_time>] [-ignore_vector_file <On | Off>] [-interconnect_delay_model_type <transport | inertial>] [-memory_limiter <On | Off>] [-perform_glitch_filtering <auto | always | never>] [-power_vcd_output <target_file>] [-pvt_multicorner <On | Off>] [-pvt_temperature <pvt_temperature>] [-pvt_timing_model_type <slow | fast>] [-pvt_voltage <pvt_voltage>] [-read_settings_files <On | Off>] [-saf_output <target_file>] [-sim_mode <functional | timing | timing_using_fast_timing_model >] [-simulation_results_format <VWF | CVWF | VCD>] [-vector_source <vector_source_file>] [-write_settings_files <On | Off>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -cell_delay_model_type <transport | inertial>: Option to specify the type of cell delay model to be used - transport or inertial
+        -check_outputs <On | Off>: Option to direct the Simulator to check expected outputs against actual outputs in the Simulation Report
+        -end_time <end_time>: Option to set simulation end time when source vector file is ignored
+        -ignore_vector_file <On | Off>: Option to ignore source vector file
+        -interconnect_delay_model_type <transport | inertial>: Option to specify the type of interconnect delay model to be used - transport or inertial
+        -memory_limiter <On | Off>: Option to direct the Simulator to flush signal transitions from memory to disk for memory optimization
+        -perform_glitch_filtering <auto | always | never>: Option to specify that the simulator perform glitch filtering when running timing simulation.
+        -power_vcd_output <target_file>: Option to specify generation of the VCD File for PowerPlay Power Analyzer as well as the name of the generated VCD File
+        -pvt_multicorner <On | Off>: Option to use multicorner PVT timing model
+        -pvt_temperature <pvt_temperature>: Option to set the PVT temperature to be used (value in C)
+        -pvt_timing_model_type <slow | fast>: Option to specify the PVT timing model to be used
+        -pvt_voltage <pvt_voltage>: Option to set the PVT voltage to be used (value in mV)
+        -read_settings_files <On | Off>: Option to read the assignments from the Quartus II Settings File (.qsf) and override assignments obtained from the database
+        -saf_output <target_file>: Option to specify generation of the Signal Activity File as well as the name of the generated Signal Activity File
+        -sim_mode <functional | timing | timing_using_fast_timing_model >: Option to specify the type of simulation to perform
+        -simulation_results_format <VWF | CVWF | VCD>: Option to specify the type of file format for the output vector file
+        -vector_source <vector_source_file>: Option to specify the source of input vectors to be used for simulation. The specified value must be an existing file with a .vwf, .vec, or .tbl extension
+        -write_settings_files <On | Off>: Option to write out the settings obtained from command-line options to the Quartus II Settings File (.qsf).
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::simulator 1.0
+
+------------
+Description:
+------------
+
+Initializes the simulation for the current design. During
+initialization, the Simulator builds the simulation netlist and sets
+the simulation time to zero.
+
+The option "-ignore_vector_file" is set to Off by default, when the
+source vector file exists for simulation. The Quartus(R) II software
+ignores the source vector file during simulation if the option
+"-ignore_vector_file" is set to On. The "-end_time" option is used
+only when the "-ignore_vector_file" option is set to On. Use
+"-pvt_timing_model_type", "-pvt_voltage","-pvt_temperature" to specify
+an exact PVT timing model. The option "-pvt_multicorner" is
+used to indicate simulation to be run with multi-corner PVT timing
+models.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+Example 1
+---------
+project_open lelut
+
+# Source vector file exists. Initialize Simulator by getting input vectors 
+# from the vector file during simulation
+initialize_simulation
+
+# Run simulation with end time from source vector file
+run_simulation
+
+project_close
+
+
+Example 2
+---------
+project_open lelut
+
+# Ignore source vector file if exists. Honor specified simulation end time
+initialize_simulation -ignore_vector_file on -end_time 350ns
+
+# Run 350ns simulation
+run_simulation
+
+project_close
+
+Example 3
+---------
+project_open chiptrip
+
+# Run timing simulation with exact PVT timing model
+initialize_simulation -pvt_timing_model_type fast -pvt_voltage 1200 -pvt_temperature 0 
+		
+run_simulation
+
+project_close
+
+
+Example 4
+---------
+project_open chiptrip
+
+# Run timing simulation with multi-corner PVT timing models
+initialize_simulation -pvt_multicorner on
+		
+run_simulation
+
+project_close
+
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal option value. Specify status value as "on" or "off".
+TCL_ERROR	1   	ERROR: Illegal time value. Specify a legal time value with legal time unit (ps, ns, us, ms, s).
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</initialize_simulation>
+
+<run_simulation>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: run_simulation [-h | -help] [-long_help] [-time <time>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -time <time>: Length of time the simulation runs in nanoseconds
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::simulator 1.0
+
+------------
+Description:
+------------
+
+Instructs the Simulator to simulate for a specified time. If you do
+not specify the length of time the simulation runs, the Simulator
+simulates until the simulation is complete.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+Example 1
+---------
+project_open lelut
+
+initialize_simulation
+
+# Simulate the design until the it is complete
+run_simulation
+
+project_close
+
+
+Example 2
+---------
+project_open lelut
+
+initialize_simulation
+
+# Simulate design for 10ns
+run_simulation -time 10ns
+
+# Change value of node "clk1" to 0
+force_simulation_value -node clk1 0              									 
+
+# Simulate design for another 20ns
+run_simulation -time 20ns
+
+# Change value of node "clk0" to 1
+force_simulation_value -node clk0 1      
+
+# Simulate until it is complete
+run_simulation
+
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal time value. Specify a legal time value with legal time unit (ps, ns, us, ms, s).
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</run_simulation>
+
+<get_simulation_value>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_simulation_value [-h | -help] [-long_help] -node <hpath>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -node <hpath>: Hierarchical path name of the signal
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::simulator 1.0
+
+------------
+Description:
+------------
+
+Returns the value of the specified signal.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open gates
+
+initialize_simulation -ignore_vector_file on -end_time 600ns
+
+run_simulation -time 100ns
+
+# Set input values for node "ina" and "inb"
+force_simulation_value -node ina 0
+force_simulation_value -node inb 1
+
+run_simulation -time 100ns
+
+# Check the value of "$ina NAND $inb"
+if {[get_simulation_value -node nand_out] != [expr !($ina && $inb)]} { 
+	puts "$ina NAND $inb = [get_simulation_value -node nand_out]"
+}
+
+run_simulation
+
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal node name. Specify a legal node name which exists in the design.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_simulation_value>
+
+<force_simulation_value>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: force_simulation_value [-h | -help] [-long_help] -node <hpath> <value> [<ASCII|Binary|Fractional|Hexadecimal|Octal|Signed Decimal|Unsigned Decimal>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -node <hpath>: Hierarchical path name of the signal
+        <value>: Value to which you want to force the signal
+        <ASCII|Binary|Fractional|Hexadecimal|Octal|Signed Decimal|Unsigned Decimal>: Radix of the value to which you want to force the signal. Default value is binary. Value can be specified using only first 3 (except 4 for fractional) characters. E.g. sig, asc, frac
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::simulator 1.0
+
+------------
+Description:
+------------
+
+Forces the specified signal or group of signals to the specified value
+in the specified radix.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+Example 1
+---------
+project_open gates
+
+initialize_simulation -ignore_vector_file on -end_time 600ns
+
+run_simulation -time 100ns
+
+# Set input values for node "ina" and "inb"
+force_simulation_value -node ina 0
+force_simulation_value -node inb 1
+
+run_simulation -time 100ns
+
+# Check the value of "$ina NAND $inb"
+if {[force_simulation_value -node nand_out] != [expr !($ina && $inb)]} { 
+	puts "$ina NAND $inb = [force_simulation_value -node nand_out]"
+}
+
+run_simulation
+
+project_close
+
+
+Example 2
+---------
+project_open lelut
+
+initialize_simulation -ignore_vector_file on -end_time 100ns
+
+# Group "inDataa inDatab inDatac inDatad" as "input_bus"
+group_simulation_signal -name input_bus {inDataa inDatab inDatac inDatad}
+
+# Set value "1011" for the group of signals
+force_simulation_value -node input_bus 1011
+
+# Set value 0 for node "clk1"
+force_simulation_value -node clk1 0
+
+run_simulation -time 20ns       
+
+# Set value 1 for node "clk1"
+force_simulation_value -node clk1 1
+
+run_simulation
+
+project_close
+
+Example 3
+---------
+project_open block1
+
+initialize_simulation
+
+force_simulation_value -node d 130 unsigned
+
+project_close
+
+Example 4
+---------
+project_open block1
+
+initialize_simulation
+
+force_simulation_value -node d 130 "Unsigned Decimal"
+
+project_close
+
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal node name. Specify a legal node name which exists in the design.
+TCL_ERROR	1   	ERROR: Illegal radix. Specify a legal radix (ASCII, Binary, Fractional, Hexadecimal, Octal, Signed Decimal, Unsigned Decimal).
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</force_simulation_value>
+
+<release_simulation_value>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: release_simulation_value [-h | -help] [-long_help] -node <hpath>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -node <hpath>: Hierarchical path name of the signal or group of signals
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::simulator 1.0
+
+------------
+Description:
+------------
+
+Releases the forced value of the specified signal or group of
+signals. After the signal's value is released, the Simulator can
+overwrite the current value when simulating at a future time.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open gates
+
+initialize_simulation
+
+run_simulation -time 10ns
+
+puts "Value of out_a = [get_simulation_value -node out_a]"
+# Value of out_a = X
+
+force_simulation_value -node out_a 0
+
+puts "Value of out_a = [get_simulation_value -node out_a]"
+# Value of out_a = 0
+
+run_simulation -time 10ns
+
+puts "Value of out_a = [get_simulation_value -node out_a]"
+# out_a has been forced to 0, it won't be updated during the last 10ns simulation. 
+# Value of out_a = 0
+
+# Release the value 0 hold by out_a
+release_simulation_value -node out_a
+
+run_simulation
+
+puts "Value of out_a = [get_simulation_value -node out_a]"
+# Previous forced value has been release, out_a is updated with the latest value
+# Value of out_a = 1
+
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal node name. Specify a legal node name which exists in the design.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</release_simulation_value>
+
+<group_simulation_signal>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: group_simulation_signal [-h | -help] [-long_help] -name <group_name> <group_member>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -name <group_name>: Name of the group of signals
+        <group_member>: List of member instance names that you want to group
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::simulator 1.0
+
+------------
+Description:
+------------
+
+Groups the specified signals.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open lelut
+
+initialize_simulation -ignore_vector_file on -end_time 100ns
+
+# Group "inDataa inDatab inDatac inDatad" as "input_bus"
+group_simulation_signal -name input_bus {inDataa inDatab inDatac inDatad}
+
+# Set value "1011" for the group of signals
+force_simulation_value -node input_bus 1011
+
+# Set value 0 for node "clk1"
+force_simulation_value -node clk1 0
+
+run_simulation -time 20ns       
+
+# Set value 1 for node "clk1"
+force_simulation_value -node clk1 1
+
+run_simulation
+
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</group_simulation_signal>
+
+<set_simulation_clock>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: set_simulation_clock [-h | -help] [-long_help] -clock <clock_name> [-duty_cycle <duty_cycle>] [-offset <offset>] -period <period in ns>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -clock <clock_name>: Name of the clock signal
+        -duty_cycle <duty_cycle>: Duty cycle of the clock signal
+        -offset <offset>: Offset of the clock signal
+        -period <period in ns>: Period of the clock signal in nanoseconds
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::simulator 1.0
+
+------------
+Description:
+------------
+
+Creates a continuous clock signal in the Simulator.
+
+The default value for the duty cycle of the clock signal is 50 and for
+the offset is zero nanoseconds.		
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open lelut
+
+initialize_simulation -ignore_vector_file on -end_time 100ns
+
+# Group "inDataa inDatab inDatac inDatad" under the name "input_bus"
+group_simulation_signal -name input_bus {inDataa inDatab inDatac inDatad}
+
+# Create continuous clock signal named "clk0" with duty_cycle = 50 
+# and offset = 25ns 
+set_simulation_clock -clock clk0 -period 10ns -duty_cycle 50 -offset 25
+
+# Set value "1011" for the group of signals
+force_simulation_value -node input_bus 1011
+
+# Set value 0 for node "clk1"
+force_simulation_value -node clk1 0
+
+run_simulation -time 20ns       
+
+# Set value 1 for node "clk1"
+force_simulation_value -node clk1 1
+
+run_simulation
+
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal duty cycle. Specify a duty cycle of less than 100%.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</set_simulation_clock>
+
+<get_simulation_time>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_simulation_time [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::simulator 1.0
+
+------------
+Description:
+------------
+
+Returns the amount of time, in nanoseconds, that the current
+simulation has been running.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open lelut
+
+initialize_simulation
+
+# Simulate the design until the it is complete
+run_simulation -time 10ns
+
+puts "Current time is [get_simulation_time] nanoseconds"
+
+run_simulation
+
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_simulation_time>
+
+<get_simulation_memory_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_simulation_memory_info [-h | -help] [-long_help] -node <hpath> [<depth|width>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -node <hpath>: Hierarchical path name of the logic memory
+        <depth|width>: Depth or width of the specified logic memory
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::simulator 1.0
+
+------------
+Description:
+------------
+
+Returns the depth (number of words or addresses) or width (number of
+bits per memory word) of the specified logic memory.
+
+If neither "depth" nor "width" is specified as the positional
+argument, both depth and width information are returned.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+Example 1
+---------
+# Get both memory depth and width information for 
+# node "|fast_write|lpm_rom:inst1|altrom:srom|content"
+get_simulation_memory_info -node |fast_write|lpm_rom:inst1|altrom:srom|content
+
+
+Example 2
+---------
+# Get memory depth information for 
+# node "|fast_write|lpm_rom:inst1|altrom:srom|content"
+get_simulation_memory_info -node |fast_write|lpm_rom:inst1|altrom:srom|content depth
+
+
+Example 3
+---------
+# Get memory width information for 
+# node "|fast_write|lpm_rom:inst1|altrom:srom|content"
+get_simulation_memory_info -node |fast_write|lpm_rom:inst1|altrom:srom|content width
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal node name. Specify a legal node name which exists in the design.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_simulation_memory_info>
+
+<read_from_simulation_memory>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: read_from_simulation_memory [-h | -help] [-long_help] -address <address> -node <hpath>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -address <address>: Address of the memory word (or data record) from which you want to read
+        -node <hpath>: Hierarchical path name of the logic memory
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::simulator 1.0
+
+------------
+Description:
+------------
+
+Reads the content of the specified memory address or data record of
+the specified logical memory.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open fast_write
+	
+initialize_simulation -ignore_vector_file on -end_time 500ns
+
+# Read the content of inst1|altrom:srom at the address = 14
+read_from_simulation_memory -node inst1|altrom:srom -address 14
+# Reading memory word inst1|altrom:srom at address 14 returns value X
+
+# Write data = 1 to memory word inst1|altrom:srom at address 14
+write_to_simulation_memory -node inst1|altrom:srom -address 14 -data 1
+
+# Read the content of inst1|altrom:srom at the address = 14
+read_from_simulation_memory -node inst1|altrom:srom -address 14
+# Reading memory word inst1|altrom:srom at address 14 returns value 1
+
+# Writes the data = 0101010101010101 for memory word inst1|altrom:srom
+# start with the memory address 0
+fast_write_to_simulation_memory -node inst1|altrom:srom -address 0 -data 0101010101010101
+
+# Read the content of inst1|altrom:srom to check against the
+# fast_write_to_simulation_memory result
+read_from_simulation_memory -node inst1|altrom:srom -address 0
+read_from_simulation_memory -node inst1|altrom:srom -address 1
+read_from_simulation_memory -node inst1|altrom:srom -address 2
+read_from_simulation_memory -node inst1|altrom:srom -address 3
+read_from_simulation_memory -node inst1|altrom:srom -address 4
+read_from_simulation_memory -node inst1|altrom:srom -address 5
+read_from_simulation_memory -node inst1|altrom:srom -address 6
+read_from_simulation_memory -node inst1|altrom:srom -address 7
+read_from_simulation_memory -node inst1|altrom:srom -address 8
+read_from_simulation_memory -node inst1|altrom:srom -address 9
+read_from_simulation_memory -node inst1|altrom:srom -address 10
+read_from_simulation_memory -node inst1|altrom:srom -address 11
+read_from_simulation_memory -node inst1|altrom:srom -address 12
+read_from_simulation_memory -node inst1|altrom:srom -address 13
+read_from_simulation_memory -node inst1|altrom:srom -address 14
+read_from_simulation_memory -node inst1|altrom:srom -address 15
+# Content of inst1|altrom:srom: 0101010101010101
+
+run_simulation
+
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal address -- address is greater than memory depth. Specify an address that is less than the memory depth.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</read_from_simulation_memory>
+
+<write_to_simulation_memory>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: write_to_simulation_memory [-h | -help] [-long_help] -address <address> -data <data> -node <hpath>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -address <address>: Address of the memory word to which you want to write
+        -data <data>: Data record you want to write to the memory word specified by "-address <address>"
+        -node <hpath>: Hierarchical path name of the logic memory
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::simulator 1.0
+
+------------
+Description:
+------------
+
+Writes the specified data record to the memory address of the
+specified memory word.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open fast_write
+	
+initialize_simulation -ignore_vector_file on -end_time 500ns
+
+# Read the content of inst1|altrom:srom at the address = 14
+read_from_simulation_memory -node inst1|altrom:srom -address 14
+# Reading memory word inst1|altrom:srom at address 14 returns value X
+
+# Write data = 1 to memory word inst1|altrom:srom at address 14
+write_to_simulation_memory -node inst1|altrom:srom -address 14 -data 1
+
+# Read the content of inst1|altrom:srom at the address = 14
+read_from_simulation_memory -node inst1|altrom:srom -address 14
+# Reading memory word inst1|altrom:srom at address 14 returns value 1
+
+# Writes the data = 0101010101010101 for memory word inst1|altrom:srom
+# start with the memory address 0
+fast_write_to_simulation_memory -node inst1|altrom:srom -address 0 -data 0101010101010101
+
+# Read the content of inst1|altrom:srom to check against the
+# fast_write_to_simulation_memory result
+read_from_simulation_memory -node inst1|altrom:srom -address 0
+read_from_simulation_memory -node inst1|altrom:srom -address 1
+read_from_simulation_memory -node inst1|altrom:srom -address 2
+read_from_simulation_memory -node inst1|altrom:srom -address 3
+read_from_simulation_memory -node inst1|altrom:srom -address 4
+read_from_simulation_memory -node inst1|altrom:srom -address 5
+read_from_simulation_memory -node inst1|altrom:srom -address 6
+read_from_simulation_memory -node inst1|altrom:srom -address 7
+read_from_simulation_memory -node inst1|altrom:srom -address 8
+read_from_simulation_memory -node inst1|altrom:srom -address 9
+read_from_simulation_memory -node inst1|altrom:srom -address 10
+read_from_simulation_memory -node inst1|altrom:srom -address 11
+read_from_simulation_memory -node inst1|altrom:srom -address 12
+read_from_simulation_memory -node inst1|altrom:srom -address 13
+read_from_simulation_memory -node inst1|altrom:srom -address 14
+read_from_simulation_memory -node inst1|altrom:srom -address 15
+# Content of inst1|altrom:srom: 0101010101010101
+
+run_simulation
+
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal address -- address is greater than memory depth. Specify an address that is less than the memory depth.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</write_to_simulation_memory>
+
+<fast_write_to_simulation_memory>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: fast_write_to_simulation_memory [-h | -help] [-long_help] -address <address> -data <data> -node <hpath>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -address <address>: Address of the group of memory words to which you want to write
+        -data <data>: Data records you want to write to the group of memory words specified by "-address <address>"
+        -node <hpath>: Hierarchical path name of the logic memory
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::simulator 1.0
+
+------------
+Description:
+------------
+
+Writes the specified data records to the memory address of the
+specified group of memory words.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open fast_write
+	
+initialize_simulation -ignore_vector_file on -end_time 500ns
+
+# Read the content of inst1|altrom:srom at the address = 14
+read_from_simulation_memory -node inst1|altrom:srom -address 14
+# Reading memory word inst1|altrom:srom at address 14 returns value X
+
+# Write data = 1 to memory word inst1|altrom:srom at address 14
+write_to_simulation_memory -node inst1|altrom:srom -address 14 -data 1
+
+# Read the content of inst1|altrom:srom at the address = 14
+read_from_simulation_memory -node inst1|altrom:srom -address 14
+# Reading memory word inst1|altrom:srom at address 14 returns value 1
+
+# Writes the data = 0101010101010101 for memory word inst1|altrom:srom
+# start with the memory address 0
+fast_write_to_simulation_memory -node inst1|altrom:srom -address 0 -data 0101010101010101
+
+# Read the content of inst1|altrom:srom to check against the
+# fast_write_to_simulation_memory result
+read_from_simulation_memory -node inst1|altrom:srom -address 0
+read_from_simulation_memory -node inst1|altrom:srom -address 1
+read_from_simulation_memory -node inst1|altrom:srom -address 2
+read_from_simulation_memory -node inst1|altrom:srom -address 3
+read_from_simulation_memory -node inst1|altrom:srom -address 4
+read_from_simulation_memory -node inst1|altrom:srom -address 5
+read_from_simulation_memory -node inst1|altrom:srom -address 6
+read_from_simulation_memory -node inst1|altrom:srom -address 7
+read_from_simulation_memory -node inst1|altrom:srom -address 8
+read_from_simulation_memory -node inst1|altrom:srom -address 9
+read_from_simulation_memory -node inst1|altrom:srom -address 10
+read_from_simulation_memory -node inst1|altrom:srom -address 11
+read_from_simulation_memory -node inst1|altrom:srom -address 12
+read_from_simulation_memory -node inst1|altrom:srom -address 13
+read_from_simulation_memory -node inst1|altrom:srom -address 14
+read_from_simulation_memory -node inst1|altrom:srom -address 15
+# Content of inst1|altrom:srom: 0101010101010101
+
+run_simulation
+
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal address -- address is greater than memory depth. Specify an address that is less than the memory depth.
+TCL_ERROR	1   	ERROR: Illegal data -- data entered is greater than memory depth or contains invalid characters. Specify data that is less than the memory depth, or do not enter "X" or "Y" for RAM.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</fast_write_to_simulation_memory>
+
+<create_simulation_breakpoint>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: create_simulation_breakpoint [-h | -help] [-long_help] -action <Give Warning | Give Info | Give Error> -breakpoint <breakpoint_name> -equation <equation> [-user_message <message_text>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -action <Give Warning | Give Info | Give Error>: Action to be done at the breakpoint
+        -breakpoint <breakpoint_name>: Name of the breakpoint to be created
+        -equation <equation>: Equation used to trigger the breakpoint
+        -user_message <message_text>: Optional user-customized message to be displayed when breakpoint is triggered
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::simulator 1.0
+
+------------
+Description:
+------------
+
+Creates a breakpoint with the specified equation and action.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open one_wire
+
+initialize_simulation
+
+# Create breakpoint bp1 which gives warning when it reaches 10ns
+create_simulation_breakpoint -breakpoint bp1 equation "TIME_EQ(10ns)" -action "GIVE_WARNING"
+
+# Create breakpoint bp2 which gives info when in_br has 0 in value
+create_simulation_breakpoint -breakpoint bp2 -equation "EQUAL_TO(HPATH(|one_wire|in_br),BUS(0)))" -action "GIVE_INFO"
+
+# Create breakpoint bp3 which gives error when value of in_br and out_br is 1
+create_simulation_breakpoint -breakpoint bp3 -equation "EQUAL_TO(HPATH(|one_wire|out_br),BUS(1)),EQUAL_TO(HPATH(|one_wire|in_br),BUS(1))" -action "GIVE_ERROR"
+
+# Before running simulation, disable bp2
+# Therefore it shouldn't break at time=0ns when in_br=0
+disable_simulation_breakpoint -breakpoint bp2
+
+# When running simulation for the first 50ns, 
+# expect to see bp1 breaks at time=10ns
+run_simulation -time 50ns
+
+delete_simulation_breakpoint -breakpoint bp1
+
+enable_simulation_breakpoint -breakpoint bp2
+
+# Since bp2 is enabled, expect to see bp2 breaks at time=100ns
+# when in_br becomes 0 again
+run_simulation -time 60ns
+
+# Run simulation until the end of completion
+run_simulation
+
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal action. Specify action as "Give Warning", "Give Info", or "Give Error".
+TCL_ERROR	1   	ERROR: Can't set breakpoint for node type. Delete the breakpoint, or change the breakpoint equation so that it refers to a node type that supports breakpoints.
+TCL_ERROR	1   	ERROR: Illegal breakpoint state. Specify the breakpoint state as "enabled" or "disabled".
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</create_simulation_breakpoint>
+
+<enable_simulation_breakpoint>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: enable_simulation_breakpoint [-h | -help] [-long_help] -breakpoint <breakpoint_name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -breakpoint <breakpoint_name>: Option to enable a specified breakpoint
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::simulator 1.0
+
+------------
+Description:
+------------
+
+Enables a breakpoint with the specified name.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open one_wire
+
+initialize_simulation
+
+# Create breakpoint bp1 which will give warning message when simulation time reaches 10ns
+create_simulation_breakpoint -breakpoint bp1 -equation "TIME_EQ(10ns)" -action "GIVE_WARNING"
+
+# Create breakpoint bp2 which will give info message when in_br has 0 in value
+create_simulation_breakpoint -breakpoint bp2 -equation "EQUAL_TO(HPATH(|one_wire|in_br),BUS(0)))" -action "GIVE_INFO"
+
+# Create breakpoint bp3 which will give error message when both in_br and out_br have 1 in value
+create_simulation_breakpoint -breakpoint bp3 -equation "EQUAL_TO(HPATH(|one_wire|out_br),BUS(1)),EQUAL_TO(HPATH(|one_wire|in_br),BUS(1))" -action "GIVE_ERROR"
+
+# Before running simulation, disable bp2
+# Therefore it shouldn't break at time=0ns when in_br=0
+disable_simulation_breakpoint -breakpoint bp2
+
+# When running simulation for the first 50ns, 
+# expect to see bp1 breaks at time=10ns
+run_simulation -time 50ns
+
+delete_simulation_breakpoint -breakpoint bp1
+
+enable_simulation_breakpoint -breakpoint bp2
+
+# Since bp2 is enabled, expect to see bp2 breaks at time=100ns
+# when in_br becomes 0 again
+run_simulation -time 60ns
+
+# Run simulation until the end of completion
+run_simulation
+
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal breakpoint name. Specify a breakpoint name that exists in the simulation netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</enable_simulation_breakpoint>
+
+<enable_all_simulation_breakpoint>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: enable_all_simulation_breakpoint [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::simulator 1.0
+
+------------
+Description:
+------------
+
+Enables all breakpoints.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open one_wire
+
+initialize_simulation
+
+# Create breakpoint bp1 which will give warning message when simulation time reaches 10ns
+create_simulation_breakpoint -breakpoint bp1 -equation "TIME_EQ(10ns)" -action "GIVE_WARNING"
+
+# Create breakpoint bp2 which will give info message when time reaches 100ns
+create_simulation_breakpoint -breakpoint bp2 -equation "TIME_EQ(100ns)" -action "GIVE_INFO"
+
+# Create breakpoint bp3 which will give error message when time reaches 200ns
+create_simulation_breakpoint -breakpoint bp3 -equation "TIME_EQ(200ns)" -action "GIVE_ERROR"
+
+# All breakpoints will be disabled
+disable_all_simulation_breakpoint
+
+# Run simulation. It shouldn't break at time=10ns since bp1 has been disabled
+run_simulation -time 50ns
+
+enable_all_simulation_breakpoint
+
+# Run simulation to the end. Expect bp2 and bp3 to break at 100ns and 200ns since all breakpoints have been enabled
+run_simulation		
+
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</enable_all_simulation_breakpoint>
+
+<disable_simulation_breakpoint>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: disable_simulation_breakpoint [-h | -help] [-long_help] -breakpoint <breakpoint_name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -breakpoint <breakpoint_name>: Option to disable a specified breakpoint
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::simulator 1.0
+
+------------
+Description:
+------------
+
+Disables a breakpoint with the specified name.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open one_wire
+
+initialize_simulation
+
+# Create breakpoint bp1 which will give warning message when simulation time reaches 10ns
+create_simulation_breakpoint -breakpoint bp1 -equation "TIME_EQ(10ns)" -action "GIVE_WARNING"
+
+# Create breakpoint bp2 which will give info message when in_br has 0 in value
+create_simulation_breakpoint -breakpoint bp2 -equation "EQUAL_TO(HPATH(|one_wire|in_br),BUS(0)))" -action "GIVE_INFO"
+
+# Create breakpoint bp3 which will give error message when both in_br and out_br have 1 in value
+create_simulation_breakpoint -breakpoint bp3 -equation "EQUAL_TO(HPATH(|one_wire|out_br),BUS(1)),EQUAL_TO(HPATH(|one_wire|in_br),BUS(1))" -action "GIVE_ERROR"
+
+# Before running simulation, disable bp2
+# Therefore it shouldn't break at time=0ns when in_br=0
+disable_simulation_breakpoint -breakpoint bp2
+
+# When running simulation for the first 50ns, 
+# expect to see bp1 breaks at time=10ns
+run_simulation -time 50ns
+
+delete_simulation_breakpoint -breakpoint bp1
+
+enable_simulation_breakpoint -breakpoint bp2
+
+# Since bp2 is enabled, expect to see bp2 breaks at time=100ns
+# when in_br becomes 0 again
+run_simulation -time 60ns
+
+# Run simulation until the end of completion
+run_simulation
+
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal breakpoint name. Specify a breakpoint name that exists in the simulation netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</disable_simulation_breakpoint>
+
+<disable_all_simulation_breakpoint>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: disable_all_simulation_breakpoint [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::simulator 1.0
+
+------------
+Description:
+------------
+
+Disables all breakpoints.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open one_wire
+
+initialize_simulation
+
+# Create breakpoint bp1 which will give warning message when simulation time reaches 10ns
+create_simulation_breakpoint -breakpoint bp1 -equation "TIME_EQ(10ns)" -action "GIVE_WARNING"
+
+# Create breakpoint bp2 which will give info message when time reaches 100ns
+create_simulation_breakpoint -breakpoint bp2 -equation "TIME_EQ(100ns)" -action "GIVE_INFO"
+
+# Create breakpoint bp3 which will give error message when time reaches 200ns
+create_simulation_breakpoint -breakpoint bp3 -equation "TIME_EQ(200ns)" -action "GIVE_ERROR"
+
+# All breakpoints will be disabled
+disable_all_simulation_breakpoint
+
+# Run simulation. It shouldn't break at time=10ns since bp1 has been disabled
+run_simulation -time 50ns
+
+enable_all_simulation_breakpoint
+
+# Run simulation to the end. Expect bp2 and bp3 to break at 100ns and 200ns since all breakpoints have been enabled
+run_simulation		
+
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</disable_all_simulation_breakpoint>
+
+<delete_simulation_breakpoint>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: delete_simulation_breakpoint [-h | -help] [-long_help] -breakpoint <breakpoint_name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -breakpoint <breakpoint_name>: Option to delete a specified breakpoint
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::simulator 1.0
+
+------------
+Description:
+------------
+
+Deletes a breakpoint with the specified name.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open one_wire
+
+initialize_simulation
+
+# Create breakpoint bp1 which will give warning message when simulation time reaches 10ns
+create_simulation_breakpoint -breakpoint bp1 -equation "TIME_EQ(10ns)" -action "GIVE_WARNING"
+
+# Create breakpoint bp2 which will give info message when in_br has 0 in value
+create_simulation_breakpoint -breakpoint bp2 -equation "EQUAL_TO(HPATH(|one_wire|in_br),BUS(0)))" -action "GIVE_INFO"
+
+# Create breakpoint bp3 which will give error message when both in_br and out_br have 1 in value
+create_simulation_breakpoint -breakpoint bp3 -equation "EQUAL_TO(HPATH(|one_wire|out_br),BUS(1)),EQUAL_TO(HPATH(|one_wire|in_br),BUS(1))" -action "GIVE_ERROR"
+
+# Before running simulation, disable bp2
+# Therefore it shouldn't break at time=0ns when in_br=0
+disable_simulation_breakpoint -breakpoint bp2
+
+# When running simulation for the first 50ns, 
+# expect to see bp1 breaks at time=10ns
+run_simulation -time 50ns
+
+delete_simulation_breakpoint -breakpoint bp1
+
+enable_simulation_breakpoint -breakpoint bp2
+
+# Since bp2 is enabled, expect to see bp2 breaks at time=100ns
+# when in_br becomes 0 again
+run_simulation -time 60ns
+
+# Run simulation until the end of completion
+run_simulation
+
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal breakpoint name. Specify a breakpoint name that exists in the simulation netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</delete_simulation_breakpoint>
+
+<delete_all_simulation_breakpoint>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: delete_all_simulation_breakpoint [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::simulator 1.0
+
+------------
+Description:
+------------
+
+Deletes all breakpoints.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open one_wire
+
+initialize_simulation
+
+# Create breakpoint bp1 which will give warning message when simulation time reaches 10ns
+create_simulation_breakpoint -breakpoint bp1 -equation "TIME_EQ(10ns)" -action "GIVE_WARNING"
+
+# Create breakpoint bp2 which will give info message when time reaches 100ns
+create_simulation_breakpoint -breakpoint bp2 -equation "TIME_EQ(100ns)" -action "GIVE_INFO"
+
+# Create breakpoint bp3 which will give error message when time reaches 200ns
+create_simulation_breakpoint -breakpoint bp3 -equation "TIME_EQ(200ns)" -action "GIVE_ERROR"
+
+# All breakpoints will be deleted
+delete_all_simulation_breakpoint
+
+# Run simulation to the end. There should not be any breaks since all breakpoints have been deleted
+run_simulation		
+
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</delete_all_simulation_breakpoint>
+
+<convert_vector>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: convert_vector [-h | -help] [-long_help] -file <file name> -format <VWF | TBL | CVWF | VCD>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -file <file name>: File name of the vector file to be converted
+        -format <VWF | TBL | CVWF | VCD>: Format of the vector file to be converted to
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::simulator 1.0
+
+------------
+Description:
+------------
+
+Convert vector file to another format (VWF, TBL, CVWF or VCD).  The
+original vector file remains unchanged.  New vector file in <format>
+is generated and located in the same directory as the original vector
+file.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+Example 1
+---------
+# Full vector file path is not given, assume it is located at 
+# current working directory
+convert_vector -file tctin4s.vwf -format tbl
+# Upon conversion, tctin4s.vwf remains unchanged, tctin4s.tbl 
+# will be generated at current working directory
+
+Example 2
+---------
+# Full vector file path is given
+convert_vector -file d:/quartus/designs/chiptrip/chiptrip.vwf -format tbl
+# chiptrip.tbl will be generated at d:/quartus/designs/chiptrip
+
+Example 3
+---------
+# Convert VWF into compressed version of CVWF
+convert_vector -file d:/quartus/designs/chiptrip/chiptrip.vwf -format cvwf
+# chiptrip.cvwf will be generated at d:/quartus/designs/chiptrip
+
+Example 4
+---------
+# Convert CVWF into text version of VWF
+convert_vector -file d:/quartus/designs/chiptrip/chiptrip.cvwf -format vwf
+# chiptrip.vwf will be generated at d:/quartus/designs/chiptrip
+
+Example 5
+---------
+# Convert CVWF into VCD
+convert_vector -file d:/quartus/designs/chiptrip/chiptrip.cvwf -format vcd
+# chiptrip.vcd will be generated at d:/quartus/designs/chiptrip
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal vector format. Specify vector format as "VWF", "CVWF" or "TBL".
+TCL_ERROR	1   	ERROR: Illegal vector file name. Specify a vector file that exists in the working directory.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</convert_vector>
+
+<compare_vector>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: compare_vector [-h | -help] [-long_help] [-all_signals <on | off>] [-begin <time with unit>] [-compare_clocks <clock name, period, offset, duty cycle, ON | OFF>] [-compare_rule_value_0 <0,1,X,L,H,W,Z,U and/or DC>] [-compare_rule_value_1 <0,1,X,L,H,W,Z,U and/or DC>] [-compare_rule_value_dc <0,1,X,L,H,W,Z,U and/or DC>] [-compare_rule_value_h <0,1,X,L,H,W,Z,U and/or DC>] [-compare_rule_value_l <0,1,X,L,H,W,Z,U and/or DC>] [-compare_rule_value_u <0,1,X,L,H,W,Z,U and/or DC>] [-compare_rule_value_w <0,1,X,L,H,W,Z,U and/or DC>] [-compare_rule_value_x <0,1,X,L,H,W,Z,U and/or DC>] [-compare_rule_value_z <0,1,X,L,H,W,Z,U and/or DC>] [-default_tolerance <time with unit>] [-end <time with unit>] [-expected <vector file name>] [-file <vector file name>] [-max_mismatches <positive number>] [-signals <signal name, ON | OFF, tolerance | <<default>>, ON | OFF>] [-trigger_mode <INPUT_EDGE | ALL_EDGE | SELECTED_EDGE>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -all_signals <on | off>: Option to compare or not compare all signals
+        -begin <time with unit>: Start time of waveform comparison
+        -compare_clocks <clock name, period, offset, duty cycle, ON | OFF>: List of comparison clock signals to be used to trigger waveform comparison, their clock period, offset, and duty cycle settings and waveform comparison trigger settings
+        -compare_rule_value_0 <0,1,X,L,H,W,Z,U and/or DC>: Option to specify the waveform comparison rule setting for signal value 0. Example: "0,L,DC"
+        -compare_rule_value_1 <0,1,X,L,H,W,Z,U and/or DC>: Option to specify the waveform comparison rule setting for signal value 1. Example: "1,H,DC"
+        -compare_rule_value_dc <0,1,X,L,H,W,Z,U and/or DC>: Option to specify the waveform comparison rule setting for signal value DC. Example: "0,1,X,L,H,W,Z,U,DC"
+        -compare_rule_value_h <0,1,X,L,H,W,Z,U and/or DC>: Option to specify the waveform comparison rule setting for signal value H. Example: "1,H,DC"
+        -compare_rule_value_l <0,1,X,L,H,W,Z,U and/or DC>: Option to specify the waveform comparison rule setting for signal value L. Example: "0,L,DC"
+        -compare_rule_value_u <0,1,X,L,H,W,Z,U and/or DC>: Option to specify the waveform comparison rule setting for signal value U. Example: "X,W,Z,U,DC"
+        -compare_rule_value_w <0,1,X,L,H,W,Z,U and/or DC>: Option to specify the waveform comparison rule setting for signal value W. Example: "X,W,U,DC"
+        -compare_rule_value_x <0,1,X,L,H,W,Z,U and/or DC>: Option to specify the waveform comparison rule setting for signal value X. Example: "X,W,U,DC"
+        -compare_rule_value_z <0,1,X,L,H,W,Z,U and/or DC>: Option to specify the waveform comparison rule setting for signal value Z. Example: "Z,U,DC"
+        -default_tolerance <time with unit>: Default comparison timing tolerance for all signals
+        -end <time with unit>: End time of waveform comparison
+        -expected <vector file name>: File name of the expected vector file
+        -file <vector file name>: File name of the current vector file
+        -max_mismatches <positive number>: Maximum mismatches reported in a waveform comparison
+        -signals <signal name, ON | OFF, tolerance | <<default>>, ON | OFF>: List of signals to be compared/not compared, their tolerance settings, and waveform comparison trigger settings
+        -trigger_mode <INPUT_EDGE | ALL_EDGE | SELECTED_EDGE>: Waveform comparison trigger mode--trigger comparison based on transition edges of all input signals only, all signals, or specified signals only
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::simulator 1.0
+
+------------
+Description:
+------------
+
+Compare two simulation waveform vectors or two waveform files.
+
+Note
+----
+a. The "-file" and "-expected" options are optional for waveform comparisons 
+   performed in Quartus II simulation. For comparisons performed outside 
+   of the simulation flow, these 2 options are required.		   
+b. Waveform comparisons are performed from 0ns to file end time in the 
+   expected waveform if neither the "-begin" or "-end" option is specified.
+c. To determine comparison scope, either the "-signals" or the "-all_signals" 
+   option must be specified. If both options are specified, the "-signals" 
+   option has higher precedence than the "-all_signals" option.
+
+Examples 1 - 15 illustrate different ways of manipulating the compare_vector
+command. Refer to example 16 to see how this command is used in the simulation
+flow.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+
+Example 1
+---------
+# Compare db/chiptrip.sim.vwf against expected results in chiptrip.vwf from
+# 10ns to 50ns. Any mismatches found beyond the time frame are ignored.
+# All signals are compared.
+compare_vector -file db/chiptrip.sim.vwf -expected chiptrip.vwf -begin 10ns -end 50ns -all_signals on
+
+Example 2
+---------
+# Compare db/chiptrip.sim.vwf against expected results in chiptrip.vwf.
+# Only signal "dir" and "ticket" are compared. Mismatches of signal "dir"
+# which come within 0.02ns earlier or later than the expected results are ignored.
+compare_vector -file db/chiptrip.sim.vwf -expected chiptrip.vwf -signals {dir, ON, 0.02ns} {ticket, ON}
+
+Example 3
+---------
+# Compare db/chiptrip.sim.vwf against expected results in chiptrip.vwf.
+# Signal settings for both parent and child exist, but parent settings 
+# are honored. Only "dir" and its children are compared. Mismatches
+# of signal "dir" and its children signals which come within 0.01ns 
+# earlier/later than the expected results are ignored.
+compare_vector -file db/chiptrip.sim.vwf -expected chiptrip.vwf -signals {dir[1], ON, 0.02ns} {dir, ON, 0.01ns}
+
+Example 4
+---------
+# Compare db/chiptrip.sim.vwf against expected results in chiptrip.vwf.
+# All signals will be compared. Comparison stops when 50 mismatches are
+# identified and reported.
+compare_vector -file db/chiptrip.sim.vwf -expected chiptrip.vwf -max_mismatches 50 -all_signals on
+
+Example 5
+---------
+# Compare db/chiptrip.sim.vwf against expected results in chiptrip.vwf.
+# All signals are compared. Any mismatches which come <=0.02ns earlier/ 
+# later than the expected results are ignored.
+compare_vector -file db/chiptrip.sim.vwf -expected chiptrip.vwf -default_tolerance 0.02ns -all_signals on
+
+Example 6
+---------
+# Compare db/chiptrip.sim.vwf against expected results in chiptrip.vwf.
+# Only "dir" and "ticket" are compared. Default compare tolerance of
+# 0.02ns applies to "dir". Signal "ticket" has its own tolerance settings
+# as 0.01ns.
+compare_vector -file db/chiptrip.sim.vwf -expected chiptrip.vwf -default_tolerance 0.02ns -signals {dir, ON} {ticket, ON; 0.01ns}
+
+Example 7
+---------
+# Compare db/chiptrip.sim.vwf against expected results in chiptrip.vwf.
+# All but signal "dir" are compared. Default compare tolerance of
+# 0.02ns applies to all compared signal except "ticket". Signal "ticket"
+# has its own tolerance settings set as 0.01ns.
+compare_vector -file db/chiptrip.sim.vwf -expected chiptrip.vwf -default_tolerance 0.02ns -all_signals on -signals {dir; OFF} {ticket; ON; 0.01ns}
+
+Example 8
+---------
+# Compare db/chiptrip.sim.vwf against expected results in chiptrip.vwf.
+# All but signal "dir" are compared. Default compare tolerance of
+# 0.02ns applies to all compared signal except "ticket". Signal "ticket"
+# has its own tolerance settings set as 0.01ns. Perform waveform comparison
+# on every input transition edges.
+compare_vector -file db/chiptrip.sim.vwf -expected chiptrip.vwf -default_tolerance 0.02ns -trigger_mode INPUT_EDGE -all_signals on -signals {dir; OFF} {ticket; ON; 0.01ns}
+
+Example 9
+---------
+# Compare db/chiptrip.sim.vwf against expected results in chiptrip.vwf.
+# All but signal "dir" are compared. Default compare tolerance of
+# 0.02ns applies to all compared signal except "ticket". Signal "ticket"
+# has its own tolerance settings set as 0.01ns. Perform waveform comparison
+# based on transition edges from selected signal "ticket".
+compare_vector -file db/chiptrip.sim.vwf -expected chiptrip.vwf -default_tolerance 0.02ns -trigger_mode SELECTED_EDGE -all_signals on -signals {dir; OFF} {ticket; ON; 0.01ns; ON}
+
+Example 10
+----------
+# Compare db/chiptrip.sim.vwf against expected results in chiptrip.vwf.
+# All but signal "dir" are compared. Default compare tolerance of
+# 0.02ns applies to all compared signal except "ticket". Signal "ticket"
+# has its own tolerance settings set as 0.01ns. Perform waveform comparison
+# based on transition edges from the specified waveform comparison clock signal "vc1".
+compare_vector -file db/chiptrip.sim.vwf -expected chiptrip.vwf -default_tolerance 0.02ns -trigger_mode SELECTED_EDGE -all_signals on -signals {dir; OFF} {ticket; ON; 0.01ns; OFF} -compare_clocks {vc1; 10ns; 2ns; 50; ON}
+
+Example 11
+----------
+# Compare db/chiptrip.sim.vwf against expected results in chiptrip.vwf.
+# Only signal "ticket" is compared with tolerance settings as 0.01ns.
+compare_vector -file db/chiptrip.sim.vwf -expected chiptrip.vwf -all_signals off -signals {ticket; ON; 0.01ns}
+
+Example 12
+----------
+# Compare db/chiptrip.sim.vwf against expected results in chiptrip.vwf.
+# Signal "ticket" are compared with tolerance settings as 0.01ns.
+# Signal "dir" will be compared using the default tolerance value 
+# that is only available during execution of the comparison process. 
+compare_vector -file db/chiptrip.sim.vwf -expected chiptrip.vwf -all_signals off -signals {ticket; ON; 0.01ns} {dir; ON; <<default>>}
+
+Example 13
+----------
+# Compare db/chiptrip.sim.vwf against expected results in chiptrip.vwf.
+# Signal "ticket" is compared with tolerance settings as 0.01ns.
+# Signal "dir" is compared using the default tolerance value that is
+# only available during execution of the comparison process. 
+compare_vector -file db/chiptrip.sim.vwf -expected chiptrip.vwf -all_signals off -signals {ticket; ON; 0.01ns} {dir; ON; ; OFF}
+
+Example 14
+----------
+# Compare db/chiptrip.sim.vwf against expected results in chiptrip.vwf.
+# Default compare tolerance of 0.02ns applies to signal "dir".
+# Signal "ticket" is compared with tolerance settings as 0.01ns.
+compare_vector -file db/chiptrip.sim.vwf -expected chiptrip.vwf -default_tolerance 0.02ns -all_signals off -signals {ticket; ON; 0.01ns} {dir; ON; ; OFF}
+
+Example 15
+----------
+# Compare db/chiptrip.sim.vwf against expected results in chiptrip.vwf.
+# Change comparison rule for signal value 1 - match 1 in expected results 
+# with values 1 and DC in compared vector file.
+# Signal "ticket" is compared with tolerance settings as 0.01ns.
+compare_vector -file db/chiptrip.sim.vwf -expected chiptrip.vwf -all_signals off -signals {ticket; ON; 0.01ns} -compare_rule_value_1 {1, DC}
+
+
+# Specify waveform compare settings in simulation flow
+Example 16
+----------
+project open chiptrip
+
+# Initialize simulator and turn on check_outputs option
+initialize_simulation -check_outputs on
+
+# Compare simulation results against source vector, from 20ns to 80ns.
+# Only signal "clock" and "ticket" are involved in comparison
+compare_vector -begin 20ns -end 80ns -signals {clock; ON} {ticket; ON}
+
+# Run simulation and waveform comparison will be performed upon simulation completion
+run_simulation
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal maximum mismatches. Specify maximum mismatches as a positive number.
+TCL_ERROR	1   	ERROR: Illegal option value. Specify status value as "on" or "off".
+TCL_ERROR	1   	ERROR: Illegal time value. Specify a legal time value with legal time unit (ps, ns, us, ms, s).
+TCL_ERROR	1   	ERROR: Illegal time frame. Specify a time frame with start time < end time.
+TCL_ERROR	1   	ERROR: Illegal timing tolerance value. Specify non-negative timing tolerance value with legal time unit (ps, ns, us, ms, s).
+TCL_ERROR	1   	ERROR: Illegal waveform comparison trigger mode. Specify trigger mode as "INPUT_EDGE", "ALL_EDGE" or "SELECTED_EDGE".
+TCL_ERROR	1   	ERROR: Illegal vector file name. Specify a vector file that exists in the working directory.
+TCL_ERROR	1   	ERROR: Illegal time value. Specify a time value within the vector file duration.
+TCL_ERROR	1   	ERROR: Illegal virtual clock duty cycle. Specify a virtual clock duty cycle of less than 100 and greater than 1.
+TCL_ERROR	1   	ERROR: Illegal virtual clock name. Specify a legal name which is not a duplicate of any existing comparison clock signals or waveform signals.
+TCL_ERROR	1   	ERROR: Illegal virtual clock offset. Specify a legal clock offset.
+TCL_ERROR	1   	ERROR: Illegal virtual clock period. Specify a legal clock period.
+TCL_ERROR	1   	ERROR: Illegal virtual clock trigger status. Specify status value as "on" or "off".
+TCL_ERROR	1   	ERROR: Following required options are missing: "-expected", "-file".
+TCL_ERROR	1   	ERROR: Following required option is missing: "-name".
+TCL_ERROR	1   	ERROR: Following required option is missing: "-period".
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</compare_vector>
+
+<partition_vector>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: partition_vector [-h | -help] [-long_help] -duration <duration> -file <file name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -duration <duration>: Fixed duration for the vector file to be partitioned
+        -file <file name>: File name of the vector file to be partitioned
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::simulator 1.0
+
+------------
+Description:
+------------
+
+Partitions a vector file into the specified fixed duration.  The
+original vector file remains unchanged.  New vector files are
+generated of the specified fixed duration and located in the same
+directory as the original vector file.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+Example 1
+---------
+# Partition a 1us vector file by fixed duration 400ns
+partition_vector -file tctin4s.vwf -duration 400ns
+# Upon completion, tctin4s.vwf remains unchanged, tctin4s.0_to_400ns.vwf, 
+# tctin4s.400_to_800ns.vwf and tctin4s.400_to_800ns.vwf will be generated 
+# at the same working directory
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal time value. Specify a legal time value with legal time unit (ps, ns, us, ms, s).
+TCL_ERROR	1   	ERROR: Illegal vector file name. Specify a vector file that exists in the working directory.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</partition_vector>
+
+<<<</1.0>>>>

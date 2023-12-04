@@ -1,0 +1,1615 @@
+//              Copyright 2006-2007 Mentor Graphics Corporation
+//                           All Rights Reserved.
+//
+//              THIS WORK CONTAINS TRADE SECRET AND PROPRIETARY
+//            INFORMATION WHICH IS THE PROPERTY OF MENTOR GRAPHICS
+//           CORPORATION OR ITS LICENSORS AND IS SUBJECT TO LICENSE
+//                                  TERMS.
+//
+//                   Questa Verification Library (QVL)
+//
+
+/*************************************************************************
+*
+* PURPOSE     This file is part of Questa Verification Library (QVL).
+*
+* DESCRIPTION This monitor checks the PCI Express interface for compliance
+*             with PCI Express Base specification - Physical layer
+*             specifications.
+*
+* REFERENCES  PCI Express Base Specification, Revision 1.0, July 22, 2002.
+*             PCI Express Base Specification, Revision 1.0a, April 15,2003.
+*             PCI Express Base Specification, Revision 1.1, March 28, 2005.
+*
+* USAGE       This sub-module is instantiated in the top level phy layer
+*             monitor module. This module tracks the link training and link
+*             width negotiation.
+*
+**************************************************************************/
+
+`ifdef ZiCwDebug
+`define ZiCwDebugDelay1 #1 
+`define ZiCwQuietIfNoCwDebug
+`else
+`define ZiCwDebugDelay1
+`define ZiCwQuietIfNoCwDebug -quiet
+`endif //ZiCwDebug
+
+`ifdef QVL_COVER_ON
+  `ifdef QVL_SV_COVERGROUP_OFF
+     // Do nothing
+  `else
+    `define QVL_SV_COVERGROUP
+  `endif
+
+  `ifdef QVL_MW_FINAL_COVER_OFF
+     // Do nothing
+  `else
+     `define QVL_MW_FINAL_COVER
+  `endif
+`endif
+
+`qvlmodule qvl_pci_express_link_training_monitor (
+                              reset,
+                              areset,
+                              clk,
+			      rx_clk,
+                              level_select,
+			      rx_level_select,
+			      skip_link_training,
+                              phy_layer_checks_disable,
+			      extended_fts_sequence,
+
+			      // Input ports  
+                            
+			      tx_valid,
+                              tx_eidle, 
+			      tx_code_violation,
+  // PCI_EXPRESS_GEN2 code start			 
+			      xmtd_eie_ordered_set,  // xmtd EIES ordered set
+			      xmtd_eie_sym,	     // xmtd EIE symbol		  
+  // PCI_EXPRESS_GEN2 code end						  
+                              xmtd_skip_ordered_set, 
+                              xmtd_idle_os, 
+                              xmtd_fts_os, 
+                              xmtd_ts1,
+                              xmtd_ts2, 
+                              xmtd_lane_num,
+                              xmtd_link_num,
+  // PCI_EXPRESS_GEN2 code start
+                              xmtd_gen1,            // xmtd gen1 data rate in TS1/TS2  
+                              xmtd_gen2,            // xmtd gen2 data rate in TS1/TS2 
+                              xmtd_autonomous,      // xmtd autonomous bit set in TS1/TS2
+                              xmtd_speed_change,    // xmtd speed change bit set in TS1/TS2
+                              xmtd_compliance_receive,  // xmtd compliance rx bit set in TS1/TS2
+                              xmtd_compliance_receive_loopback, // xmtd compliance rx with loopback bit set in TS1/TS2
+  // PCI_EXPRESS_GEN2 code end						  
+                              xmtd_reset,
+			      xmtd_loopback,
+			      xmtd_disable,
+			      xmtd_no_scramble,
+			      xmtd_idle_data,
+			      xmtd_compliance_pattern,
+                              tx_dllp_tlp_on_link,
+  // PCI_EXPRESS_GEN2 code start						  
+                              tx_tlp,
+                              tx_dllp,						  
+  // PCI_EXPRESS_GEN2 code end
+			      // Input ports
+
+			      int_rx_valid,
+                              int_rx_eidle,
+			      int_rx_10b_code_violation,
+  // PCI_EXPRESS_GEN2 code start			 
+			      int_rcvd_eie_ordered_set,   // rcvd EIES ordered set
+			      int_rcvd_eie_sym,		  // rcvd EIE symbol	  
+  // PCI_EXPRESS_GEN2 code end						  
+			      int_rcvd_skip_ordered_set,
+			      int_rcvd_idle_os,
+			      int_rcvd_fts_os,
+			      int_rcvd_ts1,
+			      int_rcvd_ts2,
+			      int_rcvd_lane_num,
+                              int_rcvd_link_num,
+  // PCI_EXPRESS_GEN2 code start
+                              int_rcvd_gen1,          // rcvd gen1 data rate in TS1/TS2
+                              int_rcvd_gen2,          // rcvd gen2 data rate in TS1/TS2
+                              int_rcvd_autonomous,    // rcvd autonomous bit set in TS1/TS2
+                              int_rcvd_speed_change,  // rcvd speed change bit set in TS1/TS2
+                              int_rcvd_compliance_receive, // rcvd compliance rx bit set in TS1/TS2
+                              int_rcvd_compliance_receive_loopback,// rcvd compliance rx with loopback bit set in TS1/TS2 
+  // PCI_EXPRESS_GEN2 code end						  
+			      int_rcvd_reset,
+			      int_rcvd_loopback,
+			      int_rcvd_disable,
+			      int_rcvd_no_scramble,
+			      int_rcvd_idle_data,
+			      rx_dllp_tlp_on_link,
+  // PCI_EXPRESS_GEN2 code start						  
+			      rx_tlp,
+                              rx_dllp,			  
+  // PCI_EXPRESS_GEN2 code end
+			      tx_n_fts_field_not_same,
+			      rx_n_fts_field_not_same,
+  // Additional gen1 code start							  
+		              tx_link_num_field_not_same,
+                              rx_link_num_field_not_same,
+			      tx_link_num,
+                              rx_link_num,			   
+  // Additional gen1 code end						  
+			      rx_n_fts,
+
+                              xmtd_pm_enter_command_flag,
+                              rcvd_pm_enter_command_flag,
+			      L0s_entry_supported,
+
+			      // Output ports
+
+			      disable_descramble,
+                              link_width_negotiated,
+  // PCI_EXPRESS_GEN2 code start
+                              current_speed_5gt,          // 0- current speed gen1, 1- current speed gen2
+			      stable_speed_5gt, 			  
+			      xmtd_eie_before_fts_count,  // Number of xmtd EIE before FTS
+                              rcvd_eie_before_fts_count,  // Number of rcvd EIE before FTS
+			      changed_speed_recovery, 			  
+  // PCI_EXPRESS_GEN2 code end						  
+                              tx_link_width,
+			      link_width_bitmap,
+                              tx_phy_status,
+			      enable_compliance_pattern_check,
+  // Additional gen1 code start			  						  
+			      ltssm_present_state,
+			      ltssm_next_state, 			  
+  // Additional gen1 code end			  						  
+			      deskew_control
+                              );
+
+  // Parameter declarations
+
+  parameter Constraints_Mode = 0;
+  parameter LINK_WIDTH = 2;
+  parameter PCI_EXPRESS_DEVICE_TYPE = 0;
+  parameter DOUBLE_DATA_RATE = 0;
+  parameter MIN_TS1_COUNT = 1024; // Minimum number of TS1 ordered sets
+				  // that should be transmitted before
+				  // Moving in to Polling.configuration state.
+  // PCI_EXPRESS_GEN2 code start
+  parameter ZI_L1_40NS_COUNT = 100; //Count corresponding to 40 ns(Default for 2.5GB) 
+  // Parameter PCI_EXPRESS_GEN2 enables generation2 features of monitor.
+  parameter PCI_EXPRESS_GEN2 = 0;
+  wire [31:0] pw_PCI_EXPRESS_GEN2 = PCI_EXPRESS_GEN2;
+  // PCI_EXPRESS_GEN2 code end
+
+  // Input port declarations
+
+  input reset;
+  input areset;
+  input clk;
+  input rx_clk;
+  input level_select;
+  input rx_level_select;
+  input skip_link_training; 
+  input phy_layer_checks_disable;
+  input extended_fts_sequence;
+  input [LINK_WIDTH - 1:0] tx_valid;
+  input [LINK_WIDTH - 1:0] int_rx_valid;
+  
+  input [LINK_WIDTH - 1:0] tx_eidle; // Electrical idle on tx
+  input [LINK_WIDTH - 1:0] tx_code_violation;
+  // PCI_EXPRESS_GEN2 code start			 
+  input	[LINK_WIDTH - 1:0] xmtd_eie_ordered_set;
+  input	[LINK_WIDTH - 1:0] xmtd_eie_sym;
+  // PCI_EXPRESS_GEN2 code end
+  input [LINK_WIDTH - 1:0] xmtd_skip_ordered_set; 
+  input [LINK_WIDTH - 1:0] xmtd_idle_os; 
+  input [LINK_WIDTH - 1:0] xmtd_fts_os; 
+  input [LINK_WIDTH - 1:0] xmtd_ts1;
+  input [LINK_WIDTH - 1:0] xmtd_ts2; 
+  input [LINK_WIDTH - 1:0] xmtd_lane_num;
+  input [LINK_WIDTH - 1:0] xmtd_link_num;
+  // PCI_EXPRESS_GEN2 code start
+  input [LINK_WIDTH - 1:0] xmtd_gen1; 
+  input [LINK_WIDTH - 1:0] xmtd_gen2;
+  input [LINK_WIDTH - 1:0] xmtd_autonomous; 
+  input [LINK_WIDTH - 1:0] xmtd_speed_change; 
+  input [LINK_WIDTH - 1:0] xmtd_compliance_receive; 
+  input [LINK_WIDTH - 1:0] xmtd_compliance_receive_loopback; 
+  // PCI_EXPRESS_GEN2 code end
+  input [LINK_WIDTH - 1:0] xmtd_reset;
+  input [LINK_WIDTH - 1:0] xmtd_loopback;
+  input [LINK_WIDTH - 1:0] xmtd_disable;
+  input [LINK_WIDTH - 1:0] xmtd_no_scramble;
+  input [LINK_WIDTH - 1:0] xmtd_idle_data;
+  input [LINK_WIDTH - 1:0] xmtd_compliance_pattern;
+  input tx_dllp_tlp_on_link;
+// PCI_EXPRESS_GEN2 code start
+  input tx_tlp;
+  input tx_dllp;
+// PCI_EXPRESS_GEN2 code end
+  input [LINK_WIDTH - 1:0] int_rx_eidle; // Electrical idle on rx
+  input [LINK_WIDTH - 1:0] int_rx_10b_code_violation;
+  // PCI_EXPRESS_GEN2 code start			 
+  input	[LINK_WIDTH - 1:0] int_rcvd_eie_ordered_set;
+  input	[LINK_WIDTH - 1:0] int_rcvd_eie_sym;
+  // PCI_EXPRESS_GEN2 code end
+  input [LINK_WIDTH - 1:0] int_rcvd_skip_ordered_set;
+  input [LINK_WIDTH - 1:0] int_rcvd_idle_os;
+  input [LINK_WIDTH - 1:0] int_rcvd_fts_os;
+  input [LINK_WIDTH - 1:0] int_rcvd_ts1;
+  input [LINK_WIDTH - 1:0] int_rcvd_ts2;
+  input [LINK_WIDTH - 1:0] int_rcvd_lane_num;
+  input [LINK_WIDTH - 1:0] int_rcvd_link_num;
+  // PCI_EXPRESS_GEN2 code start
+  input [LINK_WIDTH - 1:0] int_rcvd_gen1; 
+  input [LINK_WIDTH - 1:0] int_rcvd_gen2;
+  input [LINK_WIDTH - 1:0] int_rcvd_autonomous; 
+  input [LINK_WIDTH - 1:0] int_rcvd_speed_change; 
+  input [LINK_WIDTH - 1:0] int_rcvd_compliance_receive; 
+  input [LINK_WIDTH - 1:0] int_rcvd_compliance_receive_loopback; 
+  // PCI_EXPRESS_GEN2 code end
+  input [LINK_WIDTH - 1:0] int_rcvd_reset;
+  input [LINK_WIDTH - 1:0] int_rcvd_loopback;
+  input [LINK_WIDTH - 1:0] int_rcvd_disable;
+  input [LINK_WIDTH - 1:0] int_rcvd_no_scramble;
+  input [LINK_WIDTH - 1:0] int_rcvd_idle_data;
+  input rx_dllp_tlp_on_link;
+// PCI_EXPRESS_GEN2 code start
+  input rx_tlp;
+  input rx_dllp;
+// PCI_EXPRESS_GEN2 code end
+  input tx_n_fts_field_not_same;
+  input rx_n_fts_field_not_same;
+// Additional gen1 code start	
+  input tx_link_num_field_not_same;
+  input rx_link_num_field_not_same;
+  input [7:0] tx_link_num;
+  input [7:0] rx_link_num;
+// Additional gen1 code end
+  input [7:0] rx_n_fts;
+  input [2:0] xmtd_pm_enter_command_flag;
+  input [2:0] rcvd_pm_enter_command_flag;
+  input L0s_entry_supported;
+
+  // Output port declarations
+
+  output disable_descramble;
+  output link_width_negotiated;
+  // PCI_EXPRESS_GEN2 code start
+  output current_speed_5gt;
+  output stable_speed_5gt;
+  output [3:0] xmtd_eie_before_fts_count;
+  output [3:0] rcvd_eie_before_fts_count;
+  output changed_speed_recovery;
+  // PCI_EXPRESS_GEN2 code end
+  output [5:0] tx_link_width;
+  output [31:0] link_width_bitmap;
+  output tx_phy_status;
+  output enable_compliance_pattern_check;
+
+// Additional gen1 code start
+  output [4:0] ltssm_present_state; 
+  output [4:0] ltssm_next_state;
+// Additional gen1 code end
+
+  output deskew_control;
+
+  // Parameter declaration for states
+
+  parameter ZI_LTSSM_POLLING_ACTIVE_STATE = 0;
+  parameter ZI_LTSSM_POLLING_CFG_STATE = 1;
+  parameter ZI_LTSSM_POLLING_SPEED_STATE = 2;
+  parameter ZI_LTSSM_POLLING_COMPLIANCE_STATE = 3;
+  parameter ZI_LTSSM_CFG_RCVRCFG_STATE = 4;
+  parameter ZI_LTSSM_CFG_IDLE_STATE = 5;
+  parameter ZI_LTSSM_L0_STATE = 6;
+  parameter ZI_LTSSM_RECOVERY_LOCK_STATE = 7;
+  parameter ZI_LTSSM_RECOVERY_RCVRCFG_STATE = 8;
+  parameter ZI_LTSSM_RECOVERY_IDLE_STATE = 9;
+  parameter ZI_LTSSM_TX_L0s_STATE = 10;
+  parameter ZI_LTSSM_RX_L0s_STATE = 11;
+  parameter ZI_LTSSM_RESET_STATE = 12;
+  parameter ZI_LTSSM_LOOPBACK_STATE = 13;
+  parameter ZI_LTSSM_DISABLE_STATE = 14;
+  parameter ZI_LTSSM_CFG_COMPLETE_STATE = 15;
+
+  // For power management support.
+
+  parameter ZI_LTSSM_L1_STATE = 16;
+  parameter ZI_LTSSM_L2_STATE = 17;
+  parameter ZI_LTSSM_L1_ENTRY_STATE = 19;
+  parameter ZI_LTSSM_L2_ENTRY_STATE = 20;
+
+  // Gen2 recovery speed state
+  // PCI_EXPRESS_GEN2 code start
+  parameter ZI_LTSSM_RECOVERY_SPEED_STATE = 18; // New state in recovery
+  // PCI_EXPRESS_GEN2 code end
+
+  // Parameter declarations for statemachine 
+  // which tracks the link width negotiation
+
+  parameter ZI_NEGOTIATE_IDLE_STATE = 0;
+  parameter ZI_NEGOTIATE_LINK_NUM_STATE = 1;
+  parameter ZI_NEGOTIATE_LINK_NUM_DONE_STATE = 2;
+  parameter ZI_NEGOTIATE_LANE_NUM_STATE = 3;
+  parameter ZI_NEGOTIATE_LANE_NUM_DONE_STATE = 4;
+
+  parameter ZI_2MS_COUNT = 5000000; //Count corresponding to 2 ms 23 bits
+
+  // Register declarations for state variables
+
+  reg [4:0] ltssm_present_state_posedge;
+  reg [4:0] ltssm_present_state_negedge;
+  reg [4:0] ltssm_next_state;
+  reg [2:0] negotiate_present_state_posedge;
+  reg [2:0] negotiate_present_state_negedge;
+  reg [2:0] negotiate_next_state;
+
+  // Register declarations for state strings
+
+  reg [8*8-1:0] ltssm_present_state_string;
+  reg [8*8-1:0] ltssm_next_state_string;
+  reg [8*8-1:0] negotiate_present_state_string;
+  reg [8*8-1:0] negotiate_next_state_string; 
+
+  // Register declarations to store the link width negotiated
+  
+  reg [5:0] link_width_reg_posedge;
+  reg [5:0] link_width_reg_negedge;
+  
+  reg [5:0] link_width; 
+  // PCI_EXPRESS_GEN2 code start
+  reg [5:0] xmtd_link_width;
+  reg [5:0] rcvd_link_width;
+  // PCI_EXPRESS_GEN2 code end
+  reg link_width_negotiated;
+  reg tx_phy_status_posedge;
+  reg tx_phy_status_negedge;
+
+  // Register declarations for timeout counters
+
+  reg [22:0] two_ms_counter_posedge;
+  reg [22:0] two_ms_counter_negedge;
+  reg [3:0] rcvd_ts1_os_count_posedge; // TS1 count on any of the lanes
+  reg [3:0] rcvd_ts1_os_count_negedge;
+  reg [3:0] rcvd_ts1_os_all_lanes_count_posedge; // TS1 count on all lanes
+  reg [3:0] rcvd_ts1_os_all_lanes_count_negedge;
+  reg [4:0] rcvd_ts2_os_count_posedge;
+  reg [4:0] rcvd_ts2_os_count_negedge;
+  reg [4:0] rcvd_ts2_os_all_lanes_count_posedge; // TS2 count on all lanes
+  reg [4:0] rcvd_ts2_os_all_lanes_count_negedge;
+  reg [10:0] xmtd_ts1_os_count_posedge; // To count 1024 ts1 os
+  reg [10:0] xmtd_ts1_os_count_negedge;
+  reg [3:0] rcvd_idle_data_count_posedge;
+  reg [3:0] rcvd_idle_data_count_negedge;
+  // PCI_EXPRESS_GEN2 code start
+  // Some temp reg used in gen2 logic
+  reg [5:0] eie_counter_posedge;
+  reg [5:0] eie_counter_negedge;
+  reg first_ts2_in_reco_posedge;
+  reg first_ts2_in_reco_negedge;
+  reg [4:0] ts2_os_count_in_config_complete_posedge;
+  reg [4:0] ts2_os_count_in_config_complete_negedge;
+  reg [10:0] xmtd_ts2_os_count_posedge;
+  reg [10:0] xmtd_ts2_os_count_negedge;
+  reg [6:0] forty_ns_counter_posedge;
+  reg [6:0] forty_ns_counter_negedge;
+  reg idle_to_rlock_transitioned_posedge;
+  reg idle_to_rlock_transitioned_negedge;
+  reg current_speed_5gt_posedge;
+  reg current_speed_5gt_negedge;
+  reg prev_speed_5gt_posedge;
+  reg prev_speed_5gt_negedge;
+  reg stable_speed_5gt_posedge;
+  reg stable_speed_5gt_negedge;
+  reg successfull_speed_negotiation_posedge;
+  reg successfull_speed_negotiation_negedge;
+  reg changed_speed_recovery_posedge;
+  reg changed_speed_recovery_negedge;
+  // PCI_EXPRESS_GEN2 code end
+
+  // Additional gen1 code start	
+  reg [7:0] r_tx_link_num_posedge;
+  reg [7:0] r_tx_link_num_negedge;
+  reg [5:0] rcvd_ts1_with_disabled_count_posedge;
+  reg [5:0] rcvd_ts1_with_disabled_count_negedge;
+  reg [5:0] rcvd_ts1_with_loopbk_count_posedge;
+  reg [5:0] rcvd_ts1_with_loopbk_count_negedge;
+  reg [5:0] rcvd_ts1_with_reset_count_posedge;
+  reg [5:0] rcvd_ts1_with_reset_count_negedge;
+  // Additional gen1 code end
+
+  reg [LINK_WIDTH - 1:0] r_xmtd_lane_num_posedge;
+  reg [LINK_WIDTH - 1:0] r_xmtd_lane_num_negedge;
+  reg [LINK_WIDTH - 1:0] r_rcvd_lane_num_posedge;
+  reg [LINK_WIDTH - 1:0] r_rcvd_lane_num_negedge;
+  reg [LINK_WIDTH - 1:0] r_xmtd_link_num_posedge;
+  reg [LINK_WIDTH - 1:0] r_xmtd_link_num_negedge;
+  reg [LINK_WIDTH - 1:0] r_rcvd_link_num_posedge;
+  reg [LINK_WIDTH - 1:0] r_rcvd_link_num_negedge;
+  // PCI_EXPRESS_GEN2 code start
+  // temp reg used to store previous value
+  reg r_rcvd_gen2_rate_support_posedge;
+  reg r_rcvd_gen2_rate_support_negedge;
+  reg r_rcvd_upconfig_support_posedge;
+  reg r_rcvd_upconfig_support_negedge;
+  reg r_rcvd_eieos_posedge;
+  reg r_rcvd_eieos_negedge;
+  reg r_xmtd_gen2_rate_support_posedge;
+  reg r_xmtd_gen2_rate_support_negedge;
+  reg r_gen2_rate_in_reco_posedge;
+  reg r_gen2_rate_in_reco_negedge;
+  reg r_xmtd_upconfig_support_posedge;
+  reg r_xmtd_upconfig_support_negedge;
+  reg r_xmtd_eieos_posedge;
+  reg r_xmtd_eieos_negedge;
+  // PCI_EXPRESS_GEN2 code end
+  reg r_rcvd_loopback_posedge;
+  reg r_rcvd_loopback_negedge;
+  reg r_rcvd_no_scramble_posedge;
+  reg r_rcvd_no_scramble_negedge;
+  reg r_xmtd_loopback_posedge;
+  reg r_xmtd_loopback_negedge;
+  reg r_xmtd_no_scramble_posedge;
+  reg r_xmtd_no_scramble_negedge;
+  reg [LINK_WIDTH - 1:0] r_xmtd_ts1_posedge;
+  reg [LINK_WIDTH - 1:0] r_xmtd_ts1_negedge;
+  reg [LINK_WIDTH - 1:0] r_rcvd_ts1_posedge;
+  reg [LINK_WIDTH - 1:0] r_rcvd_ts1_negedge;
+  reg [LINK_WIDTH - 1:0] r_xmtd_ts2_posedge;
+  reg [LINK_WIDTH - 1:0] r_xmtd_ts2_negedge;
+  reg [LINK_WIDTH - 1:0] r_rcvd_ts2_posedge;
+  reg [LINK_WIDTH - 1:0] r_rcvd_ts2_negedge;
+
+  reg loopback_master_posedge;
+  reg loopback_master_negedge;
+  reg loopback_slave_posedge;
+  reg loopback_slave_negedge;
+  reg loopback_active_posedge;
+  reg loopback_active_negedge;
+  reg sixteen_ts2_count_enable_posedge;
+  reg sixteen_ts2_count_enable_negedge;
+  reg sixteen_idle_data_count_enable_posedge;
+  reg sixteen_idle_data_count_enable_negedge;
+  reg [4:0] sixteen_ts2_counter_posedge;
+  reg [4:0] sixteen_ts2_counter_negedge;
+  reg [4:0] sixteen_idle_data_counter_posedge;
+  reg [4:0] sixteen_idle_data_counter_negedge;
+  reg [5:0] xmtd_disable_count_posedge;
+  reg [5:0] xmtd_disable_count_negedge;
+  reg disable_descramble_posedge;
+  reg disable_descramble_negedge;
+  reg [4:0] ts_counter_with_link_n_lane_match_posedge;
+  reg [4:0] ts_counter_with_link_n_lane_match_negedge;
+
+  // These variable needs to be updated 
+
+  reg xmtd_data_rate;
+  reg r_xmtd_data_rate;
+  reg xmtd_fts_flag_posedge;
+  reg xmtd_fts_flag_negedge;
+
+  reg [12:0] fts_os_count_posedge;
+  reg [12:0] fts_os_count_negedge;
+
+  // PCI_EXPRESS_GEN2 code start
+  reg [3:0] xmtd_eie_before_fts_count_posedge;
+  reg [3:0] xmtd_eie_before_fts_count_negedge;
+  reg [3:0] rcvd_eie_before_fts_count_posedge;
+  reg [3:0] rcvd_eie_before_fts_count_negedge;
+  // PCI_EXPRESS_GEN2 code end
+
+  reg latch_xmtd_idle_os_all_lanes_posedge;
+  reg latch_xmtd_idle_os_all_lanes_negedge;
+  
+  reg latch_rcvd_idle_os_posedge;
+  reg latch_rcvd_idle_os_negedge;
+
+  reg link_reset_issued_on_downstream_posedge;
+  reg link_reset_issued_on_downstream_negedge;
+
+  // These flags will tell whether the transmitter enters into
+  // L0s state when the LTSSM state machine is in RX_L0s state.
+
+  reg transmitter_in_Los_flag_posedge;
+  reg transmitter_in_Los_flag_negedge;
+
+  // Wire declarations for the combo block
+
+  wire rcvd_ts1_ts2;
+  wire rcvd_ts1_all_lanes;
+  wire rcvd_ts2_all_lanes;
+  wire rcvd_idle_data_all_lanes;
+  wire rcvd_8_idle_data_flag;
+  wire xmtd_16_idle_data_flag;
+
+  wire xmtd_idle_os_all_lanes;
+  wire rcvd_idle_os_all_lanes;
+  // PCI_EXPRESS_GEN2 code start
+  wire xmtd_eie_os_all_lanes;
+  wire rcvd_eie_os_all_lanes;
+  // PCI_EXPRESS_GEN2 code end
+  wire xmtd_skp_os_all_lanes;
+  wire rcvd_skp_os_all_lanes;
+  wire xmtd_idle_data_all_lanes;
+  wire xmtd_ts2_all_lanes;
+  wire xmtd_ts1_all_lanes;
+
+  wire [4:0] ltssm_present_state;
+  wire [2:0] negotiate_present_state;
+
+  wire [22:0] two_ms_counter;
+  wire two_ms_timeout;
+  wire enable_two_ms_counter;
+  wire [3:0] rcvd_ts1_os_count;
+  wire [3:0] rcvd_ts1_os_all_lanes_count;
+  wire [4:0] rcvd_ts2_os_count;
+  wire [4:0] rcvd_ts2_os_all_lanes_count;
+  wire [10:0] xmtd_ts1_os_count;
+  wire [3:0] rcvd_idle_data_count;
+  // PCI_EXPRESS_GEN2 code start
+  wire [5:0] eie_counter;
+  wire first_ts2_in_reco;
+  wire [4:0] ts2_os_count_in_config_complete;
+  wire [10:0] xmtd_ts2_os_count;
+  wire config_idle_illegal_timedout;
+  wire reco_speed_illegal_transition;
+  wire [6:0] forty_ns_counter;
+  wire l1_idle_less_than_40_ns;
+  wire idle_to_rlock_transitioned;
+  // variable used to synchronize recovery substates 
+  wire successfull_speed_negotiation;
+  wire prev_speed_5gt;
+  // PCI_EXPRESS_GEN2 code end
+
+  wire [5:0] link_width_reg;
+  wire loopback_master;
+  wire loopback_slave;
+  wire loopback_active;
+  wire [4:0] sixteen_ts2_counter;
+  wire [4:0] sixteen_idle_data_counter;
+  wire [5:0] xmtd_disable_count;
+  wire sixteen_ts2_count_enable;
+  wire sixteen_idle_data_count_enable;
+  wire [4:0] ts_counter_with_link_n_lane_match;
+   
+  // Additional gen1 code start	
+  wire [7:0] r_tx_link_num;
+  wire [5:0] rcvd_ts1_with_disabled_count;
+  wire [5:0] rcvd_ts1_with_loopbk_count;
+  wire [5:0] rcvd_ts1_with_reset_count;
+  // Additional gen1 code end
+// 			   
+  wire [LINK_WIDTH - 1:0] r_xmtd_lane_num;
+  wire [LINK_WIDTH - 1:0] r_rcvd_lane_num;
+  wire [LINK_WIDTH - 1:0] r_xmtd_link_num;
+  wire [LINK_WIDTH - 1:0] r_rcvd_link_num;
+  wire [LINK_WIDTH - 1:0] r_xmtd_ts1;
+  wire [LINK_WIDTH - 1:0] r_rcvd_ts1;
+  wire [LINK_WIDTH - 1:0] r_xmtd_ts2;
+  wire [LINK_WIDTH - 1:0] r_rcvd_ts2;
+  // PCI_EXPRESS_GEN2 code start
+  wire r_rcvd_gen2_rate_support;
+  wire r_rcvd_upconfig_support;
+  wire r_xmtd_gen2_rate_support;
+  wire r_gen2_rate_in_reco;
+  wire r_xmtd_upconfig_support;
+  wire r_rcvd_eieos;
+  wire r_xmtd_eieos;
+  // PCI_EXPRESS_GEN2 code end
+  wire r_rcvd_loopback;
+  wire r_rcvd_no_scramble;
+  wire r_xmtd_loopback;
+  wire r_xmtd_no_scramble;
+
+  wire link_reset_on_upstream_direction;
+  wire link_reset_issued_on_downstream;
+
+  wire no_higher_data_rate;
+  wire exit_configuration;
+  wire link_directed_to_config;
+
+  // Enhancements
+
+  wire downstream_port;
+  wire xmtd_width_error;
+  wire rcvd_width_error;
+  wire proposed_width_error;
+  wire counter_proposed_width_error;
+  wire change_in_link_width_after_ts2;
+  wire counter_proposed_width_greater_error;
+  wire xmtd_fts_flag;
+  wire [12:0] fts_os_count;
+  wire fts_count_error; // The number of FTS sequences detected should be
+                        // equal to n_fts or 4096 if extended fts sequence
+                        // is enabled
+
+  // A SKP ordered set should not be transmitted within the first
+  // N_FTS number of FTS ordered sets.
+
+  wire skp_within_n_fts; 
+
+  wire latch_xmtd_idle_os_all_lanes;
+  wire latch_rcvd_idle_os;
+
+  wire [LINK_WIDTH - 1:0] rx_valid;
+  wire [LINK_WIDTH - 1:0] rx_eidle; 
+  wire [LINK_WIDTH - 1:0] rx_10b_code_violation;
+  // PCI_EXPRESS_GEN2 code start
+  wire [LINK_WIDTH - 1:0] rcvd_eie_ordered_set;
+  wire [LINK_WIDTH - 1:0] rcvd_eie_sym;
+  // PCI_EXPRESS_GEN2 code end
+  wire [LINK_WIDTH - 1:0] rcvd_skip_ordered_set;
+  wire [LINK_WIDTH - 1:0] rcvd_idle_os;
+  wire [LINK_WIDTH - 1:0] rcvd_fts_os;
+  wire [LINK_WIDTH - 1:0] rcvd_ts1;
+  wire [LINK_WIDTH - 1:0] rcvd_ts2;
+  wire [LINK_WIDTH - 1:0] rcvd_lane_num;
+  wire [LINK_WIDTH - 1:0] rcvd_link_num;
+  // PCI_EXPRESS_GEN2 code start
+  wire [LINK_WIDTH - 1:0] rcvd_gen1; 
+  wire [LINK_WIDTH - 1:0] rcvd_gen2;
+  wire [LINK_WIDTH - 1:0] rcvd_autonomous; 
+  wire [LINK_WIDTH - 1:0] rcvd_speed_change; 
+  wire [LINK_WIDTH - 1:0] rcvd_compliance_receive; 
+  wire [LINK_WIDTH - 1:0] rcvd_compliance_receive_loopback; 
+  // PCI_EXPRESS_GEN2 code end
+  wire [LINK_WIDTH - 1:0] rcvd_reset;
+  wire [LINK_WIDTH - 1:0] rcvd_loopback;
+  wire [LINK_WIDTH - 1:0] rcvd_disable;
+  wire [LINK_WIDTH - 1:0] rcvd_no_scramble;
+  wire [LINK_WIDTH - 1:0] rcvd_idle_data;
+
+  // Commented as modified for gen2
+  //wire [LINK_WIDTH * 15 - 1:0] latch_in_data;
+  ///reg [LINK_WIDTH * 15 - 1:0]  latch_out_data_posedge;
+  //reg [LINK_WIDTH * 15 - 1:0]  latch_out_data_negedge;
+  //wire [LINK_WIDTH * 15 - 1:0] latch_out_data;
+
+  // PCI_EXPRESS_GEN2 code start
+  wire [LINK_WIDTH * 23 - 1:0] latch_in_data;
+  reg [LINK_WIDTH * 23 - 1:0]  latch_out_data_posedge;
+  reg [LINK_WIDTH * 23 - 1:0]  latch_out_data_negedge;
+  wire [LINK_WIDTH * 23 - 1:0] latch_out_data;
+  // PCI_EXPRESS_GEN2 code end
+
+  wire [LINK_WIDTH - 1:0] rx_lanes_bitmap;
+  wire [LINK_WIDTH - 1:0] tx_lanes_bitmap;
+
+  // Wire which will indicate that electrical idle is
+  // detected on the configured lanes.
+
+  wire rcvd_eidle_on_all_lanes; 
+  wire tx_eidle_active_lanes;
+  wire rx_eidle_active_lanes;
+
+  // This flag distinguishes between Transmitter L0s state and
+  // Receiver L0s state.
+
+  wire transmitter_in_Los_flag;
+  
+  // Integer declarations
+
+  integer i;
+
+`protected
+
+    MTI!#~,aKr[{e]o$+aj{=Rn$>jAU{!qb!}~]"NYYa[qTn7[:I~UO7~nnk5l^k[Z[]A{r3osDol,}
+    _gt-'o*#5;j}~msD}5n]-V^8\lu?xkW\w5?->*2>=2I<3YV~T$JKo3R?E\^[d1JI<EjrD:%-rJ[e
+    _)kA_3G+{VexKz)[;prE?XB^RWj;he;>#^<Wa?XJ75F^paorsT+woROjp;RK-l#45\w2n$R3DJ@B
+    z'oamoe^'EY>?}~[\?E@cCK^wWV+sA1+e}jn[T,wmEG,G~D7IR^@TGeuv#j-HHam]+wErwHwnjG~
+    Q?R_*HTIDZ<D;*|pVTU}Cj>Uepxvs'?7RnWI_Cw%#T2szlAn;5<]7]e{2tH*<[bs"o7zxk5o#'^m
+    AA+pDmr,@CTX*peCHwDw~rQo?&upCe=Y!_n^k'5Y>^o,KQD!Y^De2Or#V\2hi7k\xV_]K{D-=Zw$
+    QWA[c"vyww@v%v7-#AevliV}u_CK@.H1+jC'+z[V_WI%WHol6x<{\y'}CO\l+'O,7]HVnWhH+!Uv
+    3!oU'VU?zGmEsTH-<<[vkC>Z'Ulv}Tu|)i{j}!{{UBv[plR]nouD;C]Zuqo_z=rQ<p>_5_?C~}><
+    <;Bv~vzB1^}Q#Xp$<;[X2$pH6l57i{V]EEIjkkD'H?,?wmv!Co#!Y$>>}YC\ixuD@CrA*pnOD{QJ
+    Wlj<}ewv#Cz$Q|+IBIvT3e7v'KxG[Y|#C?~rUV_U\!K1?~$CvRB"irEXpTUe1e~l1$#12el_6@z,
+    _GiRk}mRnrC>^1jVCY->wo2,]Cr^$C9YGxAHnHKpx!aK=wQl\iZEE[@YjQrWsrusCk\sJCI)mYm!
+    h=+--r~,5^Un5y5]*s&o*+#rr7sG{1VBr+[[L9U=!xN}^!'RRiUq-I!k$*su?xY2>=ssEX[3[$1a
+    cU5V$w{+$zE7CD2a!AO[wGnmQ}$jvj\~wslp@^dxO+z^I'aiTeW\9sV1ZS1w7AoQXxI^Y3W}DIGx
+    rkF,@He=o'?y]}X_{[=o+X;?yIQ3,~l$[T+v@H-Bp@r"<ReWu>[##^WB$I>}BlQWGuu>1nlIf<jO
+    X2n<YTR*,,Oao>+CO@>_WrT*kda5Qu$iH?t-$GTYVUEBX1l(xuKlj}J_*2U2R$Qv#Y[ox'5!I?Uv
+    -a\oC.QAYujC\oKx[_L=A_uy7Q;~3RH<aH_KxW{ApU-aTX_EGW<An,,=*5J<PqbQ\1Z>'=n$[s2b
+    WI@Q>j7c+\T;**IJ,}VsSAoDpWo,XkzDk4mTs3l!W1>jX>GCB[r'-x\E1B;RpWtCnwBI'pww=--'
+    >psHC'eY=UA/13jpRz{-'Y!5lC5^$<nAE=<OIQ3V#IUZ9Q7~<w-~wg3z~Z}<>^p'\k]KQo5V!l$p
+    AoA=C515lY<s<opEo'avE>zkKQEo+K3$~+s~pI[Z;YlU@>k,+D>'i+i'KDCI1@s+srvXjp<OG-D5
+    nBe~s^3eEoH{ma+zRQ;$Al-Yvl;I!*I]_DB;^$$z'yoi]v{}<{WH{QmAWvAaa=Qe{'QYuei\kjN|
+    1n<xU71EpJYO+V37+zK-URsoJYKYB3Ynaa_}r'5m{pBsUari?X*Zn$;ZW'5j9'px}z{W]no>T*l;
+    ^WvwzQxV@\VRBW=Qjw\Cp'YeC"VT!']7AC+z[lQnKl1#ewC>G*YGOOgL"UrX'+OGpV*Qal3,7lAE
+    }[n'Cj*nT>EAxKnzVsa\-Bua;e{Yr'$#Z'1AeRLq<TBsmBX7RKBYU|YzsYj=<@O1\Ba'x^z3QsoR
+    wxUoGxf]-ap"5jv#UY<r1'-{^j2}BB]k!Tslowpp~}{n<D^r$*AOOV\-Opu,G+p~U&p{>HR\[oV3
+    BEIX[BKC<>?_3~i<w*UeQW$CKmXD\Rg;V5aZ5G,J5wR{n+Vp+I$_{QZ^[=Js/<Q\E,@@wi,n$7rz
+    5$J*W^Z^B;=KJVIU]{lnknrn,7X7I7@OEecixvu8}DTBd<snO#v{GH\X$'ZTn,-!ZCDW[!O_nIW3
+    {)@wT*{=>;bHEo,\}izyh"!+QY0{-OjBx*U-5*+g$C!Q}?xvY7^C>{nHb:KBG*[1a5Z72@YkpJ]T
+    rrvURB?p73!C25}/B~X-=Ao[KEEkDYvzV$QQGUn2aCl1$A;x$5vk$@1jmQRZ_:B=sUvkBeRBG,j*
+    5GjBrGLv?=?y[5uJ0z!UB?_}335XldkOOCiG[EI#BCNRK;ny*>1eckX\e}!-wpJ^{ZT2
+`endprotected
+  // Wire assignments
+
+  // rcvd_ts1_ts2 is asserted whenever a TS1 or TS2 ordered set
+  // is received on any of the lanes.
+  
+  assign rcvd_ts1_ts2 = (|rcvd_ts1 || |rcvd_ts2);
+
+  // rcvd_ts1_all_lanes is asserted whenever a ts1 ordered set is
+  // is received on all of the configured lanes.
+
+  assign rcvd_ts1_all_lanes = ((rcvd_ts1 & link_width_bitmap) === 
+                                link_width_bitmap && |link_width_bitmap);
+
+  // rcvd_ts2_all_lanes is asserted whenever a ts2 ordered set is 
+  // is received on all of the configured lanes. 
+
+  assign rcvd_ts2_all_lanes = ((rcvd_ts2 & link_width_bitmap) ===  
+                                link_width_bitmap && |link_width_bitmap); 
+
+  // xmtd_ts2_all_lanes is asserted whenever a ts2 ordered set is
+  // is transmitted on all of the configured lanes.
+
+  assign xmtd_ts2_all_lanes = ((xmtd_ts2 & link_width_bitmap) ===
+			      link_width_bitmap && |link_width_bitmap);
+
+  // xmtd_ts1_all_lanes is asserted whenever a ts1 ordered set is
+  // is transmitted on all of the configured lanes.
+
+  assign xmtd_ts1_all_lanes = ((xmtd_ts1 & link_width_bitmap) ===
+                              link_width_bitmap && |link_width_bitmap);
+
+  // rcvd_idle_data_all_lanes is asserted whenever idle data is received
+  // on all the configured lanes
+
+  assign rcvd_idle_data_all_lanes = ((rcvd_idle_data & link_width_bitmap)
+                   === link_width_bitmap && |link_width_bitmap);
+
+  // xmtd_idle_data_all_lanes is asserted whenever idle data is transmitted 
+  // on all the configured lanes
+
+  assign xmtd_idle_data_all_lanes = ((xmtd_idle_data & link_width_bitmap)
+                   === link_width_bitmap && |link_width_bitmap); 
+
+  // wire rcvd_8_idle_data_flag is asserted whenever idle data
+  // is received on all of the configured lanes.
+
+  assign rcvd_8_idle_data_flag = (rcvd_idle_data_count === 4'b1000);
+
+  // wire xmtd_16_idle_data_flag is asserted whenever 16 consecutive idle
+  // data symbols are transmitted after receiving one idle data symbol.
+
+  assign xmtd_16_idle_data_flag = (sixteen_idle_data_counter === 5'b10000);
+
+  // xmtd_idle_os_all_lanes is asserted whenever IDL
+  // ordered set is transmitted on all of the configured lanes.
+
+  assign xmtd_idle_os_all_lanes = 
+         ((link_width_bitmap & xmtd_idle_os) == 
+	    link_width_bitmap && |link_width_bitmap);
+
+  assign rcvd_idle_os_all_lanes =
+         ((link_width_bitmap & rcvd_idle_os) ==
+            link_width_bitmap && |link_width_bitmap); 
+
+  // enable_two_ms_counter inhibits two_ms_counter. 2ms counter is enabled
+  // whenever the LTSSM state machine is in the POLLING.CONFIGURATION
+  // CONFIGURATION.RCVRCFG, CONFIGURATION.IDLE, RECOVERY.RCVRCFG, RECOVERY.IDLE
+  // states. Also, the counter is enabled during width negotiation.
+
+  assign enable_two_ms_counter = 
+                  (ltssm_next_state === ZI_LTSSM_CFG_IDLE_STATE ||
+		   ltssm_next_state === ZI_LTSSM_RECOVERY_IDLE_STATE ||
+                  ltssm_next_state === ZI_LTSSM_DISABLE_STATE ||
+                  negotiate_next_state === ZI_NEGOTIATE_LINK_NUM_STATE ||
+                  negotiate_next_state === ZI_NEGOTIATE_LINK_NUM_DONE_STATE);
+
+  // two_ms_timeout is asserted whenever two_ms_counter reaches the
+  // ZI_2MS_COUNT value.
+
+  assign two_ms_timeout = two_ms_counter === ZI_2MS_COUNT;
+
+  // PCI_EXPRESS_GEN2 code start
+  // Wires used in assertion as test_expr
+  assign config_idle_illegal_timedout = 
+           (PCI_EXPRESS_GEN2 == 1 && xmtd_ts1_all_lanes && |xmtd_link_num === 1'b0
+            && ltssm_present_state === ZI_LTSSM_CFG_IDLE_STATE && ltssm_next_state === ZI_LTSSM_RECOVERY_LOCK_STATE);
+  assign reco_speed_illegal_transition =
+	   (PCI_EXPRESS_GEN2 == 1 && ltssm_present_state === ZI_LTSSM_RECOVERY_RCVRCFG_STATE 
+            && ltssm_next_state == ZI_LTSSM_RECOVERY_SPEED_STATE && xmtd_ts2_os_count < 31);
+  assign xmtd_eie_os_all_lanes =
+	   (PCI_EXPRESS_GEN2 == 1 && ((link_width_bitmap & xmtd_eie_ordered_set) ===
+	   link_width_bitmap && |link_width_bitmap)); 
+  assign rcvd_eie_os_all_lanes =
+	   (PCI_EXPRESS_GEN2 == 1 && ((link_width_bitmap & rcvd_eie_ordered_set) ===
+	    link_width_bitmap && |link_width_bitmap));
+  assign l1_idle_less_than_40_ns = 
+	   (PCI_EXPRESS_GEN2 == 1 && current_speed_5gt === 1'b1 && ltssm_present_state === ZI_LTSSM_L1_STATE 
+	    && ltssm_next_state !== ZI_LTSSM_L1_STATE && forty_ns_counter < ZI_L1_40NS_COUNT - 1);
+   // PCI_EXPRESS_GEN2 code end
+
+  assign xmtd_skp_os_all_lanes =
+	 ((link_width_bitmap & xmtd_skip_ordered_set) === 
+	   link_width_bitmap && |link_width_bitmap);
+ 
+  assign rcvd_skp_os_all_lanes =
+	   ((link_width_bitmap & rcvd_skip_ordered_set) ===
+	   link_width_bitmap && |link_width_bitmap);
+
+  assign link_reset_on_upstream_direction =
+	  ((PCI_EXPRESS_DEVICE_TYPE == 0 || PCI_EXPRESS_DEVICE_TYPE == 1 ||
+	  PCI_EXPRESS_DEVICE_TYPE == 5 || PCI_EXPRESS_DEVICE_TYPE == 7) &&
+	  |xmtd_reset);
+
+  // Wire no_higher_data_rate is always asserted in this version of protocol.
+
+  assign no_higher_data_rate = 1'b1;
+
+  // Wire exit_configuration is asserted whenever all the lanes receive two
+  // consecutive TS1/TS2 ordered sets with link and lane numbners set to
+  // PAD. This wire is looked in only some states.
+
+  assign exit_configuration = (|r_rcvd_ts1 && |rcvd_ts1 && 
+		   |r_rcvd_lane_num === 1'b0 && |rcvd_lane_num === 1'b0 &&
+		   |r_rcvd_link_num === 1'b0 && |rcvd_link_num === 1'b0 &&
+		   negotiate_present_state !== ZI_NEGOTIATE_IDLE_STATE &&
+		   negotiate_present_state !== ZI_NEGOTIATE_LINK_NUM_STATE);
+
+  // A link is said to be directed to configuration, when TS1 ordered sets
+  // are tranmsmitted with lane numbers set to pad.
+
+  assign link_directed_to_config = 
+                   (xmtd_ts1_all_lanes && |xmtd_lane_num === 1'b0 && ts_counter_with_link_n_lane_match >= 5'd1);
+
+  assign downstream_port = (PCI_EXPRESS_DEVICE_TYPE == 4 ||
+                            PCI_EXPRESS_DEVICE_TYPE == 6);
+
+  // proposed_width_error is asserted whenever the proposed or counter
+  // proposed width is not any of the widths specified in the protocol.
+
+  assign xmtd_width_error = 
+	    ((xmtd_lane_num !== 1'b1 && xmtd_lane_num !== 2'b11 &&
+	     xmtd_lane_num !== 4'hF && xmtd_lane_num !== 8'hFF &&
+	     xmtd_lane_num !== 12'hFFF && xmtd_lane_num !== 16'hFFFF &&
+	     xmtd_lane_num !== 32'hFFFF_FFFF && xmtd_lane_num !== 32'b0) || 
+             (xmtd_link_num !== 1'b1 && xmtd_link_num !== 2'b11 &&
+             xmtd_link_num !== 4'hF && xmtd_link_num !== 8'hFF &&
+             xmtd_link_num !== 12'hFFF && xmtd_link_num !== 16'hFFFF &&
+             xmtd_link_num !== 32'hFFFF_FFFF && xmtd_link_num !== 32'b0));
+
+  assign rcvd_width_error =
+            ((rcvd_lane_num !== 1'b1 && rcvd_lane_num !== 2'b11 && 
+             rcvd_lane_num !== 4'hF && rcvd_lane_num !== 8'hFF && 
+             rcvd_lane_num !== 12'hFFF && rcvd_lane_num !== 16'hFFFF && 
+             rcvd_lane_num !== 32'hFFFF_FFFF && rcvd_lane_num !== 32'b0) ||
+             (rcvd_link_num !== 1'b1 && rcvd_link_num !== 2'b11 && 
+             rcvd_link_num !== 4'hF && rcvd_link_num !== 8'hFF && 
+             rcvd_link_num !== 12'hFFF && rcvd_link_num !== 16'hFFFF && 
+             rcvd_link_num !== 32'hFFFF_FFFF && rcvd_link_num !== 32'b0));
+
+  assign proposed_width_error = 
+            ((downstream_port === 1'b1 && xmtd_width_error === 1'b1) ||
+            (downstream_port === 1'b0 && rcvd_width_error === 1'b1));
+
+  assign counter_proposed_width_error =
+            ((downstream_port === 1'b1 && rcvd_width_error === 1'b1) || 
+            (downstream_port === 1'b0 && xmtd_width_error === 1'b1));
+
+  // change_in_link_width_after_ts2 is asserted if the number of lanes on
+  // which valid lane number is detected changes after detecting the TS2
+  // ordered sets.
+ 
+  assign change_in_link_width_after_ts2 =
+            (|xmtd_ts2 === 1'b1 && ((r_xmtd_lane_num !== xmtd_lane_num) ||
+             (xmtd_lane_num !== r_rcvd_lane_num)) &&
+             ltssm_next_state !== ZI_LTSSM_RECOVERY_LOCK_STATE &&
+             ltssm_next_state !== ZI_LTSSM_RECOVERY_RCVRCFG_STATE &&
+	     ltssm_next_state !== ZI_LTSSM_POLLING_CFG_STATE);
+
+  assign counter_proposed_width_greater_error =
+         (|xmtd_ts1 === 1'b1 && downstream_port === 1'b0 && 
+	 ((xmtd_lane_num > r_rcvd_lane_num && r_xmtd_lane_num !== xmtd_lane_num)
+       ||(xmtd_link_num > r_rcvd_link_num && r_xmtd_link_num !== xmtd_link_num)));
+
+
+  // Specification says that upto one full FTS ordered set may be sent before
+  // transmitting N_FTS number of FTS ordered sets. The number of FTS ordered
+  // sets transmitted should be equal to N_FTS field of the received TS1/TS2
+  // ordered sets.
+
+  assign fts_count_error =
+           (((extended_fts_sequence === 1'b0 &&
+              fts_os_count === (rx_n_fts + 1'b1)) ||
+           (extended_fts_sequence === 1'b1 && fts_os_count === 4096)) &&
+	   |xmtd_fts_os);
+
+  // No SKP ordered sets can be inserted before all FTS ordered sets 
+  // defined by the agreed upon N_FTS.
+
+  assign skp_within_n_fts =
+           (fts_os_count !== 0 && fts_os_count < rx_n_fts &&
+            (|xmtd_skip_ordered_set === 1'b1));
+
+  assign rx_lanes_bitmap = (|int_rcvd_ts1) ? int_rcvd_ts1 :
+			   ((|int_rcvd_ts2) ? int_rcvd_ts2 : 8'b0);
+  assign tx_lanes_bitmap = (|xmtd_ts1) ? xmtd_ts1 :
+			   ((|xmtd_ts2) ? xmtd_ts2 : 8'b0);
+
+  // Assert when elecrtical idle is detected on all of the configured
+  // lanes. Look for eidle on configured lanes. Lanes which are not
+  // part of the configured link will anyway stay in the electrical
+  // idle state
+
+  assign rcvd_eidle_on_all_lanes = ((rx_eidle & link_width_bitmap) ===
+				   link_width_bitmap && |link_width_bitmap);
+
+  // Wires which will indicate that an electrical idle condition is
+  // detected on the active transmit/receive lanes
+
+  assign tx_eidle_active_lanes = (|(r_xmtd_ts1 & tx_eidle));
+  assign rx_eidle_active_lanes = (|(r_rcvd_ts1 & rx_eidle));
+
+  //-----------------------------------------------------------------------
+  // Commented as modified for gen2
+  //assign latch_in_data = { int_rx_valid, int_rx_eidle, int_rx_10b_code_violation,
+  //                         int_rcvd_skip_ordered_set, 
+  //                         int_rcvd_idle_os, int_rcvd_fts_os,
+  //                         int_rcvd_ts1, int_rcvd_ts2, int_rcvd_lane_num,
+  //                         int_rcvd_link_num, int_rcvd_reset, int_rcvd_loopback,
+  //                         int_rcvd_disable, int_rcvd_no_scramble,
+  //                         int_rcvd_idle_data};
+  //assign {rx_valid, rx_eidle, rx_10b_code_violation,
+  //        rcvd_skip_ordered_set, rcvd_idle_os, rcvd_fts_os, rcvd_ts1, rcvd_ts2,
+  //        rcvd_lane_num, rcvd_link_num, rcvd_reset, rcvd_loopback,
+  //        rcvd_disable, rcvd_no_scramble, rcvd_idle_data} = latch_out_data; 
+  
+  // PCI_EXPRESS_GEN2 code start
+  assign latch_in_data = { int_rcvd_eie_ordered_set, int_rcvd_eie_sym, int_rcvd_gen1, int_rcvd_gen2, 
+                           int_rcvd_autonomous, int_rcvd_speed_change, 
+                           int_rcvd_compliance_receive, int_rcvd_compliance_receive_loopback, 
+                           int_rx_valid, int_rx_eidle, int_rx_10b_code_violation,
+                           int_rcvd_skip_ordered_set, 
+                           int_rcvd_idle_os, int_rcvd_fts_os,
+                           int_rcvd_ts1, int_rcvd_ts2, int_rcvd_lane_num,
+                           int_rcvd_link_num, int_rcvd_reset, int_rcvd_loopback,
+                           int_rcvd_disable, int_rcvd_no_scramble,
+                           int_rcvd_idle_data};
+  assign {rcvd_eie_ordered_set, rcvd_eie_sym, rcvd_gen1, rcvd_gen2, rcvd_autonomous, 
+          rcvd_speed_change, rcvd_compliance_receive, rcvd_compliance_receive_loopback,
+          rx_valid, rx_eidle, rx_10b_code_violation,
+          rcvd_skip_ordered_set, rcvd_idle_os, rcvd_fts_os, rcvd_ts1, rcvd_ts2,
+          rcvd_lane_num, rcvd_link_num, rcvd_reset, rcvd_loopback,
+          rcvd_disable, rcvd_no_scramble, rcvd_idle_data} = latch_out_data;
+
+  // PCI_EXPRESS_GEN2 code end
+  //---------------------------------------------------------------------------
+  // Multiplexers to mux the posedge and negedge signals
+  //---------------------------------------------------------------------------
+
+  assign two_ms_counter = (level_select) ? 
+            two_ms_counter_posedge : two_ms_counter_negedge;
+
+  assign rcvd_ts1_os_count = (level_select) ?
+            rcvd_ts1_os_count_posedge : rcvd_ts1_os_count_negedge;
+
+  assign rcvd_ts1_os_all_lanes_count = (level_select) ?
+	    rcvd_ts1_os_all_lanes_count_posedge :
+	    rcvd_ts1_os_all_lanes_count_negedge;
+
+  assign rcvd_ts2_os_count = (level_select) ?
+            rcvd_ts2_os_count_posedge : rcvd_ts2_os_count_negedge;
+
+  assign rcvd_ts2_os_all_lanes_count = (level_select) ?
+	    rcvd_ts2_os_all_lanes_count_posedge :
+	    rcvd_ts2_os_all_lanes_count_negedge;
+
+  assign xmtd_ts1_os_count = (level_select) ?
+            xmtd_ts1_os_count_posedge : xmtd_ts1_os_count_negedge;
+
+  assign rcvd_idle_data_count = (level_select) ?
+            rcvd_idle_data_count_posedge : rcvd_idle_data_count_negedge;
+
+  // PCI_EXPRESS_GEN2 code start       
+  assign eie_counter = (level_select) ?
+	    eie_counter_posedge : eie_counter_negedge;
+  assign first_ts2_in_reco = (level_select) ?
+            first_ts2_in_reco_posedge : first_ts2_in_reco_negedge;
+  assign ts2_os_count_in_config_complete = (level_select) ?
+	    ts2_os_count_in_config_complete_posedge : ts2_os_count_in_config_complete_negedge;
+  assign xmtd_ts2_os_count = (level_select) ?
+	    xmtd_ts2_os_count_posedge : xmtd_ts2_os_count_negedge;
+  assign forty_ns_counter = (level_select) ?
+	    forty_ns_counter_posedge : forty_ns_counter_negedge;
+  assign idle_to_rlock_transitioned = (level_select) ?
+            idle_to_rlock_transitioned_posedge : idle_to_rlock_transitioned_negedge; 				      
+  assign current_speed_5gt = (level_select) ?
+	    current_speed_5gt_posedge : current_speed_5gt_negedge;
+  assign prev_speed_5gt = (level_select) ? 
+	    prev_speed_5gt_posedge : prev_speed_5gt_negedge;
+  assign stable_speed_5gt = (level_select) ? 
+	    stable_speed_5gt_posedge : stable_speed_5gt_negedge; 
+  assign successfull_speed_negotiation = (level_select) ?
+	    successfull_speed_negotiation_posedge : successfull_speed_negotiation_negedge;
+  assign changed_speed_recovery = (level_select) ?
+	    changed_speed_recovery_posedge : changed_speed_recovery_negedge;
+  // PCI_EXPRESS_GEN2 code end
+   
+  assign loopback_master = (level_select) ?
+            loopback_master_posedge : loopback_master_negedge;
+
+  assign loopback_slave = (level_select) ?
+            loopback_slave_posedge : loopback_slave_negedge;
+
+  assign loopback_active = (level_select) ?
+	    loopback_active_posedge : loopback_active_negedge;
+
+  assign sixteen_ts2_count_enable = (level_select) ?
+	    sixteen_ts2_count_enable_posedge :
+	    sixteen_ts2_count_enable_negedge;
+
+  assign sixteen_idle_data_count_enable = (level_select) ?
+            sixteen_idle_data_count_enable_posedge : 
+            sixteen_idle_data_count_enable_negedge;
+
+  assign sixteen_ts2_counter = (level_select) ?
+            sixteen_ts2_counter_posedge :  sixteen_ts2_counter_negedge;
+
+  assign ts_counter_with_link_n_lane_match = (level_select) ?
+            ts_counter_with_link_n_lane_match_posedge : ts_counter_with_link_n_lane_match_negedge;
+ 
+  assign sixteen_idle_data_counter = (level_select) ?
+	    sixteen_idle_data_counter_posedge :
+	    sixteen_idle_data_counter_negedge;
+
+  assign xmtd_disable_count = (level_select) ?
+            xmtd_disable_count_posedge : xmtd_disable_count_negedge; 
+
+  assign link_width_reg = (level_select) ?
+            link_width_reg_posedge : link_width_reg_negedge;
+
+  // tx_link_width is updated based on whether skip link training 
+  // option is set or not. If skip link training option is set then
+  // the link width is set to the maximum link width. 
+
+  assign tx_link_width = (skip_link_training === 1'b1) ? 
+			  LINK_WIDTH : link_width_reg;
+
+ // Additional gen1 code start	
+  assign r_tx_link_num = (level_select) ?
+      r_tx_link_num_posedge : r_tx_link_num_negedge;
+  assign rcvd_ts1_with_disabled_count = (level_select) ?
+      rcvd_ts1_with_disabled_count_posedge : rcvd_ts1_with_disabled_count_negedge; 					  
+  assign rcvd_ts1_with_loopbk_count = (level_select) ?
+      rcvd_ts1_with_loopbk_count_posedge : rcvd_ts1_with_loopbk_count_negedge;   					 
+  assign rcvd_ts1_with_reset_count = (level_select) ?
+      rcvd_ts1_with_reset_count_posedge : rcvd_ts1_with_reset_count_negedge;				       
+ // Additional gen1 code end
+   
+  assign r_xmtd_lane_num = (level_select) ?
+            r_xmtd_lane_num_posedge : r_xmtd_lane_num_negedge;
+
+  assign r_rcvd_lane_num = (level_select) ?
+            r_rcvd_lane_num_posedge : r_rcvd_lane_num_negedge;
+
+  assign r_xmtd_link_num = (level_select) ?
+            r_xmtd_link_num_posedge : r_xmtd_link_num_negedge;
+
+  assign r_rcvd_link_num = (level_select) ?
+            r_rcvd_link_num_posedge : r_rcvd_link_num_negedge;
+
+  assign r_xmtd_ts1 = (level_select) ?
+            r_xmtd_ts1_posedge : r_xmtd_ts1_negedge;
+
+  assign r_rcvd_ts1 = (level_select) ?
+            r_rcvd_ts1_posedge : r_rcvd_ts1_negedge;
+
+  assign r_xmtd_ts2 = (level_select) ?
+            r_xmtd_ts2_posedge : r_xmtd_ts2_negedge;
+
+  assign r_rcvd_ts2 = (level_select) ?
+            r_rcvd_ts2_posedge : r_rcvd_ts2_negedge;
+
+  // PCI_EXPRESS_GEN2 code start
+  assign r_rcvd_gen2_rate_support = (level_select) ?   
+            r_rcvd_gen2_rate_support_posedge : r_rcvd_gen2_rate_support_negedge;
+  assign r_rcvd_upconfig_support  = (level_select) ?    
+            r_rcvd_upconfig_support_posedge : r_rcvd_upconfig_support_negedge;
+  assign r_xmtd_gen2_rate_support = (level_select) ?
+            r_xmtd_gen2_rate_support_posedge : r_xmtd_gen2_rate_support_negedge;
+  assign r_gen2_rate_in_reco = (level_select) ?
+            r_gen2_rate_in_reco_posedge : r_gen2_rate_in_reco_negedge;
+  assign r_xmtd_upconfig_support  = (level_select) ?
+            r_xmtd_upconfig_support_posedge : r_xmtd_upconfig_support_negedge;
+  assign r_rcvd_eieos = (level_select) ?
+            r_rcvd_eieos_posedge : r_rcvd_eieos_negedge;
+  assign r_xmtd_eieos = (level_select) ?
+            r_xmtd_eieos_posedge : r_xmtd_eieos_negedge;  
+  // PCI_EXPRESS_GEN2 code end
+  assign r_rcvd_loopback = (level_select) ?
+            r_rcvd_loopback_posedge : r_rcvd_loopback_negedge;
+
+  assign r_rcvd_no_scramble = (level_select) ?
+            r_rcvd_no_scramble_posedge : r_rcvd_no_scramble_negedge;
+
+  assign r_xmtd_loopback = (level_select) ?
+	      r_xmtd_loopback_posedge : r_xmtd_loopback_negedge;
+
+  assign r_xmtd_no_scramble = (level_select) ?
+              r_xmtd_no_scramble_posedge : r_xmtd_no_scramble_negedge;
+
+  assign ltssm_present_state = (level_select) ?
+	    ltssm_present_state_posedge : ltssm_present_state_negedge;
+
+  assign negotiate_present_state = (level_select) ?
+	 negotiate_present_state_posedge : negotiate_present_state_negedge;
+
+  assign disable_descramble = (level_select) ?
+            disable_descramble_posedge : disable_descramble_negedge;
+
+  assign tx_phy_status = (skip_link_training === 1'b1) ? 1'b1 : 
+			 ((level_select) ?
+                         tx_phy_status_posedge : tx_phy_status_negedge);
+
+  assign xmtd_fts_flag = (level_select) ?
+	      xmtd_fts_flag_posedge : xmtd_fts_flag_negedge;
+
+  assign fts_os_count = (level_select) ?
+	      fts_os_count_posedge : fts_os_count_negedge;
+
+  // PCI_EXPRESS_GEN2 code start
+  assign xmtd_eie_before_fts_count = (level_select) ?
+	      xmtd_eie_before_fts_count_posedge : xmtd_eie_before_fts_count_negedge;
+  assign rcvd_eie_before_fts_count = (level_select) ?
+	      rcvd_eie_before_fts_count_posedge : rcvd_eie_before_fts_count_negedge; 
+   // PCI_EXPRESS_GEN2 code end
+
+  assign latch_xmtd_idle_os_all_lanes = (level_select) ?
+              latch_xmtd_idle_os_all_lanes_posedge :
+              latch_xmtd_idle_os_all_lanes_negedge;
+
+  assign latch_rcvd_idle_os = (level_select) ?
+              latch_rcvd_idle_os_posedge :
+              latch_rcvd_idle_os_negedge;
+
+  assign latch_out_data = (rx_level_select) ?
+              latch_out_data_posedge : latch_out_data_negedge;
+
+  assign link_reset_issued_on_downstream = (rx_level_select) ?
+              link_reset_issued_on_downstream_posedge :
+              link_reset_issued_on_downstream_negedge;
+
+  assign enable_compliance_pattern_check = 
+	      ((ltssm_next_state == ZI_LTSSM_POLLING_ACTIVE_STATE ||
+	       ltssm_next_state == ZI_LTSSM_POLLING_COMPLIANCE_STATE) &&
+	       skip_link_training === 1'b0);
+
+  assign transmitter_in_Los_flag = (level_select) ?
+	       transmitter_in_Los_flag_posedge :
+	       transmitter_in_Los_flag_negedge;
+
+  assign deskew_control = (ltssm_present_state !== ZI_LTSSM_POLLING_ACTIVE_STATE &&
+			  ltssm_present_state !== ZI_LTSSM_POLLING_COMPLIANCE_STATE &&
+			  ltssm_present_state !== ZI_LTSSM_POLLING_SPEED_STATE);
+
+  //-------------------------------------------------------------------------
+
+`protected
+
+    MTI!#ko5HQ7;o9^Gjv&BzR_ioHQ&Ka{uP}lsit/xYiu0m|r;~OH$p5vuaJkX,\]#5QEvmZBVKWW5
+    =u+wR[\Om1!<<w,3]$G>BiNL~n-+^m_GAl!RIT2Dz=?;[wEB%k[R~y~Di[arT'I,\$UX\rJA5?zt
+    ='Tlo@7YN*;+1\{X?GJ'$=|,7w@%L)!r57ww5?Q?eaBX_Z1v{BY3Iin]C#KwVxsEQU+IpY%xX;[X
+    GzwQm[,R7;a3Ip@jB~~#D'ieQV*^WY\;[B}Tz#--7<3$2vQGiBeI^$Z>$V<817ZJwIp@]u$5Qa<1
+    ;zaCu==}2Q[_^U7p3s3D$kJ@gXRQiIH@jA+v+Eours?=r?wJ[I^[EQR7Qmww7y~1Q{x-T@@DvVz9
+    Ql,@ij3mr{Ei2a>x?OVK[!Tzf@]?JZ=wVCWDeAC2^n>2Cx+mKHU^+;o_\la_mYxv]sJR}}^^aaI[
+    BPe!QpHCXR*vi@l$[oIu^{[~!VI;z{rr71[2H!#e~a;,1WrWz_Iw7mGio\?-<7mD7o}~3RQ{x[!w
+    [BfJGQuW_vT=]#ziowu^zZ~~Q1a<OBje_D*:]_e$[57CsxUAp$k3w[B~ls?r-_,{I+E{|ur=mrRw
+    7\na5)JX{!V:GH<R'WQw\Ze[x?-5&3<>,UlT]Y#~v/WU-p^TKC'EHXj^*=3D5_zHUKbJslJ'7G3a
+    X+K[Ow*3=z=!p-REnm<;ED3VuvEu7T2C,TOxo,^8xBn!oV<\VwZQwjp2Po1D\=?oK\+WeuRp,*~<
+    r^H2DSD5i+8I[+@X]m]IBTxj=;s_Il5S!}IBvtUe-sq>$psaw+Te.k9sBnWi(LIW,$'BTDo;15Y^
+    *}171~^X']8gn7w7,#G~o**jHQ?Ox_z{Wv7p_pz-Bp2'zX{nXD5m1KWGArHasDYD5A@vRk$rpn1U
+    ART=vs\TGrB_i$+^G,21~H=sq7p^QxrQG6<rIRI~}aOja#]?};>*>=IT>k5Bo{+l#swjwU2{Qe~O
+    Eo($>,#e'V5[HB3D[e\C<oa$[Y~lGG#,ZX[5YB_YG,jV@o@eA*7-TD11oV]<x{*'Deo<X\R7poEi
+    {=3=@a'ra'$lOxE$TJA\@mlCRj$k_^[9XsEOzS'\5lz<C~'X\;D[$ZWaxs"eDn\*,*$Ja>BeieR'
+    RVzK+K[U[~OAz-CY*[UVD5H|\X<HoZY$ri@G'G!;QO*wN'oYsY+HmH$e\,}XUG,T7#lII$e^>W[<
+    XFHXzKB>uC%DEBB['7{s'zK'+mko[X[V_D+31]<&G^WBHG^<rA5D-DW^CKaG\2jj?wjT4H,jC[{7
+    eoR=iWxRDpdYEIQ!posVQnR{_2{G@<sCQIJFJ,{vu=Qu~vw11jI[[1UHXI3WIsa\Mhv\wB5*w<Ii
+    *$~Q3v+zC]HH2THlE~Gmj@>^i]IEW37u^H@}H#BC2$VE5HoED=!+uIJCiBVTOE7Z+]\Y#Qk{*$SR
+    ->^72=w[woi3E;UCK$TH<'*xT2]f;7$Yw+2[[<[2^eV^u[]2DCz{]5loB2j}Cx?l\z*E+<zm;,Ea
+    C?YVWO_vg]7pYEcOa7s+sA-]j7$&<C_;=>+o|d*HB{B-@KpmlUYD#^swv$Y;*X]zx5x[unA<pWoj
+    kk!zE$RzY_zC=X,m$>u$l]?7?{'vwA5@*2Q5uRk$?U8ow1j'Q2s=3KpB@lTsU'$l^e^Y31mY~pR{
+    1#nv3\B^3,=/>+Il.Y,\VC]#}'sAU]BQQ@TeeE\AEvF[ilip3p$GBBG#w|riWz@_v$m[
+`endprotected
+
+  assign link_width_bitmap[31:16] =
+          (tx_link_width === 32) ? 16'hFFFF : 16'b0;
+  assign link_width_bitmap[15:12] =
+          (tx_link_width >= 16)  ? 4'hF : 4'b0;
+  assign link_width_bitmap[11:8] =
+          (tx_link_width >= 12) ? 4'hF : 4'b0;
+  assign link_width_bitmap[7:4] =
+          (tx_link_width >= 8) ? 4'hF : 4'b0;
+  assign link_width_bitmap[3:2] =
+          (tx_link_width >= 4) ? 2'b11 : 2'b0;
+  assign link_width_bitmap[1] =
+          (tx_link_width >= 2) ? 1'b1 : 1'b0;
+  assign link_width_bitmap[0] =
+          (tx_link_width >= 1) ? 1'b1 : 1'b0;
+
+`protected
+
+    MTI!#=<enGCWp]7w>G>zm5<a;sR>*yU+JWz'c9Q1=[HaoiPI^BB*Kr1J-RGG5#$=^nTp7zO*5WZ)
+    ^<GK11#[Z+G$<_?vF|~,rEmU<U[4CslT|\=lQ$sjz'3l>[@uG7V3**v@V*#QEUX=*,5I<^+[;cYT
+    x^I{skRX<reTH;C\x\?=az7r*I^lG#En[_=;+ZwwWVxAT~QuI7$\+jWXxZpZ+{G$Q?O1A--THJ$p
+    C2^CETHe\!E5Cpqk}l<U7#O+Rv?+,-l>e#^>*n$#CH$,1;pv}o7B2r2?U37}U<~Vi<J9}D>@nB-[
+    KBo<CZ2lI_skz,wpRQXGL-wsjDjiG|b)1'TC]D;uBk[2~n,mu>cLgIDGzF=+!7!{G$-wQ^,l\J\o
+    I7j2veI>@e*llrhaD@*KvxG:x_3aAI7ofOQn#uY!e}_i>Ow@wC([X{pI1+EOOjVV8OsDkZH3#?U!
+    aL?zOzTQ:5$n@c{Dzo'_DCE~w['2eVR^~$B!-3,#n[^?XeHAQ~Ws*@rC1w)YU$zi$A1~G,_pe@[o
+    \=E>=B@}<\+GK.EKv1r1xiBkT2e11[uoJ3-aAnmDEK1jZJ*AKE*RIA,;'=[zJ_kE3Xg1Il\uYV\=
+    ]ppj5~@[3VD9DJT'w$z<x6)}sx@C'u_<+,^+zK[D$lr--r--]5I,1UkOW1QU5-x$}VBB~Xr5<z}j
+    3eQon>3DT!#Kj#Wm}v'uCGXoa+5KxUe@USiAnvQi1u#RVQnC}1#]\r@[R]>I}W=7uCjZj\-EJEkI
+    =@gQXs#zqsDuk\1>~e,Km=kR'hz1A-+ol27@x\J'\oC!vaV{nQ@\l#x@Zj|r*v[7,V+DJ]H-p'!D
+    m]{{n'=XNN^K{_eCCHoKO>CJWr!Y#n%x#=Qe-]#ew[]37nUR*#;*TB;KTV;ro\uMJ=W^ksK1/~lR
+    2p[#1r'TAl'#'*EYmoi!*'*a@lwDUC]IVkjXG$x@XM*;,7wj2^;\QCrzC!?-ZsX''i&wXZZjvzKA
+    _Rw[?jAE2\ezRzJo5Gva_n#i{2w5o{\P"HToV7i~[*{y8DOzkGHm1^Qw}Gz~oZvw?!Y3~IsjlWje
+    [X_{<Fm55v{{!#p-T'F'JVZ]U1s{sH$[OjV\5\w.ZOX58$Xn#B~]T|p+3Z?eEj7lvaAoiUM]?KaD
+    ZjBcmT]i-|~X{p)YV2sl6w<,2ew<>iDT1T=>+[mwxW7]amCH~B?oD|-}e}}#_53[i<7zWx^vezBn
+    ]*fiVW6o+<#=QGT]K-OPJ'j7ynp_QlZa?N5wZG]sY!KOjUe>XE{OAbvnYX7;1Hl1k~,y*ZOTVa3p
+    =H{^,5s3o\@UCkVV,\<{}w{}I!QBIj^Bi'][]5WaVp#>V|J]!JJ$CWE\H2AV^u+$G2'a+[kR7D3n
+    KjWG^C*wY2?'a?sQJTA_VXa1@_>55u5B{[l=RlAY7s5O!n~lrKi]vvC.qN.E<uaz)ZRpnlx*[znE
+    @EK5EXQJm2lXHv=}z@e$Bmt{5-!Gla$='Cwv*{u/EjY<Ewx3JwKGH,~}}B>p<\U<]-T2X]x<XDEp
+    -\vnpJVe#O;xQOTJT,o+][o\O^'~?=lzAaOK\}m@rzvJp\*]?Xx^h/wa+m9]XY7Y2aO*O3#sbz!1
+    ZJ{*,<53uO.WGKU^*5RU5[$Bz;aB,I,}{+~,Wz{}lWCMUevTSe@;+'~v@iE3vtCk[U5$J~=jAj7z
+    7T=>ApsT[#'\7TvBC7J-JOx>EAkAw-W[BBl]DEVXpKv2X{Sy%"]noa=pYlG1[ZZ5=s\ED{^,Jjij
+    +;xJz7'em~{'+Zj+I;BBKknw$R"5I>E:sz>rvSLFB$l1:!^A>!B'!:WE+,h4#XI}^KOslJCur{U,
+    kEUUeC]i+D#voO@Z#DHTruY=fvF6,+pT!j>-!j>J!A<kG#IDYm~VK'5I"BsDo-a2TPo+2I<re*t\
+    ppvS[JX+[l5HMtXG]v*VTrnlr;RLKox$-=7^^TlZ{Ea{_$1Z#z5iEeEl>[~BD#jD.b2Y7J\J$G7'
+    27f+[E--qU<7x:lrHu#B?aAQ2xo{7{+I~BJ]Ruv1>uw>{joK=ZGUJu\YeHYB+rQm'lI^2;PxCZTO
+    ,rTp?jiqkDBvCm3's;eCoM#5C5D[EZ.?XE1[+^V}I}C7i}BgO-'u*G!w,C3!=#_E1UpZuv>o*[x-
+    E3$7HxxTWXAE:runu=]!'3]\n=!_7\ZA;UIHmGWV]GWR[T<_-y0]k$$j75[F=O}p~px2r,n},7ij
+    ^GQs2Y,3Q1^\$1]J{&f,wVK>ru'm5+$(ZQwj3l'w(lW2@nX3HI--IWO'GHG7wlu^GC#X>='5-',a
+    Dqxz_T!=2;Eo=B+B>[xx,z#z#?o$o#Qs<[V{7$'*#G;ApmQp<[yQ1vZob}{mWQEVnnj1;^OBpl'x
+    ]i'7kJ-5BRUEaaTojr0_-'}5n_YG$]#oTBj2QEUQ+pv7/*alVLk7WBBml'!VT1BEG7\Uo}_[u#{5
+    -\j#AzIY_kN=ls1^@R37\{-wzx}mV<=wE5~OI=$L]vX=W,sGe^]v'CYKTYTKXox+^=HzWelkvlT-
+    =D~nxo}@PYeGm><jH=7Ok,]s^?QKU{\<#{U,I>l'DsD#YV*RW,xU@*w!]l3OmNeY'=n5$J!e]}#j
+    +]CWm2C7Qa+$i}Dl[i~X5J}-E7XzZXe\rj_?E2TYvise2l{I7uJCQ\onB-a_ZDkD=anAr^Y[\A{a
+    }^;O[XGlo_x~{<vp^Iae7pMEj{]7>D^^#j#7x<_oE5H$r<2EAxsG*K$O7Yvf@rYr}5D*@}ovJ}Y,
+    _YnrRBvu,~3R*$}WJHU1&HO}_XAm;:Onjk,GRi\eI3[AURmHDeVHCU,HKG6};!=QR[Gx<BGnaVKe
+    HnGErUwz~BTWoT#Z_-$~p3AP}eT{*njxmpV#x^AuPsA+Rm^p7RssQ~T'pY]2Wlr3^*@K=/>Q2DC@
+    !o3^@B;>2n$#wum5$FxV,JzTTkV2Bno/aBjGx[^~*A\Z5Ta]CRmQp]1YG!!j?DQpH=>7zn5^Dn^e
+    $lU!q,Au^RT*3JYG!*'aax4EBn?7@sv{CG?AaUjCOZ]B@=?N7G#-e1Qo6osJ\$#rk-7{p,>!wA7U
+    m@QwzY,QQBV~Q777s7ZK\nBzUJGm'AHm_'^'QEgz;-V3pp@WYjzzW_!3OQaGEWrWr?A{HQ<RaCKj
+    WC+{rs?u[_G2xJ,s'sEj1+DjK$}~<{w=-jEx[W$epa[\m@XI]kW%XXKeT\u26;rX+x<mEmCCz;wA
+    jp7aaru~_BT=ma[!usKKu&nQ,+O>lzrO_^!Q2Ghe*U[$\^uGKUmxJ,z<R{*owmA~Ts-ELU*eGX-J
+    VGQ<z}X,#@jTT=C!1HB5xwQOvRJ;*}JVkmpZDx=ewR>_-AO3$s<p]\7KH,J-Xo,#_*=w!OEa;>_H
+    }eG$QOrT';,{ryQs<})guX\@'-Uxbs}_+Tl!w6rx#p*_[@m_Dwr@=,)j{RQo@o3ps{{[1*X.m^\T
+    -p~BlR'u],v2RGIxGvsX[[EZ+'O>G*{=R&\-=X;nEHzojRxRV+V!Y1wO-v'BH2EWG]R<KYUsz>lJ
+    VD'$5]r,@l!]'^(15!I=<Cv_nl+kou}oW;{XC$\~VU$=*D]poXoRpV-.47IC>@z'DHTeuke2rO@{
+    _RoKlx>5GkRv'pmG7GuH'9p;x?*+ZXU{mjG7u@=ei*exoX@s!^:b@{7>oA[l1]e_n5A]J^eG&j1}
+    aqf>5[YT]a[=@zn}kUmf*-G$mG7@xr<ocwHam2{R;u_QI(7A3]+OZHf;N<=ipZUl,rz''D^W{+a-
+    _vu~lviY3Oim<lQzE8m]@!nj\iBuBiH5jCc?=C[~,=Q{5JY2oVoo1ir)-Qolsvn1FI<!Qu1\pEqU
+    pR@~1rID+3ZzHsKZvRGQARrX'<X8mUH3]J}J$nW'EkjoIr>jX{mD?CE\MnUl,>])GEu_7JnZ|V^}
+    }I>l^I*>QVBYXAx@s?G>nY\Dl;\Ts01]s=s^uw&[57ZaEX^VU7>,-K*r1y^jID'DwT~Y\HC}$5v3
+    oloCJve,kO3=W@l%rCuAX5*uZv{<iEBG[3_sze~~&PO$av?s}KIA5B-wT}DW]'{I$Ti^;AppIGoo
+    JZva\kLeDoCvGgJ,++aw-1<Hu,BR-Z'e=]@,U@<h~X+$:}G;HY{!pO?roByz\TKs;x[#w*BeCVpL
+    HA!_'OC${\sX\,]R7pTIp$EZZX{RI51Bv7,=-_B{VuYmrK'jEJXKH}rUm$sJJo]o;5CnpC!TWsaG
+    =<E{Znp^K\<QoD5VseU?T{_sGK<T[Q^pU>T_1Za@_qlm{A5\K!xc1Qkv^+7u{9$Ve7KzZrE',H\}
+    >~5a^^,vzKp}WK3[~nUnI=>{wj4)-zvQ~_K$wOv={xz~nQT}ql+>+~'7$-D?~,J3[2j=Yf,1;K[e
+    X]+joVXnZww1Di-Co-.f>UV#H}*U1Ieop[mo8LY~x!xRnl2w\2{=m*iTpRlX$EunokTjJnr5*}C<
+    Y@;7W=Qw<arknB:1oBG1z2GyUpYC=R]Vyz{I~~V5p3}_}KD!WU=<O]},u\;eCXAuCa}B_]BaJI~$
+    -JNtyawVR<+!1C#T+3=^K$r<sO=^AVQ#G=#~G)kOBXViZV*<Qn#+3W!QmZ-lO5~G~WH{{JSRH$_B
+    >RmRJWls]vOy_',EV,#!o+U~e]X!TQjeJw{kg:njl+#5rVU*!OVxi!wIHV[WOR~o,!t^=Hp<-!Q!
+    sY<X>=<iV[~wv,=I!D!#Dj_ejnweIT'vC$Hr{rAG,JZZBus=?s@@o;v+X1HOB$D2{=E=zenSqNdj
+    =DO~T\@C\=zuE[>GaxaZX-3-TUl?,Q}R_;_2+n[E\kluVYYv5$OE?Vmw}ilb]aVmw5{R?7V~C5BW
+    y}?WG7}5;$I@W6%tlBw<'X1}rl'2neoT,2-G~1o^A7[JHYBenI]vD}xnQmr5H{uej,eThSv$@$c*
+    #'we,O]?R7]2+unuo+-$kD?\xzWR2Ws1iaH1Hn2=ijK>{W_DT-rzI}}k<;KlC?{Ii,vajuY1|,Ze
+    WsmDiU>*}[;VAuEp-rkra^D;~D~vlo~mUj^p{XR??fzC>J_w3arCsr#1]V'3<?YJoX\J}#~RuAi7
+    ~_f\\rY1^QD~TK^?==wxx+@I<!;{IIQO+w18$%Zn3maUD~lD1U6I?-^8=\r*P^;eoH{ZxI2xB=s]
+    ez2ApQwW{TDT^r=UD__O'nnoTJ'<{wsXEEJ[zYwHQQi5UR@-v?5H^N'TDT,WG1oOjG${C2{],iIJ
+    _Z~5H*u1uA\_nsoA\}m95V7]5!\2*@3lD=57~}X>rv,QTe1+~z?-_vE;Zaz-1VH@+A!;,AJ5*Cn}
+    2s=l(KBl>CuR5EYr2PTeB]K*naC@+7oT<#uE!Z*izXP7WX?zE[HQZTAs@<>^BWe-YlQWBkVzR@a5
+    RG<nU*\3wGHC7WG5slK[C!@wh3Hw@+=JA$oI{HGra=Y!TRX,V5T=zh?,>'J\<_<o2eDv-{02e>ZC
+    X\z@Hp^]Yk#1JGEsBCnB${~mv;m!zXQ#1i]QvW3N$CzJTV1Z#CnZqWs-+Hs<-&k_-Ew*,iJ'JsU=
+    UTGIUJx_>Zp'^HVz~}YD\+\DEG$sCECJ_UwHVK+Yzrz+VzHnoTsDVllnm\=\>K+,m7z[V@7+[1fX
+    eGvW'z?\Jze{G^Wj*1;]-**#$Tj4+p$;z1Xp[aHTijsG[7_'(nQ7<_}xW~l=]UD{3dwH\[YE^nAU
+    Kk#QCKp=CK~<~o5@A=v,$}r}-p~<m=0@n7@<11sE-sev-Onxr#E?aE_=}JZc's]W3CO\Y\HEp+Rj
+    &}?1B!*v^n[7;43GlxG}1-p=?V27;#}m3,Y?H,O#r7B;IK'o,JK'[>x<'!Dm$3:otx{e7ZsXKE(C
+    aQ5aCCi>lR5Y>!O]ep}aoxExs?U5?K$+\CD;$uR;xs#IujE'[BR#D;Tl)'kx_or^3meQlCZ^i6$z
+    mYh(r#j^ra}=$}--^33l@^ZjD3RA@]nJYjDZ]^12*o$=U7uk^vpm7pzU!Do]U^Z-~_Rw0Wwp2a*5
+    \rEE!vkl@=wA]m>@]o7QZ'$\7N3-2_n{a$\[,ouv#^gXeIV9UAQKO*,B;sIjATQ@[xCG-5vWJH\j
+    =Wj]NK^aH,2,_~$I7w{@O<QDs2VB>_]uYGR7,j~He_H;*{CQlA^QA[#2=eAKCcIH_'KIRKRQX?OY
+    ,5uI>Dj}u\~G7j\]@W++w+Ev-smEpwgkw^sE'HpM*ZBzQjw,T$X]6lmKl,<!A,#U7m\}e_ZAX+_7
+    uM1eIw[<sGa,QCz7euvve[U1esqP,DO!jO}D_[QGn_YnEsJR=nx_>Xp{}!7Bu-K>eQGuw'>EC5Z[
+    Dm^^cz@5K5*lv]r>Q*^UGHxnT,?~=zvl=|JLoGQ^'2Ip?A3@\adn<VpBxRe'Ri7C\Z;QI+Tn,7DG
+    nv+~O@'fsbZ<R]:zpt[mBO73DBH$C?Vili?*5U}W@EIlix2YZK8bO,,=Ua@r1XB=l^$Q=RB,Yn\<
+    jJl<EK'REq3VA{QaZ;3A~5_T;\'GWkr'o,{6}]JeD!C]R#+a+VUBJpuXRQl@qDU\1aRzp!A+rjYV
+    w7>j#%z*^1exasQeuaI1mr$Ci!^@=ajD*~pC[OQ^*@Izu[4D[\kD=3IX{*l+8#V<I'-lwz#_'2UU
+    Cz_J$W1j^^ksBrJ$@R,eH0^>$$!AVpGY-X&,s^B$QZ[?Apz|"9,d+ANiQ*m,rRe{_XT7x{D*2!x$
+    C{7ooY1eIo_@_;@oGB]-RsR45'aOY{$?QAT5--2,{\>^W\1OAv7XZew'J+l@1w^<x''pvYx1=K5A
+    ro+CP\C=Z6nj*2)opKoJpEIopem;Ov?CJR_U,Usxiv{\*Cpek'v=}O_Xn*!B]IA3>U'v3s,^7TZn
+    r3#R_Z;,<l7CBZ7RBTu:\{xnYBX]@_!@<CeZ_1nmgoOAulA_z[\7aH+!ej2=Xo3CsP2V!I~E[Jom
+    Gku}Q=u$uu\CBmh'Auu,oGpx}Z=O~Jnk|Zl1rDuv[_Q$;[wEXpjH5Z*Kn{eH=pC[TjWBY7ipXfaI
+    C?IZ;x%rn@AiR=~m$YE;Cm5oXTj,*#\'TrBr{[x*E'ouXUm=ZJennuogYxG\7el!D-<7^E^V\KCu
+    {RRAwRp{OO}z0e?HTOz-#@QDnrOTs]-;17z~XX+xkIsal#TAz2+<<Xw3v*C!*'5JlrHWZ\m,^*rI
+    Ow{jG7\rU.ln_B},7C'*G>cxR==*'H,\xO,Q^r}#E_ldB3<Qa+1'BkUro7j7'1,Rl,k28_$=^}$~
+    nUwQ+}'[[eW\#+Iv^}5^im>jD_XKvuI$#Z[+Ex-R?OBT3l3D+joIGOG+^U{5jD{]j;EpOs_!R-'D
+    ?t]RYiX7H{>*_JvvZ!gaRak2OTD61eJYWGDs<>\i's+T@Tm3$Gvr*G2\6zH3;Q[\i*TGGHYv}7wB
+    m4GD$IK1,!!=$s}62r-K[<V~N]3~_sHzzinRuHO{?U$O5k5nOMlGGB8a{5\?{I{x[[!1GEr.Q!uB
+    m9Em2u-{=~R<!'sa+zQ-1*$QaE1]xWO}k<5RXaA{j53*zl#^Oz^A>A[wpnM/kRK;=pvGQ+xXQ!'U
+    1ea=1nKQ4C+HTDUZ2EXr#]k>7h7I]_AC!?8xH$5Uw!oPK}W;5'uR@v$TL{ER1%?U-V\4p,JsG}{B
+    ,KGjh,#[]GU3!YVxzR'GG<\}W]BoCk7$B7@w@7rOxl=_1;_lC8KYxnmYsnH\YKDls'kAz'Gq!Iwz
+    [@EA6_i]m{nIneiJ}i$~}n5;W=*7!'m]pOCpW{vE#p}V-7DCwCK;TXV]BnB,D_CX2BxY~)ksk3{_
+    oWY+DJUOaw@YElaYkCNMTTmA>$n;nAlW6Y9sBne?=oA{=~}3vHJKR-$2loB;E{Jt#s}T]RQ}QswT
+    aUIBlJQusVr[^{I}'~Oao'*_4Q?os?l<*ACGpAB]CxKYm1zEl8oQ5R<<='u=3K\uI[Jeo~_~n=Aw
+    @5e\]+iEO~^$-IUsu[~>o=w1TnDAWu,vGk*[srxsjGmp]3QEeK*@eBM~_TQgc_>W[*m-K=vkK0Rw
+    @YEllp@E7C7H{53-!xV'vs{{-WkT~ZE,2]5aE*[s@e|r,!xH=*~~<[uURDGeTj_lKm]W$R'#*a\^
+    B}pQI<1;jWkGKw]<s3oo#Z;x7+@Y[UkZ}Q'=8--j5\B?ejwC\n=X<RVIQL{D3x*WGE*<Kwnnrs]^
+    YswA>}_VnJhG*R*{'[cws<o}QorWeWr=hC7SRVC##o@7E~HW|\?a'j=^Dzml,}n,Dsp-~OgGa*sC
+    -=\BB!1YQzx5UEr5,sH>CTR3s^jk\^s]pV75lTkcmI$w&?[7DrKvr$Xllp]xupe+G6jw1>p-@sFc
+    K}}eEu_+5A[GPCeJYC!wAR\KE1kC1va-'p<BW-+]ZQGZ@>>bv+rIvuev,?o,I!1WwQ,um*=ECaQr
+    3lxIZ^>B{n<j[E~}T=K=^?AT>5KU}k2TQUE{i'|7m3G}s=sxI1n+\vX1zR<Y]<D]e[]eOZwpHQvS
+    VoZ-3EXv2p@{2A~nNH7'~I,l<5Uuvra,[{z!o$<2_'?$nk,w7"@wZx]WGG4xXAIJxDGO_#'u^[oK
+    =G~d$$pJ+1J=D'WXTB11YYX]zJ${FjlzWQ}Y\KI=*Yxs;i=ZHGzOr%kzn,g4_Rer5CaJf|s[!T^J
+    UV{Yz_|pk\!oCY~Q^v>$\v@mn!*HXsG^7p$'lEuQo?B-]a>\aV75zUQ[uq#,mlsD[?1z~U[vBp@-
+    },xD^rX]Unk_}1$uji\53DAIW?UH,xA,,$k*r}p+^I'l7$3IXn3avi:J${3v1\k3'JCD5ZTu5+O3
+    Y#JRJ{spOoRHR-o<CK,RG+*I>Z3lD51CpU~|u};!YKQpnaV2lI@HOuZOn[#2Z^'zap{ED@Te#xue
+    -{D*Eu1XXQL2^;javw2-a^ijao{3T\JCEK;u5V$lRap|Ko]QjH[Gu=e!\mwA[r5HUD]$aDD--YoJ
+    C$o]5ExH/wTe-r3s;uj7DrJm~4s\aEKx*!E]zKHH^i~e>uA<Y+B~B3\'{_Z>1H<wv=,e<<ZRH-\E
+    J#j<5j)@asAozD1wC\HB?[VZOomjV$*r'^^!v$B}C?Qjj5Esx]D$G_7x,u^ykQ7U}CEIPEn'\sDX
+    DI$WJ2nE^oH2eZOalWQUC7Vrnwz5!1_zOA,u3s3=]ZHVnrXlvn+eZk$X{OG!TDzZ[{_THa\+G}[A
+    ^^v2=YzYQ7!GHz@!ROD$7X7?n'}+58SyUBsUoD\xoFYKT1d=TZ{+Eg)RBI'\g3H}Ql}K,#T,aVlW
+    GlAA}I=C@!{a,8}UJH_#@\+B>[EJwHTOs*EW<3v}{~,5$vx#~n{C=H'7IQC!],-{xR}_n=*U[GAU
+    13~\7!yEKu2~r1G7Ozl/Cr$u4[\V!!=*o~OK]xzpl:ODHnXO\{*Ge'|rJ<KvK$G<vEr_DYpDMe--
+    Tp+>==3Z*zk7UBDQ'^W2-Fz,R#YE][2pBi1{BR[K@1ZCO5VA}2l1TueswkTjW'%[J~Y!<J_y3T<l
+    7up]YC;v9Z77W{{Bu<l-$re_{VorA\UQ,++Gal}CDICs#7Bk{73Oe>DR>i7_~N]]??QlE-7xIA*^
+    }'RWTV~7@zlzRC2rpJUzYmCPu'Hm'*;K7A$xQ>>Q2_Xs{^3$&EsC^oK@!:)U]^W51!?Clr+^^VI9
+    <q{}XpVOH~_KwGYVXBR^}R?,!5ZsoarDZ#dql_?lrr[^l?7Rr;mX*2!5}Q-K_oiU},wRv{]2,_rl
+    O;zV|!'Ds\!<B!=]vks*s~n=ev\W75m7OI\;K]xU_]${QHzaHG?o2C<llu[Qj<U^lCI\V9iQZ{xW
+    *}1@$5Iv{G}OoW7C5jy7R~=+{j<$RvVZ*Y;xevsfF\;pvcVuHWozpw]r*]wQKD5AZs&uROmBRn]H
+    _3e@D}+1\^2kpo!j+p{aas*>GGTMeV'3z^}eT1,Qj5$[]Do7Q[C*5^To06*?IZ\T7A7Dl<B]32c_
+    YwTbT+n;*x,H#RK^s\2rz#Oj\u[\wr_VMIH!IeeTT:YI_OoA;r\^\=Mjw$QG5_^jJTz*[U,JY}JD
+    DHY93|7GOZojam$;nRI2]@#<>r$,$AEQ<RxeeUG+WW_XjG,>KwhUj+V4O\_xn17${w]3<zs\>=E*
+    m^rAKDU{\~<v]@+v_@^o}ll_GO^7E+B5Vp!EH_nm75v<4tm>e7R[=PE_5z]?HuvK+veK^@oK5K?A
+    5rQa'[lA^**#2rqB;v}'*Ym~7GTmVG*]lzJgTBm{n[GO8w_z~+*wI,2zpGo<Zv2V7^T+KJGi3wY2
+    Z{UeTGK~><*CYmzD\jS}omZUl/W<nW-_Dvo{~V2VxBp!wKrnZ#nraJs5auM_mTkXx-jHY2v"YDj$
+    ,\B#@=vU,aa[~jXsUrZ,Z<D7-CYn1Ek\lXjapJ+>L5,[k^\YXWIB=K*D~OU]WWYi]a''OO[e?=Ic
+    2aAVA$a_+VoWk*u}I[r#GG@R)rR2ln[!-Z\OmXvnRXB6QHHKsxQznXnm_RiXEG2572CzBX!Ois{,
+    +lE[OX_iv*wRzE,{G<'?I'-[yI*R+_on#!l<kZnaXg5p\[ZlDxuoDK&vJ7z>]#UG!VOwa1K(^ijw
+    AX5]0,JCWVaQ{BzxWxP]+Yv$E{lYp1m*pu~OOo7r[ea%or1Cc>Ewr\YR[{CK\o}zYVVHr"n5<Aax
+    O!a*73\'l$Xl#rK^-!*2D^pEVwQuu\>QV\,e,Jx~3VAGZ]]GC^wRC~Xn;xp+rvLz~\QFvEY#lD7D
+    TD}+a]pYv_*,;lw]-<Z*Lx5l@ipU[<V-=YBjo'w*xD^>]JxlZ)j2=Vgmp'iQ=;G7?w?\2*@iIV-*
+    K*BJ5*2;z[W,2v7k$1<ZO\kGKZo>>ZseG^*B3Q#CD[xnTl@2_I-v?[TkUa@pY^nI\2><<E7Z1H=}
+    $+mY2D'K[Dm[HW'?QVR,'Dkvim]<An]=1lG'Gml'[A=/@nBT.B']uZQ;nlGiXY-!24QGm1rWBUzw
+    Ko%W[\[_G#$luHw?vI$JH\a^qC^}vx{o[rYG7!D!Z,n\Ra>x[[$oG4G,RDDVsQ{5E{7{1?}{~7a1
+    *RG!V+s^,rF\{AUKprIR>;{)^]Z<RPL0EUs2zGaQ%kCW^:iH+QHOeQAAR-;TE{*}YKmvOjp5X5U\
+    aXn-{~1z[C"O,Bzp_<wWG#s{n~^$j'wY+}s~=\_;D?E^=x^ww_}fY]1A^jQWB$I7rvv{4h<r=VxQ
+    k]*vk7^[53ZvX-=xjXuD,'Js}\pX]lvYJ]krWrKC_k'1AA2IK'3}<UYsO=CT9jzJUGr52oJ2aHEj
+    \]H$pT{5XIK!Jd$YIi5uUsrOsrCDXn=jRC~]Vi?[ivYYuxmQ7W-{G-u1Y#'x{3InUa${V*c=+s[$
+    =k}U,[eRG_v5E[E'lJ^Jz1v'^+WXY'k~zQY+1#K=*A7HYQ[c]rHQ>YG[=5K!uwQ+^KH#wwWX^?\X
+    \<]C*eUx-5wXvQ^E[I}H*R#p[^?'k5H[Ka_?a$A,sRawQW<Jo+3<r*85_xT-_\^IWZs&#Y~''v^k
+    [yGCY_!nI;kUGu5*Wjvr!_G{^l@pO^j~lrl=^i._!7v7ae~a+RGmBCmEiY5U-T_M.ZBKXj7lv{e;
+    #>tjX>=u>O3vW*npi[7b-lv@B'}j1dr>+xV>-pup]3OuzjH6sz{QeJBpTCJ$_eJ$@[v\\so+?ziG
+    NEJb9BOwj?,oop#7>r?$Y-<_xU^nBQ37{[,p]:lSlG7p?+Qo:d5$hp17x[~_o?auT\-'o.v'=+vE
+    B3J[U{?<uZv^B#YC_UYHW$3=I*'o+wK\ieUYvY~XH_pTvHpute@~x]^\>Gm2Ck1E+hEw^+)=2'w_
+    TQ*_JRiPG0Gz!@D1D,x=r@\lzK.U-_p'pWw_-YIenZH$C<AIBpR{O1,KjXE~YlU)5R15ER[Zpm3_
+    __?lon{_VoAkYO~_%}xRuD6[Ilw|oK{Vxoz@BH>@#$ws5YT$-X^=sxA~)lZ-Y1D>ur?x\*J\WW*j
+    iRT!@I-zIZrQQw'7in*'}Y]Z1ERzQ=V3Hd#<Xm\nlJG2,*]as**-CV^OXGN5~T_DeBRA+X$C]]];
+    *{,ylaUT[E3UUp*iV33+5ln#XR#Y:+r_-{$2KA{G[R1s!M?>7XP_O~5TDS=<ojJD!>,alamaHEZE
+    1wp715r?1=D\U1z}Y=#XG'#Q\<}'<+kp__6s=B}^g<VE~,Yi>lToU]A!$\w[~sAeBrVYVs$JK<Hr
+    ,1r#+v{]m!>!noo_]$A{#N,B~ks{z_CR-lKe_[OOJe^K}XA\IC~pU]'>5$ED-kh\OBO\<}n>a;I'
+    +{HnII-;zVi+YEJ_jTp%dljU1Gr[+!eBIC,2j1#OD>]OEqQZDr|5*K5<[>_LG1BXlH^A,,E^#psX
+    ^rC@9O3'7W>+svvXC*]<uzke=gweKX#o{?<>RzV\*eHHwUZ^V$?pi1\[rKuOG=7[HE\1=21feT$e
+    s*<moAEi:EO2'LEi>33'iz^HDU<ECu?e>YCOos*jx__z{j~jZ,mGu;E2v2UOo<s]ZzCA]Gi^\Xt!
+    ,eervZ'jDl>/7JoB.xQo~r1o1gkDJ*D5Cp3zse=#-]~\<,#EnQCbgv1G\JO3ZrQ;ozO;?,>xz/&\
+    R,1V<'?J5&cs|Ye!aR{RIG^TH~Geo]ovi<-1Iw,_rX<BuTCA\v;Bm$=zs3aEoQpa\Ov>Iu*Js1'V
+    +<5mO!5uG9Kw*W,'s_#,aT-Ax~}W51Hza*^{AK]uC!E0+rYaE];>5imoVRj,i7{C_XG~$Gi*<CCB
+    $-;Dskson-@Ap~[#[Vp+i}pxk>,?!]]EDX*r'>UoAjz2:p5$}tzAlxnOKVSYv2[[6$^r2l-O5-_!
+    C@Q3E7m5#tRW~nj{$xlWeI~l>$5rvzo,^mD\xqs}Yx[;^^CVs7h{nm1x]p'][~eeRH')V;m5}DU3
+    t1=]QkBl[Du=-Tj5}]=?+Y?!>[awmK-KQI?n-{-r?Xe1Ok\U'#$7z@}*RsWsWhKDZ2^Jlr#C7],-
+    QGIkTE#wZ2TG;a,lIYX7AD7JQ>QIpm1R-=<a]I27pEjKaAzsY*:Ba31VT}lsa!sG=rAeI},KjYUi
+    v^{xk$2pNi^!AEnnBls,>|SjdAj5@]-prpE\\l?X^xHXvxs$Wm[15!rDBr='DYXOJwTwro$REk$w
+    Uz{{~AI=<;po')7$nBTs[mpuTjC}57Wj;<nz{^^@x;5O2k~7XW31C#-V=w_1{VBWp\UwQl'!,J/4
+    *x\W'w';o7-ElRiQ+G>$1@-!\V2YEkQriU[Q8lUV7=11n3wj3Qm-[2CQ325iG2R?H3AwJJGaU#n,
+    ?3I!#A'E$o2,IVk+QRsXKL$#,mVO35t0su[l^X1H5!eGszaEV5ZVeUHV1<XVT'A5~,k<m<7!<+UY
+    2Q*}j~<!A>lwY!7$,A$-BKuBknsG]2D?$?_-kD\>sazW[#GJ|:Qm*@NkAR+Oz+z*a5a\1a*o_2]z
+    2W\Fo=jk<n3DbxzR=,?CK3_j,1Z-#,jY+#C\Ig=;e'VB=B+CjHf]<HGulXk[*ks.K<T~XEo!FC=i
+    #vAp?m$GI'kQ@l]WUW]w*Du^WuE@jJ*>z!Qe_@VXRmnA7D@W,U+Qxv+mxwTn*VeanzJp]GwB5U^W
+    ^e[j1wsZosn^27JD2\ITVl}$[-[k,UlOpZsD*IpZa~U2IrAAHBw{7aI!T,;Bp'@>YVUDBGR$V8RH
+    s1sun_RE}C{BQ>T]'v%eZp~I*,r\Ze<6UA}RY]Gj4KDXI-eX]Ejj2A5IY~OlQ[wno5~V'}+3V+aU
+    =OnwsnsGWz>W5-O!GO_$<Ds5a:{_kEka7I8WlYG1sm7w,BwTOA$UvEu*ow}?\<GO;{xvBmE<D><A
+    slIw{,wH]_ZcpnY]v<ZYVG{*A-2}~_lKqn*GH55k~pY]p_eWz:s#~3vC*<x{H?SIB@o)Z(d'u!+l
+    rxklxsa'w!U$)Bp;s~$HI5?@v\J<uP\B3#X\v{UGe[*!E@Is$}J<3V~5pBBYr3gs~,{T]_u=;v\2
+    ];u$O[H\KzxxAC7Q+a#JlwXa1l-^(O'{ps<vC>h2eWUmQG2[WjllI~XYuJ,tDY'^s;-Y^#-1?x1j
+    @z1IC@~5!5YH5uT_VzjQ'OIXT]Uj\Q@H&BQ3jCGBRlv]nWB+I5kU*w>^-TAj_!^]i~_,Hzp[K\w5
+    -vHE#V]\X3zpWxE;r7B]phypOp7sT^2I=pUJeonx>a{rYx#JU~~#T<^mz$?j1THJv3VB,3eQ,$po
+    lQ-,^]5eDxlk-]$MRxWe^G{=G_7[VjVjM,X=,g3jKvYGs!~<]+Pz'+^'>v#j\w'iX\-KxVx7_Y1x
+    l}VX]xX+aD#oG1\;L>GZKTO_{1]uCr;]~-'l3-Tm}'!5_e]?HVC]Q;Om7Jo<$?sIaBuD5Ik*\'E?
+    Ge1RH+IH2EY';X,x7[rmw5WwZLb=Lj2357X=~ziExOTZK_J$K*n-QV;!\7T;kY\TQB$U>{-BKm=G
+    ak>*!ArVl_>AD$_'+CV-ke[ax[o@I<*>>+\>asxT#:V[O=[<CH!DEm=TIXS<V@e<rz'"ejel=UeU
+    1$l^_>_z~EA!GB;Oo5zjHvEGsUen+Q-po^;_{T{zjwD=PymO3CY3~X5uJouQOOm-Z2QWz5k=CQIJ
+    II>w^IIX-GP-e5#sYixZ<W5?IBYA7-}+[]r7<lO:?I\}]zHCXQ~7s$-KRj5+~n[J_>u}va1I7rpE
+    vJ--s(_^o;Z_B5BR#;NIepi}QXK3w!ADaUpXD{\1+$kIR5^$*V~AA3l_'pDArw'U+p?0sD,O--2-
+    tOiD'Y!Q3arI=+HJs<_'a>xlw2T~^p^}?W5$j)ORH[}Ju!kv;s[G$;Q]\1=I\I=X'U@x>v_>>>a7
+    >wmwJlwpw~/^Xv][]^C<e}~rX^sO;];KekR^2xr17+T'a'~DU-x*_73Y!nrX\$$OGw*}Ks#uU@#v
+    ReQ[xr{ve<>xwD\CzG2]-3HWzn;s'>?\*I}'sU2\lWa_[Gr^]jv[Co#z5]=lB,p?=>w[YT@AQvv-
+    njaB<Bu!=XDo3soXE,*'xx>l<+^\Weevp\$i>VeIi~7'r+p?+1W4~rn1=Xa{<EC+jv4OVa51n^;x
+    ZOY#81;_J]iXZ;'[pY?[ej\z[lDWOBo?_D!I,Bw-;C{Jv[q7UY\j]'>7^IUl1D'}EvBmVo;p+RO;
+    Q=Xm<,DD?,#[oasHv,n_O1>Js;3Di=[V}Ua^v*QOLxR{z*ev\irk-s2xAxYT!j@-Kn$Ar}_'aw<C
+    >X^+r~HuWvr^alZpk[4iVB3b9aUTDOX<Z\E!;e#[OCo7Rz_1Ba{Y+qv\}![+x>#rpC>{m#E5@D,*
+    K+~HUV_UljYIK_Ze_+$o!JY\[\GW;[=$YU5#1Wg~G;l}?s{'';IH\@uo{!W;jU\AY{2^zT3!HQJ\
+    GAIDrz?@<U2v>-3E\V{s[QJHTn,,3az}I2+a]v?U<VJZ_nHUv@U7$}p7XXTWQ[Y+>*^U+meZT3[H
+    ea*Up+EQ>mrD*l@BHD#aO>Xz{{^cp>]xneI;M,R>n51>xY'CWoY#B2vzwo->D@O2sRKss^=3H@j?
+    {_lzu?OB[&UCzeV7U5oap_*$Unhr=,;P<7nU7Gm_775!}\lGL?j$1#BwDDpA+5*T}r$i5|sr<1UX
+    K]hjjrQ===2CIKRxZ1QDA+-^A-V@+~2'so+mjYsE1<~Ha=5!+-37Y@m'll_=C'wZ+u;jjx]WYRw'
+    WKE-^eO?H7~jxK>63jz3IZBRlEG$OB=Rar<<RaVHe~AsUsC>X_a2=T-$C{m'FQwa=^=V2<$O@opC
+    @uDDGRNWTBQKD5oV]}EmXC$@,Iu?Rx?W<G]r-\}Co#+luDCalR'VHmk#p<z\e'nuDrRnQ_zKr<-5
+    0(<zUK+E=nMTI!#$u;C'Q1}s*'A_VJV21nY_ajj?S|e#5_7#Y##7"Gv#[H'AnjEJB1OO[+U^z]u'
+    u!{au[?lOmxYV7n{~3O'Z<]AX'HKGmEj5j}{>WsGi]u[s}J~s71#V:mX~n!v1?'nZoEUvZTl&rKJ
+    oS/5'-e'Y2lZ1B1$7Ge>Tl>.7J@sBTz_]VJjcaBnK:^~K{;v{3u-mBsQ\n5}[IT=v]@7+^]I*i{r
+    ],HnQ1\<Jsp+ml}eBQ<>p^Hwo_2Ym~$Z;KyeizR,zY!@^{T=#s~Q@TrOVK^"Vv#\}@-\YJ;7\1q>
+    nA<2{>u{I'R-U77{|VasY&^!lBIo[B-+epU+EweC?[^?H_:'VZe]\Om{7RJV1Us}]^2Jt<n_*5d<
+    oj@k-<$Pv[u[e2J!]o[KDCXWB8TGXBoWme1+s}1jYG<XWvsmpYn[CBi+THC?Ukpm@?XET;YQ<D]@
+    GKZ$nah:$p+-!vRZzCp[>ss1A7k~Z9qOsuT-]]1!wao]1Dxfm9XT@e'\+C]XW16~nTBXv#p>[A2P
+    )'aer}*s?<]HO_~js>v$CU,1zR]m_{E[,JC0\~>U'BbZrVC<p~#[#Bemp_3'FGZ<nEw\>xBAwIzw
+    @]i7E=#QWuEYYV${@zJz?<>@2.;*EW1E5o\QY~CrZ~p{wvxKEAz1vD#B?=)-TJD{zR*C={rn7u>~
+    5,^z+o>Wp!,g2BEvlGmv,I\z1T-;9^kRHw'TX-+mV?j7Vlm7aDwXX_QjzADaTHCx?Ien}$,Oo_Eo
+    wpe!]Ym-p2}GO'#E!ECz7;5eWmz,74+,H=2vU!eD$v3}@r0p1=_+-HJ>I'+7OE}A.aBevB+RrveD
+    ~,^{C~HE'3-CiQi,DvAHJ<[z$#wUwx'7$+1;1OX+][A<OnDRzPkx'i7ZwJY=p~~\[V+UZ$HIuQIn
+    +lr~]wws+BO<p<^2RkBC[oiz-++7#sC]Qi+$7$_x;xo{~uBVX\OnrUKN=j?;pp$UXv-!-A-@^W$+
+    $!nuuUD36z2{_3j-[l,kG=#eQ|B_xaC[D!L!Bz#xAeuSZ}n1cp@+]rmO-#AZO{jxWJTDz=k!Be7_
+    J']zkH^@{uwn$?+RJ({X<U^iGAvE;]7a+C$+G}1^!j*^u\mH>^[mT3}v}p{U1^ZB\BvO\pY-U-TD
+    slP5~mAwpC$Cn~*+sJ'1vBo2VQA${mlioT2h_$s2.,j!5TX+rY]_e>$$$^JTCRs1[s{[5vDm1x+X
+    laj;<lU}~eOT'J}lV2ATY~a[7=r^iu='2.ce;CAma~,a1+$XaDoIHEK'+3vO<={\G[Wc(5'<[GsS
+    ~=,H^G3Bx=*[$1R^O7zEQ}R'?+wl}Dea=^AX@vH=_3-?IQnI2,**~X7r)n=XzGsK\*#<nE#]C;$Y
+    ,)y]CCYzDn{Q?nncsZRXwB*m9Y*#W7><oe]^>:F}Ju5FrTA?GGuA^3D!k\iCuV'].x+vuGT[ak53
+    WC^!1<Y<Ha_n[$w!5$?jJ<Y=i#=w;w>_\.GQlRExvX>X'up8[2mU*R'U;XA@}a$s-$YZx~G,0o-}
+    17;3R+wJ@=Q7@HDrGf<zij>5\]J52J}*Qe2$D-2]+31a'>EG]oe<{m>A7EOre7]5uAJ}#Eo}O}G@
+    nnLr,-W_a}^\I!X#-nEfzJOTuQ=#xI_]}KB,[]D-/n*[mhGXYpje0jiOZBH7lDUB2~U!aYE{!vs#
+    A[H!JC<AZIeWe8>A<DBzvr{eXnkC>G,xCn4J>!3,Zn!InzWBnU!3'pRFQZmuD}^?eY&_7<o0vs[[
+    F^Bk**l~EowQHqZn@7ew7@m={,MSCDqAUVWh[GA=3H!~}4=YlA$-l**R1AyUrY_r7{^1Iau,WZev
+    mDl5su[!n~TlaJQkwOV][oznzG*>D];f(Yjk36Y=DTY,WD>>DX=eH!lrd$#JkH7^IwUr~,'vBAX*
+    w\k@-]DD+NiI7kvH_];[k+[B~v{rCBzCKmIU$Txm;;Pm><'A{DR$m\Gkamw_sm+jEIDtO553e*XD
+    I]vjmr~*AOKlxCB_c,T*onH[We$DG\NAXeCTo\o$AU3kYOiPe'?{'j$UvUjxHD;^TXmC\~pYqq'Z
+    ;T7"U'j[zBiB;UUY2]DKEQv''^]\VHoO0r,uO]V}on\!BGKOnKDI*|aYEv[)(*B!U{GeJliWX{*\
+    $&D}X_!r'jA'jeDO}G2\u-_jZX7EDA<UWYUGAay"EUQIxQ_C&^~5~$Xw,9*=]o#>Hneg>{<s7kA'
+    YC7wloADR]O^pY-2o#!ask}!JU}7h+<U5R5#Xm,*sZ}YuI@arO@~yw+}WT*T+[[5Z4Bv[IoEQUE_
+    w7T_'W1\ApPOI#uem<}rmw;@*I3OUK?MWeJmx<Q](?$i^Cwrp[3+3|8j,p~3$B3}eAT$_Jp2j~He
+    W@C|OOYzaYn#fln*s*D{2Da'n?ej\U\~;|m[w=8lzHAI$ADOl2so?{_=CX3,-{w2Yi>Rw'OOioV'
+    }<aQ+^KwX*'r\{\Gs3O@oO$?TxuKzke55'T.Wrx>OXnX>eK=7~{]Iv}r,=2nG1!A[Q@wYXEErK7@
+    a}D>#XjQQICk:t\C+OaYnvkX_w5-1!l>Jm[IsI)2G2x!-Y2;DGY}u!RxjXK,+V2la5sr!1Hr]<!;
+    RT*WwH\[><IIYl]rTCYc%i]R24LD!mVynjTmfm,-]6GWx?^n=$Vk2]A>3oH_x?=Kaz\k*vnA{a~R
+    En=DVxv!DZ=;r[w^ku7WAazA]+\72Eu}]>1@{CaDlZ[Ok=<Qv++[=IHp}jg*EB1|kl,V?x7!B6-v
+    $pRYzlp*2!D*_JQEx'kri2unvnC!<+_I1kk5>ObE}iVu}UEsEz!EnEJnj?K_=GGCnax'+'DB,QQ#
+    eV{b6#S5UrsD32KT_5l^z]p:D]AC]i3~wYU["$lQO^nH?7;=lH7$#H(k>p5@'(7mu}}*Z_-X55{}
+    KI^Jpi;n~^GJleGV}{v$\A;7[$:'OkRoQ>'?]~nj+G^0^jsiI:{w,$wsr_9O,}?R]I-n><2eSmAG
+    p35aGXD2xmQjOGn']7ij}7<KuzHr!HQ@}}Tvexk,Bo>^nKl-l2I?RsQ?e880rp5^=H@B7{uKXTV-
+    'ZZ=XY#XAEiX2Ya[?pJHK_Y~cGTX@K7H\7_i>-^s>?-U[2nj~EY!rkBJ~l@pBI1vO-A>+$60upk3
+    }=<^D^!X:!GnZ+{!A].-p5pH7A\e?u-9Dk@s@-_\]#~7,a^>K9[}?xX$[\H=AOxaRnYzUpsZ1Vs,
+    3E#Y7CE,<,X'Z1An\E(,plOO<RmU5Xwmv#T1''ZKEA'9c~H2+*H{'?aEZ3R'*"$wHJfp[7punn>7
+    z[E<x@WKXoaIk{e=JTaD!z+J\GU_\^RI3^$OajxuG\Y,mjA52Z!Fv~sv2+3]VIVeeBZD$<{pgpkW
+    J+RR^low!m,jB=Gsswj}u01Z{eh5Gk[oo?#JVQ$7i^7$H5w$C3lN*,nB<n!5j/-lwjCC1<p'_$5~
+    CuZw<o]@J-j]CQ[<RsK{@\FW+QI9K7Yr,-Wj5$$JUzGU}Xu1%t7oxEIY~**2jT~wvGVT}GveH\__
+    }_K>5UkTX3I7;\^I@\7+Vp%>Rxn&DDO}HCieB^I}ns\C[\~X~l!5IHKoD9C@C#+s7DrDvm)r*aIQ
+    W,3x',>l>1OO(ED2zTowpk+p@tOMIR#p'^?7Pj2sCbB?eH<Eupl\ZB}G#$#X7G:*z!vWYJ]a,pIg
+    ~[-~5C#='R,wrVIs]R,]J{s$gXa3B71T7}r5JQsse5Yx;5@W3*r#+R1nI>pY3rG<rEa*!|v2l-$k
+    Yk$TvWy*i2^X>V'LE{Ku~el_1A;1]AVJz]#ajY}<pC~-EC=T*_d7+~}fT=-@\!E=)>UQ[WzpT*-J
+    K*'DpJD@VWv\Gs#[-;-C?/K\IazEA@Z}#mwoR!-CZs$<>s?BU>#a2uI!mANxu'~'VmANYUD2<][B
+    Vb%~^V2XnV[ZB2p&1x;p;<p2(s<{s^IK*RuUYPs/a'^l,*T1$5Z]D-XYV{aw^_+^1^oErV#-Omyi
+    l,>r5Hn{7sW_:GoJ=~w;@O7w}"J=Woi_CI*Yo}\'1O*3R'TYUG>HQ+ujlaE*p^q[Qzei+=]>Uvup
+    BG#[>3w]^{_x[<_KrQn-Us<BZzO#w}#rG~oX[^~o$<_#p!#s~'e7i^Q+Rx'K=2s1E;~K*$}T>G!}
+    'o'^D<*&,Jj2EHBC=-]-W7<2U}QA_FwLH[>-YHuBYY<zz7m<76_$x'j}iCKlI3J[=Eo{Y!l?YI6A
+    *Vs'I^}BUwRsXpX$$YaH+}!Dxo^>H2E-721\EGe}lY+w\WUeR5p\rKB>jsO~^IEQO-E'd]]jxX[n
+    !$YE;WI[ikl{3m1\Aaj1$IQusO<{of}J\^_ajDI,z[u-~C^l<O_~]vTvZkHvYHGowOj];kKQO~{5
+    #;3v7\lWvUfz~eDxRRn[{_xl*ClJGH]lCv<uU{12p'krm{j._uVT,5R+[e\5YWRk-lGrpp~5EzXQ
+    ^+;-'}><uou\k\HvHw|?ExrY^@'zlnZ'w-_B}?^r_B~\ZAe(E#=ZjGOWQ,H1e5+rE$@GO1pKR5k;
+    Z>,axjRrTDpE=kIa**=$]*lJI][\xK;p&B~>[>-2v^EZZx+w'\U_-lJv*@>-ov$$eSGm~7}n<TbI
+    O1Y.rAo^$AQ*l,>XC=1a$n[@_7iAVHZ_Euo3c,]*15u+WOTT}U=pj}V[n2+>oEsGAJa=QzeaHZw<
+    ^M[nonr!B'$#xk+__n^CY?06}v+-}C*G>Vr->*Rs>U;sAeOx{}5GTwGX@^zn7;U]&y2l(BmKpbEk
+    ]D^eAsj@r}reKI+ek_>1mZE<XAkX~'vTpoO;CJ<XDkS,xBxK[3Gm}>$$_em]p;EP9=,?]8p!+QzX
+    ']{sVR'HZ?t~AOpIDxH*@U;$$OG=H+#Q*[r0G]zm>+s5Y>K'te-Tu1*JED$JOC<mU,=mXZC!E,u-
+    HR!DQeWC'WzQl]+W@_IQY~Hl'=rj-d-lXJz@,!_=J_;Q--{7IeF+Ds~T]s@KTauZxw^Qf'+eOm^I
+    !41[]C~wXH3>]*ml=,&'*lpx$-jCokvO*z]j1jWD~vjelVUXv@3<AoCK_kKY^JHmGIE-IzU_3ACJ
+    -Y5"vwu3'7\T>DD[]DC@H\e]hmwaR*w+]lvsu[W>+$z\#i$^Amj3=W75svH>aeqDwea?V;vaY$I[
+    +>$Qxivkov^=YC,'al,ekBn'rCVjXmGG?ZoY<v-Z&enYI/u]nE||2HET7ezkT&oy|E_#^1TXE[Wo
+    -HO<us-213z;}xe!DTN'r?wv?\[W$jku[?Xlr{Xl#$TwOTjpQ'A+A}]1},ks!Qp7r7r}X$n]enAw
+    _[B}$R~iv@]uT2WE3Z7!nxQwsDa'~-5lRA>v?j<e++C3]A<GU<-K^K-1VJWM-pX{1~E@]?}eBVAw
+    ]oGoY3I2y=]UBKQlX=X*wsK-]is=7"[O[mH}O*UG?K5x{w}-\Dxlu5+L8\^-@'KK]N[Ip,U_*[GH
+    mwVipT,7U^Z_>-O^nQVEi-Yko7CO,OOv>X'r{lr@~$*--$"vBQI5<-^Yj3Bh}HKUGl31O?ViC?_?
+    !+R~$=KA?A;+BX[rvz-*i1$J[[uYm{Ok*}T+'$QsQ-'+^=Y$NCEzVj6j~^X3'e!0x\^Ke[\7YxC[
+    *s>EV@3sO}uaw<'T?w<G.!D@!^3B1zk]T@1Tvk'Zal}O**7-JJOwxZn]xJpAA]@!Bc)Q@H5-{_C,
+    *{mp[Qj0R_mx[~5_>=uU,nB2eX7<V-['/\}em'V+li5hQQ?E&-EJCWo$BOj^5x#3BE2_K7;<OhSG
+    KK^j[vOi^72jo#aYWj_Q=D3K}='p?A@KE,o#HTYiDV3k';H->zp~UCrP9M77Gv[2BlG{ZB<UX-Vp
+    2J;AE1D-YK5_kR1O^o3}!+a>n2EKBo*;J}r]1$urJ731[W5{C>,-Xr~lxj[z,{#>[u#xE+|*AO<*
+    5nCB@@nCQ$;oHIA+BJ-[Kn!3onUY^DYknsJa^{#t]>}2-$\]\BkCLU<7T8]T<TXYYo2>KK5<$Qrr
+    3GFOmeI$U}>rs~;]rQi3D=EGCAU$;C?.%^C-?v{_XmzinJ(URQ#Ye[eVJrpjA2;IxH1]r*=As{ww
+    ^>1nD$^EIQ\3+e}J*J?o{_=;<[3z]H#?j;75IYU[IY@)jkB}X{vmAxEz~oa!]?{]?DBVdsKw!l[s
+    ?u$UD0#AX{X{+rIR3Ddi]AW,z#X0Q8sR-]N>5Hx=sCuD{~n>>~n?YOnz2=Ds1W@<HGG,Rr?R-m?B
+    _uJ+19I7=>DJCu=3^G;}25$uO2oXlAoA7'{OG<xV]U{G-H=zo{lvo-,,_nb$I~}-{v__3m,w_e*<
+    7sGr{^D=$5QRYTQxipZgZ<U]wDpD5\G[mj\+=aOC(-Doo1I\Bvl+?>jVu?*o^oa5G>wpeO^I+#DA
+    H[v[7&I;C#.EQr1unQ2aH\nJaQB7$+*r}D^YVU@V=^-[?@J(D35##CYp]T>u_?X\A[>w$-[1Uw-H
+    U{2>n<^sxvlE<sz'vB~#^5W@ROvV[RH]Q<O\j*Z>Aa<ITN*]RX\YEYuD+-vRTpzpJ?b1l!=mxj5G
+    i$eIIku<[XW>'*m0?=zxS2'zI_$+K{DK{OA}+-r3#j1'#w}QjZnpDzp7u)vl*'o@[Xi$!o>5!mpa
+    z#I]KTd>z;nnC;X,uO[AoiAvYwQROI2'azQ'Y!*D2B!Yzm,N-YDTtXBVn012T7~,ozi{u,7R?J!'
+    ZOHx{_lTuYg,i>{X-{jInT>,x+K~<Av^ns,ETo,m|^#;G'rAC>}GvC>a_pze7,R72Z_#~bZ[oUx_
+    A[H5a$jDW#Mr3='vHWzNmzQDrQKeKV>''H<\1ius3UnB,\~HeiQiE\;~YUDBJ-W'nss>f\nKs#l^
+    #l]lz^$Z}+]$Gr1+kImOO<r-pJ]aav^AB#+5r}}?EQ\V#$=*TLVO&vXjIViQ$K{TTE[seE5~e'\1
+    C1T;oAOl{t[Y#<Jj<+kxjZTU{'>>[jr?BVe[!DIC=Y3D~3U\wp\<I{Lo}OKnp^-'wj[sQ}}i[Q7<
+    {,A@5J1*sjU*U<V@C2}!+sR$e]'1Xj#xpR$E>XUVD^v~Cx^MXBKu+aOJ7i2_ZsXIu5E'u\?Z!r5I
+    !X'3[u,Z#}sGwa*k^?E5gj]m]I>OO\_=#m1Z<A\UwQO@5b{zl;x<XOh7!A;w$WTD>WQG\AWH^v@e
+    KI]5Oa**wTD]k2lfKw3-M'|Ia_'Zeor\\Io5Il,5~17Oi+lru{Q>*^nVu]_*p^aRT2]CV{roZXHA
+    [I^zZoIdCVi1<n-e@E~#>pWT%.V2Gz?Vll^7'@]R_e[\Q7$Wxp2]CekVI[aD=x,k<WuXvZ]Q+DHH
+    Ra[k=#}rUG?>;HVl^7R'-\xpiAM.zj]Y>ok*\OD~'_*l#C^$^vQ-hYY$Civx;-Eu$*BTrxev,Rwl
+    ouOZ*}_Hm51aQ'_mK_OO2,s;wc5s_xoB]-p>W]8$JQ@p=3[f}(:=2'kZnYU<w$W\z{zVnjC$rmZY
+    ?-n\eV7U_nuA{-=IYATmUO>len;?j>U+*z]zxA7xEs@CCi*uOH*aeVD4eep!2Y7<SV{a@*]xvV~3
+    @1HGT*a+;5[C^\,uv?C!v;Y$iOd1V,J,rD<'G^YG5-lloIoJ*a{UT]u<ox5w+nsYs+jr$+EB72^M
+    {CA$=UYBBsuW5{~u[]{UBkRKFlk{rw+zEOoWE$'?$]17H[ZRJos@*v5w5BowkiT^xkV<s$A_Ek^3
+    wG*Ts-n@nwe^Q]'e#o}_U_#wWurjDBTr;x]Ta#VHW_D1~Envo*iA=*Vl2GHUuGj-pe2wo:OCk#YI
+    #O2*I~xV#Kxz,?z;ur|>5m?@s~3()<seWE-!=_F>oRQu*<QQIklKDVWlA3ZzA{HO5mAlTpsD,ksH
+    ,ewIv}D*le71wWjLj;_[U=!v-E#;5+Epol<BeR#?TT3'z-mGK_,e,Unex^**O7j;>-\CGB[Wsa[r
+    kr~X&YJD@Az!wrgCCOasw[Z4xZz1Y1,$s7;El#Ax;Rf]+CHL{zlT_@3+IB7Te+j=Un+Wnoa=-e/a
+    {CC1?E,Fxa;GixVr;,aw}Z_;VWKxzaW5m{Zk?hy<T$E*r@;2janJ^am*<^$>a_,IE!Do_X_J'Ie(
+    x,U5njZ^RDV+wO}a3R7'+XzzA1$pl'X_6VO>3Ia-eQojGv,X^rr}7@X2mIJmQ/p=mm{I+zv@v_ZQ
+    u_fEJ^3+eAuGlKWMT*!]$VG@xe,lz[uB~*a[R52Ra<5Vf8+]UoVZ@*V+RI~ROzD<wuQ^pIpp+!G;
+    xGnju}R+J3+hj2AUapBi+<EiO>-3e=@D>1Bp07e}~VJ!=iEk]q2VIo}^lIGxRw{O$?E{1I{[s[m5
+    ~Q[G]2n$uBq'z]s5uYoJ1x-]\>EZERX;xW#]OJBErV>V=-@K1Z*+{s<caE-njnQr^~}GV>,He7'p
+    v>Q=,2w,n7Axx1H+jirUnAe+2O>7We$$>a\vmUwje,?OQIQ?$*HTE>ws1W\3rAQ-<7[V<r,GVz65
+    x^{C#@=/^2<uU]'vDx3<P#BK3dilIG]!zah*CW]kO@;=\,Ql;5\\ZH^QK-Z3(T]YG;<+[wv*1=,3
+    =s[8Azkv?h'nRZ?vGG*+3~TxWez=DOre=nv={IY=Q}l2W;\z@CjE-H;+mX\YVTOs7EpwE<.']kKY
+    ?$'kro3m<lp<$Be[-AWdUTID^#uB$H7ekwoZ_oHJE\Tx_+!*XjD}^1u2'UZCQZx\TaYBcD3=,s~w
+    @=}W[AY*X3s$!)=rUwsIBlnD_5>5,+x<o;o+C+*,=W_s~O3^+kl'r5YDlA@oCeA]?v+Gj!pH+H:(
+    ~O'?IBv*R![_0Ruj]foi+k]Tw!e25xuQr$BpK+OQ\2}uR?=A{wVviX_{XB]KTG>I-'^VQ*Ow7+I>
+    oO;=?=m}:rw$nK-E^>>pe'kGo.r+YYzj]$ZDBiH7;CTp@a/<Ull{T[aFWCX~\y7BAYir[,5XGrvx
+    BR(pu[W{Ie5vY1ZS7H]Z=w-rC[Vn}3;V(e]j1,lQA@G>$OC<o{^5;'ms[aYBnn={wIG;w'v$DLAp
+    Ka*>3{2GU@*ea{5^pZ]xl2TRVG\OU'>olT*K1#Y~eBA<YKA'VmPx^lQ{x[+u\H2'$[+oK+3swIo&
+    'uO{5Oex#Q>]35mljOmv!Dw}@{mO^z\VlT,AOzG?JGB5Z'>WH,na}oY\m_,Rw>Ymvo_Co7VTv_+O
+    Lo\+oj1s;3DHJVs?!vsA$'kAul{XkrCG\V<n?{7Oj721;Wjmxp'=a5_H<VWF"^ux\L$pvjSe^,Tx
+    sHjUw$1]5VC*nvH4Xx+!/yq$z^HB5z<(3xVmY{x$+^O],2-nA=^54p5X5+p\2zu=j=CTBE=K=j;_
+    -)#X+}A1m]~_zV\jx,Y5*_U,_Q\EvCw><EQJmA13V}=k]EI]l+IiQ$$[OrSoa}]3w>Ji7<'H'Rs{
+    <5a[!z=gt0?RaA7YsxTvuw'I~[]>n'p_Oam*~OGvKue}G]$vRWi$ilzJu'evV7'5IU$k$KVvl$7v
+    I*^HKs3Dk<V$JXpt:qzVm}rv[D=\[2b(GpV+[_[K>p?vEa+AjH}J?=XIxE-xujeV?-7RC{]+sxE^
+    nlU'\JaluQ@3{s1Ip-e$9D~wR-xa$mGTJ@T_<2r!@vIDuOwAjL\>'<%W]^BBD][dGC}p>r-G'3\o
+    2]W~D<pr~l2^BD7-Q=z7z-IuRD1]AzCZJ{-},*{\~sz1WhD**pR~<$[=np'GTH[lp<*C$KIp?_^j
+    $z"$D]mv'\{I;lr*rYp=]U}sl#o"CHE?wOn\}2lx9@DsCkxum|}+*Rw^!2@=1}z@;#W$w\Yv,KUQ
+    5T>l@aEiE!CU^kCYJv[}k1o]JJy{rW#is~Yg![_?xjw2V<jR>I~2EiO*AaBa=H$75QWW>V!Y,3r$
+    pkA;IbIsCR=$jKYaWzuBZ';enp}BamiO\I=W^{*^{,]MI=U$5U[Qx-}vIax>_Ol7?sOG-ajpYz3Q
+    iU@31#u-'GeT$$u'@vH?gZ$_Dvv}!!UIn/v7m1][,1lEDICM\C\_y-lQ[Z+aA%E#1pzu~Y{}33me
+    JnJ1VvYG!xHHu$5v]r}7;RXQ*Tds{xo']wvzou\%{+;pvBT}#QI;?,2v@vvOszoKD<X^#B]pA*e?
+    {xT_*zO*~BACMd]O}A4RI=D@5lY,nAv{jaEliKukG~IQ>}p:KDr'Ek@]Q#B?za2-k{W{OWn7tz@o
+    B7!=pmw-*I@vm5ep3+=1]R_Aw5i~AyB'@B_&D<wrVD;2+j32gaG<JA>eXDsn5VE,AW-5s>Y}nG1C
+    \~I<-1n@[)Ij#C$*!~}GY'HT'v]Zt1onn~*;WH1m-Z^WrftXau+RZ]E*E@kK$l2DkT$J=[,ZYEWj
+    rB-|Bj-X2<W+ZVi'nGiXYpO>]D{\F-Ye;a1??iwKKrUuQNwUs_.rK^v"Z,<3'@JjtBDK22RVo}o3
+    2<TYr3*}\Ek]AEYT><j#5BjW_O+p1#l<j"lGO?'>C~->Bre{5CarWIEVK2T}71u'{;'i>BB+[*\v
+    2@>s<U}KGGnna{wh1v$r>Dwr(+\Kz^;sHiRpTCB!jEZ=R$,J^I}TlB$-lNcj1{x9FGoH\(J5p5W5
+    -{t{X3G+v@Q*1**QO@5GloES*j#kjjuo&"jU2e$I3^COo<c1]+OG[XoWRksDDoRm,iX$]+!2_$z!
+    _-2@z<JYH[B3D>VOVroxz^smzjO{5oD,+,nm,ZXG}VrX{$T2AYGa\2T=^}Z$wJ?,I$]xee}Ys\wH
+    Ha#e2l7YiR^{G3*E$IC7}vv_ORoC{Y2n}AK=[I}*CiA~Q}ER_-C5~2JYaR~pKem+IC'?G=uG2-\[
+    >'+#BEXGjjA,~aa&c9cR@7!7l<r{saIJVzA*^vQlrQTQ[[ejl]+RCI_#IxVJpR2CAWWp#*<,asIL
+    ,~m~AD^@_[ACz;7sUzYHICVR/"v$Z;UU~G*DCHWxTH7?o}~1nw'@xQQ<u+&p=KRK}?kcGBY,l1}l
+    }s-D;H]p*2mB>'lp[owGDss5jnal*@Ww77-Xyyxj+T;HZllo-KY5@^YX\T$YBKHU$@%h!jR]yxZx
+    D@^E=<v'V#57{q~zG{zHu!OuQKWYTXZ<OW=3+,$J\lloGx7m]>e<YU]V=[OjU,mzTM55{Qy]O*#B
+    Z-p!E#]uB~JE1I>1TE^ksuJ&Y7,!=n}r,O-ou*xwFFD9|En;HnDBZC{VBw12Y:KD#?Xaz#BGJV9a
+    {O[a{TKzz}@?B13s^z}Yvw#jvGR[VH>lTKax11!m^;#NJ_u-^^IJy;ICH?,IIGDKZpRAjQXE#[Jn
+    OVpBszjimRulI=ITXH\AI7-u*UB#~SoEY+BX<ro[A2Hp[Da1-Y7+Bn6=5]BEs21#ETuF]5}F.$,2
+    AIjBkG!5?=m;1QZslX*\Kxj*nsYe*:Bv*<QwQAz[BE)xG=<@UeG1WAT3Dj,bd!jklRlun]Q[R*R[
+    wK*'TQOAsp{_uZQ]D\<s=V[}Vo7pmwsl@E~*oD[~kBZX7x^aY[WWRW$^2M6*sCxe]lWja*'['XU1
+    <;xlFErR[1;BGsU'?[k,Tp%KNzB^kXIDCT=+?d?1DBL\>HI%I}\egjJsQ?_DzxjWoS^*AOd7GC!i
+    RC#s;\!|BI,<}oJ2xEupep#nvClCCr!lw]@G1x-!2[C5&F^=>]'MXv1j[Wl-:DWVVH^{]'G2<eJw
+    xC_?uOxm#{GDCZ'<lvCery0'oO{lmE7}?wo{npxXa~~5}W5p@'XWD~af3A3oOa^xE<JlZexl>eRU
+    xn3G_3EGwzKVKn}i}^!^ziaXCml;FE1}[cJInelnAp3p5@xn;jAQ$u,FYX;;u>V;^G{aWwE~?=i~
+    E*DQo1|r;oi1[Kn$[
+`endprotected
+   
+  //--------------------------------------------------------------------------
+  // OVL SVA Assertions are included here
+  //--------------------------------------------------------------------------
+
+`include "qvl_pci_express_link_training_monitor_assertions.inc"
+
+
+`ifdef ZI_INLINED_PSL
+`include "0in_ac_inline_for_mod_zi_cw_pci_express_link_training_monitor.inc"
+`endif
+`ifdef ZI_INLINED_CHX
+`include "zi_cw_pci_express_link_training_monitor.zi_chx.inc"
+`else
+`ifdef ZI_INLINED_CHX_zi_cw_pci_express_link_training_monitor
+`include "zi_cw_pci_express_link_training_monitor.zi_chx.inc"
+`endif
+`endif
+
+`qvlendmodule // End of qvl_pci_express_link_training_monitor.v

@@ -1,0 +1,16 @@
+INCLUDE "dec_f.inc";
+SUBDESIGN f_dec 
+(
+     BI, IN1 : INPUT = GND;
+     DEC        : OUTPUT;
+)
+VARIABLE
+     	ufdec:dec_f with ( IGNORE_SOFT_BUFFERS = "OFF" );
+begin
+
+	ufdec.in1 = IN1;
+	ufdec.bi = BI;
+	DEC = ufdec.dec;	
+end;
+
+

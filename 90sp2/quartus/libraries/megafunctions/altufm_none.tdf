@@ -1,0 +1,123 @@
+------------------------------------------------------------------
+-- altufm_none parameterized megafunction
+-- Generated with 'clearbox' loader - do not edit
+------------------------------------------------------------------
+
+
+-- Copyright (C) 1991-2009 Altera Corporation
+--  Your use of Altera Corporation's design tools, logic functions 
+--  and other software and tools, and its AMPP partner logic 
+--  functions, and any output files from any of the foregoing 
+--  (including device programming or simulation files), and any 
+--  associated documentation or information are expressly subject 
+--  to the terms and conditions of the Altera Program License 
+--  Subscription Agreement, Altera MegaCore Function License 
+--  Agreement, or other applicable license agreement, including, 
+--  without limitation, that your use is for the sole purpose of 
+--  programming logic devices manufactured by Altera and sold by 
+--  Altera or its authorized distributors.  Please refer to the 
+--  applicable agreement for further details.
+
+--  Version 9.0 Build 235 06/17/2009
+
+OPTIONS NAME_SUBSTITUTION = ON;
+
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+
+PARAMETERS
+(
+	ERASE_TIME = 500000000,
+	LPM_FILE = "UNUSED",
+	OSC_FREQUENCY = 180000,
+	PORT_ARCLKENA = "PORT_UNUSED",
+	PORT_DRCLKENA = "PORT_UNUSED",
+	PROGRAM_TIME = 1600000,
+	WIDTH_UFM_ADDRESS = 9,
+	CBXI_PARAMETER = "NOTHING"
+);
+FUNCTION @CBXI_PARAMETER (arclk, arclkena, ardin, arshft, drclk, drclkena, drdin, drshft, erase, oscena, program)
+RETURNS (busy, drdout, osc, rtpbusy);
+
+
+SUBDESIGN altufm_none
+(
+	arclk		:	INPUT;
+	arclkena		:	INPUT = VCC;
+	ardin		:	INPUT;
+	arshft		:	INPUT;
+	busy		:	OUTPUT;
+	drclk		:	INPUT;
+	drclkena		:	INPUT = VCC;
+	drdin		:	INPUT;
+	drdout		:	OUTPUT;
+	drshft		:	INPUT;
+	erase		:	INPUT;
+	osc		:	OUTPUT;
+	oscena		:	INPUT;
+	program		:	INPUT;
+	rtpbusy		:	OUTPUT;
+)
+VARIABLE
+	IF CBXI_PARAMETER != "NOTHING" GENERATE
+		auto_generated : @CBXI_PARAMETER WITH ( CBXI_PARAMETER = "NOTHING" );
+	END GENERATE;
+BEGIN
+	ASSERT (CBXI_PARAMETER != "NOTHING")
+	REPORT "Valid clear box generator not found or Errors encountered during clear box generation"
+	SEVERITY ERROR;
+	IF (CBXI_PARAMETER != "NOTHING") GENERATE
+		IF USED(arclk) GENERATE
+			auto_generated.arclk = arclk;
+		END GENERATE;
+		IF USED(arclkena) GENERATE
+			auto_generated.arclkena = arclkena;
+		END GENERATE;
+		IF USED(ardin) GENERATE
+			auto_generated.ardin = ardin;
+		END GENERATE;
+		IF USED(arshft) GENERATE
+			auto_generated.arshft = arshft;
+		END GENERATE;
+		IF USED(busy) GENERATE
+			busy = auto_generated.busy;
+		ELSE GENERATE
+			busy = GND;
+		END GENERATE;
+		IF USED(drclk) GENERATE
+			auto_generated.drclk = drclk;
+		END GENERATE;
+		IF USED(drclkena) GENERATE
+			auto_generated.drclkena = drclkena;
+		END GENERATE;
+		IF USED(drdin) GENERATE
+			auto_generated.drdin = drdin;
+		END GENERATE;
+		IF USED(drdout) GENERATE
+			drdout = auto_generated.drdout;
+		ELSE GENERATE
+			drdout = GND;
+		END GENERATE;
+		IF USED(drshft) GENERATE
+			auto_generated.drshft = drshft;
+		END GENERATE;
+		IF USED(erase) GENERATE
+			auto_generated.erase = erase;
+		END GENERATE;
+		IF USED(osc) GENERATE
+			osc = auto_generated.osc;
+		ELSE GENERATE
+			osc = GND;
+		END GENERATE;
+		IF USED(oscena) GENERATE
+			auto_generated.oscena = oscena;
+		END GENERATE;
+		IF USED(program) GENERATE
+			auto_generated.program = program;
+		END GENERATE;
+		IF USED(rtpbusy) GENERATE
+			rtpbusy = auto_generated.rtpbusy;
+		ELSE GENERATE
+			rtpbusy = GND;
+		END GENERATE;
+	END GENERATE;
+END;

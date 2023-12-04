@@ -1,0 +1,89 @@
+get_logiclock [-auto_size] [-height] [-member_state] [-origin] [-parent] [-region <region name>] [-reserved] [-soft] [-state] [-width]
+ -auto_size: Region's auto-size property
+ -height: Region height
+ -member_state: Region's member-state property
+ -origin: Region origin
+ -parent: Region's parent
+ -region <region name>: Region name
+ -reserved: Region's reserved property
+ -soft: Region's soft property
+ -state: Region's state name
+ -width: Region width
+set_logiclock [-auto_size <true|false>] [-flip] [-floating <true|false>] [-height <height in labs>] [-members_floating <true|false>] [-origin <chip location>] [-parent <parent region name>] -region <region name> [-reserved <true|false>] [-soft <true|false>] [-width <width in labs>]
+ -auto_size <true|false>: Option to set auto-size property
+ -flip: Option to flip (mirror) region right-to-left on the device
+ -floating <true|false>: Option to set floating property
+ -height <height in labs>: Region height
+ -members_floating <true|false>: Option to set members floating property
+ -origin <chip location>: Region origin
+ -parent <parent region name>: Parent region
+ -region <region name>: Region name
+ -reserved <true|false>: Option to set reserved property
+ -soft <true|false>: Option to set soft property
+ -width <width in labs>: Region width
+get_logiclock_contents [-node_locations] [-region <region name>] [-root_region]
+ -node_locations: Option to list node-locations instead of region assignments
+ -region <region name>: Region name
+ -root_region: Root region name
+set_logiclock_contents [-delete_member_of] [-exceptions <resource_string>] [-exclude_from <true|false>] [-exclude_node <node name>] [-exclude_to <true|false>] [-from <node name>] [-location <chip location>] [-priority <priority integer>] [-region <region name>] [-root_region] [-to <node name>]
+ -delete_member_of: Option to delete MEMBER_OF statement for assignment
+ -exceptions <resource_string>: If specified, the Fitter assigns all nodes under the target design entity or path to be members of the LogicLock region, except for nodes of types in the specified colon-delimited exceptions list.
+ -exclude_from <true|false>: Option to exclude source in assignment <true|false>
+ -exclude_node <node name>: Option to exclude all paths through the specified node
+ -exclude_to <true|false>: Option to exclude destination in assignment <true|false>
+ -from <node name>: Assignment source
+ -location <chip location>: Location to which node is back-annotated
+ -priority <priority integer>: Priority of wildcard or path-based LogicLock region member
+ -region <region name>: Region name
+ -root_region: Root region
+ -to <node name>: Assignment destination
+delete_logiclock -region <region name>
+ -region <region name>: Region name
+get_partition_file_list [-exclude_compiled_partitions] [-use_placeholders]
+ -exclude_compiled_partitions: Option to exclude compiled_partitions folder from the filelist
+ -use_placeholders: Option to generate filelist using a placeholder
+get_partition [-partition <partition name>] [-netlist_type] [-preservation_level] [-color] [-qxp] [-base_filename] [-full_filename] [-contents]
+ -partition <partition name>: Partition name
+ -netlist_type: Netlist type
+ -preservation_level: Preservation level
+ -color: Partition display color
+ -qxp: QXP filename (if partition is set to Import)
+ -base_filename: Base filename
+ -full_filename: Full filename
+ -contents: Partition contents (hierarchy assigned to Partition)
+set_partition -partition <partition name> [-netlist_type <netlist type>] [-preservation_level <preservation level >] [-color <color>] [-qxp <QXP filename>]
+ -partition <partition name>: Partition name
+ -netlist_type <netlist type>: Netlist type
+ -preservation_level <preservation level >: Preservation level
+ -color <color>: Partition display color
+ -qxp <QXP filename>: QXP filename (if partition is set to Import)
+create_partition -contents <hierarchy name> -partition <partition name>
+ -contents <hierarchy name>: Partition contents (hierarchy assigned to Partition)
+ -partition <partition name>: Partition name
+delete_partition -partition <partition name>
+ -partition <partition name>: Partition name
+partition_netlist_exists -netlist_type <netlist type> -partition <partition name>
+ -netlist_type <netlist type>: Netlist type
+ -partition <partition name>: Partition name
+delete_all_partitions
+delete_all_logiclock
+export_partition -partition <partition name> -qxp <QXP filename> [-netlist_type <netlist type>] [-routing <export routing>]
+ -partition <partition name>: Partition name
+ -qxp <QXP filename>: QXP fiilename
+ -netlist_type <netlist type>: Netlist type
+ -routing <export routing>: Export routing
+import_partition -partition <partition name> -qxp <QXP filename> [-create_assignments <create assignments>] [-update_assignments <update assignments>] [-update_logiclock <update logiclock>] [-include_pin_assignments <include pin assignments>] [-promote_assignments <promote assignments>]
+ -partition <partition name>: Partition name
+ -qxp <QXP filename>: QXP fiilename
+ -create_assignments <create assignments>: Create assignments
+ -update_assignments <update assignments>: Update assignments
+ -update_logiclock <update logiclock>: Update LogicLock region assignments
+ -include_pin_assignments <include pin assignments>: Import pin assignments
+ -promote_assignments <promote assignments>: Promote assignments
+auto_partition_design [-logic_max <param>] [-logic_min <param>] [-max_partitions <param>] [-percent_to_partition <param>] [-top_level <param>]
+ -logic_max <param>: Maximum logic (LEs/Comb ALUTs + Registers) in new partitions.
+ -logic_min <param>: Minimum logic (LEs/Comb ALUTs + Registers) in new partitions.
+ -max_partitions <param>: Maximum number of new partitions to create.
+ -percent_to_partition <param>: Target % of design to add to partitions
+ -top_level <param>: Top-level for partitioning. Top-level & decendents are partitioned
+EOF

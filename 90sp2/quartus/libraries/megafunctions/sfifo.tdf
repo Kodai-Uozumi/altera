@@ -1,0 +1,351 @@
+--------------------------------------------------------------------
+--	Synchronous FIFO Parameterized Megafunction - SFIFO
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 2.0
+--
+--------------------------------------------------------------------
+--  The synchronous FIFO acts like a temporary memory where you can write data 
+--   and read it back later. 
+--  The FIFO is "First-in First-out", words written first in the FIFO are read back first.
+--
+--  It has:
+--    1. an input data[] port to write to the FIFO
+--    2. an output q[] port to read from the FIFO
+--
+--  The FIFO is first empty. It keeps tracks of how full it is in an output 
+--   called USEDW[]. Writing a data increments it by 1, reading decrements it by 1.
+--    1. The FIFO is empty when USEDW[]=0.
+--    2. The FIFO is full when USEDW[] gets to a maximum predefined value, 
+--        the FIFO's depth. You specify it using the LPM_NUMWORDS parameter.
+--       When it reaches the maximum depth, you cannot write to it any more. You need 
+--        to read (empty the FIFO a little) before being able to write again.
+--
+--  Both reading and writing during a same clock cycle are possible.
+--
+--------------------------------------------------------------------
+-- Detailed description:
+-- 1. The FIFO has independent RREQ (read-request) and WREQ (write-request) 
+--     inputs so that it allows 4 combination of requests:
+--       1. no request - the FIFO remains unchanged
+--       2. Read request (R-cycle) 
+--       3. Write request (W-cycle)
+--       4. Read/Write request (RW-cycle)
+--     All requests are synchronous to the clock port. 
+--
+-- 2. R-cycles: a word is read from the FIFO and goes to q[] when RREQ (read-request) 
+--     is asserted, synchronized to clock (see also rule 1 below).
+--
+-- 3. W-cycles: a word data[] is written to the FIFO when WREQ (write-request) 
+--     is asserted, synchronized to clock (see also rule 2 below).
+--
+-- 4. RW-cycles: a word is written to the FIFO (from d[]) and a word is read 
+--     from the FIFO (goes to q[]), synchronized to clock (rules 1 & 2 apply).
+--
+-- 5. The FIFO provides Empty/Full flags.
+--    It also provides a usedw[] output representing the number of words in the FIFO.
+--    This allows the user to create efficiently any half-full flags (MSB of usedw[]), 
+--     or almost-full/almost-empty flags, and dynamic capacity checking.
+--
+--------------------------------------------------------------------
+-- FIFO rules:
+-- 1. You cannot read an empty FIFO, write something first.
+--    Reads while the FIFO is empty are IGNORED
+--     (see below UNDERFLOW_CHECKING and LPM_SHOWAHEAD).
+--    For example, one trying a RW-cycle on an empty FIFO will only get a W-cycle,
+--     the read being ignored. On the second clock cycle, a R-cycle can now be performed, 
+--     and the data would be ready on the q[] output for the third clock cycle.
+--
+--    By setting LPM_SHOWAHEAD to "ON", you can allow a data to appear on the q[] output 
+--     immediately after being written if the FIFO is empty. The RREQ port acts then like a 
+--     read-acknowledge. Each data become available as soon as the previous has been 
+--     acknowledged.
+--    In the previous example, the data would become available on q[] on the second clock 
+--     cycle instead of on the third, and a R-cycle would just acknowledge that the data
+--     has been read.
+--    The FIFO flags (empty/full) are NOT affected by this parameter.
+--    Note that this mode suffers a performance penalty.
+--
+--    By setting UNDERFLOW_CHECKING to "OFF", you can prevent any underflow checking
+--     to take place inside the FIFO. In this mode, it is the responsibility of 
+--     the outside logic of the FIFO to prevent underflowing the FIFO (it should be 
+--     avoided as it makes the FIFO go to an undefined state). 
+--
+-- 2. You cannot write a full FIFO, make a R-cycle first. 
+--    Write-requests while the FIFO is full are IGNORED by default
+--     (see below ALLOW_RWCYCLE_WHEN_FULL and OVERFLOW_CHECKING).
+--    For example, trying a RW-cycle on a full FIFO will only get a R-cycle.
+--
+--    By setting the ALLOW_RWCYCLE_WHEN_FULL parameter to "ON", you can allow
+--     RW-cycles when the FIFO is full. Doing so leaves the FIFO in full state.
+--     W-cycles alone are still ignored.
+--    Note that this mode suffers a performance penalty.
+--
+--    By setting OVERFLOW_CHECKING to "OFF", you can prevent any overflow checking
+--     to take place inside the FIFO. In this mode, it is the responsibility of the 
+--     outside logic of the FIFO to prevent overflowing the FIFO (it should be 
+--     avoided as it makes the FIFO go to an undefined state). 
+--    Note that when OVERFLOW_CHECKING is set to "OFF", the ALLOW_RWCYCLE_WHEN_FULL parameter
+--     is ignored as the FIFO doesn't do any more overflow checking.
+--
+-- 3. When the FIFO is neither empty or full, you can issue a RW-cycle.
+--
+--------------------------------------------------------------------
+-- REQUIRED PARAMETERS:
+--	  LPM_WIDTH					- width of the FIFO in bits
+--	  LPM_NUMWORDS				- depth of the FIFO (must be at least 2 level deep)
+--
+-- OPTIONAL PARAMETERS:
+--    LPM_SHOWAHEAD				- allow the data to appear on q[] before RREQ is asserted, "ON" or "OFF" (default)
+--    UNDERFLOW_CHECKING		- disable reading an empty FIFO, "ON" (default) or "OFF"
+--    OVERFLOW_CHECKING			- disable writing a full FIFO, "ON" (default) or "OFF"
+--    ALLOW_RWCYCLE_WHEN_FULL	- allow read/write cycles to an already full FIFO, so that it remains full, "ON" or "OFF" (default)
+--								-  note: this parameter is used only when OVERFLOW_CHECKING="ON"
+--    USE_EAB					- selects between EAB or LE-based FIFO, "ON" (default) or "OFF"
+--    OPTIMIZE_FOR_SPEED		- for LE-fifos only, see below
+--								- set this parameter thru the "Global Project Logic Synthesis" Dialog
+--
+--------------------------------------------------------------------
+-- INPUT PORTS:
+--	  data[LPM_WIDTH-1..0]		- input data bus
+--
+--	  wreq 						- write-request
+--								- The word presented to data[] is written in the FIFO if 
+--								-  1. wreq is asserted 
+--								-  2. full is not asserted (unless OVERFLOW_CHECKING="OFF")
+--
+--	  rreq						- read-request
+--								- A word is read from the FIFO and goes to q[] if 
+--								-  1. rreq is asserted 
+--								-  2. empty is not asserted (unless UNDERFLOW_CHECKING="OFF")
+--
+--	  clock						-
+--	  clockx2					- optional signal, used ONLY for cycle-shared FIFO (CSFIFO)
+--								- must operate at twice the clock frequency
+--
+--	  aclr						- asynchronous reset
+--	  sclr						- synchronous reset (flush)
+--	  threshlevel[WIDTHAD-1..0]	- threshold output limit, see threshold output
+--
+-- OUTPUT PORTS:
+--	  q[LPM_WIDTH-1..0] 		- output data bus
+--
+--	  empty, full				- empty & full flags
+--	  usedw[]					- # of words currently in the FIFO
+--	  threshold					- true (VCC) when usedw[]>=threshlevel[] 
+--
+--------------------------------------------------------------------
+-- SFIFO allows instantiation of different sub-designs, depending of some
+--	parameter values. All provide the same basic functionality and behavior:
+--	* LE-based FIFO:
+--		uses LCELLs for data queuing.
+--		no need for a clockx2 signal.
+--	   The parameter OPTIMIZE_FOR_SPEED allows the designer to choose between
+--		two different implementations of LE-based FIFOs. Both are functionally 
+--		identical and differ only in their internal way of operation.
+--	    * implementation1, if OPTIMIZE_FOR_SPEED<7
+--  	* implementation2, if OPTIMIZE_FOR_SPEED>=7
+--	   Anyway, as it is always the case for synthesizable functions, the resulting
+--		synthesized function is dependant of the environment in which it is used.
+--		It is the responsibility of the designer using LE-based FIFO to ensure that
+--		its choice for OPTIMIZE_FOR_SPEED parameter results effectively in an 
+--		appropriate function in terms of speed and lcells usage.
+--  * Interleaved-memory FIFO:
+--		uses EAB(s) for data queuing.
+--		the EAB(s) are allocated in pairs for allowing concurrent read/write cycles.
+--		no need for a clockx2 signal.
+--  * Cycle-shared FIFO: 
+--		uses EAB(s) for data queuing.
+--		rely on an additional clockx2 signal for allowing concurrent read/write cycles.
+--
+--------------------------------------------------------------------
+
+include "csfifo";
+include "a_imfifo";
+include "a_fffifo";
+include "a_f2fifo";
+include "aglobal90";
+
+parameters							-- see above for parameters description
+(
+	LPM_WIDTH,
+	LPM_NUMWORDS,
+
+	LPM_SHOWAHEAD = "OFF",
+	UNDERFLOW_CHECKING = "ON",
+	OVERFLOW_CHECKING = "ON",
+	ALLOW_RWCYCLE_WHEN_FULL = "OFF",
+
+	USE_EAB = "ON",
+	OPTIMIZE_FOR_SPEED = 5,
+	DEVICE_FAMILY
+);
+
+--------------------------------------------------------------------
+
+define USED_FIFO()= (
+  (FAMILY_HAS_EAB()==1)	& (USE_EAB=="ON") &     used(clockx2)						   ? USE_CSFIFO:
+  (FAMILY_HAS_EAB()==1) & (USE_EAB=="ON") & (LPM_NUMWORDS>=4) & (LPM_SHOWAHEAD=="OFF") ? USE_IMFIFO:
+  (OPTIMIZE_FOR_SPEED<7) # (LPM_NUMWORDS>=256)										   ? USE_FFFIFO: USE_F2FIFO
+					);
+
+constant USE_CSFIFO	= 1;
+constant USE_IMFIFO	= 2;
+constant USE_FFFIFO	= 3;
+constant USE_F2FIFO	= 4;
+constant WIDTHAD = LPM_NUMWORDS > 0 ? ceil(log2(LPM_NUMWORDS)) : 0;
+
+--------------------------------------------------------------------
+subdesign sfifo									-- see above for ports description
+(
+	data[LPM_WIDTH-1..0]		: input;
+	q[LPM_WIDTH-1..0]			: output;
+
+	wreq, rreq					: input;
+	clock						: input;
+	clockx2						: input = gnd;
+	aclr, sclr					: input = gnd;
+
+	threshlevel[WIDTHAD-1..0]	: input = gnd;
+	threshold					: output;
+	empty, full					: output;
+	usedw[WIDTHAD-1..0]			: output;		-- # of words in the FIFO
+)
+
+--------------------------------------------------------------------
+variable
+ 	if USED_FIFO()==USE_CSFIFO generate 
+		subfifo : csfifo with( 
+		 LPM_WIDTH=LPM_WIDTH, LPM_NUMWORDS=LPM_NUMWORDS, LPM_SHOWAHEAD=LPM_SHOWAHEAD,
+		 UNDERFLOW_CHECKING=UNDERFLOW_CHECKING, OVERFLOW_CHECKING=OVERFLOW_CHECKING, 
+		 ALLOW_RWCYCLE_WHEN_FULL=ALLOW_RWCYCLE_WHEN_FULL );
+	end generate;
+
+ 	if USED_FIFO()==USE_IMFIFO generate 
+		subfifo : a_imfifo with( 
+		 LPM_WIDTH=LPM_WIDTH, LPM_NUMWORDS=LPM_NUMWORDS, 
+		 UNDERFLOW_CHECKING=UNDERFLOW_CHECKING, OVERFLOW_CHECKING=OVERFLOW_CHECKING, 
+		 ALLOW_RWCYCLE_WHEN_FULL=ALLOW_RWCYCLE_WHEN_FULL );
+	end generate;
+
+ 	if USED_FIFO()==USE_FFFIFO generate 
+		subfifo : a_fffifo with( 
+		 LPM_WIDTH=LPM_WIDTH, LPM_NUMWORDS=LPM_NUMWORDS, LPM_SHOWAHEAD=LPM_SHOWAHEAD,
+		 UNDERFLOW_CHECKING=UNDERFLOW_CHECKING, OVERFLOW_CHECKING=OVERFLOW_CHECKING, 
+		 ALLOW_RWCYCLE_WHEN_FULL=ALLOW_RWCYCLE_WHEN_FULL );
+	end generate;
+
+ 	if USED_FIFO()==USE_F2FIFO generate 
+		subfifo : a_f2fifo with( 
+		 LPM_WIDTH=LPM_WIDTH, LPM_NUMWORDS=LPM_NUMWORDS, LPM_SHOWAHEAD=LPM_SHOWAHEAD,
+		 UNDERFLOW_CHECKING=UNDERFLOW_CHECKING, OVERFLOW_CHECKING=OVERFLOW_CHECKING, 
+		 ALLOW_RWCYCLE_WHEN_FULL=ALLOW_RWCYCLE_WHEN_FULL );
+	end generate;
+
+--------------------------------------------------------------------
+begin
+	assert (LPM_WIDTH>=1)
+			report "Value of LPM_WIDTH parameter must be at least 1"
+			severity error
+			help_id SFIFO_WIDTH;
+
+	assert (LPM_NUMWORDS>=2)
+			report "Value of LPM_NUMWORDS parameter must be at least 2"
+			severity error
+			help_id SFIFO_NUMWORDS;
+
+--------------------------------------------------------------------
+	assert (LPM_SHOWAHEAD=="ON") or (LPM_SHOWAHEAD=="OFF")
+			report "Assign either ""ON"" or ""OFF"" to LPM_SHOWAHEAD"
+			severity error
+			help_id SFIFO_SHOWAHEAD;
+
+	assert (UNDERFLOW_CHECKING=="ON") or (UNDERFLOW_CHECKING=="OFF")
+			report "Assign either ""ON"" or ""OFF"" to UNDERFLOW_CHECKING"
+			severity error
+			help_id SFIFO_UNDERFLOW_CHECKING;
+
+	assert (OVERFLOW_CHECKING=="ON") or (OVERFLOW_CHECKING=="OFF")
+			report "Assign either ""ON"" or ""OFF"" to OVERFLOW_CHECKING"
+			severity error
+			help_id SFIFO_OVERFLOW_CHECKING;
+
+	assert (ALLOW_RWCYCLE_WHEN_FULL=="ON") or (ALLOW_RWCYCLE_WHEN_FULL=="OFF")
+			report "Assign either ""ON"" or ""OFF"" to ALLOW_RWCYCLE_WHEN_FULL"
+			severity error
+			help_id SFIFO_ALLOW_RWCYCLE_WHEN_FULL;
+
+	assert (USE_EAB=="ON") or (USE_EAB=="OFF")
+			report "Assign either ""ON"" or ""OFF"" to USE_EAB"
+			severity error
+			help_id SFIFO_USE_EAB;
+
+--------------------------------------------------------------------
+	assert (FAMILY_HAS_EAB()==0) or (USE_EAB=="OFF") or used(clockx2) or (LPM_SHOWAHEAD=="OFF")
+			report "No support of show-ahead mode when using A_IMFIFO, using a LE-based FIFO instead"
+			severity warning
+			help_id SFIFO_SHOWAHEAD_PLUS_IMFIFO;
+
+	ASSERT (FAMILY_IS_KNOWN() == 1)
+			REPORT "Megafunction sfifo does not recognize the current device family (%) -- ensure that you are using the newest version of the megafunction"
+				DEVICE_FAMILY
+			SEVERITY WARNING
+			HELP_ID SFIFO_FAMILY_UNKNOWN;
+
+--------------------------------------------------------------------
+	assert USED_FIFO()!=USE_CSFIFO report "Instantiate CSFIFO" severity DEBUG;
+	assert USED_FIFO()!=USE_IMFIFO report "Instantiate IMFIFO" severity DEBUG;
+	assert USED_FIFO()!=USE_FFFIFO report "Instantiate FFFIFO" severity DEBUG;
+	assert USED_FIFO()!=USE_F2FIFO report "Instantiate F2FIFO" severity DEBUG;
+	
+--------------------------------------------------------------------
+-- Connect me to the sub-design FIFO
+--
+	subfifo.(data[], clock, rreq, wreq, sclr) = (data[], clock, rreq, wreq, sclr);
+	(q[], empty, full, threshold, usedw[])	  = subfifo.(q[], empty, full, threshold, usedw[]);
+
+	if USED_FIFO()==USE_CSFIFO generate
+		subfifo.clr = aclr;
+	else generate
+		subfifo.aclr = aclr;
+	end generate;
+
+	if used(threshlevel) generate
+ 		subfifo.threshlevel[] = threshlevel[];
+	end generate;
+
+ 	if USED_FIFO()==USE_CSFIFO generate 
+		subfifo.clockx2 = clockx2;
+	end generate;
+	IF !USED(threshold) GENERATE
+		threshold = GND;
+	END GENERATE;
+	IF !USED(usedw) GENERATE
+		usedw[] = GND;
+	END GENERATE;
+	IF !USED(q) GENERATE
+		q[] = GND;
+	END GENERATE;
+	IF !USED(empty) GENERATE
+		empty = GND;
+	END GENERATE;
+	IF !USED(full) GENERATE
+		full = GND;
+	END GENERATE;
+end;
+

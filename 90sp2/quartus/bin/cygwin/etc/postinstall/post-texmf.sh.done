@@ -1,0 +1,128 @@
+#!/bin/sh
+
+# Clean environment a bit.  Setup.exe exports the complete Windows
+# environment because some variables are essential.  This has
+# been reported as a bug, but may not get fixed any time soon.
+unset MFINPUTS TEXINPUTS TEXMF TEXMFCNF TFMFONTS VARTEXFONTS
+unset TEXMFVAR TEXMFSYSCONFIG TEXMFSYSVAR SYSTEXMF
+
+### purge old formats
+rm -rf /var/lib/texmf
+rm -f /usr/share/texmf/web2c/mf.base /usr/share/texmf/web2c/*.*fmt
+
+# Quick Installation:
+# 
+# Here is an overview of a typical installation:
+# 
+# 1] Install the binaries with the Cygwin setup as usual;
+
+### tetex-bin: check
+
+# 2] Install TDS at /usr/share/texmf (see above):
+#     cd /usr/share
+#     mkdir -p texmf
+#     tar -zxf teTeX-src-1.0.tar.gz
+
+### tetex-tiny or tetex-base: check
+
+# 3] Check the configuration files in /usr/share/texmf/web2c
+#      texmf.cnf, fmtutil.cnf and mktex.cnf
+#   Note that if you made any changes to the configuration files,
+#   new versions won't be installed:
+
+
+#
+# This should be (made) available from Cygwin install tools...
+#
+install_config_file () {
+    d=$(dirname $1)
+    i=$(basename $1)
+    cd $d || return  ## exit 1
+    
+    # Any user changes since last time?
+    changed=0
+    if [ -r $i ]; then
+        # If so, should ask user what to do, showing this diff ...
+	if [ -r $i.cygwin-orig ]; then
+	    diff -u $i $i.cygwin-orig ## > /tmp/$i.diff
+	    changed=$?
+	    ## rm -f /tmp/$i.diff
+	# No original version to compare to eh?
+	# Hmm.  Better install our own, saving current configuration first.
+	elif [ ! -r $i.cygwin-save ]; then
+	    cp -f $i $i.cygwin-save
+	fi
+    fi
+    
+    # No user changes to previous install, install it
+    if [ $changed -eq 0 ]; then
+	cp -f $i.cygwin-dist $i
+    fi
+    
+    # Save distributed config file for next time
+    cp -f $i.cygwin-dist $i.cygwin-orig
+}
+
+texmfcnf=/usr/share/texmf/web2c
+for i in texmf.cnf fmtutil.cnf mktex.cnf; do
+    install_config_file $texmfcnf/$i
+done
+
+### /etc/postinstall/post-texmf.sh: check
+
+# 4] configure TeX:
+#     texconfig-sys confall
+#     texconfig-sys rehash (or mktexlsr)
+#     texconfig-sys init
+
+if [ -d /usr/X11R6/bin ]; then
+    PATH=/usr/X11R6/bin:$PATH
+fi
+texconfig-sys rehash
+texconfig-sys confall
+texconfig-sys rehash
+texconfig-sys init
+
+### Running updmap should not be necessary, unless you install
+### additional type1 fonts
+# updmap
+
+### check
+
+### Mats Bengtsson: default dvips output to file
+texconfig-sys dvips printcmd -
+
+
+### Make sure we use psfonts.map additionally:
+echo -n "Checking for psfonts.map in config.ps... "
+configps=$(find /usr/share/texmf/dvips -name config.ps)
+if grep '+psfonts' $configps > /dev/null 2>&1; then
+    echo ok
+else
+    echo -n "no.  Adding ... "
+    cat >> $configps <<EOF
+
+% Configuration of postscript type 1 fonts:
+p +psfonts.map
+EOF
+    echo done
+fi
+
+# And to configure what you need:
+#     texconfig 
+#     
+# See /usr/doc/tetex-XXX/QuickInstall for more informations.
+#
+# -----------------
+#
+# Quick Installation Check:
+#
+# 1] PostScript output:
+#   latex small2e.tex
+#   dvips small2e.dvi
+#
+# 2] PDF output:
+#   pdflatex small2e.tex
+#
+# XDvi output can be viewed with xdvi.
+# Both PS and PDF output can be viewed (and printed) with GSview.

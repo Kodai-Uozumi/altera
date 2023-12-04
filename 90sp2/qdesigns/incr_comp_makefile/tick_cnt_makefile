@@ -1,0 +1,37 @@
+######################################################################
+# 
+# LogicLock 2 Makefile Example
+# Makefile To Built The tick_cnt Project
+#
+######################################################################
+
+# Top Level Module
+MODULE_NAME = tick_cnt
+SOURCE_FILES = tick_cnt.v tick_cnt.qsf
+
+QXP_FILE = $(MODULE_NAME).qxp
+
+###################################################################
+# Executable Configuration
+###################################################################
+
+MAP_ARGS = --read_settings_files=on --write_settings_files=off
+MERGE_ARGS = --merge=on
+FIT_ARGS = --read_settings_files=on --write_settings_files=off
+EXPORT_ARGS = --qic_export_project
+
+###################################################################
+# Main Targets
+#
+# all: build everything
+# clean: remove output files and database
+###################################################################
+
+all: $(QXP_FILE)
+
+$(QXP_FILE): $(SOURCE_FILES)
+	quartus_map $(MAP_ARGS) $(MODULE_NAME)
+	quartus_cdb $(MERGE_ARGS) $(MODULE_NAME)
+	quartus_fit $(FIT_ARGS) $(MODULE_NAME)
+	quartus_cdb $(MODULE_NAME) $(EXPORT_ARGS)
+	

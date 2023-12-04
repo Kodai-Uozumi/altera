@@ -1,0 +1,601 @@
+<DEFAULT_READ_ASSIGNMENT>
+--------
+Overview
+--------
+
+Option to read the assignments from the Quartus II Settings 
+File (.qsf) and override assignments obtained from the 
+database. All options that pass from the command line 
+still override any conflicting assignments found in the 
+QSF.
+
+By default, assignments are read from the QSF unless you 
+specify "--read_settings_files=off".
+
+---------------------------
+Command-Line Option Details
+---------------------------
+
+Command-line options are provided for making many common
+global project settings and performing common tasks. You
+can use either of two methods to make assignments to an
+individual entity. If the project exists, open the project
+in the Quartus II GUI, change the assignment, and close the
+project. The changed assignment is updated in the QSF. Any 
+command-line executables you run after this update use the 
+updated assignment. See "Option Precedence" below for more 
+information. You can also make assignments using the 
+Quartus II Tcl scripting API. To completely script the 
+creation of a Quartus II project, choose this method.
+
+-----------------
+Option Precedence
+-----------------
+
+If you are using the command-line executables, you need to
+be aware of the precedence of various project assignments
+and how to control the precedence. Assignments for a
+particular project exist in the QSF for the project.
+Assignments for a project can also be made by using
+command-line options, as described earlier. Project
+assignments are reflected in compiler database files that
+hold intermediate compilation results and reflect assignments
+made in the previous project compilation.
+
+All command-line options override any conflicting assignments
+found in the QSF or the compiler database files. There are
+two command-line options to specify whether QSF or compiler
+database files take precedence for any assignments not
+specified as command-line options.
+
+Note: Any assignment not specified as a command-line option
+or found in the QSF or compiler database files is set to its
+Quartus II software default value.
+
+The file precedence command-line options are
+--read_settings_files and --write_settings_files. By default,
+the --read_settings_files and --write_settings_files options
+are turned on. Turning on the --read_settings_files option
+causes a command-line executable to read assignments from
+the QSF instead of from the compiler database files. Turning
+on the --write_settings_files option causes a command-line
+executable to update the QSF to reflect any specified options,
+as happens when closing a project in the Quartus II GUI.
+
+Table 1 lists the precedence for reading assignments
+depending on the value of the --read_settings_files option.
+
+
+* Table 1. Precedence for Reading Assignments
+
+Option Specified                      Precedence for Reading Assignments
+------------------------------------  ----------------------------------
+--import_settings_files=on (Default)  1. Command-line options
+                                      2. Quartus II Settings File (.qsf)
+                                      3. Compiler database (db directory, if it exists)
+                                      4. Quartus II software defaults
+
+--import_settings_files=off           1. Quartus II Settings File (.qsf)
+                                      2. Compiler database (db directory, if it exists)
+                                      3. Quartus II software defaults
+
+
+Table 2 lists the locations to which assignments are
+written, depending on the value of the --write_settings_files
+command-line option.
+
+
+* Table 2. Location for Writing Assignments
+
+Option Specified                      Location for Writing Assignments
+------------------------------------  --------------------------------
+--export_settings_files=on (Default)  1. Quartus II Settings File (.qsf) and
+                                      2. Compiler database
+
+--export_settings_files=off           1. Compiler database
+
+
+The following example assumes that a project named fir_filter
+exists, and that the Analysis & Synthesis step has been
+performed (using the quartus_map executable).
+
+quartus_fit fir_filter --fmax=80MHz
+quartus_tan fir_filter
+quartus_tan fir_filter --fmax=100MHz --tao=timing_result-100.tao --write_settings_files=off
+
+The first command, quartus_fit fir_filter --fmax=80MHz, runs
+the Quartus II Fitter and specifies a global fMAX requirement
+of 80 MHz.
+
+The second command, quartus_tan fir_filter, runs Quartus II
+Timing Analyzer for the results of the previous fit.
+
+The third command reruns Quartus II Timing Analyzer with a
+global Fmax requirement of 100 MHz and saves the result in
+a file called timing_result-100.tao. By specifying the
+--write_settings_files=off option, the command-line executable
+does not update the QSF to reflect the changed Fmax requirement.
+The compiler database files reflect the changed Fmax requirement.
+If the --write_settings_files=off option is not specified, the
+command-line executable updates the .qsf to reflect the 100 MHz
+global fMAX requirement.
+
+Use the --read_settings_files=off and --write_settings_files=off
+options (where appropriate) to optimize the way that the
+Quartus II software reads and updates the QSF. The following
+example shows how to avoid unnecessary QSF reading and writing.
+
+quartus_map filtref --source=filtref --part=ep1s10f780c5
+quartus_fit filtref --fmax=100MHz --read_settings_files=off
+quartus_tan filtref --read_settings_files=off --write_settings_files=off
+quartus_asm filtref --read_settings_files=off --write_settings_files=off
+
+The quartus_tan and quartus_asm executables do not need to
+read or write settings files because they do not change any
+settings in the project.
+</DEFAULT_READ_ASSIGNMENT>
+
+<DEFAULT_WRITE_ASSIGNMENT>
+--------
+Overview
+--------
+
+Option to write out the settings obtained from command-line 
+options to the Quartus II Settings File (.qsf). 
+
+By default, assignments are written to the QSF unless you 
+specify "--write_settings_files=off".
+
+---------------------------
+Command-Line Option Details
+---------------------------
+
+Command-line options are provided for making many common
+global project settings and performing common tasks. You
+can use either of two methods to make assignments to an
+individual entity. If the project exists, open the project
+in the Quartus II GUI, change the assignment, and close the
+project. The changed assignment is updated in the QSF. Any
+command-line executables that are run after this update use
+the updated assignment. See "Option Precedence" below for
+more information. You can also make assignments using the
+Quartus II Tcl scripting API. To completely script the 
+creation of a Quartus II project, choose this method.
+
+-----------------
+Option Precedence
+-----------------
+
+If you are using the command-line executables, you need to
+be aware of the precedence of various project assignments
+and how to control the precedence. You can find ssignments 
+for a particular project exist in the QSF for the project.
+You can also make assignments for a project by using
+command-line options, as described earlier. Project
+assignments are reflected in compiler database files that
+hold intermediate compilation results and reflect assignments
+made in the previous project compilation.
+
+All command-line options override any conflicting assignments
+found in the QSF or the compiler database files. There are
+two command-line options to specify whether QSF or compiler
+database files take precedence for any assignments not
+specified as command-line options.
+
+Note: Any assignment not specified as a command-line option
+or found in the QSF or compiler database files is set to its
+Quartus II software default value.
+
+The file precedence command-line options are
+--read_settings_files and --write_settings_files. By default,
+the --read_settings_files and --write_settings_files options
+are turned on. Turning on the --read_settings_files option
+causes a command-line executable to read assignments from
+the QSF instead of from the compiler database files. Turning
+on the --write_settings_files option causes a command-line
+executable to update the QSF to reflect any specified options,
+as happens when closing a project in the Quartus II GUI.
+
+Table 1 lists the precedence for reading assignments
+depending on the value of the --read_settings_files option.
+
+
+* Table 1. Precedence for Reading Assignments
+
+Option Specified                      Precedence for Reading Assignments
+------------------------------------  ----------------------------------
+--import_settings_files=on (Default)  1. Command-line options
+                                      2. Quartus II Settings File (QSF)
+                                      3. Compiler database (db directory, if it exists)
+                                      4. Quartus II software defaults
+
+--import_settings_files=off           1. Quartus II Settings File (QSF)
+                                      2. Compiler database (db directory, if it exists)
+                                      3. Quartus II software defaults
+
+
+Table 2 lists the locations to which assignments are
+written, depending on the value of the --write_settings_files
+command-line option.
+
+
+* Table 2. Location for Writing Assignments
+
+Option Specified                      Location for Writing Assignments
+------------------------------------  --------------------------------
+--export_settings_files=on (Default)  1. Quartus II Settings File (.qsf) and
+                                      2. Compiler database
+
+--export_settings_files=off           1. Compiler database
+
+
+The following example assumes that a project named fir_filter
+exists, and that the Analysis & Synthesis step has been
+performed (using the quartus_map executable).
+
+quartus_fit fir_filter --fmax=80MHz
+quartus_tan fir_filter
+quartus_tan fir_filter --fmax=100MHz --tao=timing_result-100.tao --write_settings_files=off
+
+The first command, quartus_fit fir_filter --fmax=80MHz, runs
+the Quartus II Fitter and specifies a global fMAX requirement
+of 80 MHz.
+
+The second command, quartus_tan fir_filter, runs Quartus II
+Timing Analyzer for the results of the previous fit.
+
+The third command reruns Quartus II Timing Analyzer with a
+global Fmax requirement of 100 MHz and saves the result in
+a file called timing_result-100.tao. By specifying the
+--write_settings_files=off option, the command-line executable
+does not update the QSF to reflect the changed Fmax requirement.
+The compiler database files reflect the changed Fmax requirement.
+If the --write_settings_files=off option is not specified, the
+command-line executable updates the QSF to reflect the 100 MHz
+global fMAX requirement.
+
+Use the --read_settings_files=off and --write_settings_files=off
+options (where appropriate) to optimize the way that the
+Quartus II software reads and updates the QSF. The following
+example shows how to avoid unnecessary QSF reading and writing.
+
+quartus_map filtref --source=filtref --part=ep1s10f780c5
+quartus_fit filtref --fmax=100MHz --read_settings_files=off
+quartus_tan filtref --read_settings_files=off --write_settings_files=off
+quartus_asm filtref --read_settings_files=off --write_settings_files=off
+
+The quartus_tan and quartus_asm executables do not need to
+read or write settings files because they do not change any
+settings in the project.
+</DEFAULT_WRITE_ASSIGNMENT>
+
+<PART_ID>
+Option to use the specified device.
+
+This option overrides the settings specified in the
+Quartus II Settings File (.qsf) or the part used in 
+Analysis & Synthesis (quartus_map). The specified part
+must be in the same device family used in Analysis & 
+Synthesis. 
+</PART_ID>
+
+<SEED_ID>
+Option to use the specified seed value.
+
+The Fitter uses the seed as the initial placement 
+configuration when attempting to optimize the design's 
+timing requirements, including fmax. 
+</SEED_ID>
+
+<FITTER_EFFORT_ID>
+Option to specify the level of effort you want the Fitter 
+to use.
+
+The following table describes level of effort values:
+
+Value        Description
+--------     -----------------------------------------------
+standard     Directs the Fitter not to decrease effort. 
+             Preserves fmax but does not decrease compilation 
+             time.
+
+fast         Directs the Fitter to decrease effort. Decreases
+             compilation time by up to 50%, with a possible
+             reduction in fmax.
+              
+auto         Directs the Fitter to reduce effort after meeting 
+             timing requirements. Decreases compilation time 
+             only when timing and fitting requirements can be 
+             met.
+</FITTER_EFFORT_ID>
+
+<ONE_FIT_ATTEMPT_ID>
+Option to perform only one fitting attempt, giving a no fit
+if that attempt fails. When this option is turned off, 
+the Fitter may perform additional attempts.
+</ONE_FIT_ATTEMPT_ID>
+
+<PACK_REGISTER_ID>
+Option to implement register packing for appropriate pairs of 
+registers and logic functions. 
+
+The following table describes register packing values: 
+
+Value                 Description
+--------              --------------------------------------
+off                   The Fitter does not attempt to place a
+                      pair of logic functions in a single 
+                      logic cell.
+                      
+normal                The Fitter places both a combinational 
+                      and a sequential operation in a logic
+                      cell when it is expected that the 
+                      placement will not affect performance.
+                      
+minimize area         The Fitter aggessively combines unrelated
+                      sequential and combinational functions 
+                      into a single logic cell to reduce the 
+                      logic element count, even at the expense 
+                      of performance.
+                      
+minimize area with    The Fitter aggressively combines sequential
+chains                and combinational functions that are part 
+                      of arithmetic or register cascade chains, or
+                      that can be converted to register cascade
+                      chains.
+                      
+auto                  The Fitter automatically chooses the best 
+                      method to fit the design.
+
+The following table displays the device families that support 
+the various values:
+
+Value                        Device Family
+------                       ---------------
+off                          All
+normal                       All
+minimize_area                All
+minimize_area_with_chains    Cyclone(TM), Cyclone II, Stratix(R), 
+                             Stratix II
+auto                         Cyclone II, Stratix II
+</PACK_REGISTER_ID>
+
+<TDC_ID>
+Option to use timing-driven compilation. This option 
+optimizes place and route based on timing information. 
+</TDC_ID>
+
+<OPTIMIZE_IO_REGISTER_FOR_TIMING_ID>
+Option to optimize I/O register placement for timing. 
+This option is used for timing-driven compilation.
+</OPTIMIZE_IO_REGISTER_FOR_TIMING_ID>
+
+<TCO_ID>
+Option to specify the tco time value.
+
+Tco is the maximum acceptable clock to output delay to the 
+output pin. The clock to output delay is the time required 
+to obtain a valid output at an output pin that is fed by a 
+register after a clock signal transition on an input pin 
+that clocks the register. This time always represents an 
+external pin-to-pin delay.
+
+Example usage:
+    quartus_fit one_wire --tco=10.55ns
+
+The format is "<floating point time value><time unit>".
+In the example, "10.55" is the <floating point time value>
+and "ns" is the <time unit>.
+
+The following table displays possible time units:
+
+Time Unit                 Description
+---------                 --------------
+s                         second(s)
+ms                        millisecond(s)
+us                        microsecond(s)
+ns                        nanosecond(s)
+ps                        picosecond(s)
+fs                        femtosecond(s)
+hz                        hertz
+khz                       kilohertz
+mhz                       megahertz
+ghz                       gigahertz
+</TCO_ID>
+
+<TSU_ID>
+Option to specify the tsu time value.
+
+Tsu is the maximum acceptable clock setup time for the 
+input (data) pin. The setup time is the length of time 
+for which data that feeds a register via its data or enable 
+input(s) must be present at an input pin before the clock 
+signal that clocks the register is asserted at the clock pin.
+
+Example usage:
+    quartus_fit one_wire --tsu=7.55ns
+
+The format is "<floating point time value><time unit>".
+In this example, "7.55" is the <floating point time value>
+and "ns" is the <time unit>.
+
+The following table displays possible time units:
+
+Time Unit                 Description
+---------                 --------------
+s                         second(s)
+ms                        millisecond(s)
+us                        microsecond(s)
+ns                        nanosecond(s)
+ps                        picosecond(s)
+fs                        femtosecond(s)
+hz                        hertz
+khz                       kilohertz
+mhz                       megahertz
+ghz                       gigahertz
+</TSU_ID>
+
+<TPD_ID>
+Option to specify the tpd time value.
+
+Tpd is the maximum acceptable input to non-registered output 
+delay, that is, the time required for a signal from an input 
+pin to propagate through combinatorial logic and appear at 
+an output pin.
+
+Example usage:
+    quartus_fit one_wire --tpd=20.55ns
+
+The format is "<floating point time value><time unit>".
+In this example, "20.55" is the <floating point time value>
+and "ns" is the <time unit>.
+
+The following table displays possible time units:
+
+Time Unit                 Description
+---------                 --------------
+s                         second(s)
+ms                        millisecond(s)
+us                        microsecond(s)
+ns                        nanosecond(s)
+ps                        picosecond(s)
+fs                        femtosecond(s)
+hz                        hertz
+khz                       kilohertz
+mhz                       megahertz
+ghz                       gigahertz
+</TPD_ID>
+
+<FMAX_ID>
+Option to specify the fmax time value.
+
+Fmax is the minimum acceptable clock frequency, that is, 
+the maximum clock frequency that can be achieved without 
+violating internal setup and hold time requirements.
+
+Example usage:
+    quartus_fit one_wire --fmax=155.55mhz
+
+The format is "<floating point time value><time unit>".
+In this example, "155.55" is the <floating point time value>
+and "mhz" is the <time unit>.
+
+The following table displays possible time units:
+
+Time Unit                 Description
+---------                 --------------
+s                         second(s)
+ms                        millisecond(s)
+us                        microsecond(s)
+ns                        nanosecond(s)
+ps                        picosecond(s)
+fs                        femtosecond(s)
+hz                        hertz
+khz                       kilohertz
+mhz                       megahertz
+ghz                       gigahertz
+</FMAX_ID>
+
+<CHECK_IOS>
+Option to run until I/O placement is determined. This 
+process includes placing all blocks in the periphery, such 
+as PLLs, serializers, deserializers, and gigabit transceiver 
+blocks (GXB). 
+
+The report file and the floorplan display I/O placement 
+results. If all pins cannot be placed, the report file 
+and floorplan display partial placement, results, and error 
+messages to indicate why placement failed.
+
+The "--check_ios" option should not be used when you use the 
+"--io_smart_recompile" option. For example, after doing a 
+complete place and route, if you change an I/O standard, 
+it is advisable to use the "--io_smart_recompile" option, 
+because the "--check_ios" option destroys the original 
+place and route results.
+</CHECK_IOS>
+
+<EARLY_TIMING_ESTIMATE>
+Option to run an Early Timing Estimate. An Early Timing Estimate is
+an estimate of timing results for your design before performing full
+placement and routing. This feature runs the fitter up to 10 times
+faster than a full fit and generates a full timing report based on
+estimated delays for the design. The fit is not fully optimized or
+routed, and hence the timing report is only an estimate. Typically,
+the estimated delays are within 20% of what a full compilation can
+achieve.
+
+The following table describes the types of timing estimates:
+
+Value        Description
+--------     -----------------------------------------------
+realistic    Estimates delays that will likely be close to a
+             full compilation's results. (default value)
+
+optimistic   Estimates delays that are lower than those likely
+             to be achieved by a full compilation. This makes the
+             estimate of performance optimistic.
+              
+pessimistic  Estimates delays that are higher than those likely
+             to be achieved by a full compilation. This makes the
+             estimate of performance pessimistic.
+
+All Early Timing Estimate types have the same reduction of compilation 
+time.
+
+After successfully running "quartus_fit --early_timing_estimate,"
+"quartus_tan --timing_analysis_only" must be run to generate a 
+timing report.
+
+</EARLY_TIMING_ESTIMATE>
+
+<SIGNALPROBE_ID>
+Option to perform an incremental SignalProbe(TM) compilation.
+Use this option when only SignalProbe settings have changed 
+since the last compilation. 
+
+This option cannot be used with most of the other
+quartus_fit options.
+</SIGNALPROBE_ID>
+
+<INCR_SIGNALTAP_ID>
+Option to perform an incremental SignalTap(R) II compilation. 
+Use this option when only SignalTap settings have changed 
+since the last compilation.
+
+This option cannot be used with most of the other 
+quartus_fit options.
+</INCR_SIGNALTAP_ID>
+
+<CHECK_NETLIST_ONLY>
+Option to run only legality checking on the current netlist. 
+Analysis & Synthesis (quartus_map) must be run successfully 
+before you use this option. Currently changes made to 
+placement or routing are not verified -- only functional 
+changes (for example, I/O standards) are checked.
+
+This option can be used to verify that the netlist is legal
+after you make changes using the Chip Editor.
+</CHECK_NETLIST_ONLY>
+
+<INNER_NUM>
+Option to specify a value for the loop multiplier "inner_num" 
+used during placement. Analysis & Synthesis (quartus_map) 
+must be run successfully before you use this option. Use of a 
+higher value increases compilation time, but may increase the 
+quality of placement.
+</INNER_NUM>
+
+<IO_SMART_RECOMPILE>
+Option to recompile the design for changed I/O 
+assignments without repeating the entire Fitter flow. 
+Analysis & Synthesis (quartus_map) must be run successfully 
+before you use this option. You can recompile only with 
+I/O assignment changes.  
+
+This option allows you to recompile the design quickly 
+because only I/O changes and legality checks are run to 
+determine if the new I/O assignments are compatible with 
+the current post-fitting netlist.
+</IO_SMART_RECOMPILE>
+

@@ -1,0 +1,154 @@
+<PGM_MODE>
+Option to specify which programming mode to use.
+
+Use one of the following programming mode values:
+
+Value       Mode
+-----       ----
+JTAG        JTAG programming
+PS          Passive Serial programming
+AS          Active Serial programming
+SD          In-Socket programming
+</PGM_MODE>
+
+<PGM_CABLE>
+Option to specify which programming hardware or cable to use.
+
+The full syntax is as follows (depending on whether the hardware is on your
+local machine or a remote machine):
+
+    "<cable_name> [<port>]"
+    "<cable_name> on <host_name/IP_address> [<port>]"
+
+You don't need to specify the hostname or port if they are unambiguous so
+just specifying the name of the cable will be sufficient if there is only one
+cable of that type available (on a local or remote machine).
+
+The following syntax is supported for backward compatibility,
+as is the cable index (the number returned by jtagconfig to identify
+a cable):
+
+    <host_name/IP_address>::<cable_name>[<port>]@<baud_rate>
+
+Examples:
+    ByteBlasterMV
+    "byteblaster [lpt1]"
+    "USB-Blaster on remote-machine [com1]"
+    APU
+</PGM_CABLE>
+
+<PGM_OPERATION>
+Option to specify which programming operation(s) to perform 
+on the device(s).
+
+Use the following syntax for each device in a device chain:
+
+    -o <options>;<input_file>@<device_index>
+
+NOTE: The device index starts with 1.
+
+Exceptions to this syntax occur when you use the following 
+options:
+
+    -o E;<output_file>;<device_name>@<device_index>
+    -o S;<device_name/input_file>@<device_index>
+
+<options> must be one of the following combinations:
+
+    P, BP, PV, BPV,
+    PL, BPL, PVL, BPVL
+    CP, CBP, CPV, CBPV,
+    CPL, CBPL, CPVL, CBPVL
+    IP, IBP, IPV, IBPV,
+
+    V, CV, VL, CVL, IV
+
+    B, CB, IB
+
+    R, RB, CR, CRB, IR, IRB
+
+    E, CE, IE
+
+    L, CL
+
+    S
+
+where:
+
+Option      Description
+------      -----------
+P           Program
+R           Erase
+L           Lock/Security Bit
+I           Initialize Bridge Device*
+V           Verify
+B           Blank-check
+C           ISP Clamp
+E           Examine**
+S           Skip/Bypass**
+
+*  Serial FLASH Loader option only 
+** Cannot be used in combination with other options
+
+Note:
+
+- Specifying a <device_index> is optional, but if you 
+  specify a <device_index> for one device, you must 
+  specify a <device_index> for all devices.
+- You cannot specify a <device_index> for devices in 
+  a Passive Serial chain.
+- Each device in a multi-device chain must have a 
+  corresponding -o construction.
+
+---------
+Examples:
+---------
+
+Behavior                    Option Syntax
+--------                    -------------
+JTAG Program                -o pvb;file.pof
+                            -o pvbi;file.jic
+
+JTAG Examine                -o e;file.pof;device_name
+                            -o ei;file.jic;device_name
+
+Skip Device (JTAG Bypass    -o s;device_name
+
+Passive Serial Program      -o file.sof
+
+Active Serial Program       -o pl;file.pof
+
+Passive Serial Chain        -o file1.sof -o file2.sof -o file3.sof
+
+JTAG Chain                  -o p;file1.pof -o s;file2.pof
+                            -o v;file1.pof@1 -o p;file2.pof@2
+
+CDF                         quartus_pgm -c byteblastermv[lpt1] file.cdf
+</PGM_OPERATION>
+
+<PGM_LIST_HW>
+Option to display all the available programming hardware cables.
+</PGM_LIST_HW>
+
+<PGM_AUTO_DETECT>
+Option to detect and display all the devices in the device chain.
+</PGM_AUTO_DETECT>
+
+<PGM_HALT_ON_CHIP_CONFIGURATION_CONTROLLER>
+Halts the on-chip auto-configuration controller of
+the device to allow programming via the JTAG interface.
+</PGM_HALT_ON_CHIP_CONFIGURATION_CONTROLLER>
+
+<PGM_ENABLE_BACKGROUND_PROGRAMMING>
+Allows a MAX II device to continue to run in-system while
+new programming data loads into the configuration flash memory (CFM).
+When you turn on this option, programming data loaded into the CFM
+does not immediately configure the device.
+</PGM_ENABLE_BACKGROUND_PROGRAMMING>
+
+<PGM_INITIATE_CONFIGURATION>
+Specifies that configuration devices will configure attached devices
+automatically after the Programmer finishes programming the
+configuration devices.
+</PGM_INITIATE_CONFIGURATION>
+

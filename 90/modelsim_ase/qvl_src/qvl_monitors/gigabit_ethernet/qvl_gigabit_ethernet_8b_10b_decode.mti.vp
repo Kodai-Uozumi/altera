@@ -1,0 +1,180 @@
+//              Copyright 2006-2008 Mentor Graphics Corporation
+//                           All Rights Reserved.                           
+//                                                                          
+//              THIS WORK CONTAINS TRADE SECRET AND PROPRIETARY             
+//            INFORMATION WHICH IS THE PROPERTY OF MENTOR GRAPHICS          
+//           CORPORATION OR ITS LICENSORS AND IS SUBJECT TO LICENSE         
+//                                  TERMS.                                  
+//                                                                          
+//       U.S. Patent Numbers 6,175,946, 6,292,765, 6,609,229, 6,848,088     
+//                               and 6,885,983                              
+//
+/***********************************************************************
+ * PURPOSE       This file is part of the 0-In CheckerWare.
+ *               It describes the 10B to 8B decoder module.
+ *
+ * DESCRIPTION   This module decodes the input 10-bit symbols to 8-bit
+ *               data and 1-bit control line indicating whether it is a
+ *               data or control character. It also provides the new 
+ *               disparity to be used while decoding the next symbol. 
+ *
+ * REFERENCE     802.3 IEEE Standard for Information Technology, CSMA/CD
+ *               access method and physical layer specifications, 2002
+ *
+ *
+ * INPUTS        datain   - encoded 10-bit symbol
+ *               dispin   - current disparity
+ * OUTPUTS       dataout  - decoded 8-bit data + 1-bit control
+ *               dispout  - new disparity
+ *               code_err - code error (invalid code-group)
+ *               disp_err - disparity error 
+ *
+ * LAST MODIFIED 07 December 2004
+ *
+ *********************************************************************/
+
+`ifdef QVL_SVA_INTERFACE
+`define qvlmodule interface
+`define qvlendmodule endinterface
+`else
+`define qvlmodule module
+`define qvlendmodule endmodule
+`endif
+
+`qvlmodule qvl_gigabit_ethernet_8b_10b_decode (datain, 
+                                             dispin, 
+                                             dataout, 
+                                             dispout, 
+                                             code_err, 
+                                             disp_err
+                                            );
+
+  input [9:0]   datain;
+  input		dispin;
+  output [8:0]	dataout;
+  output	dispout;
+  output	code_err;
+  output	disp_err;
+
+  // Internal wires for 10b decoding. This module is a pure combinatorial 
+  // 8b/10b decoder.
+  wire ai;
+  wire bi;
+  wire ci;
+  wire di;
+  wire ei;
+  wire ii;
+  wire fi;
+  wire gi;
+  wire hi;
+  wire ji;
+  wire aeqb;
+  wire ceqd;
+  wire p22;
+  wire p13;
+  wire p31;
+  wire p40;
+  wire p04;
+  wire disp6a;
+  wire disp6a2;
+  wire disp6a0;
+  wire disp6b;
+  wire p22bceeqi;
+  wire p22bncneeqi;
+  wire p13in;
+  wire p31i;
+  wire p13dei;
+  wire p22aceeqi;
+  wire p22ancneeqi;
+  wire p13en;
+  wire anbnenin;
+  wire abei;
+  wire cdei;
+  wire cndnenin;
+  wire p22enin;
+  wire p22ei;
+  wire p31dnenin;
+  wire p31e;
+  wire compa;
+  wire compb;
+  wire compc;
+  wire compd;
+  wire compe;
+  wire ao;
+  wire bo;
+  wire co;
+  wire doo;
+  wire eo;
+  wire feqg;
+  wire heqj;
+  wire fghj22;
+  wire fghjp13;
+  wire fghjp31;
+  wire ko;
+  wire alt7;
+  wire k28;
+  wire k28p;
+  wire fo;
+  wire go;
+  wire ho;
+  wire disp6p;
+  wire disp6n;
+  wire disp4p;
+  wire disp4n;
+
+`protected
+
+    MTI!#eC}Aj7A;o~$G9Y,TI)W_meDQ>=R3zAnD#rQw<["pXYo{s*IRB2_^3=[YOlwkUo[]7A20;7@
+    @{QR7Qq,UCikUD=8nRYaWB+Kjie*L~^{1#}*O\$OEK{vCp:ujm^c$x{vx2al#s*@AXACDj?]mXG+
+    :D?e5lPajx-kpRk'6Re[aIKHE#CVVTel2[njYU[^ZFzAskME;D><s<noDkB55-#jIKO^ZpZY9QS1
+    J{^=#{kzmRQ>C*nE:5;'mfGml,-soauUn'C1]E*(}$k[vHx]w8o'lvaHJ[u{_~p*mp#}k@G,I]]k
+    Y<a{@@AD##,#+?T}nu5Iw[:[+s1k*Aa8}l?z&1EZsh7UUZ-a$AW'E;KOi'Zqem}5>Xo~YoQKxTr_
+    %]vQ<xK{Xe@A_D5[<>[#Av!!+oK~ol\iT@=Xj2rR[UIin<5kn)=D'\<HQOr[+DE2rZeE]'}H[~G?
+    $@:O~XB}{GEs}o]CDTo/B<[sY<'[a';=^3~I;o*^*=<o<<u!J[iu1T2[1,2Aiw}Ix7nRa-7!{Y#D
+    2$=v[;p2ry|9DvRY%H='YiQB?,>rlhR\D>@Rw[;Qu\\Z5jHD*HEoX\C#J#e!Z#<xHe[q%qK{~U:i
+    {D-5}GuOWGe[iJR[=[I{,*YJ$a5<}#7Ho3\HtwXIZq'R?+Ch25eC"^Qp=#{lj"CR*v[k+}RH1Y;o
+    r![#X>Cgr_*<:ECT\ax,OX<W~sAa-+U{W,QnwYk|3OwBuCX~OCJYn\+ZQIO?\^A1$s7!>5I;j1z*
+    ++I[AYj'^isERCGTyZ,B-mepKb:I>svA+Y;<Ez'CwZaD?43a5C;_[kwD+Gpl21-E\\7>2+!-mkD7
+    C!z{EDLQ_sHB?u_a8+Dp@>}~7#=3w[1]#<>$,[AI~ja<ekEQ'^_AX&x1-Teviw+a'R~Yw]_D>Jh!
+    e7v}mR\qIolHRU{'5}:vIpQsBvCwe}Zi^@oE<lX'1*_1@xm'-Yo'K-am{$$'?A-XUOV}QW!t3ol$
+    ?<[it*!R=P5xa?+YUHQH]5$7VWIGnaK7C^\a;3>1BQyw$vR]nJk@R\#G;U[Vi^YQT<]zl?$fWT;2
+    GoH]}>u7hEMzeV'hVCKxaHJ'dQ+u~wwQ~1k5\}vO}n_UU*~>VQin?WD]]4X-0lRAUpHxpKx_7p*-
+    HK]iB,H^o#5GCg2=k>M'\VAo!'E,!Ku7-{l^6v2@Gr\*lD1-1WOJm5@JEMGiT'C'RZl^[uoj^e{n
+    @-jewO[gZ7BIA}Y!{tW,p_^r2#avlzrTAeu>H[X=+,yBbi+@H-Oua^Q#3*pjA3[Wj;z}Z@>,rNo@
+    ~W^Qum_U!T=G[3CyA'['EjBKHw{-_xAWVUE7XEVrxZwEAH{sEo>;_wB,xrn=$RpResw$1r-~7!zk
+    H5v-!'KYrIi<Nj]u!:^CK-5#=_}aAVZA_}^uaCI?Q?CEw~{z$U^[jkxo2-@t1RkB*psJo>u$A]2=
+    +hECw1<1KWeDwRaAo=p{**w}-l^wTXI_{O<]{$?p}<BD<z$E}jE<=J-5-=5oKsTsHkAvCH==XC=p
+    [wwwaU\3!so}Y*rmaQVpRYQO_$RXXKVvB]H}[$Yn^p:e#AB4C;U}3hY!;U*KxIfIZQri('?EQ{$~
+    GGJ{^70Nv{VmRol#BK*l]^3}_x@Q]]s2mA'3$h,{{}ar[Opxl~~lA>Y*V+^wJXM-ECAzwTpvJ~,U
+    -][iU$[<5$][~7@Y+^YJ7Kz'AI}]Bl]L^vB1DWDY+E\Cu-z{L'^W+z2;7YrnU\eJARzY2D2X_tO^
+    x@1_j!?v~+#zCiC=p!1mDm!7\=j/^-{HHUI[A<{<G^m,|HXDZuaB$QD=wHaRv4I\p~}$~>IXu*2O
+    kE3$}7Da~o*'e_Jawno{7=;oB3LG2GaMoiXVq6O/]#m[X{!{7<1EbY?}!nHuv88|wUWWs-nJAaC?
+    g@OQ=rO?EjlIDovk$eew*rA~x*Ya*Z=YBBU2<#sH54AD2m[oA>Y+W]fVA@~|K*;!ADQ?/B~W<j#]
+    snnT=@*?DJ^9KjOwYxCuFsoQT9/OaKo}EjWxTI_S1+_s$][a&nYo;1BBGK\X,rpI\m]kK53EW}vJ
+    $OCuw.d~V,YIswAvZ^}GK[[31T-7Tj!{n}-0$p\>5\r]Ok<;#-=1g0"T&,H}JJe@'7OKu<pW~e'{
+    u5A7^'EmTAXs=uU_w0ExC[O1nOg=WJ_[}IR,k-UZnB}s[O]lJVVlr-2=Hj'BXe}OQ{!la+^QO[u*
+    3Cir^D<=TD\4P2YTG$UZks*D7CjpZ3^kn@jvrrnG\az@kAl[@2ss,jvC\Dz'2^;\}AR-@R}*#w+x
+    >2l*[XE[^JEpO%"V<n_QmX^5aE2sViO$YG1=kw^I@BE(e7TD7{~*}\?aAH}pDWCs'rWx:Apnx8*[
+    RA-s'uQuzuo<v3\jI,e,W29,Ye?Ys^-CV-@]73v7J{2}am,;TQw;Ek@#G'R"r7vmvm-xuOvHI?ev
+    =WCnB{5xtsrW^X\^o--,U^;>w=C*E@Aem<X5s~Rr_i[d_K~VIxkx]=HU|YgGv{D?^{\wU*TZ=+[*
+    ~K-T}+p|jW2X[]-O5uB[i{[Tl*V=1Aqep]^#UKr[Z{JdlInJARAQnQ,}.{$SIm!uKwCn^^-n$Jjk
+    lOz!UE\$EUjUC7I'r$wppk\Zs;u$l-Ci}QTR1z=>7@7rnQjKO~a_qernrpsoUOW5T,nYE12Cp?'T
+    [E~>_XUUl%QA1~ZE$_7D]^<w~#Ansv1[7'i1-l#\H_$$_BTU!CIe<1[}w'}sY2^=T_K{mUlu\KG~
+    m<J{;#O[A]CW!vA5QW@]r}F"~x#He_uZXCoOR[=A{a^+RIX1^kU>*xm2}e+B!sXzeiGZeY[a-]iY
+    ^nY],#l$D*\eFl']-ABQ~Y}~xBC?U8QG6w7!!s==<$aem6NH9kn37UpU7{CHo,\^BnAGk@On$w'e
+    7Piz}=r=$;]WQuBI3?}#Cs]QjzVeTv;Q'$glWpR^wr).SQ^kTjN(,KV~]pVrbei_BG@j].H<Aws1
+    ?u*U=vWUVH
+`endprotected
+
+`ifdef ZI_INLINED_PSL
+`include "0in_ac_inline_for_mod_zi_cw_gigabit_ethernet_8b_10b_decode.inc"
+`endif
+`ifdef ZI_INLINED_CHX
+`include "zi_cw_gigabit_ethernet_8b_10b_decode.zi_chx.inc"
+`else
+`ifdef ZI_INLINED_CHX_zi_cw_gigabit_ethernet_8b_10b_decode
+`include "zi_cw_gigabit_ethernet_8b_10b_decode.zi_chx.inc"
+`endif
+`endif
+
+`qvlendmodule // zi_cw_gigabit_ethernet_8b_10b_decode

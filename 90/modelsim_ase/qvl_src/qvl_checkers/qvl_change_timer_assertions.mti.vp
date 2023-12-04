@@ -1,0 +1,400 @@
+//              Copyright 2006-2007 Mentor Graphics Corporation
+//                           All Rights Reserved.
+//
+//              THIS WORK CONTAINS TRADE SECRET AND PROPRIETARY
+//            INFORMATION WHICH IS THE PROPERTY OF MENTOR GRAPHICS
+//           CORPORATION OR ITS LICENSORS AND IS SUBJECT TO LICENSE
+//                                  TERMS.
+//
+//                   Questa Verification Library (QVL)
+//
+
+
+`include "std_qvl_defines.h"
+
+`qvlmodule qvl_change_timer_assertions( 
+				   active,                // activation condition
+				   clock,                 // clock signal
+				   reset,                 // synchronous reset signal
+				   areset,                // asynchronous reset signal
+				   
+				   zivar,                   // value to be timed
+				   min,
+				   max,
+				   
+				   min_check,             // minimum time check enable
+				   max_check,             // maximum time check enable
+				   
+				   min_fire,
+				   max_fire,
+				   min_gt_max_fire,
+				   
+				   values_checked,
+				   shortest_change_time,
+				   longest_change_time,
+
+                                   value_changed_at_min_count,
+                                   value_changed_at_max_count,
+
+				   support,
+				   fire_count
+				   );
+
+   // module level pragmas to specify tags for this checkerware type
+   
+
+
+  parameter severity_level = `QVL_ERROR;
+  parameter property_type = `QVL_ASSERT;
+  parameter msg = "QVL_VIOLATION : ";
+  parameter coverage_level = `QVL_COVER_NONE;
+   
+   parameter Constraints_Mode = 0; 
+   parameter STAT_CNT_WIDTH = `ZI_CW_STAT_CNT_WIDTH;
+
+   parameter WIDTH = 1;        
+    
+   parameter MIN_WIDTH_DEFAULT = 1;
+   parameter MAX_WIDTH_DEFAULT = 32;
+   parameter MAX_SPECIFIED = 0; 
+   parameter MIN_WIDTH = MIN_WIDTH_DEFAULT;
+   parameter MAX_WIDTH = MAX_WIDTH_DEFAULT;
+
+   parameter MIN_IS_CONST = 0; 
+   parameter MIN_CONST_VAL = 1; 
+   parameter MAX_IS_CONST = 0; 
+   parameter MAX_CONST_VAL = 1; 
+   parameter MAXINT = 2147483647; // 2^32 -1
+   parameter MINI = (MIN_IS_CONST) ? MIN_CONST_VAL : 1;
+   parameter MAXI = MAX_IS_CONST ? MAX_CONST_VAL : MINI;
+   parameter MAX_DUMMY = MAXI;
+
+   parameter MIN_CHECK = 0;
+   parameter MAX_CHECK = 0;
+   parameter SMALLSIZE = 31;
+
+
+   parameter SUPPORT_WIDTH = 1; 
+   input [SUPPORT_WIDTH-1:0]  support; 
+
+   input active;               
+   // help "Activation condition"
+   input clock;                
+   // help "Posedge clock signal name"
+   input areset;               
+   // help "Active high asynchronous reset signal name"
+   input reset;                
+   //  help "Active high synchronous reset signal name" 
+
+   // required user specified inputs
+   input [WIDTH-1:0] zivar;      
+
+   input [MIN_WIDTH-1:0] min;
+   input [MAX_WIDTH-1:0] max;
+
+   // help "Register or wire to check."
+   wire [31:0] mini = MINI;
+   wire [31:0] maxi = MAXI;
+   
+
+   // by default these are off:
+
+   input min_check; 
+   input max_check; 
+   // Outputs:
+
+   // Fire signals
+   output min_fire;
+   output max_fire;
+   output min_gt_max_fire;
+
+   // Statistics signals
+   output [STAT_CNT_WIDTH-1:0] values_checked;
+   output [63:0] shortest_change_time;
+   output [63:0] longest_change_time;
+
+   // the assertionions for this checker.  
+   reg min_fire;
+   reg max_fire;
+   reg min_gt_max_fire;
+
+   // internal signals for this checker
+   reg [WIDTH-1:0] old_value;
+   reg [MIN_WIDTH-1:0] last_min;
+   reg [MAX_WIDTH-1:0] last_max;
+   wire [MAX_WIDTH-1:0] final_max_value;
+
+   wire value_change;
+   reg change_timer_started;
+   reg change_check_started;
+   reg [31:0] changeCount;
+   integer changeCount_for_stats;
+   reg first_value_completed;
+
+    
+      
+   // Timer statistics info
+   reg [STAT_CNT_WIDTH-1:0] timerStartCount;
+   integer shortestChangeTime;
+   integer longestChangeTime;
+   wire [STAT_CNT_WIDTH-1:0] values_checked = timerStartCount;
+   wire [63:0] shortest_change_time = shortestChangeTime;
+   wire [63:0] longest_change_time = longestChangeTime;
+
+   wire xz_detected = (((^zivar) === 1'bx) ||
+                       ((^min) === 1'bx) ||
+                       ((^max) === 1'bx));
+
+   output [STAT_CNT_WIDTH-1:0] value_changed_at_min_count;
+   output [STAT_CNT_WIDTH-1:0] value_changed_at_max_count;
+
+   output [STAT_CNT_WIDTH-1:0] fire_count;
+   reg [STAT_CNT_WIDTH-1:0] fire_count;
+   reg [2:0] fire_count_tmp;
+
+
+   reg [STAT_CNT_WIDTH-1:0] value_changed_at_min_count;
+   reg [STAT_CNT_WIDTH-1:0] value_changed_at_max_count;
+
+   integer min_within_range;
+   integer max_within_range;
+ 
+   reg [STAT_CNT_WIDTH-1:0] min_within_range_count;
+   reg [STAT_CNT_WIDTH-1:0] max_within_range_count;
+
+
+   wire [31:0] changeCountInt;
+   wire [31:0] changeCounteqMAX;
+   wire [31:0] changeCountlsMIN;
+   wire [31:0] changeCountgtMAX;
+
+`ifdef QVL_ASSERT_ON
+  wire max_fire_combo;
+  wire min_fire_combo;
+  wire min_gt_max_fire_combo;
+`endif
+
+
+   assign changeCountInt = get_int_value(changeCount);
+   assign changeCounteqMAX = (is_equal(changeCount,last_max));
+   assign changeCountlsMIN = (is_less(changeCount,last_min));
+   assign changeCountgtMAX = (is_greater(changeCount,last_max));
+   
+`protected
+
+    MTI!#HwQ7QT*E>RoYzvR#p\R<7{K+i}Y!T<[UF:7i'"#IH7F=~*lpA!}+&Q_sU|O<EEOQoTxW]XW
+    ^H{<wQ,sVeW7o#I,;AW:Wz$i_${>2He]ljims+G{IEOvBArYET1sy!oH2N<}k7o~r_?YHzzzA@37
+    JwRGzpwUO_"Q%{B;ap<$GKn@p\k]kf$xVAV[7>[!;7!T+ZEAJ#VgAU,2BI>;;sX{s^UAY+]3z}or
+    v]}}oW<^I2=xI3]oCG!>Ev1pZsw-o>~ITsuoHxss\3rxH[n3\uz~G>pBJHAeA]!^($'OV=QT'gH{
+    =B\D=Cxe-II@2joH=x1O{@n\l+1m'XQrkU]JeiJ,R{UrB^C#$HBu{~ll1s*HY]2$i]M?R{Z3Qp!J
+    <[=}EknF_]nHGkT'Y;1uoZ2YNe{{J&7^{W#tY;![iv<\U+Tp^Ya[=Y]ump]W_E{@?[-J;<'x@HX]
+    5ro+'Dn5!azB5i5_','zRxKI!{U!pmQE!}{VoU-3M2A{wpQI>Q:GXB~.lQ[]jIjKAY~?>,DDOxQ{
+    vD$UY'z{Em$O,\GijZoGx=~@'R?vIK-3_yxA^^^\jX4*+[7]mRJ1xWun-@Y_pr<KI=oD!wQBO^,D
+    i_~a-v<aTz<V=B;,Q}3XDo[$#J^^TeZva}\Yr5}-j?]Ywom#=I3Yu}=@vZGhpeYV{IQ]<rB7$Do~
+    p*>[-eO{?_msEu^?6oZo[xW_I';n>Q<z5C5!^@XXrsvk\H-v+mwW]G~*Qwv\L"}K[*u57l7$ZG5A
+    j^l>J\7G*~$AmWUT1RZE{GEx>#R6*i-{O@eXZ|$Rn1|e}Z3aC>erTIuLC}D@{+a[1-5~QezZ[${;
+    PGs<=WC-K<T]+D^A+v1>-+>GGZUl*lR--saj+$xH1'G5lbUUxTbOe7IBkQHWG<l{_+TUTa0bgREe
+    EKsT
+`endprotected
+
+`ifdef QVL_ASSERT_ON
+assign max_fire_combo = (reset === 1'b0) && (areset === 1'b0) &&
+                          (active === 1'b1) && (xz_detected !== 1'b1) &&
+                          max_check && (change_check_started && 
+                          (is_greater(changeCount,last_max) || 
+                           is_equal(changeCount,last_max)) && 
+                           value_change === 1'b0);
+
+  assign min_fire_combo = (reset === 1'b0) && (areset === 1'b0) &&
+                          (active === 1'b1) && (xz_detected !== 1'b1) &&
+                          min_check && ((value_change === 1'b1) && 
+                          change_check_started && changeCountlsMIN);
+
+  assign min_gt_max_fire_combo = (reset === 1'b0) && (areset === 1'b0) &&
+                          (active === 1'b1) && (xz_detected !== 1'b1) &&
+                          value_change === 1'b1 && (min > final_max_value);
+
+`endif
+`protected
+
+    MTI!#sOeej22*TEK!;=QQ\mWvD<^XDJvG?X2#[%^[0":CjB[oC!o^A=mxg7^1@iQRorWz$s*8VZa
+    Gk+[B>5@'!D~pHj]k>[i;NF}7#uRlE]Pr?\]]+'VeavzBl<E=@x2}_~;?o;]P<RoYU[;_1C3J/.Y
+    mU{<V}~E-CVLwq?wXbG>-_w}7C~z?pC'~xkE@=BkEr+sn<x-X\GBB*wE25~e2axQ@oy/2rp[!ro[
+    I?E;|Q^QRr^V_e!]>iUoijknKm'1$S[n[r<N1(E!Kw/zji2N;}?WU7!a$Q[Bv~OI]Dk#X_x]dva+
+    <4&n1?5ujC<_W{vF}x[Qi<mKr;'[ixz3y2C,z@n}I[4RCdb9vzRl3[$?Hz<T>*<!W-2j~V~YBj<x
+    z;EuuQ'E-p5BE,}J2'v\~=z7CV$j1_$ZaEjI[G@CU&ge>uG7?OA/c,oi=[xlUk,?$vYmkl?pVBx@
+    1U7\WWlET4E]G$Y_'iNE?D}**r+eWCnrG[[iwEz-<_GYskX~'r{o_V,73<zb?1QU!'<eVlI-0=Rr
+    i!X[#-Cw1IvZ{'<Q^xw^D}K'~OoZ=Ks1?xY2-pV@*'iAaKwO\v{YIX1QCi*0r\r{D;Bic*l2^l3[
+    Ie'nIazKOhm'=xrs\'[[7w@,]n#qL\z\Z;'Tuw<;[$Z<H^>I2kU7zaxrW2s?-U<5a{v~Xke}]2't
+    =*Xl*[$E|.7-osNz>W5;YWJP>pD7\W3=RIQaxGE5DYAesA@vC3=}QuO1x?DT{-^]s@EQXlkZ,xI{
+    ZX7V5<l<BKGXIVkRIRn--Y7<VB^w$O^;&7iB$rC+@U1=
+`endprotected
+   
+`ifdef DEBUG_0IN_CHANGE_TIMER_CHECKER
+   // keep a cycle count value for 0-In debug 
+   integer cycle_cnt;
+
+   initial begin
+      #0;
+      cycle_cnt = 0;
+   end 
+
+`endif
+
+`protected
+
+    MTI!#TCE?o>j#zIv>]tU}A3.'-<!=l$Ca=orFl?*7="[AEW}@uB.HTa]:"-XK-l$x{-U=7Xw3!7A
+    1^B5_+w}Dvjs@[7@\s!R5<9{r[x<t?wmv,k5eJn]+)i<B$A,5iC<wmILp+KO0.k[?e<r>@Y;W_r^
+    $21^<nQe]7=Wz{#s*xTj;x\_>C4n[j-]z-Y-nK^3U2Gw<v@jQ?peDl*p?jiy1Be#3pDuV++VN>7+
+    G.<>j^FLzi!]^ODzuj[2mw@Q:R;jZ@}}B{QJ#CrnTQ;j,WT_unO?<(87@j-QQA\B<oGzJ]JQ^x<L
+    OeHTi<RHlCk[pb5~erC>@Uo7
+`endprotected
+
+   assign value_change = (zivar !== old_value);
+
+   assign final_max_value = (MAX_SPECIFIED == 0) ? MAXINT : max;
+`protected
+
+    MTI!#R*u$'1#j&I\xl@]]Y6lTG#z+5EEO+H-j?r+nl[e3n!73B_m=@<h!+]i$I(RZE>?xzvR1<_E
+    *p?/a'@?,xk-rOIO*=@W}}Gpp3lj=\wOJ=kxz~3YI@j><-@=1:uU2RrZ2j#9x\5@K5>,31;=Co!W
+    w$-Z,jTkQ\{[.Cj#!_RA^$7+E^C}Yet.[:=a];Ix2RTTookoAOEHJC\DI}uDx;npsACWJuEe3'vv
+    jXNYCJ<,viewU@'Q#zs0DZe3UTe~s>*Z=V]>Xa5AO3>~3=5Iz7K;2C}#EOo#v(qA1lC<e3r}3Z_r
+    IT_*<7*.6<SI\\wUjcIQAY~TssRUl!?}O;WQWB>Tn3Z\lV!UT^GOuxl~ARuzaB=#'xo~Z2=~u{HA
+    z,8~B<25+V~@z=3?11'fvzVe@VCk&D<Tkn$>G=2J[VQvp+w3T,QH]~{[?[2I,Ra;;%1[>\~VJJ1c
+    }$DJ@^7[KQr#<C|Xx}IVi_Tu_,K/@7-C~H[]2jBOg5[**lG+{W^z-uB#=->K'?V*DGlKZwvp,_QK
+    e_?;uKaAr+$@30RM'qCNCo#-2HAUIt*Oxssz{;}K;!O^<$Uooul[x\tDEOpZ{Hx_e\$L\=+w^AbE
+    +CZqI__^zU*QzO}1j\sAWw\DBWC_YzaX.}72'bV}TVL=z{CZGGi]_Xxgt3-ru<<H2<Gk$@>{lA<)
+    \HU;'+*+{|lJKH;R*~pwW-Ge'uGAvE(?+xIl,U=A$J!2$,;2jww@IXkl!lae^-us<o3'E~@kEan^
+    vo#J{!7TQOm^RilY$\@BewVG$vvs$]@lZKum>$J?Iv1G[I@#>EJ?EEBk_WsaY\GnC7s?llwW53~z
+    ]Ul7o!Yv{^+ICAoB\R;G!*kIJUu'_isOW^J|xn;e^Kj^t1;pr^Oa7Yx!RVDX\<>J@pw<Jr_}+Hp[
+    HO+,W=,JYGI[lXTp{Bw1inY2k:>AGTxv_jl|Z{>A,namH*eXZ<5<O_[1Bzv<W}WU$-RssnCveOnH
+    1uTl&Wn7l5ks}AH1u#DkY\iHQ;7#3E#CVj\uY3e{V'no\H[VKBA9;elk}hk1-l:Y{B!{HuXur!X7
+    o7TGIaD@Y~ufW\<!En_o?>!jREHrk7+Y]Uw$P,^@$^+Ya(*~<K_+}OR'D]D<V[Epk;UI!@m'\GUL
+    GwB!*_r5\{x-(.o?XDavI[?G*Wus+eH-XH?'!G*<Z<OT@kiE{_D5e$RuU{*3xC7sB-7'W*'22'-5
+    K3H]l\Dj#A?Ol#G*}+hV$Y~>wDueIAw*XpeRpw^tjO]@$p<~D~JT.n7;{s]7Q$2Z'al+z65>;7uz
+    rDM@pG@71k1vOp_5~!=2XD$<Cj$]2u?0t@eX$+5lI~Cu2@E2B2^Ao5OK3,kej'{Zk+}VWcnHe${5
+    ~]]QvH5Br'[5DzoEpis!Ye$!DC9Y\@zQ]s}EpB?P#,-X.Z}<~YCl2a^aIi'X~mwOCjJo{cl,x_r;
+    $a5];xla>5'='>~OG?^5^U*,Dzf]Q\H<UD,CuGi;HsopM?EfQk_[|'kGK3TA#c,eza~$Tro,i}R]
+    ,}[e_JI}"KpvG7\u<<rWl3E'REV~Hq1,v@3'Yv7<_2;{Yk_e@I^*1lD1[a_iDm-^aDGG*=N4vk,[
+    H<!oxD>\?R5W=*HKieX}|Ir\Ux\VGyyRVpoIZo?mI{>,(XTT,TD#BTA,u=}7EAAK;$+<[C-^XB-;
+    ZA+w![rB2wU=K]7$zvIu@]W]!r3@\x_sHKT7,e55]Ex!<H}[=Q'o@QC{$W1{7bGO7e2s<#vnDJ}[
+    <vQXBowsve}ClGsGuYaX@vY?nBU_D>EekrAvl-]_j_3<~eRUZX\[OTwOVG<*x!TG3u;>^{'nG5yD
+    _X;fomQ_Hxp1aQAIw7*rS]nUZ\$HKBawO1V;BGGH='#oYYK7z*dW^I\3TQBW^2b%(3\ns._k,AT>
+    uuuGn*Ze,[4B!j$sIEvKY7_VRD[u*X~r>rK]<=ZCD2]jj<@DrHUm\_v5tHz*]E3<Xw<s}i$;{eKm
+    Hw_WZ3O]=r=K#L3+[}Z=lUb}g#aY#[2~#?['2k<-[W1#W7i}ZVC@>U5XEU{\icn[p-{]nTmz*C3C
+    <WE2E!4)8J}kR$uH#<{jCGGH2DevvK,\R~esD?z3YE@'Dw>~J~]}#J^=iHOTZ}iH$iDJvU+Ik;$T
+    ~\E'\]'*VcV=1KewasfuE#@+=J^~_^7]JaWaj1OuHCBrD-[mG}jKrwUrr;U2we+rrl_=\X]n$jle
+    oC_xV=k[wR?=x>X!l;\~rG~{e$ej1HZ=\,wZU\D3zXs~*_7vK7@IrA{}I}R5[H,([@Zxf\$>{DGX
+    -zr5oBvRK={nk;<;BUj-B}YXV]IvADB[11}'n{}A^YAr]tY+TI'3B3L7B{OHn'}ok3AKax~[=OE2
+    UV]YBy1iR5(-a'=DZ\T'wlEO-mvAI$$_UQThor@]nU{!aD5Exv!<DB$-e+G1xp!~w{@p3_7;o^+V
+    xpR~U7RaN"BGQjpoD1O'}r!{]Tpr+\RBDICz*V?Y7nooWHE'Dih'kXav~J_~,<;!DU=?R-CE!DkR
+    \XHr}'!_O-elWX~=sjD>$WKPsY_{jmK-^Ml]JpoJEjlvi>0T]e+jovOeankTp<jEonW5mA$CiW{&
+    ]n2@L.5jp<+vRl,1Uupr1!_x,B^r_=c!<N=**m5DRw2E[X=YWsVBCO?]J\=k}pEa$v*![R5k=!}j
+    -R9]'jsR}~{<-U}sG='pV{>R-3BmDT=U]x<<Au^_@*i&ix'K_*Y\
+`endprotected
+
+`ifdef QVL_ASSERT_ON
+   //Instance for MAX Violation.
+   //
+`include "std_qvl_task.h"
+`include "std_qvl_property.h"
+
+generate
+  case (property_type)
+    `QVL_ASSERT : 
+      begin : qvl_assert
+        if(MAX_CHECK)
+         begin : assert_change_timer_max_check
+           A_qvl_change_timer_max_check: 
+             assert property ( ASSERT_NEVER_P ( 
+                      .clock     (clock),
+                      .reset_n   (~reset),
+                      .enable    (1'b1),
+                      .test_expr (max_fire_combo)))
+           else qvl_error_t(
+                          .err_msg        ("A_qvl_change_timer_max_check"),
+                          .msg            ({msg,"Expression was constant for more than the maximum number of cycles."}),
+                          .severity_level (severity_level),
+                          .property_type  (property_type));
+         end // block: assert_change_timer_max_check
+	 if(MIN_CHECK)
+	   begin : assert_change_timer_min_check
+              A_qvl_change_timer_min_check: 
+		assert property ( ASSERT_NEVER_P ( 
+                      .clock     (clock),
+                      .reset_n   (~reset),
+                      .enable    (1'b1),
+                      .test_expr (min_fire_combo)))
+              else qvl_error_t(
+                          .err_msg        ("A_qvl_change_timer_min_check"),
+                          .msg            ({msg,"Expression changed value before the minimum number of cycles."}),
+                          .severity_level (severity_level),
+                          .property_type  (property_type));
+	   end
+        if(MAX_CHECK && MIN_CHECK)
+         begin : assert_change_timer_min_gt_max_check
+           A_qvl_change_timer_min_gt_max_check: 
+            assert property ( ASSERT_NEVER_P ( 
+                      .clock     (clock),
+                      .reset_n   (~reset),
+                      .enable    (1'b1),
+                      .test_expr (min_gt_max_fire_combo)))
+           else qvl_error_t(
+                          .err_msg        ("A_qvl_change_timer_min_gt_max_check"),
+                          .msg            ({msg,"Min value was greater than max value."}),
+                          .severity_level (severity_level),
+                          .property_type  (property_type));
+         end
+      end
+
+    `QVL_ASSUME : 
+      begin : qvl_assume
+        if(MAX_CHECK)
+         begin : assume_change_timer_max_check
+          M_qvl_change_timer_max_check: 
+           assume property ( ASSERT_NEVER_P ( 
+                      .clock     (clock),
+                      .reset_n   (~reset),
+                      .enable    (1'b1),
+                      .test_expr (max_fire_combo)));
+         end
+	 if(MIN_CHECK)
+	   begin : assume_change_timer_min_check
+              M_qvl_change_timer_min_check: 
+		assume property ( ASSERT_NEVER_P ( 
+                      .clock     (clock),
+                      .reset_n   (~reset),
+                      .enable    (1'b1),
+                      .test_expr (min_fire_combo)));
+	   end
+        if(MAX_CHECK && MIN_CHECK)
+         begin : assume_change_timer_min_gt_max_check
+          M_qvl_change_timer_min_gt_max_check: 
+           assume property ( ASSERT_NEVER_P ( 
+                      .clock     (clock),
+                      .reset_n   (~reset),
+                      .enable    (1'b1),
+                      .test_expr (min_gt_max_fire_combo)));
+        end 
+      end
+
+    `QVL_IGNORE : 
+      begin : qvl_ignore
+      end
+    default: initial qvl_error_t (
+                          .err_msg        (""),
+                          .msg            (""),
+                          .severity_level (severity_level),
+                          .property_type  (`QVL_IGNORE));
+  endcase
+
+endgenerate
+
+   //Instance for MIN Violation.
+   //
+
+   //Instance for MIN_GT_MAX Violation.
+   //
+`endif
+`include "qvl_change_timer_cover.inc"
+`qvlendmodule 

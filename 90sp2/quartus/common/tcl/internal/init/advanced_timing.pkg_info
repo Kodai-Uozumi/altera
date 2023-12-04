@@ -1,0 +1,14 @@
+# Add ::quartus::advanced_timing to the table of packages
+lappend quartus(package_table) {advanced_timing quartus_tan generic}
+
+if {[lsearch -exact [list quartus_tan] $quartus(nameofexecutable)] != -1} {
+
+    # Make ::quartus::advanced_timing available to load
+    set qpkg_script_auto [file join [file dirname [info script]] advanced_timing.tcl]
+    if {[file exist $qpkg_script_auto]} {
+       source $qpkg_script_auto
+    }
+    unset qpkg_script_auto
+
+}
+

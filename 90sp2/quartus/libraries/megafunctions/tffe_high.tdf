@@ -1,0 +1,26 @@
+INCLUDE "tffe_high";
+
+PARAMETERS
+(
+	power_up_high = "OFF"
+);
+
+subdesign tffe_high
+(
+	t, clk, clrn, prn, ena	: input;
+	q						: output;
+)
+
+BEGIN
+	IF (power_up_high == "ON") GENERATE
+		q = tffe(.t=t, .clk=clk, .clrn=clrn, .prn=prn, .ena=ena);
+	ELSE GENERATE
+		q = tffe_high(.t=t, .clk=clk, .clrn=clrn, .prn=prn, .ena=ena)
+			WITH (power_up_high="ON");
+	END GENERATE;
+
+	IF !USED(q) GENERATE
+		q = GND;
+	END GENERATE;
+END;
+

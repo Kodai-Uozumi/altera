@@ -1,0 +1,235 @@
+--------------------------------------------------------------------
+--
+--	LPM_RAM_DQ Parameterized Megafunction
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 1.0
+--
+--------------------------------------------------------------------
+OPTIONS NAME_SUBSTITUTION = ON;
+INCLUDE "altram.inc";
+INCLUDE "lpm_mux.inc";
+INCLUDE "lpm_decode.inc";
+
+CONSTANT NO_FILE = "UNUSED";
+DEFINE REG_IN_MODE() = (LPM_INDATA == "REGISTERED")
+						? ((LPM_ADDRESS_CONTROL == "REGISTERED")
+							? "ALL" : "DATA")
+						: ((LPM_ADDRESS_CONTROL == "REGISTERED")
+							? "ADDRESS_CONTROL" : "DEFAULT");
+PARAMETERS
+(
+	LPM_WIDTH,
+	LPM_WIDTHAD,
+	LPM_NUMWORDS = 2^LPM_WIDTHAD,
+	LPM_INDATA = "REGISTERED",
+	LPM_ADDRESS_CONTROL = "REGISTERED",
+	LPM_OUTDATA = "REGISTERED",
+	LPM_FILE = NO_FILE,
+	USE_EAB = "ON",
+	DEVICE_FAMILY,
+	CBXI_PARAMETER = "NOTHING"
+);
+
+INCLUDE "aglobal90.inc";
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+
+CONSTANT NUMWORDS = (LPM_NUMWORDS == 0) ? 2^LPM_WIDTHAD : LPM_NUMWORDS;
+
+FUNCTION @CBXI_PARAMETER (data[LPM_WIDTH-1..0], address[LPM_WIDTHAD-1..0],
+		we, inclock, outclock)
+	WITH (LPM_WIDTH, LPM_WIDTHAD, LPM_NUMWORDS, LPM_FILE,
+		LPM_INDATA, LPM_ADDRESS_CONTROL, LPM_OUTDATA)
+	RETURNS (q[LPM_WIDTH-1..0]);
+
+SUBDESIGN lpm_ram_dq
+(
+	data[LPM_WIDTH-1..0]		: INPUT;
+	address[LPM_WIDTHAD-1..0]	: INPUT = GND;
+	inclock						: INPUT = VCC;
+	outclock					: INPUT = VCC;
+	we							: INPUT = VCC;
+	q[LPM_WIDTH-1..0]			: OUTPUT;
+)
+
+VARIABLE
+	IF CBXI_PARAMETER == "NOTHING" GENERATE
+		IF (LPM_FILE == NO_FILE) GENERATE
+			IF (LPM_INDATA == "REGISTERED") GENERATE
+				IF (LPM_ADDRESS_CONTROL == "REGISTERED") GENERATE
+					sram	: altram WITH (WIDTH=LPM_WIDTH,
+										AD_WIDTH=LPM_WIDTHAD,
+										NUMWORDS=NUMWORDS,
+										REGISTERINPUTMODE="ALL");
+				ELSE GENERATE
+					sram	: altram WITH (WIDTH=LPM_WIDTH,
+										AD_WIDTH=LPM_WIDTHAD,
+										NUMWORDS=NUMWORDS,
+										REGISTERINPUTMODE="DATA");
+				END GENERATE;
+			ELSE GENERATE
+				IF (LPM_ADDRESS_CONTROL == "REGISTERED") GENERATE
+					sram	: altram WITH (WIDTH=LPM_WIDTH,
+										AD_WIDTH=LPM_WIDTHAD,
+										NUMWORDS=NUMWORDS,
+										REGISTERINPUTMODE="ADDRESS_CONTROL");
+				ELSE GENERATE
+					sram	: altram WITH (WIDTH=LPM_WIDTH,
+										AD_WIDTH=LPM_WIDTHAD,
+										NUMWORDS=NUMWORDS,
+										REGISTERINPUTMODE="DEFAULT");
+				END GENERATE;
+			END GENERATE;
+		ELSE GENERATE -- With FILE
+			IF (LPM_INDATA == "REGISTERED") GENERATE
+				IF (LPM_ADDRESS_CONTROL == "REGISTERED") GENERATE
+					sram	: altram WITH (WIDTH=LPM_WIDTH,
+										AD_WIDTH=LPM_WIDTHAD,
+										NUMWORDS=NUMWORDS,
+										FILE=LPM_FILE,
+										REGISTERINPUTMODE="ALL");
+				ELSE GENERATE
+					sram	: altram WITH (WIDTH=LPM_WIDTH,
+										AD_WIDTH=LPM_WIDTHAD,
+										NUMWORDS=NUMWORDS,
+										FILE=LPM_FILE,
+										REGISTERINPUTMODE="DATA");
+				END GENERATE;
+			ELSE GENERATE
+				IF (LPM_ADDRESS_CONTROL == "REGISTERED") GENERATE
+					sram	: altram WITH (WIDTH=LPM_WIDTH,
+										AD_WIDTH=LPM_WIDTHAD,
+										NUMWORDS=NUMWORDS,
+										FILE=LPM_FILE,
+										REGISTERINPUTMODE="ADDRESS_CONTROL");
+				ELSE GENERATE
+					sram	: altram WITH (WIDTH=LPM_WIDTH,
+										AD_WIDTH=LPM_WIDTHAD,
+										NUMWORDS=NUMWORDS,
+										FILE=LPM_FILE,
+										REGISTERINPUTMODE="DEFAULT");
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+	ELSE GENERATE
+		-- Go with the clearbox implementation
+		ag : @CBXI_PARAMETER WITH (CBXI_PARAMETER = "NOTHING");
+	END GENERATE;
+
+BEGIN
+
+	ASSERT (LPM_WIDTH > 0)
+			REPORT "Value of LPM_WIDTH parameter must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID LPM_RAM_DQ_WIDTH;
+
+	ASSERT (LPM_WIDTHAD > 0)
+			REPORT "Value of LPM_WIDTHAD parameter must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID LPM_RAM_DQ_WIDTHAD;
+
+	ASSERT (NUMWORDS > 2^(LPM_WIDTHAD-1) & NUMWORDS <= 2^LPM_WIDTHAD)
+			REPORT "Value of LPM_NUMWORDS parameter requires % address lines, but LPM_WIDTHAD value, which defines the number of address lines, is %"
+				CEIL(LOG2(NUMWORDS)), LPM_WIDTHAD
+			SEVERITY ERROR
+			HELP_ID LPM_RAM_DQ_NUMWORDS;
+
+	ASSERT (LPM_INDATA == "REGISTERED" # LPM_INDATA == "UNREGISTERED")
+			REPORT "Illegal value for LPM_INDATA parameter (%) -- value must be REGISTERED (the default) or UNREGISTERED"
+				LPM_INDATA
+			SEVERITY ERROR
+			HELP_ID LPM_RAM_DQ_INDATA;
+
+	ASSERT (LPM_ADDRESS_CONTROL == "REGISTERED" # LPM_ADDRESS_CONTROL == "UNREGISTERED")
+			REPORT "Illegal value for LPM_ADDRESS_CONTROL parameter (%) -- value must be REGISTERED (the default) or UNREGISTERED"
+				LPM_ADDRESS_CONTROL
+			SEVERITY ERROR
+			HELP_ID LPM_RAM_DQ_ADDRESS_CONTROL;
+
+	ASSERT (LPM_OUTDATA == "REGISTERED" # LPM_OUTDATA == "UNREGISTERED")
+			REPORT "Illegal value for LPM_OUTDATA parameter (%) -- value must be REGISTERED or UNREGISTERED (the default)"
+				LPM_OUTDATA
+			SEVERITY ERROR
+			HELP_ID LPM_RAM_DQ_OUTDATA;
+
+	ASSERT (  (LPM_OUTDATA == "REGISTERED" # USED(outclock) == 0)
+			& (LPM_OUTDATA == "UNREGISTERED" # USED(outclock)))
+			REPORT "Value of LPM_OUTDATA parameter (%) is not consistent with the use of the outclock port"
+				LPM_OUTDATA
+			SEVERITY ERROR
+			HELP_ID LPM_RAM_DQ_OUTDATA_CLOCK;
+
+	ASSERT (  (  LPM_INDATA == "REGISTERED"
+			   # LPM_ADDRESS_CONTROL == "REGISTERED"
+			   # USED(inclock) == 0)
+			& (  ( LPM_INDATA == "UNREGISTERED"
+				 & LPM_ADDRESS_CONTROL == "UNREGISTERED")
+			   # USED(inclock)))
+			REPORT "Values of LPM_INDATA (%) and/or LPM_ADDRESS_CONTROL (%) parameters are not consistent with the use of the inclock port"
+				LPM_INDATA, LPM_ADDRESS_CONTROL
+			SEVERITY ERROR
+			HELP_ID LPM_RAM_DQ_INDATA_CLOCK;
+
+	ASSERT (FAMILY_IS_KNOWN() == 1)
+			REPORT "Megafunction lpm_ram_dq does not recognize the current device family (%) -- ensure that you are using the newest version of the megafunction"
+				DEVICE_FAMILY
+			SEVERITY WARNING
+			HELP_ID LPM_RAM_DQ_FAMILY_UNKNOWN;
+
+	IF CBXI_PARAMETER == "NOTHING" GENERATE
+
+		sram.data[] = data[];
+		sram.address[] = address[];
+		IF (USED(we)) GENERATE
+			sram.we = we;
+		END GENERATE;
+		IF (USED(inclock)) GENERATE
+			sram.clocki = inclock;
+		END GENERATE;
+		IF (USED(outclock)) GENERATE
+			sram.clocko = outclock;
+		END GENERATE;
+		q[] = sram.q[];
+
+	ELSE GENERATE
+		IF USED(data) GENERATE
+			ag.data[] = data[];
+		END GENERATE;
+		IF USED(address) GENERATE
+			ag.address[] = address[];
+		END GENERATE;
+		IF USED(we) GENERATE
+			ag.we = we;
+		END GENERATE;
+		IF USED(inclock) GENERATE
+			ag.inclock = inclock;
+		END GENERATE;
+		IF USED(outclock) GENERATE
+			ag.outclock = outclock;
+		END GENERATE;
+		IF USED(q) GENERATE
+			q[] = ag.q[];
+		END GENERATE;
+	END GENERATE;
+	
+	
+
+	IF !USED(q) GENERATE
+		q[] = GND;
+	END GENERATE;
+END;

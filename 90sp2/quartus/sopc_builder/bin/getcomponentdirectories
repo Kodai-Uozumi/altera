@@ -1,0 +1,60 @@
+# File: getcomponentdirectories
+
+# |
+# | This utility returns (by stdout) a plus-sign separated list
+# | of places to look for component directories? Why
+# | a plus-sign? Eh, mk_custom_sdk liked it or something.
+# |
+# | It is a Perl utility, but we can not say
+# | #!...perl because its invocation from modelsim
+# | then fails, or something.
+# |
+
+# (Can not use strict; from modelsim, grrr. -- dvb)
+
+my $sep = "+";
+my @paths;
+my $sopc_builder = $ENV{sopc_builder};
+
+# |
+# | top-of-the list:  user's project (aka system) directory
+# | (note the assumption: this script is called from within the project
+# | directory.)
+# |
+
+push @paths, '.';
+
+# |
+# | next: paths from . (sopc_component_path variable)
+# |
+
+if (open(FILE, "$sopc_builder/.sopc_builder"))
+{
+  while (<FILE>)
+  {
+    if (/sopc_component_path\s*=\s*"(.+)";$/)
+    {
+      push @paths, $1;
+      last;
+    }
+  }
+  close FILE;
+}
+
+# |
+# | next: add $SOPC_BUILDER_PATH, the 1.1 way
+# | and the most likely place to find things: 'components' within install directory
+# | and last to search: 'placeholders', where the advertisements go
+# |
+
+push @paths, $ENV{SOPC_BUILDER_PATH} if ($ENV{SOPC_BUILDER_PATH});
+push @paths, "$sopc_builder/components";
+push @paths, "$sopc_builder/placeholders";
+
+# |
+# | And, finally, emit the result, to stdout
+# |
+
+print join($sep, @paths), "\n";
+
+# end of file

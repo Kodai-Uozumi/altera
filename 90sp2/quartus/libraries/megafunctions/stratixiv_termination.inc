@@ -1,0 +1,50 @@
+------------------------------------------------------------------
+-- stratixiv_termination parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+
+FUNCTION stratixiv_termination(
+	devclrn,
+	devpor,
+	otherserializerenable[8..0],
+	rdn,
+	rup,
+	scanen,
+	scanin,
+	serializerenable,
+	terminationclear,
+	terminationclock,
+	terminationcontrolin,
+	terminationenable
+)
+WITH(
+	allow_serial_data_from_core,
+	bypass_enser_logic,
+	bypass_rt_calclk,
+	clock_divider_enable,
+	divide_intosc_by,
+	enable_calclk_divider,
+	enable_loopback,
+	enable_parallel_termination,
+	enable_pwrupmode_enser_for_usrmode,
+	enable_rt_scan_mode,
+	enable_rt_sm_loopback,
+	force_rtcalen_for_pllbiasen,
+	lpm_hint,
+	lpm_type,
+	power_down,
+	runtime_control,
+	select_vrefh_values,
+	select_vrefl_values,
+	test_mode,
+	use_usrmode_clear_for_configmode
+)
+RETURNS(
+	incrdn,
+	incrup,
+	scanout,
+	serializerenableout,
+	shiftregisterprobe,
+	terminationcontrol,
+	terminationcontrolprobe
+);

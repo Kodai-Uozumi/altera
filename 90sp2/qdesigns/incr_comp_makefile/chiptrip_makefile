@@ -1,0 +1,59 @@
+######################################################################
+# Project Configuration: 
+# 
+# LogicLock2 Makefile Example
+# Makefile To Build The Top-Level Project, chiptrip
+#
+######################################################################
+
+# Top Level Module
+TOP_LEVEL_MODULE_NAME = chiptrip
+SOURCE_FILES_TOP_LEVEL = chiptrip.v chiptrip.qsf
+
+# Low Level Modules
+
+DIRECTORY_AUTO_MAX = ../auto_max
+DIRECTORY_SPEED_CH = ../speed_ch
+DIRECTORY_TIME_CNT = ../time_cnt
+DIRECTORY_TICK_CNT = ../tick_cnt
+
+QXP_FILES = $(DIRECTORY_AUTO_MAX)/auto_max.qxp $(DIRECTORY_SPEED_CH)/speed_ch.qxp $(DIRECTORY_TIME_CNT)/time_cnt.qxp $(DIRECTORY_TICK_CNT)/tick_cnt.qxp
+
+###################################################################
+# Main Targets
+#
+# all: build everything
+# clean: remove output files and database
+###################################################################
+
+all: $(TOP_LEVEL_MODULE_NAME).tan.rpt
+
+clean:
+	
+
+###################################################################
+# Executable Configuration
+###################################################################
+
+MAP_ARGS = --read_settings_files=on --write_settings_files=off
+ANALYZE_ARGS = --read_settings_files=on --write_settings_files=off --analyze_project
+MERGE_ARGS = --merge=on
+FIT_ARGS = --read_settings_files=off --write_settings_files=off
+TAN_ARGS = --read_settings_files=off --write_settings_files=off --timing_analysis_only
+IMPORT_ARGS = --qic_import_project
+
+
+###################################################################
+# Compile Top Level when needed
+###################################################################
+
+# If top level source files change, run QMAP
+$(TOP_LEVEL_MODULE_NAME).map.rpt: $(SOURCE_FILES_TOP_LEVEL)
+	quartus_map $(ANALYZE_ARGS) $(TOP_LEVEL_MODULE_NAME) 
+	
+$(TOP_LEVEL_MODULE_NAME).tan.rpt : $(TOP_LEVEL_MODULE_NAME).map.rpt $(QXP_FILES)
+	quartus_cdb $(TOP_LEVEL_MODULE_NAME) $(IMPORT_ARGS)
+	quartus_map $(MAP_ARGS) $(TOP_LEVEL_MODULE_NAME)
+	quartus_cdb $(MERGE_ARGS) $(TOP_LEVEL_MODULE_NAME) 
+	quartus_fit $(FIT_ARGS) $(TOP_LEVEL_MODULE_NAME) 
+	quartus_tan $(TAN_ARGS) $(TOP_LEVEL_MODULE_NAME) 

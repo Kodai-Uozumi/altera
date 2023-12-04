@@ -1,0 +1,147 @@
+--------------------------------------------------------------------
+--
+--	DIVIDE Parameterized Megafunction
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 2.0
+--
+--------------------------------------------------------------------
+
+INCLUDE "alt_u_div";
+
+PARAMETERS
+(
+	WIDTH_N,		-- Size of numerator
+	WIDTH_D,		-- Size of denominator
+	WIDTH_Q,		-- Size of quotient, MUST be set to ( WIDTH_N - WIDTH_D_MIN +1 )
+	WIDTH_R,		-- Size of remainder, MUST be set to MIN( WIDTH_N, WIDTH_D )
+
+-- optional parameters
+	WIDTH_D_MIN	= 1,	-- Minimum word size of the denominator
+						-- 	1 <= WIDTH_D_MIN <= WIDTH_D
+						-- Example: if denominator is known to be always greater 
+						--  or equal to H"10", WIDTH_D_MIN can be set to 5.
+
+	MAXIMIZE_SPEED = 5, -- A larger value of this parameter results in a faster
+						-- circuit at the cost of a larger size
+
+	OPTIMIZE_FOR_SPEED = 5, -- A global parameter to be passed down
+
+	-- pipelining
+	LPM_PIPELINE = 0,	-- clock cycle latency number of outputs.
+						-- Default=0 instanciates a purely combinatorial function.
+
+	-- shift the placement of the pipeline latches
+	PIPELINE_DELAY = FLOOR(WIDTH_Q DIV 2)
+						-- by default starts at the middle stage.
+						-- put 0 to start at the last stage.
+						-- put (WIDTH_Q-1) for the first stage.
+);
+
+-------------------------------------------------------------------------------
+DEFINE MIN(a,b)	= (a<b) ? a : b;
+CONSTANT WidthDeadD		= WIDTH_D_MIN-1;
+CONSTANT QuotientWidth	= WIDTH_N-WidthDeadD;
+CONSTANT RemainderSize	= MIN( WIDTH_N, WIDTH_D );
+CONSTANT StageSizeMax	= MIN( WIDTH_N, WIDTH_D+1 );
+CONSTANT SPEED_MAX_FACTOR = USED(MAXIMIZE_SPEED) ? MAXIMIZE_SPEED : OPTIMIZE_FOR_SPEED;
+DEFINE SubStageSize(k)	= MIN( WIDTH_D+1, k+WidthDeadD+1 );
+
+-- pipeline
+CONSTANT nStage = WIDTH_Q;
+CONSTANT nInternalDFF = MIN(nStage, LPM_PIPELINE);
+CONSTANT nExternalDFF = LPM_PIPELINE-nInternalDFF;
+
+DEFINE StageVal(k) = (k*nInternalDFF + PIPELINE_DELAY );
+DEFINE StageNum(k) = FLOOR(StageVal(k) DIV nStage);
+DEFINE StageRem(k) = StageVal(k) MOD nStage;
+DEFINE PutStageHere(k) = (LPM_PIPELINE>0) & (StageRem(k)>=StageRem(k+1));
+
+-------------------------------------------------------------------------------
+SUBDESIGN DIVIDE
+(
+	numerator[WIDTH_N-1..0], denominator[WIDTH_D-1..0]	: INPUT;
+	quotient[WIDTH_Q-1..0], remainder[WIDTH_R-1..0]		: OUTPUT;
+
+	clock, aclr: INPUT = GND;		-- for pipelined designs
+	clk_en: INPUT = VCC;
+)
+
+-------------------------------------------------------------------------------
+VARIABLE
+	the_divider : alt_u_div WITH (WIDTH_N = WIDTH_N, WIDTH_D = WIDTH_D,
+								  WIDTH_Q = WIDTH_Q, WIDTH_R = WIDTH_R,
+								  WIDTH_D_MIN = WIDTH_D_MIN,
+								  MAXIMIZE_SPEED = SPEED_MAX_FACTOR,
+								  LPM_PIPELINE = LPM_PIPELINE, 
+								  PIPELINE_DELAY = PIPELINE_DELAY);
+-------------------------------------------------------------------------------
+BEGIN
+	ASSERT( (WIDTH_N>0) & (WIDTH_D>0) & (WIDTH_Q>0) & (WIDTH_R>0) & (WIDTH_D_MIN>0) )
+	REPORT "Values of WIDTH_N (%), WIDTH_D (%), WIDTH_Q (%), WIDTH_R (%), and WIDTH_D_MIN (%) parameters must be greater than 0" WIDTH_N, WIDTH_D, WIDTH_Q, WIDTH_R, WIDTH_D_MIN
+	SEVERITY ERROR
+	HELP_ID DIVIDE_WIDTH;
+
+	ASSERT( (WIDTH_D_MIN>=1) & (WIDTH_D_MIN<=RemainderSize) )
+	REPORT "Illegal value for WIDTH_D_MIN parameter (%) -- value must be in the range 1 to MIN (WIDTH_N, WIDTH_D)" WIDTH_D_MIN
+	SEVERITY ERROR
+	HELP_ID DIVIDE_WIDTH_MIN_D;
+
+	ASSERT( WIDTH_Q==QuotientWidth )
+	REPORT "Illegal value for WIDTH_Q parameter (%) -- value must equal WIDTH_N - WIDTH_D_MIN + 1" WIDTH_Q
+	SEVERITY ERROR
+	HELP_ID DIVIDE_WIDTH_Q;
+
+	ASSERT( WIDTH_R==RemainderSize )
+	REPORT "Illegal value for WIDTH_R parameter (%) -- value must equal MIN (WIDTH_N, WIDTH_D)" WIDTH_R
+	SEVERITY ERROR
+	HELP_ID DIVIDE_WIDTH_R;
+
+	ASSERT( (LPM_PIPELINE>=0) & (LPM_PIPELINE<=WIDTH_Q))
+	REPORT "Illegal value for LPM_PIPELINE parameter (%) -- value must be in the range 0 to WIDTH_Q" LPM_PIPELINE
+	SEVERITY ERROR
+	HELP_ID DIVIDE_LPM_PIPELINE;
+
+	ASSERT( USED(clock) !$ (LPM_PIPELINE>0) )
+	REPORT "Value of LPM_PIPELINE parameter must be greater than 0 if the clock port is used and vice versa"
+	SEVERITY ERROR
+	HELP_ID DIVIDE_LPM_PIPELINE_WITH_CLOCK;
+
+	ASSERT( (PIPELINE_DELAY >=0) & (PIPELINE_DELAY <WIDTH_Q) )
+	REPORT "Illegal value for PIPELINE_DELAY parameter (%) -- value must be in the range 0 to WIDTH_Q - 1" PIPELINE_DELAY
+	SEVERITY ERROR
+	HELP_ID DIVIDE_PIPELINE_DELAY ;
+-----------------------------------------------------------------------------------
+	the_divider.numerator[] = numerator[];
+	the_divider.denominator[] = denominator[];
+	quotient[] = the_divider.quotient[];
+	remainder[] = the_divider.remainder[];
+
+	-- pipeline signals
+	IF LPM_PIPELINE > 0 GENERATE
+		the_divider.clock = clock;
+
+		IF USED(aclr) GENERATE
+			the_divider.aclr = aclr;
+		END GENERATE;
+
+		IF USED(clk_en) GENERATE
+			the_divider.clk_en = clk_en;
+		END GENERATE;
+	END GENERATE;
+END;

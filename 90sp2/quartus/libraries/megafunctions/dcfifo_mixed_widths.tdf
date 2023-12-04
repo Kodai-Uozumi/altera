@@ -1,0 +1,134 @@
+------------------------------------------------------------------
+-- dcfifo_mixed_widths parameterized megafunction
+-- Generated with 'clearbox' loader - do not edit
+------------------------------------------------------------------
+
+
+-- Copyright (C) 1991-2009 Altera Corporation
+--  Your use of Altera Corporation's design tools, logic functions 
+--  and other software and tools, and its AMPP partner logic 
+--  functions, and any output files from any of the foregoing 
+--  (including device programming or simulation files), and any 
+--  associated documentation or information are expressly subject 
+--  to the terms and conditions of the Altera Program License 
+--  Subscription Agreement, Altera MegaCore Function License 
+--  Agreement, or other applicable license agreement, including, 
+--  without limitation, that your use is for the sole purpose of 
+--  programming logic devices manufactured by Altera and sold by 
+--  Altera or its authorized distributors.  Please refer to the 
+--  applicable agreement for further details.
+
+--  Version 9.0 Build 235 06/17/2009
+
+OPTIONS NAME_SUBSTITUTION = ON;
+
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+
+PARAMETERS
+(
+	ACF_DISABLE_MLAB_RAM_USE = "FALSE",
+	ADD_RAM_OUTPUT_REGISTER = "OFF",
+	ADD_USEDW_MSB_BIT = "OFF",
+	CLOCKS_ARE_SYNCHRONIZED = "FALSE",
+	DELAY_RDUSEDW = 1,
+	DELAY_WRUSEDW = 1,
+	LPM_NUMWORDS,
+	LPM_SHOWAHEAD = "OFF",
+	LPM_WIDTH,
+	LPM_WIDTH_R = 0,
+	LPM_WIDTHU = 1,
+	LPM_WIDTHU_R = 1,
+	MAXIMIZE_SPEED = 5,
+	OVERFLOW_CHECKING = "ON",
+	RAM_BLOCK_TYPE = "AUTO",
+	RDSYNC_DELAYPIPE = 0,
+	UNDERFLOW_CHECKING = "ON",
+	USE_EAB = "ON",
+	WRITE_ACLR_SYNCH = "OFF",
+	WRSYNC_DELAYPIPE = 0,
+	CBXI_PARAMETER = "NOTHING"
+);
+FUNCTION @CBXI_PARAMETER (aclr, data[lpm_width-1..0], rdclk, rdreq, wrclk, wrreq)
+RETURNS (q[lpm_width_r-1..0], rdempty, rdfull, rdusedw[lpm_widthu_r-1..0], wrempty, wrfull, wrusedw[lpm_widthu-1..0]);
+
+
+SUBDESIGN dcfifo_mixed_widths
+(
+	aclr		:	INPUT = GND;
+	data[lpm_width-1..0]		:	INPUT;
+	q[lpm_width_r-1..0]		:	OUTPUT;
+	rdclk		:	INPUT;
+	rdempty		:	OUTPUT;
+	rdfull		:	OUTPUT;
+	rdreq		:	INPUT;
+	rdusedw[lpm_widthu_r-1..0]		:	OUTPUT;
+	wrclk		:	INPUT;
+	wrempty		:	OUTPUT;
+	wrfull		:	OUTPUT;
+	wrreq		:	INPUT;
+	wrusedw[lpm_widthu-1..0]		:	OUTPUT;
+)
+VARIABLE
+	IF CBXI_PARAMETER != "NOTHING" GENERATE
+		auto_generated : @CBXI_PARAMETER WITH ( CBXI_PARAMETER = "NOTHING" );
+	END GENERATE;
+BEGIN
+	ASSERT (CBXI_PARAMETER != "NOTHING")
+	REPORT "Valid clear box generator not found or Errors encountered during clear box generation"
+	SEVERITY ERROR;
+	IF (CBXI_PARAMETER != "NOTHING") GENERATE
+		IF USED(aclr) GENERATE
+			auto_generated.aclr = aclr;
+		END GENERATE;
+		IF USED(data) GENERATE
+			auto_generated.data[] = data[];
+		END GENERATE;
+		IF USED(q) GENERATE
+			q[] = auto_generated.q[];
+		ELSE GENERATE
+			q[] = GND;
+		END GENERATE;
+		IF USED(rdclk) GENERATE
+			auto_generated.rdclk = rdclk;
+		END GENERATE;
+		IF USED(rdempty) GENERATE
+			rdempty = auto_generated.rdempty;
+		ELSE GENERATE
+			rdempty = GND;
+		END GENERATE;
+		IF USED(rdfull) GENERATE
+			rdfull = auto_generated.rdfull;
+		ELSE GENERATE
+			rdfull = GND;
+		END GENERATE;
+		IF USED(rdreq) GENERATE
+			auto_generated.rdreq = rdreq;
+		END GENERATE;
+		IF USED(rdusedw) GENERATE
+			rdusedw[] = auto_generated.rdusedw[];
+		ELSE GENERATE
+			rdusedw[] = GND;
+		END GENERATE;
+		IF USED(wrclk) GENERATE
+			auto_generated.wrclk = wrclk;
+		END GENERATE;
+		IF USED(wrempty) GENERATE
+			wrempty = auto_generated.wrempty;
+		ELSE GENERATE
+			wrempty = GND;
+		END GENERATE;
+		IF USED(wrfull) GENERATE
+			wrfull = auto_generated.wrfull;
+		ELSE GENERATE
+			wrfull = GND;
+		END GENERATE;
+		IF USED(wrreq) GENERATE
+			auto_generated.wrreq = wrreq;
+		END GENERATE;
+		IF USED(wrusedw) GENERATE
+			wrusedw[] = auto_generated.wrusedw[];
+		ELSE GENERATE
+			wrusedw[] = GND;
+		END GENERATE;
+	END GENERATE;
+END;

@@ -1,0 +1,55 @@
+<?xml version="1.0"?>
+<ROOT>
+	
+	<!-- macros -->
+	<MACROS>
+		<MACRO NAME="nan_in_port_used"  DEFINITION="is_used(nan_in)" />
+		<MACRO NAME="overflow_in_port_used"  DEFINITION="is_used(overflow_in)" />
+		<MACRO NAME="underflow_in_port_used"  DEFINITION="is_used(underflow_in)" />
+		<MACRO NAME="zero_in_port_used"  DEFINITION="is_used(zero_in)" />
+		<MACRO NAME="division_by_zero_in_port_used"  DEFINITION="is_used(division_by_zero_in)" />
+	</MACROS>
+	
+	<PARAMETERS>
+		<PARAMETER NAME="PIPELINE" VALUE="0-1" DEFAULT_VALUE="0" />
+		<PARAMETER NAME="WIDTH_EXP" DEFAULT_VALUE="8" >
+			<FORCE_RANGE MIN="8" MAX="31" />
+			<VALUE_RULE> 
+				(WIDTH_EXP != 9) and (WIDTH_EXP != 10)
+			</VALUE_RULE>
+		</PARAMETER>
+		<PARAMETER NAME="WIDTH_MAN" DEFAULT_VALUE="23" >
+			<FORCE_VALUE TO="23" WHEN="(WIDTH_EXP == 8)" />
+			<FORCE_RANGE MAX="52" MIN="31" WHEN="(WIDTH_EXP gt 10)" />
+			<VALUE_RULE> 
+				((WIDTH_EXP + WIDTH_MAN) lt 64)
+			</VALUE_RULE>
+			<VALUE_RULE> 
+				(WIDTH_EXP lt WIDTH_MAN)
+			</VALUE_RULE>
+		</PARAMETER>
+	</PARAMETERS>
+	
+	<PORTS>	
+		<!-- output ports -->
+		<PORT NAME="nan" TYPE="OUTPUT" USAGE="UNUSED" >
+			<STATE V="USED" WHEN="nan_in_port_used" />
+		</PORT>
+		<PORT NAME="overflow" TYPE="OUTPUT" USAGE="UNUSED" >
+			<STATE V="USED" WHEN="overflow_in_port_used" />
+		</PORT>
+		<PORT NAME="underflow" TYPE="OUTPUT" USAGE="UNUSED" >
+			<STATE V="USED" WHEN="underflow_in_port_used" />
+		</PORT>
+		<PORT NAME="zero" TYPE="OUTPUT" USAGE="UNUSED" >
+			<STATE V="USED" WHEN="zero_in_port_used" />
+		</PORT>
+		<PORT NAME="division_by_zero" TYPE="OUTPUT" USAGE="UNUSED" >
+			<STATE V="USED" WHEN="division_by_zero_in_port_used" />
+		</PORT>
+		
+		<!-- pipeline port -->
+		<PORT NAME="aclr" TYPE="INPUT" USAGE="VARIABLE" DEFAULT_VALUE="0" />
+		<PORT NAME="clk_en" TYPE="INPUT" USAGE="VARIABLE" DEFAULT_VALUE="1" />
+	</PORTS>
+</ROOT>

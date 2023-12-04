@@ -1,0 +1,37 @@
+#!/bin/sh
+# add library path to both sopc builder AND nios2 kit
+PERL5LIB=`cygpath -u "$QUARTUS_ROOTDIR/sopc_builder/bin"`:$PERL5LIB
+PERL5LIB=`cygpath -u "$SOPC_KIT_NIOS2/bin"`:$PERL5LIB
+export PERL5LIB
+perl - "$0" "$@" <<\ENDOFPERL
+#!perl
+
+use sh_launch;
+
+# platform-specific classpath separator PS
+my $PS=";"; # windows separator
+if ($^O !~ /win/i) { $PS=":"; } # special case: everything else
+
+# note that the classpath could also use these jars: nios2sh_BIN/*.jar
+my $classpath = join($PS,
+        "$sopc_builder_BIN/ptf.jar",
+        "$sopc_builder_BIN/jaxen-core.jar",
+        "$sopc_builder_BIN/jaxen-jdom.jar",
+        "$sopc_builder_BIN/jdom.jar",
+        "$sopc_builder_BIN/saxpath.jar",
+        "$sopc_builder_BIN/generate.jar");
+    
+my @cmd =
+    (
+    $quartus_JRE,
+    "-classpath", $classpath,
+    "com.altera.generate.Generate",
+    "--sopc-kit-nios2=$ENV{SOPC_KIT_NIOS2}",
+    @ARGV
+    );
+
+my $result = system(@cmd);
+
+exit($result >> 8);
+
+# the end

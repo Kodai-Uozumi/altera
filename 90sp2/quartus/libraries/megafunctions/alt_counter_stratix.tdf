@@ -1,0 +1,702 @@
+----------------------------------------------------------------------------------------------------
+-- ALT_COUNTER_STRATIX parameterized Megafunction
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+-- This module implements the synchronous and asynchronous side of the counter
+-- This module is meant to only be called from LPM_COUNTER.  Use outside of LPM_COUNTER can lead
+-- to incorrect results (since assertions are being bypassed and several cases cannot be handled
+-- by this module correctly -> carry chains won't be disabled, enable will be implemented with
+-- carry chains, etc. )
+
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+-----------------------------------------------------------------------------------------------------
+
+-- declare the lcell's
+INCLUDE "stratix_lcell";
+
+-- lpm's which there is a dependancy on
+INCLUDE "lpm_constant";
+INCLUDE "lpm_compare";
+
+-- need global parameter information
+INCLUDE "aglobal90";
+
+PARAMETERS
+(
+	LPM_WIDTH,
+	LPM_DIRECTION			=	"DEFAULT",
+	LPM_MODULUS				=	0,
+	LPM_SVALUE				=	(2^LPM_WIDTH)-1,
+	LPM_AVALUE				=	(2^LPM_WIDTH)-1,
+	CARRY_CHAIN				=	"IGNORE",
+	CASCADE_CHAIN_LENGTH,						-- GLOBAL PARAMETER	--> For Altera internal use only
+	CARRY_CHAIN_LENGTH,							-- GLOBAL PARAMETER --> For Altera internal use only
+	DEVICE_FAMILY								-- GLOBAL PARAMETER --> For Altera internal use only
+);
+
+%**********%
+%* MACROS *%
+%**********%
+
+-- is this a non-trivial modulus (i.e. we cannot ignore it)
+DEFINE NON_TRIVIAL_MODULUS() = (USED(LPM_MODULUS) & (LPM_MODULUS != 0) & (LPM_MODULUS < (2^LPM_WIDTH)));
+
+-- is the counter the user specified capable of ever counting up?
+DEFINE CAPABLE_OF_UP() = USED(updown) # LPM_DIRECTION == "UP" # !USED(LPM_DIRECTION) # LPM_DIRECTION == "DEFAULT";
+
+-- is the counter the user specified capable of ever counting down?
+DEFINE CAPABLE_OF_DOWN() = USED(updown) # LPM_DIRECTION == "DOWN";
+
+-- Modulus for down counting counter
+DEFINE DOWN_MODULUS() = CAPABLE_OF_DOWN() & NON_TRIVIAL_MODULUS();
+
+-- is there a need for an extra cell to handle the cout?
+DEFINE NEED_HIGH_COUT() = USED(cout) # NON_TRIVIAL_MODULUS();
+
+-- do we need an equality check for an up count and a non-trivial modulus
+DEFINE NEED_EQUALITY_CHECK() = CAPABLE_OF_UP() & NON_TRIVIAL_MODULUS();
+
+-- check whether aconst or aset is used
+DEFINE NEED_ASYNC_SET() = USED(aconst) # USED(aset);
+
+-- check whether sconst or sset is used
+DEFINE NEED_SYNC_SET() = USED(sconst) # USED(sset);
+
+-- do we need to construct big asynch circuit?
+DEFINE NEED_BIG_ASYNCH_CIRCUIT() = (NEED_ASYNC_SET() & USED(aclr)) #
+								 (USED(aload) & (NEED_ASYNC_SET() # NEED_SYNC_SET() & (USED(updown) # USED(cnt_en))));
+
+-- the value of the y-th bit of x  --> zero indexed
+DEFINE CONST_VAL(x, y) = y < LPM_WIDTH-1 ? 	( FLOOR(x DIV 2^y) - 2 * FLOOR(x DIV 2^(y + 1))) :
+									(y == LPM_WIDTH-1 ? FLOOR(x DIV 2^(LPM_WIDTH-1)) : 0);
+
+-- the value of the y-th bit of LPM_SVALUE --> zero indexed
+DEFINE CONST_SVAL(y) = SVALUE_ACTUAL() == 0 ? 0 : CONST_VAL(SVALUE_ACTUAL(), y); 
+
+-- the value of the y-th bit of LPM_AVALUE -- zero indexed
+DEFINE CONST_AVAL(y) = AVALUE_ACTUAL() == 0 ? 0 : CONST_VAL(AVALUE_ACTUAL(), y);
+
+-- will a not-gate-pushback be inserted at the a-th bit of the counter  --> zero indexed
+DEFINE INSERT_PUSHBACK(a) = USED(aset) & CONST_AVAL(a);
+
+-- what is the actual AVALUE that will be implemented
+DEFINE AVALUE_ACTUAL() = USED(ASET) ? LPM_AVALUE : (2^LPM_WIDTH)-1;
+
+-- what is the actual SVALUE that will be implemented
+DEFINE SVALUE_ACTUAL() = USED(SSET) ? LPM_SVALUE : (2^LPM_WIDTH)-1;
+
+-- the AVALUE the user entered is trivial and may be safely ignored
+DEFINE TRIVIAL_AVALUE() = !USED(LPM_AVALUE);
+
+-- the svalue the user entered is trivial and may be safely ignored
+DEFINE TRIVIAL_SVALUE() = !USED(LPM_SVALUE);
+
+-- need extra cell to handle CIN and CNT_EN?
+DEFINE NEED_LOW_STARTER() = USED(cin);
+
+-- number of cells on the chain that are before the counter cells
+DEFINE PRE_COUNT() = NEED_LOW_STARTER() ? 1 : 0;
+
+-- number of cells on the chain that are after the counter cells
+DEFINE POST_COUNT() = NEED_HIGH_COUT() ? 1 : 0;
+
+-- there are more stages after the x-th
+DEFINE NEED_MORE_STAGES(x) = x + 1 < LPM_WIDTH + POST_COUNT();
+
+-- recursive helper function which will calculate how many continuous carry hcains have passed before this one
+DEFINE CHAIN_SO_FAR(x) = x == 0 ? PRE_COUNT() : (((CHAIN_SO_FAR(x - 1) < CARRY_CHAIN_LENGTH & !NEED_MORE_STAGES(x))
+												# (CHAIN_SO_FAR(x - 1) + 1 < CARRY_CHAIN_LENGTH)) 
+													? CHAIN_SO_FAR(x - 1) + 1
+													: 0);
+
+-- do we need to break the chain here to meet the user specified carry chain limit
+-- x = index of counter bit
+DEFINE BREAK_CHAIN_HERE(x) = (x != 0) &
+							 ((PRE_COUNT() + x * LCELL_PER_WORKER()) MOD CARRY_CHAIN_LENGTH) < LCELL_PER_WORKER()
+							 & NEED_MORE_STAGES(x);
+
+-- return the number of lcell require to construct a worker cell
+DEFINE LCELL_PER_WORKER() = 1;
+
+
+
+%*******************************************************%
+--------------------------------------------------------
+-- LUT MASKS --> complete hand-wire of the counter chain
+--------------------------------------------------------
+%*******************************************************%
+-- BEGIN MASK DECLARATIONS
+
+	-- Starter for lower bit or start of chain
+	-------------------------------------------
+	CONSTANT LOW_CIN_STARTER_MODE = "ARITHMETIC";
+	CONSTANT LOW_CIN_STARTER   = "CCCC";
+
+
+	-- Mask for big asynchronous counter
+	------------------------------------
+	DEFINE STRATIX_ASYNCH_COUNTER_MASK(i) = (i==0 & !NEED_LOW_STARTER()
+										? "5599"	-- ignore CIN
+										: "5A90");	-- with CIN
+
+
+	-- Mask for updown connecting to datab port
+	-------------------------------------------
+	DEFINE STRATIX_UPDOWN_CONNECTION(i) = (i==0 & !NEED_LOW_STARTER()
+										? "5599"	-- ignore CIN
+										: "5A90");	-- with CIN
+
+
+	-- Mask for cnt_en connecting to datab port
+	-------------------------------------------
+	DEFINE STRATIX_CNT_EN_CONNECTION(i) = (i==0 & !NEED_LOW_STARTER()
+										? (LPM_DIRECTION != "DOWN"	-- Up counting
+											? (INSERT_PUSHBACK(i) != 0
+												? "6655"	 -- YES pushback, ignore CIN
+												: "66AA")	 -- NO pushback, ignore CIN
+											: (INSERT_PUSHBACK(i) != 0 -- Down counting
+												? "66AA"	 -- YES pushback, ignore CIN
+												: "6655"))	 -- NO pushback, ignore CIN
+										: (LPM_DIRECTION != "DOWN"
+											? (INSERT_PUSHBACK(i) != 0 -- Up counting
+												? "6A50"	 -- YES pushback, with CIN
+												: "6AA0")	 -- NO pushback, with CIN
+											: (INSERT_PUSHBACK(i) != 0 -- Down counting
+												? "6AA0"	 -- YES pushback, with CIN
+												: "6A50"))); -- NO pushback, with CIN
+
+
+	-- Mask for sset connecting to datab port (Normal circuit)
+	----------------------------------------------------------
+	DEFINE STRATIX_SSET_NORMAL_CONNECTION(i) = (CONST_SVAL(i) == 1
+										? (i==0 & !NEED_LOW_STARTER()
+											? (LPM_DIRECTION != "DOWN"
+												? "DDAA"	-- svalue = 1, up counting, ignore CIN
+												: "DD55")	-- svalue = 1, down counting, ignore CIN
+											: (LPM_DIRECTION != "DOWN"
+												? "DEA0"	-- svalue = 1, up counting, with CIN
+												: "DE50"))	-- svalue = 1, down counting, with CIN
+									 	: (i==0 & !NEED_LOW_STARTER()
+											? (LPM_DIRECTION != "DOWN"
+												? "11AA"	-- svalue = 0, up counting, ignore CIN
+												: "1155")	-- svalue = 0, down counting, ignore CIN
+											: (LPM_DIRECTION != "DOWN"
+												? "12A0"	-- svalue = 0, up counting, with CIN
+												: "1250"))); -- svalue = 0, down counting, with CIN
+
+
+-- Mask for sset connecting to datab port (Pushback circuit)
+	----------------------------------------------------------
+	DEFINE STRATIX_SSET_PUSHBACK_CONNECTION(i) = (CONST_SVAL(i) == 1
+										? (i==0 & !NEED_LOW_STARTER()
+											? (LPM_DIRECTION != "DOWN"
+												? "1155"	-- svalue = 1, up counting, ignore CIN
+												: "11AA")	-- svalue = 1, down counting, ignore CIN
+											: (LPM_DIRECTION != "DOWN"
+												? "1250"	-- svalue = 1, up counting, with CIN
+												: "12A0"))	-- svalue = 1, down counting, with CIN
+									 	: (i==0 & !NEED_LOW_STARTER()
+											? (LPM_DIRECTION != "DOWN"
+												? "DD55"	-- svalue = 0, up counting, ignore CIN
+												: "DDAA")	-- svalue = 0, down counting, ignore CIN
+											: (LPM_DIRECTION != "DOWN"
+												? "DE50"	-- svalue = 0, up counting, with CIN
+												: "DEA0"))); -- svalue = 0, down counting, with CIN
+
+
+	-- Mask for sclr connecting to datab port (Normal circuit)
+	----------------------------------------------------------
+	DEFINE STRATIX_SCLR_NORMAL_CONNECTION(i) = (i==0 & !NEED_LOW_STARTER()
+										? (LPM_DIRECTION != "DOWN"
+											? "11AA"	-- Up counting, ignore CIN
+											: "1155")	-- Down counting, ignore CIN
+										: (LPM_DIRECTION != "DOWN"
+											? "12A0"	-- Up counting, with CIN
+											: "1250")); -- Down counting, with CIN
+		
+	
+	-- Mask for sclr connecting to datab port (Pushback circuit)
+	----------------------------------------------------------
+	DEFINE STRATIX_SCLR_PUSHBACK_CONNECTION(i) = (i==0 & !NEED_LOW_STARTER()
+										? (LPM_DIRECTION != "DOWN"
+											? "DD55"	-- Up counting, ignore CIN
+											: "DDAA")	-- Down counting, ignore CIN
+										: (LPM_DIRECTION != "DOWN"
+											? "DE50"	-- Up counting, with CIN
+											: "DEA0")); -- Down counting, with CIN
+		
+	
+	-- Mask for all type of counter configuration
+	---------------------------------------------
+	DEFINE STRATIX_CELL_MASK(i) = (NEED_BIG_ASYNCH_CIRCUIT()
+									? (STRATIX_ASYNCH_COUNTER_MASK(i))
+									: (USED(updown)
+										? (STRATIX_UPDOWN_CONNECTION(i))
+										: (USED(cnt_en)
+											? STRATIX_CNT_EN_CONNECTION(i)
+											: (USED(sset)
+												? (INSERT_PUSHBACK(i) != 0
+													? STRATIX_SSET_PUSHBACK_CONNECTION(i)
+													: STRATIX_SSET_NORMAL_CONNECTION(i))
+												: (INSERT_PUSHBACK(i) != 0
+													? STRATIX_SCLR_PUSHBACK_CONNECTION(i)
+													: STRATIX_SCLR_NORMAL_CONNECTION(i))
+										  	  )
+									   	  )
+									  )
+								 );
+
+	-- CHAIN BREAKER
+	----------------
+	CONSTANT CHAIN_BREAKER      = "F0F0";
+
+	-- CHAIN STARTER 
+	----------------
+	CONSTANT CHAIN_STARTER      = "AAAA";
+
+
+	-- COUT CELL: the cell that will receive the cout and send it out to probably output pin
+	-------------
+	DEFINE COUT_CELL()      = (NEED_EQUALITY_CHECK()
+								? "F8F8"
+								: "F0F0"); -- turn off lut_mask for modulus triggering
+
+
+SUBDESIGN alt_counter_stratix (
+	data[LPM_WIDTH - 1..0]	 	: INPUT = VCC;
+	clock						: INPUT;
+	clk_en						: INPUT = VCC;
+	cnt_en						: INPUT = VCC;
+	updown						: INPUT = VCC;
+	cin							: INPUT;		-- no default value
+
+	-- synchronous input control signals
+	sload						: INPUT = GND;
+	sclr						: INPUT = GND;
+	sset						: INPUT = GND;
+	sconst						: INPUT = GND;
+
+	-- asynchronous input control signals
+	aload						: INPUT = GND;
+	aset						: INPUT = GND;
+	aconst						: INPUT = GND;
+	aclr						: INPUT = GND;
+
+	-- outputs
+	q[LPM_WIDTH - 1..0] 		: OUTPUT;
+	cout						: OUTPUT;
+)
+
+VARIABLE
+	IF (FAMILY_STRATIX() == 1) GENERATE
+		sset_node						: NODE;
+		aset_node						: NODE;
+		aclr_actual						: NODE;
+		time_to_clear					: NODE;
+		updownDir						: NODE;
+		a_val[LPM_WIDTH - 1..0]			: NODE;
+		s_val[LPM_WIDTH - 1..0]			: NODE;
+		safe_q[LPM_WIDTH - 1..0]		: NODE;
+		
+		IF NON_TRIVIAL_MODULUS() GENERATE
+			modulus_trigger				: NODE;
+			modulus_bus[LPM_WIDTH-1..0]	: NODE;
+		END GENERATE;
+		
+		IF NEED_EQUALITY_CHECK() GENERATE
+			compare_result			: NODE;		
+		END GENERATE;
+	
+		IF NEED_LOW_STARTER() GENERATE
+			low_starter : stratix_lcell WITH (
+							OPERATION_MODE = "ARITHMETIC",
+							SYNCH_MODE = "OFF",
+							LUT_MASK = LOW_CIN_STARTER);
+		END GENERATE;
+
+		counter_cell[LPM_WIDTH-1..0] :
+			FOR i IN (LPM_WIDTH-1) TO 0 GENERATE
+				stratix_lcell WITH (
+					OPERATION_MODE = "ARITHMETIC",
+					SYNCH_MODE = "ON",
+					LUT_MASK = STRATIX_CELL_MASK(i))
+			END GENERATE;
+
+		IF NEED_HIGH_COUT() GENERATE
+			cout_bit : stratix_lcell WITH (
+						OPERATION_MODE = "NORMAL",
+						SYNCH_MODE = "OFF",
+						LUT_MASK = COUT_CELL());
+		END GENERATE;
+
+		IF NEED_BIG_ASYNCH_CIRCUIT() & (!USED(aload) # NEED_ASYNC_SET() # NEED_SYNC_SET()) GENERATE
+			a_data[LPM_WIDTH - 1..0]			: NODE;
+			effective_clrn[LPM_WIDTH - 1..0]	: NODE;
+			effective_prn[LPM_WIDTH - 1..0]		: NODE;
+			pre_latch_signal[LPM_WIDTH - 1..0]	: NODE;
+			latch_signal[LPM_WIDTH - 1..0]		: NODE;
+			pre_hazard[LPM_WIDTH - 1..0]		: NODE;
+		END GENERATE;
+
+	END GENERATE;
+
+BEGIN
+	%**************************************%
+	%*	Beginning of the code block		  *%
+	%**************************************%
+	IF (FAMILY_STRATIX() == 1) GENERATE
+
+		counter_cell[].clk = clock;
+
+		IF !USED(data) GENERATE
+			ASSERT !(USED(sload) # USED(aload)) 
+				REPORT "data[] port must be connected if sload or aload is used"	
+				SEVERITY ERROR;
+		END GENERATE;
+		
+		IF USED(sset) GENERATE
+			sset_node = sset;
+		ELSE GENERATE
+			IF USED(sconst) GENERATE
+				sset_node = sconst;
+			ELSE GENERATE
+				sset_node = GND;
+			END GENERATE;
+		END GENERATE;
+
+		IF USED(aset) GENERATE
+			aset_node = aset;
+		ELSE GENERATE
+			IF USED(sconst) GENERATE
+				aset_node = aconst;
+			ELSE GENERATE
+				aset_node = GND;
+			END GENERATE;
+		END GENERATE;
+
+		-- Non-trivial modulus situations
+		IF NON_TRIVIAL_MODULUS() GENERATE
+			modulus_bus[] = lpm_constant()	WITH (LPM_WIDTH = LPM_WIDTH,
+												  LPM_CVALUE = LPM_MODULUS-1)
+											RETURNS (.result[]);
+		END GENERATE;
+		
+		-- generating the constants for AVALUE
+		IF !TRIVIAL_AVALUE() GENERATE
+			a_val[] = lpm_constant () WITH (
+							LPM_CVALUE	=	LPM_AVALUE,
+							LPM_WIDTH	=	LPM_WIDTH
+						)
+						RETURNS
+						(
+							.result[]
+						);
+		ELSE GENERATE
+			a_val[] = VCC;
+		END GENERATE;
+
+		-- generating the constants for AVALUE
+		IF !TRIVIAL_SVALUE() GENERATE
+			s_val[] = lpm_constant () WITH (
+							LPM_CVALUE	=	LPM_SVALUE,
+							LPM_WIDTH	=	LPM_WIDTH
+						)
+						RETURNS
+						(
+							.result[]
+						);
+		ELSE GENERATE
+			s_val[] = VCC;
+		END GENERATE;
+
+		IF USED(updown) GENERATE
+			updownDir = updown;
+		ELSE GENERATE
+			IF CAPABLE_OF_UP()GENERATE
+				updownDir = VCC;	-- up
+			ELSE GENERATE
+				updownDir = GND;	-- down
+			END GENERATE;
+		END GENERATE;
+
+		IF NEED_BIG_ASYNCH_CIRCUIT() GENERATE
+			-- Latch circuit
+			ASSERT REPORT "Counter will power-up to an undefined state.  An asynchronous signal must be asserted before the counter will be at a known state." SEVERITY WARNING;
+			aclr_actual = aclr # aset_node # aload;
+			a_data[] = (aset_node & a_val[]) # (!aset_node & data[]);
+			effective_clrn[] = !(aclr # (!a_data[] & (aload # aset_node)));
+			effective_prn[]  = !((aload # aset_node) & a_data[]);
+			pre_latch_signal[] = effective_prn[] & latch_signal[];
+			latch_signal[] = !effective_clrn[] # pre_latch_signal[];
+			pre_hazard[] = counter_cell[].regout;
+			safe_q[] = (pre_hazard[] & latch_signal[] & effective_clrn[]) # 
+					   (!latch_signal[] & !pre_hazard[] & effective_clrn[]) #
+					   (!aclr & !effective_prn[]);
+			counter_cell[].dataa = counter_cell[].regout;
+			counter_cell[].datab = updownDir !$ latch_signal[];
+			IF NON_TRIVIAL_MODULUS() GENERATE
+				counter_cell[].datac = !latch_signal[] $ (!sclr & (sset_node & s_val[] # !sset_node &
+				                       (sload & data[] # !sload & modulus_bus[] & !updownDir)));
+				counter_cell[].sload = sclr # sset_node # sload # modulus_trigger;
+			ELSE GENERATE
+				counter_cell[].datac = !latch_signal[] $ (!sclr & (sset_node & s_val[] # !sset_node & data[]));
+				counter_cell[].sload = sclr # sset_node # sload;
+			END GENERATE;
+			counter_cell[].ena = clk_en & (cnt_en # sclr # sset_node # sload);
+			counter_cell[].sclr = GND;
+			counter_cell[].aload = GND;
+		ELSE GENERATE
+			IF NEED_ASYNC_SET() GENERATE	-- Use only ASET
+				aclr_actual = aset_node;
+				safe_q[] = counter_cell[].regout $ a_val[];
+				counter_cell[].dataa = counter_cell[].regout;
+				counter_cell[].aload = GND;
+				IF USED(updown) GENERATE
+					counter_cell[].datab = updownDir $ a_val[];
+					IF NON_TRIVIAL_MODULUS() GENERATE
+						counter_cell[].datac = a_val[] $ ((!sclr # !a_val[]) & (sset_node & s_val[] # !sset_node & 
+												(sload & data[] # !sload & modulus_bus[] & !updownDir)));
+						counter_cell[].sload = (sclr & a_val[]) # sset_node # sload # modulus_trigger;
+					ELSE GENERATE
+						counter_cell[].datac = a_val[] $ ((!sclr # !a_val[]) & (sset_node & s_val[] # !sset_node & data[]));
+						counter_cell[].sload = (sclr & a_val[]) # sset_node # sload;
+					END GENERATE;
+					counter_cell[].ena = clk_en & (cnt_en # sclr # sset_node # sload);
+					counter_cell[].sclr = sclr & !a_val[];
+				ELSE GENERATE
+					counter_cell[].ena = clk_en;
+					IF USED(cnt_en) GENERATE
+						counter_cell[].datab = cnt_en;
+						IF NON_TRIVIAL_MODULUS() GENERATE
+							counter_cell[].datac = a_val[] $ ((!sclr # !a_val[]) & (sset_node & s_val[] # !sset_node & 
+													(sload & data[] # !sload & modulus_bus[] & !updownDir)));					
+							counter_cell[].sload = (sclr & a_val[]) # sset_node # sload # (modulus_trigger & cnt_en);
+						ELSE GENERATE
+							counter_cell[].datac = a_val[] $ ((!sclr # !a_val[]) & (sset_node & s_val[] # !sset_node & data[]));					
+							counter_cell[].sload = (sclr & a_val[]) # sset_node # sload;
+						END GENERATE;
+						counter_cell[].sclr = sclr & !a_val[];
+					ELSE GENERATE
+						IF NEED_SYNC_SET() GENERATE
+							counter_cell[].datab = sset_node;
+							IF NON_TRIVIAL_MODULUS() GENERATE
+								counter_cell[].datac = a_val[] $ ((!sclr # !a_val[]) & ((sload # !modulus_trigger) & data[]
+														# !sload & modulus_trigger & modulus_bus[] & !updownDir));
+								counter_cell[].sload = (sclr & a_val[]) # ((sload # modulus_trigger) & !sset_node);
+							ELSE GENERATE
+								counter_cell[].datac = a_val[] $ ((!sclr # !a_val[]) & data[]);
+								counter_cell[].sload = (sclr & a_val[]) # (sload & !sset_node);
+							END GENERATE;
+							counter_cell[].sclr = sclr & !a_val[];
+						ELSE GENERATE
+							counter_cell[].datab = sclr;
+							counter_cell[].datab = GND & sclr;		--avoid no connection error
+							IF NON_TRIVIAL_MODULUS() GENERATE
+								counter_cell[].datac = a_val[] $ ((sload # !modulus_trigger) & data[] # !sload & modulus_trigger & modulus_bus[] & !updownDir);
+								counter_cell[].sload = (sload # modulus_trigger) & !sclr;
+							ELSE GENERATE
+								counter_cell[].datac = a_val[] $ data[];
+								counter_cell[].sload = sload & !sclr;
+							END GENERATE;
+							counter_cell[].sclr = GND;
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+			ELSE GENERATE
+			-- Use only ACLR, or use ALOAD also but no need connection of 
+			-- LPM_SVALUE and LPM_AVALUE in datac				
+				aclr_actual = aclr;
+				safe_q[] = counter_cell[].regout;
+				counter_cell[].dataa = safe_q[];
+				IF USED(updown) GENERATE
+					counter_cell[].datab = updownDir;
+					IF USED(aload) GENERATE
+						IF NON_TRIVIAL_MODULUS() GENERATE
+							counter_cell[].datac = (sload # aload) & data[] # !(sload # aload) & modulus_bus[] & !updownDir;
+							counter_cell[].sload = sload # modulus_trigger;
+						ELSE GENERATE
+							counter_cell[].datac = data[];
+							counter_cell[].sload = sload;
+						END GENERATE;
+						counter_cell[].aload = aload;
+					ELSE GENERATE
+						IF NON_TRIVIAL_MODULUS() GENERATE
+							counter_cell[].datac = sset & s_val[] # !sset & (sload & data[] # !sload & modulus_bus[] & !updownDir);
+							counter_cell[].sload = sset # sload # modulus_trigger;
+						ELSE GENERATE
+							counter_cell[].datac = sset & s_val[] # !sset & data[];
+							counter_cell[].sload = sset # sload;
+						END GENERATE;
+						counter_cell[].aload = GND;
+					END GENERATE;
+					counter_cell[].ena = clk_en & (cnt_en # sclr # sset # sload);
+					counter_cell[].sclr = sclr;
+				ELSE GENERATE
+					IF USED(cnt_en) GENERATE
+						counter_cell[].datab = cnt_en;
+						IF USED(aload) GENERATE
+							IF NON_TRIVIAL_MODULUS() GENERATE
+								counter_cell[].datac = (sload # aload) & data[] # !(sload # aload) & modulus_bus[] & !updownDir;
+							ELSE GENERATE
+								counter_cell[].datac = data[];					
+							END GENERATE;	
+							counter_cell[].aload = aload;
+						ELSE GENERATE
+							IF NON_TRIVIAL_MODULUS() GENERATE
+								counter_cell[].datac = sset & s_val[] # !sset & (sload & data[] # !sload & modulus_bus[] & !updownDir);
+							ELSE GENERATE
+								counter_cell[].datac = sset & s_val[] # !sset & data[];
+							END GENERATE;
+							counter_cell[].aload = GND;
+						END GENERATE;
+						counter_cell[].ena = clk_en;
+						counter_cell[].sclr = sclr;
+						IF NON_TRIVIAL_MODULUS() GENERATE
+							counter_cell[].sload = sset_node # sload # (modulus_trigger & cnt_en);
+						ELSE GENERATE
+							counter_cell[].sload = sset_node # sload;
+						END GENERATE;
+					ELSE GENERATE
+						IF USED(aload) GENERATE
+							IF NON_TRIVIAL_MODULUS() GENERATE
+							 	counter_cell[].datac = (sload # aload) & data[] # !(sload # aload) & modulus_bus[] & !updownDir;
+							ELSE GENERATE
+							 	counter_cell[].datac = data[];
+							END GENERATE;
+							counter_cell[].aload = aload;
+						ELSE GENERATE
+							IF NON_TRIVIAL_MODULUS() GENERATE
+							 	counter_cell[].datac = sload & data[] # !sload & modulus_bus[] & !updownDir;
+							ELSE GENERATE
+							 	counter_cell[].datac = data[];
+							END GENERATE;
+							counter_cell[].aload = GND;
+						END GENERATE;
+						IF NEED_SYNC_SET() GENERATE
+							counter_cell[].datab = sset_node;
+							counter_cell[].ena = clk_en;
+							counter_cell[].sclr = sclr;
+							IF NON_TRIVIAL_MODULUS() GENERATE
+								counter_cell[].sload = (sload # modulus_trigger) & !sset_node;
+							ELSE GENERATE
+								counter_cell[].sload = sload & !sset_node;
+							END GENERATE;
+						ELSE GENERATE
+							counter_cell[].datab = GND & sclr;		--avoid no connection error
+							counter_cell[].ena = clk_en;
+							counter_cell[].sclr = sclr;
+							IF NON_TRIVIAL_MODULUS() GENERATE
+								counter_cell[].sload = sload # modulus_trigger;
+							ELSE GENERATE
+								counter_cell[].sload = sload;
+							END GENERATE;
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+
+		counter_cell[].aclr = aclr_actual;
+		q[] = safe_q[];
+
+		-- Inserting Low Starter and connecting port A and COUT of the Low Starter
+		IF NEED_LOW_STARTER() GENERATE
+			low_starter.datab = cin;
+			counter_cell[0].cin = low_starter.cout;
+		END GENERATE;
+
+		-- carry-in/carry-out chain construction with
+		-- consideration of chain breaking
+		IF (LPM_WIDTH > 1) GENERATE
+			FOR i IN 1 TO LPM_WIDTH-1 GENERATE
+				IF (!BREAK_CHAIN_HERE(i)) GENERATE
+					counter_cell[i].cin = counter_cell[i-1].cout;
+				ELSE GENERATE
+					(counter_cell[i].cin) = stratix_lcell (
+											.dataa	= stratix_lcell (.cin = counter_cell[i-1].cout)
+														WITH (LUT_MASK	= CHAIN_BREAKER,
+															OPERATION_MODE = "NORMAL")
+														RETURNS (.combout))
+													WITH (LUT_MASK = CHAIN_STARTER,
+														OPERATION_MODE = "ARITHMETIC")
+													RETURNS (.cout);
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+
+		IF NEED_EQUALITY_CHECK() GENERATE
+			compare_result = lpm_compare ( .dataa[] = q[],
+										  .datab[] = modulus_bus[])
+										WITH (LPM_WIDTH = LPM_WIDTH,
+											  ONE_INPUT_IS_CONSTANT = "YES")
+										RETURNS	(.aeb);
+			IF USED(cin) GENERATE
+				time_to_clear = compare_result & cin;
+			ELSE GENERATE
+				time_to_clear = compare_result;
+			END GENERATE;
+		ELSE GENERATE  -- setting for DOWN counter
+			time_to_clear = GND;
+		END GENERATE;
+
+		-- connecting COUT cell if needed
+		IF NEED_HIGH_COUT() GENERATE
+			cout_bit.cin = counter_cell[LPM_WIDTH-1].cout;
+			cout_bit.dataa = updownDir;
+			cout_bit.datab = time_to_clear;
+			IF NON_TRIVIAL_MODULUS() GENERATE
+				modulus_trigger = cout_bit.combout;
+			END GENERATE;
+			-- make connection if user need COUT output
+			IF USED(cout) GENERATE
+				cout = cout_bit.combout;
+			END GENERATE;
+		ELSE GENERATE
+			IF NON_TRIVIAL_MODULUS() GENERATE
+				modulus_trigger = GND;
+			END GENERATE;
+		END GENERATE;
+
+
+	END GENERATE;
+
+	ASSERT (FAMILY_STRATIX() == 1)
+		REPORT "Unexpected family -- % is not expected to be used on this megafunction"
+			DEVICE_FAMILY
+		SEVERITY ERROR;
+	IF !USED(cout) GENERATE
+		cout = GND;
+	END GENERATE;
+	IF !USED(q) GENERATE
+		q[] = GND;
+	END GENERATE;
+END;

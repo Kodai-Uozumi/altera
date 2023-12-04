@@ -1,0 +1,298 @@
+--------------------------------------------------------------------
+--	Flip-Flop FIFO Parameterized Megafunction - A_FFFIFO
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 2.0
+--
+------------------------------------------
+--
+-- For a description of the parameters and ports, see SCFIFO or SFIFO
+--
+-- Altera recommends not to use this design directly.
+-- Use SCFIFO or SFIFO instead, with USE_EAB="OFF" and OPTIMIZE_FOR_SPEED<7
+--
+--------------------------------------------------------------------
+
+include "lpm_counter";
+include "lpm_compare";
+include "lpm_mux";
+include "lpm_ff";
+include "a_fefifo";
+
+parameters
+(
+	LPM_WIDTH,
+	LPM_NUMWORDS,
+
+	LPM_SHOWAHEAD = "OFF",
+	UNDERFLOW_CHECKING = "ON",
+	OVERFLOW_CHECKING = "ON",
+	ALLOW_RWCYCLE_WHEN_FULL = "OFF"
+);
+
+-------------------------------------------------------------------------------
+-- This function determines the closest power of BASEP to a given number n
+constant BASEP = 2;
+define SUB_BLKSZ(m, n) = (BASEP^m <= n ) ? (SUB_BLKSZ(m+1, n)) : BASEP^(m-1);
+define BLKSZ(n) = (n <= BASEP) ? BASEP : (SUB_BLKSZ(1, n)); 
+
+-- Size of a full data block
+define MIN(a, b) = (a < b) ? a : b;
+constant FULL_BLOCK_SIZE = MIN(256, BLKSZ(LPM_NUMWORDS));
+
+-- Size of the last (possibly, partially filled) block
+constant PART_SIZE = LPM_NUMWORDS mod FULL_BLOCK_SIZE;
+constant LAST_BLOCK_SIZE = ( PART_SIZE>0 ? PART_SIZE+1 : FULL_BLOCK_SIZE);
+
+-- Width of read/write address buses.
+constant WIDTHAD = (LPM_NUMWORDS <= 1) ? 1 : CEIL(LOG2(LPM_NUMWORDS));	
+
+-- Number of bits needed to address rows within full and last blocks
+constant FULL_BLOCK_AD = (FULL_BLOCK_SIZE <= 1) ? 1 : CEIL(LOG2(FULL_BLOCK_SIZE));
+constant LAST_BLOCK_AD = (LAST_BLOCK_SIZE <= 1) ? 1 : CEIL(LOG2(LAST_BLOCK_SIZE));
+
+-- The number of full blocks, except possibly the last one.
+constant FULL_BLOCKS = (PART_SIZE > 0 ? FLOOR(LPM_NUMWORDS div FULL_BLOCK_SIZE) : 
+											 (LPM_NUMWORDS div FULL_BLOCK_SIZE)-1);
+-- Total number of blocks
+constant TOT_BLOCKS = CEIL(LPM_NUMWORDS div FULL_BLOCK_SIZE);
+
+-------------------------------------------------------------------------------
+subdesign a_fffifo
+(
+	data[LPM_WIDTH-1..0]		: input;
+	q[LPM_WIDTH-1..0]			: output;
+
+	wreq, rreq					: input;
+	clock						: input;
+	aclr, sclr					: input = gnd;
+
+	threshlevel[WIDTHAD-1..0]	: input = gnd;
+	threshold					: output;
+	empty, full					: output;
+	usedw[WIDTHAD-1..0]			: output;		-- # of words in the FIFO
+)
+
+-------------------------------------------------------------------------------
+variable
+	if FULL_BLOCKS>0 generate
+	 	data_node[FULL_BLOCKS-1..0][FULL_BLOCK_SIZE-1..0]: lpm_ff with( LPM_WIDTH=LPM_WIDTH );
+		row_data_out_mux[FULL_BLOCKS-1..0]: lpm_mux with( LPM_WIDTH=LPM_WIDTH, LPM_SIZE=FULL_BLOCK_SIZE, LPM_WIDTHS=FULL_BLOCK_AD );
+		col_data_out_mux: lpm_mux with( LPM_WIDTH=LPM_WIDTH, LPM_SIZE=TOT_BLOCKS, LPM_WIDTHS=WIDTHAD-FULL_BLOCK_AD );
+		col_rd_select[WIDTHAD-FULL_BLOCK_AD-1..0]: node;  -- select signals for column mux
+	end generate;
+
+	row_rd_select[FULL_BLOCK_AD-1..0] 	: node;	 -- select signals for row muxes
+	last_data_node[LAST_BLOCK_SIZE-1..0]: lpm_ff with( LPM_WIDTH=LPM_WIDTH );
+	last_row_data_out_mux				: lpm_mux with( LPM_WIDTH=LPM_WIDTH, LPM_SIZE=LAST_BLOCK_SIZE, LPM_WIDTHS=LAST_BLOCK_AD );
+	cur_read_data[LPM_WIDTH-1..0]		: node;		-- unbuffered output data nodes
+	rd_ptr 								: lpm_counter with (LPM_WIDTH=WIDTHAD);
+
+	if LPM_SHOWAHEAD=="OFF" generate
+		output_buffer: lpm_ff with( LPM_WIDTH=LPM_WIDTH );																	 				
+	end generate;
+
+	valid_wreq, valid_rreq	: node;
+	fifo_state				: a_fefifo with( LPM_WIDTHAD=WIDTHAD, LPM_NUMWORDS=LPM_NUMWORDS, UNDERFLOW_CHECKING=UNDERFLOW_CHECKING, OVERFLOW_CHECKING=OVERFLOW_CHECKING, ALLOW_RWCYCLE_WHEN_FULL=ALLOW_RWCYCLE_WHEN_FULL );
+
+-------------------------------------------------------------------------------
+begin
+	assert (LPM_WIDTH>=1)
+			report "Value of LPM_WIDTH parameter must be at least 1"
+			severity error
+			help_id FFFIFO_WIDTH;
+
+	assert (LPM_NUMWORDS>=2)
+			report "Value of LPM_NUMWORDS parameter must be at least 2"
+			severity error
+			help_id FFFIFO_NUMWORDS;
+
+--------------------------------------------------------------------
+	assert (LPM_SHOWAHEAD=="ON") or (LPM_SHOWAHEAD=="OFF")
+			report "Assign either ""ON"" or ""OFF"" to LPM_SHOWAHEAD"
+			severity error
+			help_id FFFIFO_SHOWAHEAD;
+
+	assert (UNDERFLOW_CHECKING=="ON") or (UNDERFLOW_CHECKING=="OFF")
+			report "Assign either ""ON"" or ""OFF"" to UNDERFLOW_CHECKING"
+			severity error
+			help_id FFFIFO_UNDERFLOW_CHECKING;
+
+	assert (OVERFLOW_CHECKING=="ON") or (OVERFLOW_CHECKING=="OFF")
+			report "Assign either ""ON"" or ""OFF"" to OVERFLOW_CHECKING"
+			severity error
+			help_id FFFIFO_OVERFLOW_CHECKING;
+
+	assert (ALLOW_RWCYCLE_WHEN_FULL=="ON") or (ALLOW_RWCYCLE_WHEN_FULL=="OFF")
+			report "Assign either ""ON"" or ""OFF"" to ALLOW_RWCYCLE_WHEN_FULL"
+			severity error
+			help_id FFFIFO_ALLOW_RWCYCLE_WHEN_FULL;
+
+-------------------------------------------------------------------------------
+-- read and write request qualifications
+--
+	if UNDERFLOW_CHECKING=="OFF" generate
+		valid_rreq = rreq;
+	else generate
+		valid_rreq = rreq and !empty;
+	end generate; 
+
+	if OVERFLOW_CHECKING=="OFF" generate
+		valid_wreq = wreq;
+	else generate 
+		if ALLOW_RWCYCLE_WHEN_FULL=="ON" generate
+			valid_wreq = wreq and (!full or rreq);
+		else generate
+			valid_wreq = wreq and !full;
+		end generate; 
+	end generate;
+
+-------------------------------------------------------------------------------
+-- Connections
+--
+	-- Connection of storage rows within the full blocks
+	if FULL_BLOCKS>0 generate
+		for J IN 0 to FULL_BLOCKS-1 generate
+	 		for I IN 1 to FULL_BLOCK_SIZE-1 generate
+				if J>0 # I>1 generate		-- to ignore the first dummy node
+					data_node[J][I].data[] = data_node[J][I-1].q[];
+				end generate;
+	 		end generate;
+ 		end generate;
+	end generate;
+ 	
+	-- Connection of rows within the partially filled block
+	if LAST_BLOCK_SIZE>2 generate
+		for I IN 2 to LAST_BLOCK_SIZE-1 generate
+			last_data_node[I].data[] = last_data_node[I-1].q[]; 
+		end generate;
+	end generate;
+	
+	if FULL_BLOCKS>0 generate
+		data_node[0][0].data[]   = data[];	-- dummy input (avoid warning)
+	 	data_node[0][1].data[]   = data[];	-- real input
+		last_data_node[0].data[] = data_node[FULL_BLOCKS-1][FULL_BLOCK_SIZE-1].q[];
+		last_data_node[1].data[] = last_data_node[0].q[];
+	else generate
+	 	last_data_node[0].data[] = last_data_node[LAST_BLOCK_SIZE-1].q[];
+	 	last_data_node[1].data[] = data[];
+	end generate;
+
+	-- Connect the output of a block to the input of the next block to
+	--  generate a sequential storage FIFO scheme.
+	if FULL_BLOCKS>1 generate
+		for J IN 1 to FULL_BLOCKS-1 generate
+			data_node[J][0].data[] = data_node[J-1][FULL_BLOCK_SIZE-1].q[];  
+ 		end generate;
+	end generate;
+
+-------------------------------------------------------------------------------
+-- Block read data multiplexers
+--
+	-- Row read multiplexer
+	if FULL_BLOCKS>0 generate
+		for J IN 0 to FULL_BLOCKS-1 generate
+			for I IN 0 to FULL_BLOCK_SIZE-1 generate
+ 				row_data_out_mux[J].data[I][] = data_node[J][I].q[];
+	 		end generate;
+	 		row_data_out_mux[J].sel[] = row_rd_select[];
+	 	end generate;
+	end generate;
+		
+	for I IN 0 to LAST_BLOCK_SIZE-1 generate
+		last_row_data_out_mux.data[I][] = last_data_node[I].q[];
+	end generate;
+	last_row_data_out_mux.sel[] = row_rd_select[LAST_BLOCK_AD-1..0];
+	
+	-- Final stage (column) read multiplexer
+	row_rd_select[] = rd_ptr.q[FULL_BLOCK_AD-1..0];	 												 
+	if FULL_BLOCKS>0 generate
+		for J IN 0 to FULL_BLOCKS-1 generate
+			col_data_out_mux.data[J][] = row_data_out_mux[J].result[];
+		end generate;
+		col_data_out_mux.data[FULL_BLOCKS][] = last_row_data_out_mux.result[];
+		col_data_out_mux.sel[] = col_rd_select[];
+	 	col_rd_select[] = rd_ptr.q[WIDTHAD-1..FULL_BLOCK_AD]; 	
+	end generate;
+ 			
+	if FULL_BLOCKS>0 generate
+	 	cur_read_data[] = col_data_out_mux.result[];
+	else generate
+	 	cur_read_data[] = last_row_data_out_mux.result[];
+	end generate;
+ 
+-------------------------------------------------------------------------------
+-- Housekeeping
+--
+	-- clock and enable connections
+	if FULL_BLOCKS>0 generate
+		data_node[][].(enable, clock) = (valid_wreq, clock);
+	end generate;
+	last_data_node[].(enable, clock) = (valid_wreq, clock);
+
+	rd_ptr.(cnt_en, updown, sclr, clock) = (valid_rreq xor valid_wreq, valid_wreq, sclr, clock);
+	
+	-- output data buffer
+	if LPM_SHOWAHEAD=="OFF" generate
+		output_buffer.data[] = cur_read_data[];
+		output_buffer.(enable, clock) = (valid_rreq, clock);
+		q[] = output_buffer.q[];
+	else generate
+		q[] = cur_read_data[];
+	end generate;
+
+	-- status register and full/empty flags
+	usedw[] = rd_ptr.q[];
+	fifo_state.( usedw_in[], wreq, rreq, aclr, sclr, clock ) = 
+			   ( rd_ptr.q[], wreq, rreq, aclr, sclr, clock );
+	(empty, full, threshold) = fifo_state.(empty, full, threshold);
+
+	if( used(threshlevel) ) generate
+		fifo_state.threshlevel[] = threshlevel[];
+	end generate;
+
+-------------------------------------------------------------------------------
+-- aclr signal
+--
+	if FULL_BLOCKS>0 generate
+		data_node[][].aclr	= aclr;
+	end generate;
+
+	last_data_node[].aclr	= aclr;
+	rd_ptr.aclr				= aclr;
+
+	if LPM_SHOWAHEAD=="OFF" generate
+		output_buffer.aclr	= aclr;
+	end generate;
+	IF !USED(threshold) GENERATE
+		threshold = GND;
+	END GENERATE;
+	IF !USED(usedw) GENERATE
+		usedw[] = GND;
+	END GENERATE;
+	IF !USED(q) GENERATE
+		q[] = GND;
+	END GENERATE;
+	IF !USED(empty) GENERATE
+		empty = GND;
+	END GENERATE;
+	IF !USED(full) GENERATE
+		full = GND;
+	END GENERATE;
+end;
+

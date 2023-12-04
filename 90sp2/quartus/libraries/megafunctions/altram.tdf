@@ -1,0 +1,512 @@
+--------------------------------------------------------------------
+--
+--	ALTRAM Parameterized Megafunction
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 1.0
+--
+--------------------------------------------------------------------
+
+INCLUDE "memmodes.inc";			% Constants defining RAM mode flags %
+INCLUDE "lpm_decode.inc";
+INCLUDE "lpm_mux.inc";
+INCLUDE "aglobal90";				-- need to get family specific information from here
+INCLUDE "altsyncram";
+
+CONSTANT NO_FILE = "UNUSED";
+
+PARAMETERS
+(
+	WIDTH,
+	AD_WIDTH,
+	NUMWORDS = 2^AD_WIDTH,
+	FILE = NO_FILE,
+	REGISTERINPUTMODE = "DEFAULT",
+	USE_EAB = "ON",
+	MAXIMUM_DEPTH = 2048,
+	DEVICE_FAMILY,
+	SUPPRESS_MEMORY_CONVERSION_WARNINGS = "OFF",
+	ENABLE_RAM_BENCHMARKING_MODE = "OFF"
+);
+
+CONSTANT 10K_SLICE_SIZE = (USED(MAXIMUM_DEPTH) & (MAXIMUM_DEPTH != 0)) ? MAXIMUM_DEPTH : FAMILY_EAB_MAX_DEPTH();
+CONSTANT MAX_NUMWORDS = 2^AD_WIDTH;
+CONSTANT WORDS_PER_EAB = (MAX_NUMWORDS >= 10K_SLICE_SIZE) ?
+							10K_SLICE_SIZE : MAX_NUMWORDS;
+CONSTANT BITS_PER_EAB = (MAX_NUMWORDS >= 10K_SLICE_SIZE) ?
+							1 : 10K_SLICE_SIZE div WORDS_PER_EAB;
+
+CONSTANT RAM_DEPTH_IN_EABS	= (MAX_NUMWORDS > 10K_SLICE_SIZE) ?
+								CEIL(NUMWORDS div 10K_SLICE_SIZE)	% Wider than 10K_SLICE_SIZE %
+								: 1;	% Width <= 10K_SLICE_SIZE %
+-- RAM width in EABs = CEIL(WIDTH div BITS_PER_EAB)
+CONSTANT EXTRA_ADDR_BITS	= AD_WIDTH - LOG2(WORDS_PER_EAB);
+
+INCLUDE "altqpram";			% Mercury single-port %
+
+% Figure out EAB mode if FLEX10K %
+DEFINE RAM_MODES(dummy) =
+	(USED(clocki) ? (REGISTERINPUTMODE == "ALL" # REGISTERINPUTMODE == "DEFAULT" ? RAM_REG_DATAIN # RAM_REG_ADDR # RAM_REG_CTRL
+						: (REGISTERINPUTMODE == "ADDRESS_CONTROL" ? RAM_REG_ADDR # RAM_REG_CTRL
+							: (REGISTERINPUTMODE == "DATA" ? RAM_REG_DATAIN : 0)))
+		: 0)
+	# (USED(clocko) ? RAM_REG_DATAOUT : 0);
+
+% Are the address inputs registered? %
+DEFINE ADDR_IS_REGD(dummy) =
+	(USED(clocki) & ( REGISTERINPUTMODE == "ALL"
+					# REGISTERINPUTMODE == "DEFAULT"
+					# REGISTERINPUTMODE == "ADDRESS_CONTROL"));
+
+-- Macros for MERCURY registering
+DEFINE INDATA_REG_A_CLOCK() = (USED(clocki) &	((REGISTERINPUTMODE == "ALL") #
+												(REGISTERINPUTMODE == "DEFAULT") #
+												(REGISTERINPUTMODE == "DATA"))) ? "INCLOCK_A" : "UNREGISTERED";
+DEFINE RDADDRESS_REG_A_CLOCK() = (USED(clocki) &	((REGISTERINPUTMODE == "ALL") #
+													(REGISTERINPUTMODE == "DEFAULT") #
+													(REGISTERINPUTMODE == "ADDRESS_CONTROL"))) ? "INCLOCK_A" : "UNREGISTERED";
+DEFINE OUTDATA_REG_A_CLOCK() = (USED(clocko) ? "OUTCLOCK_A" : "UNREGISTERED");
+
+DEFINE STRATIX_RAM_POSSIBLE() = USED(clocki) & ((REGISTERINPUTMODE == "ALL") # (REGISTERINPUTMODE == "DEFAULT"));
+
+DEFINE NO_BENCHMARKING() = (FAMILY_SUPPORTS_RAM_BENCHMARKING() != 1) & ENABLE_RAM_BENCHMARKING_MODE == "OFF" ? 1 : 0;
+DEFINE STRATIX_RAM_NOT_IMPOSSIBLE() = (USED(clocki) # USED(clocko)) & (NO_BENCHMARKING() != 1);
+
+SUBDESIGN altram
+(
+	we						: INPUT;
+	data[WIDTH-1..0]		: INPUT;
+	address[AD_WIDTH-1..0]	: INPUT;
+	clocki					: INPUT = VCC;
+	clocko					: INPUT = VCC;
+	be						: INPUT = VCC;
+	q[WIDTH-1..0]			: OUTPUT;
+)
+VARIABLE
+	IF ((FAMILY_HAS_EAB() == 1) & (USE_EAB == "ON")) GENERATE
+		IF (FAMILY_STRATIX() == 1) GENERATE
+			IF STRATIX_RAM_POSSIBLE() GENERATE
+				ram_block	:	altsyncram WITH (
+								OPERATION_MODE = "SINGLE_PORT",
+								INIT_FILE = USED(FILE) ? FILE : "UNUSED",
+								WIDTH_A = WIDTH,
+								WIDTHAD_A = AD_WIDTH,
+								NUMWORDS_A = NUMWORDS,
+								OUTDATA_REG_A = USED(clocko) ? "CLOCK1" : "UNREGISTERED",
+								OUTDATA_ACLR_A = "NONE",
+								INDATA_ACLR_A = "NONE",
+								ADDRESS_ACLR_A = "NONE",
+								WRCONTROL_ACLR_A = "NONE",
+								MAXIMUM_DEPTH = USED(MAXIMUM_DEPTH) ? MAXIMUM_DEPTH : "UNUSED",
+								ENABLE_POF = "ON",
+								WIDTH_BYTEENA_A = 1,
+								WIDTH_BYTEENA_B = 1							
+								);		
+			ELSE GENERATE
+				IF STRATIX_RAM_NOT_IMPOSSIBLE() GENERATE
+					ram_block : altsyncram WITH (
+								OPERATION_MODE = "SINGLE_PORT",
+								INIT_FILE = USED(FILE) ? FILE : "UNUSED",
+								WIDTH_A = WIDTH,
+								WIDTHAD_A = AD_WIDTH,
+								NUMWORDS_A = NUMWORDS,
+								OUTDATA_REG_A = USED(clocki) ? (USED(clocko) ? "CLOCK1" : "UNREGISTERED") : "CLOCK0",
+								OUTDATA_ACLR_A = "NONE",
+								INDATA_ACLR_A = "NONE",
+								ADDRESS_ACLR_A = "NONE",
+								WRCONTROL_ACLR_A = "NONE",
+								MAXIMUM_DEPTH = USED(MAXIMUM_DEPTH) ? MAXIMUM_DEPTH : "UNUSED",
+								ENABLE_POF = "OFF",
+								WIDTH_BYTEENA_A = 1,
+								WIDTH_BYTEENA_B = 1							
+							);							
+				END GENERATE;
+			END GENERATE;
+		ELSE GENERATE
+		IF (FAMILY_USES_ALTQPRAM()) GENERATE
+			altqpram_single_port	:	altqpram WITH
+												(
+													OPERATION_MODE = "SINGLE_PORT",
+													INIT_FILE = USED(File) ? File : "UNUSED",
+													WIDTH_WRITE_A = WIDTH,
+													WIDTHAD_WRITE_A = AD_WIDTH,
+													NUMWORDS_WRITE_A = NUMWORDS,
+													INDATA_REG_A = INDATA_REG_A_CLOCK(),
+													WRCONTROL_WRADDRESS_REG_A = RDADDRESS_REG_A_CLOCK(),
+													OUTDATA_REG_A = USED(clocko) ? "OUTCLOCK_A" : "UNREGISTERED",
+													MAXIMUM_DEPTH = USED(MAXIMUM_DEPTH) ? MAXIMUM_DEPTH : "UNUSED"
+												);
+		ELSE % non-Mercury style % GENERATE
+			IF (FILE == NO_FILE) GENERATE
+				content	: MEMORY
+				(
+					width			= WIDTH;
+					depth			= NUMWORDS;
+					segmentsize		= WORDS_PER_EAB;
+					mode			= RAM_MODES(0);
+				)
+				OF SEGMENTS
+				(
+					segment[RAM_DEPTH_IN_EABS-1..0][Width-1..0]
+				);
+			ELSE GENERATE % With initialization file %
+				content	: MEMORY
+				(
+					width			= WIDTH;
+					depth			= NUMWORDS;
+					segmentsize		= WORDS_PER_EAB;
+					mode			= RAM_MODES(0) # RAM_INITIALIZED;
+					file			= File;
+				)
+				OF SEGMENTS
+				(
+					segment[RAM_DEPTH_IN_EABS-1..0][WIDTH-1..0]
+				);
+			END GENERATE;
+
+			IF (EXTRA_ADDR_BITS > 0) GENERATE
+				IF (ADDR_IS_REGD(0)) GENERATE
+					reg_iaddr[EXTRA_ADDR_BITS-1..0]	: DFF;
+				END GENERATE;
+				IF (USED(clocko)) GENERATE
+					reg_oaddr[EXTRA_ADDR_BITS-1..0]	: DFF;
+				END GENERATE;
+
+				decoder		: lpm_decode WITH (	LPM_WIDTH=EXTRA_ADDR_BITS,
+												LPM_DECODES=RAM_DEPTH_IN_EABS);
+				mux			: lpm_mux WITH (LPM_WIDTH=WIDTH,
+											LPM_SIZE=RAM_DEPTH_IN_EABS,
+											LPM_WIDTHS=EXTRA_ADDR_BITS);
+			END GENERATE;
+			real_we[RAM_DEPTH_IN_EABS-1..0]	: node;
+		END GENERATE; -- switch between mercury-non mercury
+		END GENERATE;
+	ELSE GENERATE
+		IF (NUMWORDS <= LE_RAM_MAX_NUM_WORDS) GENERATE
+			IF (USED(clocki)) GENERATE
+				-- dffe array
+				dffs[NUMWORDS-1..0][WIDTH-1..0]			: DFFE;
+				ffaddress[AD_WIDTH-1..0]				: DFF;
+			ELSE GENERATE
+				-- latch array
+				latches[NUMWORDS-1..0][WIDTH-1..0]		: LATCH;
+			END GENERATE;
+			mux		: lpm_mux WITH (LPM_WIDTH=WIDTH,
+									LPM_SIZE=NUMWORDS,
+									LPM_WIDTHS=AD_WIDTH);
+			decode	: lpm_decode WITH (	LPM_WIDTH=AD_WIDTH,
+										LPM_DECODES=NUMWORDS);
+			
+			IF USED(clocko) GENERATE
+				reg_oaddr[WIDTH-1..0]	: DFF;
+			END GENERATE;						
+		END GENERATE;
+	END GENERATE;
+
+BEGIN
+	IF (FAMILY_MAXII() != 1) GENERATE
+	-- CAUSE : 	The design contains altram megafunction, but the selected device or device family
+	-- 			is the Stratix device family. The altram megafunction does not support Stratix device family. The Quartus II
+	--			software is attempting to convert the altram megafunction implementations to altsyncram megafunction.
+	--			However the power up states will be different and also read during write behavior for Stratix devices.
+	-- ACTION : No action is necessary. To avoid receiving this message in future, set SUPPRESS_MEMORY_CONVERSION_WARNINGS to ON
+	ASSERT (USE_EAB == "OFF" # ((FAMILY_STRATIX() & STRATIX_RAM_POSSIBLE() & SUPPRESS_MEMORY_CONVERSION_WARNINGS == "ON") # FAMILY_STRATIX() != 1 # !STRATIX_RAM_POSSIBLE()))
+		REPORT "altram does not support % device family -- attempting best-case memory conversions, but power-up states and read during write behavior will be different for % devices" DEVICE_FAMILY, DEVICE_FAMILY
+		SEVERITY WARNING
+		HELP_ID FAMILY_STRATIX_CONVERSION_WARNING;
+
+	-- CAUSE : 	The design contains altram megafunction, but the selected device or device family
+	-- 			is the Stratix device family. The altram megafunction does not support Stratix device family. The Quartus II
+	--			software is not able to convert the altram megafunction implementations to altsyncram megafunction, and is not 
+	--			able to implement it using benchmarking mode, because the ROM is asynchronous.
+	-- ACTION : Use at least one clock for input or output and compile again to allow the Quartus II software to attempt to implement using benchmarking mode. 
+	ASSERT (USE_EAB == "OFF" # ((FAMILY_STRATIX() & (STRATIX_RAM_POSSIBLE() # STRATIX_RAM_NOT_IMPOSSIBLE())) # FAMILY_STRATIX() != 1))				
+		REPORT "Can't convert single-port RAM for % device family using altsyncram megafunction because % supports only synchronous single-port RAM" DEVICE_FAMILY, DEVICE_FAMILY
+		SEVERITY ERROR
+		HELP_ID FAMILY_STRATIX_ROM_NOT_POSSIBLE;
+
+
+	-- CAUSE : 	The design contains altram megafunction, but the selected device or device family
+	-- 			is the Stratix device family. The altram megafunction does not support Stratix device family. The Quartus II
+	--			software is not able to convert the altram megafunction implementations to altsyncram megafunction, because the RAM inputs are
+	--			not synchronous. The Quartus II software is attempting to implement single-port RAM using benchmarking mode and by using existing clocks
+	-- 			to make it synchronous; however, the output behavior will be different from the original version.
+	-- ACTION : No action is required.
+	ASSERT (USE_EAB == "OFF" # ((FAMILY_STRATIX() & !STRATIX_RAM_POSSIBLE() & !STRATIX_RAM_NOT_IMPOSSIBLE()) # FAMILY_STRATIX() != 1 # STRATIX_RAM_POSSIBLE()))				
+		REPORT "Can't convert single-port RAM for % device family using altsyncram megafunction -- implementing single-port RAM using benchmarking mode and attempting to tie up inputs using available clocks, which will cause output behavior to be different. Programming file output will not be generated" DEVICE_FAMILY
+		SEVERITY WARNING
+		HELP_ID FAMILY_STRATIX_RAM_NOT_IMPOSSIBLE;
+	END GENERATE;
+
+	ASSERT FAMILY_STRATIX() == 1 # !USED(MAXIMUM_DEPTH) # (MAXIMUM_DEPTH == 0) # ((10K_SLICE_SIZE MOD 2 == 0) & (10K_SLICE_SIZE >= 2^7) & (10K_SLICE_SIZE <= FAMILY_EAB_MAX_DEPTH()))
+		REPORT "MAXIMUM_DEPTH(%) is at an illegal value." MAXIMUM_DEPTH
+		SEVERITY ERROR
+		HELP_ID ALTDPRAM_MAXIMUM_DEPTH;
+
+	ASSERT (WIDTH > 0)
+			REPORT "Value of WIDTH parameter value must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID RAM_WIDTH;
+
+	ASSERT (AD_WIDTH > 0)
+			REPORT "Value of AD_WIDTH parameter value must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID RAM_AD_WIDTH;
+
+	ASSERT (NUMWORDS > 0)
+			REPORT "Value of NUMWORDS parameter value must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID RAM_NUMWORDS;
+
+	ASSERT (FAMILY_HAS_EAB() == 1 # NUMWORDS <= LE_RAM_MAX_NUM_WORDS)
+                REPORT  "Current device family (%) does not support more than % memory words" DEVICE_FAMILY, LE_RAM_MAX_NUM_WORDS
+		SEVERITY ERROR
+		HELP_ID	ALTRAM_NUMWORDS256;
+
+	ASSERT (FAMILY_HAS_EAB() == 0 # USE_EAB == "ON" # NUMWORDS <= LE_RAM_MAX_NUM_WORDS)
+                REPORT  "Current device family (%) does not support more than % memory words unless the USE_EAB parameter is not turned off" DEVICE_FAMILY, LE_RAM_MAX_NUM_WORDS
+		SEVERITY ERROR
+		HELP_ID	ALTRAM_NUMWORDS256_10K;
+
+
+	ASSERT (NUMWORDS > 2^(AD_WIDTH-1) & NUMWORDS <= 2^AD_WIDTH)
+			REPORT "Value of NUMWORDS parameter requires % address lines, but AD_WIDTH value, which defines the number of address lines, is %"
+				CEIL(LOG2(NUMWORDS)), AD_WIDTH
+			SEVERITY ERROR
+			HELP_ID RAM_NUMWORDS_TOO_BIG;
+
+	ASSERT (  (REGISTERINPUTMODE == "ALL")
+			# (REGISTERINPUTMODE == "ADDRESS_CONTROL")
+			# (REGISTERINPUTMODE == "DEFAULT")
+			# (REGISTERINPUTMODE == "DATA"))
+			REPORT "Illegal value for REGISTERINPUTMODE parameter (%) -- value must be ALL, ADDRESS_CONTROL, DEFAULT, or DATA" 
+				REGISTERINPUTMODE
+			SEVERITY ERROR
+			HELP_ID RAM_INVALID_INPUT_MODE;
+
+	ASSERT (USED(clocki) # (REGISTERINPUTMODE == "DEFAULT"))
+			REPORT "Value of REGISTERINPUTMODE parameter (%) is not consistent with the use of the clocki port"
+				REGISTERINPUTMODE
+			SEVERITY ERROR
+			HELP_ID RAM_REG_INPUT_NEEDS_CLOCK;
+
+	ASSERT (FAMILY_HAS_EAB() == 1 # USED(clocki))
+		REPORT "Current device family (%) does not support asynchronous RAM -- implementing the asynchronous RAM as a latch array instead"
+			DEVICE_FAMILY
+		SEVERITY WARNING
+		HELP_ID RAM_LATCH;
+
+	ASSERT (FAMILY_HAS_EAB() == 1 # USED(clocki) == 0)
+		REPORT "Current device family (%) does not support synchronous RAM -- implementing the synchronous RAM as a DFFE array instead"
+			DEVICE_FAMILY
+		SEVERITY WARNING
+		HELP_ID RAM_DFFE;
+
+	ASSERT (FAMILY_HAS_EAB() == 1 & USE_EAB == "ON"
+			# USED(clocki) == 0
+			# REGISTERINPUTMODE == "ALL"
+			# REGISTERINPUTMODE == "DEFAULT")
+			REPORT "Can't create synchronous RAM from a DFFE array unless all inputs are registered"
+			SEVERITY ERROR
+			HELP_ID RAM_DFFE_ALL_SYNC;
+
+	ASSERT (FILE == NO_FILE
+			# FAMILY_HAS_EAB() == 1 & USE_EAB == "ON")
+			REPORT "Ignored FILE parameter -- the % device family (for LE implementation) does not support RAM initialization"
+				DEVICE_FAMILY
+			SEVERITY WARNING
+			HELP_ID RAM_INIT_FILE;
+
+	ASSERT (FAMILY_IS_KNOWN() == 1)
+		REPORT "Megafunction altram does not recognize the current device family (%) -- ensure that you are using the newest version of the megafunction"
+			DEVICE_FAMILY
+		SEVERITY WARNING
+		HELP_ID ALTRAM_FAMILY_UNKNOWN;
+
+	IF (FAMILY_HAS_EAB() == 1 & USE_EAB == "ON") GENERATE
+		IF (FAMILY_STRATIX() == 1) GENERATE
+			IF STRATIX_RAM_POSSIBLE() GENERATE
+				ram_block.clock0 = clocki;
+				IF USED(clocko) GENERATE
+					ram_block.clock1 = clocko;
+				END GENERATE;
+				ram_block.data_a[] = data[];
+				ram_block.address_a[] = address[];
+				q[] = ram_block.q_a[];
+				ram_block.wren_a = we & be;
+			ELSE GENERATE
+				IF STRATIX_RAM_NOT_IMPOSSIBLE() GENERATE
+					IF USED(clocki) GENERATE
+						ram_block.clock0 = clocki;
+						-- CAUSE: Clocki is used to clock inputs to the single-port RAM for Stratix device family
+						-- ACTION: None.
+						ASSERT (0)
+						REPORT "address port, data port and we port are registered by clocki port in the benchmarking mode"
+						SEVERITY INFO;
+						IF USED(clocko) GENERATE
+							ram_block.clock1 = clocko;
+						END GENERATE;
+					ELSE GENERATE
+						ram_block.clock0 = clocko;
+						-- CAUSE: Clocko is used to clock inputs to the single-port RAM for Stratix device family
+						-- ACTION: None.
+						ASSERT (0)
+						REPORT "address port, data port and we port are registered by clocko port in the benchmarking mode"
+						SEVERITY INFO;
+					END GENERATE;
+					ram_block.data_a[] = data[];
+					ram_block.address_a[] = address[];
+					q[] = ram_block.q_a[];
+					ram_block.wren_a = we & be;
+				END GENERATE;					
+			END GENERATE;
+		ELSE GENERATE
+			IF FAMILY_USES_ALTQPRAM() GENERATE
+				IF USED(clocki) GENERATE
+					altqpram_single_port.inclock_a = clocki;
+				END GENERATE;
+				IF USED(clocko) GENERATE
+					altqpram_single_port.outclock_a = clocko;
+				END GENERATE;
+				-- connect all the standard wires
+				altqpram_single_port.wren_a = we & be;
+				altqpram_single_port.data_a[] = data[];
+				altqpram_single_port.wraddress_a[] = address[];
+				q[] = altqpram_single_port.q_a[];
+			ELSE GENERATE
+				IF (EXTRA_ADDR_BITS > 0) GENERATE
+					% Connect address decoder %
+					decoder.data[] = address[AD_WIDTH-1..AD_WIDTH-EXTRA_ADDR_BITS];
+					decoder.enable = be;
+
+					% bank select logic for WE signal %
+					real_we[] = decoder.eq[] & we;
+				
+					% Registered address and control inputs? %
+					IF (ADDR_IS_REGD(0)) GENERATE
+						reg_iaddr[].clk = clocki;
+						reg_iaddr[].d = address[AD_WIDTH-1..AD_WIDTH-EXTRA_ADDR_BITS];
+					END GENERATE;
+					IF (USED(clocko)) GENERATE
+						reg_oaddr[].clk = clocko;
+						IF (ADDR_IS_REGD(0)) GENERATE
+							reg_oaddr[].d = reg_iaddr[].q;
+						ELSE GENERATE
+							reg_oaddr[].d = address[AD_WIDTH-1..AD_WIDTH-EXTRA_ADDR_BITS];
+						END GENERATE;
+					END GENERATE;
+
+					% Connect multiplexer ports %
+					IF (USED(clocko)) GENERATE
+						mux.sel[] = reg_oaddr[].q;
+					ELSE GENERATE
+						IF (ADDR_IS_REGD(0)) GENERATE
+							mux.sel[] = reg_iaddr[].q;
+						ELSE GENERATE
+							% Nothing is registered %
+							mux.sel[] = address[AD_WIDTH-1..AD_WIDTH-EXTRA_ADDR_BITS];
+						END GENERATE;
+					END GENERATE;
+				ELSE GENERATE
+					IF (USED(be)) GENERATE
+						real_we[0] = we & be;
+					ELSE GENERATE
+						real_we[0] = we;
+					END GENERATE;
+				END GENERATE;
+
+				-- Connect RAM ports
+
+				FOR bank IN 0 TO RAM_DEPTH_IN_EABS-1 GENERATE
+					segment[bank][].d 		= data[];
+					FOR bit IN 0 TO WIDTH-1 GENERATE
+						segment[bank][bit].a[] 	= address[LOG2(WORDS_PER_EAB)-1..0];
+						
+						% Using input clock? %
+						IF (USED(clocki)) GENERATE
+							segment[bank][bit].clki = clocki;
+						END GENERATE;
+
+					% Using output clock? %
+						IF (USED(clocko)) GENERATE
+							segment[bank][bit].clko = clocko;
+						END GENERATE;
+
+						% connect decoded WE signal %
+						segment[bank][bit].we 	= real_we[bank];
+					END GENERATE;
+
+					% define multiplexer inputs %
+					IF (EXTRA_ADDR_BITS > 0) GENERATE
+						mux.data[bank][] = segment[bank][].q;
+					END GENERATE;
+				END GENERATE;
+
+				% define the output group %
+				IF (EXTRA_ADDR_BITS > 0) GENERATE
+					q[] = mux.result[];
+				ELSE GENERATE
+					q[] = segment[0][].q;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+	ELSE GENERATE
+
+		--
+		--	Not a FLEX10K device, so use DFF or latch array
+		--
+		IF (USED(clocki)) GENERATE
+			% Create a DFFE array to mimic a synchronous RAM %
+			dffs[][].clk = clocki;
+			ffaddress[].clk = clocki;
+			ffaddress[].d = address[];
+			decode.data[] = address[];
+			decode.enable = we & be;
+			FOR eword IN 0 TO NUMWORDS-1 GENERATE
+				dffs[eword][].d = data[];
+				dffs[eword][].ena = decode.eq[eword];
+			END GENERATE;
+			mux.data[][] = dffs[][].q;
+			mux.sel[] = ffaddress[];
+		ELSE GENERATE
+			% Create a latch array to mimic an asynchronous RAM %
+			decode.data[] = address[];
+			decode.enable = we & be;
+			FOR eword IN 0 TO NUMWORDS-1 GENERATE
+				latches[eword][].d = data[];
+				latches[eword][].ena = decode.eq[eword];
+			END GENERATE;
+			mux.data[][] = latches[][].q;
+			mux.sel[] = address[];
+		END GENERATE;
+
+		% Need to register outputs? %
+		IF USED(clocko) GENERATE
+			reg_oaddr[] = mux.result[];
+			q[] = reg_oaddr[];
+			reg_oaddr[].clk = clocko;
+		ELSE GENERATE
+			q[] = mux.result[];
+		END GENERATE;
+
+	END GENERATE;
+
+	IF !USED(q) GENERATE
+		q[] = GND;
+	END GENERATE;
+END;

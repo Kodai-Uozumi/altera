@@ -1,0 +1,66 @@
+<?xml version="1.0"?>
+<ROOT>
+	<INCLUDE FILE="mfam_family_macros.xml" />
+	<PARAMETER_RULES>
+		<PARAMETER NAME="TEST_MODE" VALUE="TRUE|FALSE|UNUSED" DEFAULT_VALUE="FALSE" />
+		<PARAMETER NAME="RUNTIME_CONTROL" VALUE="TRUE" DEFAULT_VALUE="TRUE"> 
+		<!--true: allow user mode calibration. false: not allow calibration in user mode-->
+		</PARAMETER>
+		<PARAMETER NAME="PULLUP_CONTROL_TO_CORE" VALUE="TRUE|FALSE|UNUSED" DEFAULT_VALUE="FALSE">
+		<!--false:rdn sent to core, true: rup sent to core-->
+			<FORCE_VALUE TO="FALSE" WHEN="TEST_MODE == FALSE"/>
+		</PARAMETER>
+		<PARAMETER NAME="LEFT_SHIFT_TERMINATION_CODE" VALUE="TRUE|FALSE|UNUSED" DEFAULT_VALUE="FALSE">
+		<!--false:no shift, true: left shift strength bits-->
+			<FORCE_VALUE TO="FALSE" WHEN="TEST_MODE == FALSE"/>
+		</PARAMETER>
+		<PARAMETER NAME="PULLUP_ADDER" VALUE="0-128" DEFAULT_VALUE="0" >
+		<!--2's compliment to add/sub from calibration strngth-->
+			<FORCE_VALUE TO="0" WHEN="TEST_MODE == FALSE"/>
+		</PARAMETER>
+		<PARAMETER NAME="PULLDOWN_ADDER" VALUE="0-128" DEFAULT_VALUE="0" >
+		<!--2's compliment to add/sub from calibration strngth-->
+			<FORCE_VALUE TO="0" WHEN="TEST_MODE == FALSE"/>
+		</PARAMETER>
+		<PARAMETER NAME="DIVIDE_INTOSC_BY" VALUE="1|4|32" DEFAULT_VALUE="1">
+			<FORCE_VALUE TO="1" WHEN="TEST_MODE == FALSE"/>
+		</PARAMETER>
+		<PARAMETER NAME="SHIFT_VREF_RUP" VALUE="TRUE|FALSE|UNUSED" DEFAULT_VALUE="TRUE">
+			<FORCE_VALUE TO="TRUE" WHEN="TEST_MODE == FALSE"/>
+		</PARAMETER>
+		<PARAMETER NAME="SHIFT_VREF_RDN" VALUE="TRUE|FALSE|UNUSED" DEFAULT_VALUE="TRUE">
+			<FORCE_VALUE TO="TRUE" WHEN="TEST_MODE == FALSE"/>
+		</PARAMETER>
+	</PARAMETER_RULES>
+	<PORT_RULES>
+		<PORT NAME="rup" USAGE="USED"/> <!--request-->
+		<PORT NAME="rdn" USAGE="USED"/> <!--request-->
+		<PORT NAME="clock" USAGE="USED"/>
+		<PORT NAME="calibration_request" USAGE="USED"/>
+		<!--enable calibration-->
+		<PORT NAME="cal_shift_busy" USAGE="VARIABLE" />
+		<PORT NAME="termination_control" USAGE="VARIABLE" />
+		<PORT NAME="scaninmux" USAGE="VARIABLE" >
+			<STATE V="UNUSED" WHEN="TEST_MODE == FALSE"/>
+		</PORT>
+		<PORT NAME="scanshiftmux" USAGE="VARIABLE" >
+			<STATE V="UNUSED" WHEN="TEST_MODE == FALSE"/>
+		</PORT>
+		<PORT NAME="scanclock" USAGE="VARIABLE" >
+			<STATE V="UNUSED" WHEN="TEST_MODE == FALSE"/>
+		</PORT>
+		<PORT NAME="scanin" USAGE="VARIABLE" >
+			<STATE V="UNUSED" WHEN="TEST_MODE == FALSE"/>
+		</PORT>
+		<PORT NAME="scanout" USAGE="VARIABLE" >
+			<STATE V="UNUSED" WHEN="TEST_MODE == FALSE"/>
+		</PORT>
+
+		<PORT NAME="terminationcontrolprobe" USAGE="VARIABLE" >
+			<STATE V="UNUSED" WHEN="TEST_MODE == FALSE"/>
+		</PORT>
+		<PORT NAME="comparatorprobe" USAGE="VARIABLE" >
+			<STATE V="UNUSED" WHEN="TEST_MODE == FALSE"/>
+		</PORT>		
+	</PORT_RULES>
+</ROOT>

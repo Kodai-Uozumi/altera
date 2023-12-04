@@ -1,0 +1,110 @@
+-- **************************************************************************
+--  Delay a node or a bus by a parameterized value - DFFPIPE
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 1.0
+--
+-- **************************************************************************
+OPTIONS NAME_SUBSTITUTION = ON;
+OPTIONS ALTERA_INTERNAL_OPTION = "AUTO_SHIFT_REGISTER_RECOGNITION=OFF";
+
+parameters
+(
+	WIDTH,		-- # of bits
+	DELAY = 1,	-- # of DFFs/bit used, default is 1 (one DFF/bit)
+				-- 0 for no delay (wire)
+	CBXI_PARAMETER = "NOTHING"
+);
+FUNCTION @CBXI_PARAMETER (clock, d[width-1..0], ena, clrn, prn, sclr) RETURNS (q[width-1..0], pq[delay..0][width-1..0]);
+
+--------------------------------------------------------------------
+subdesign dffpipe
+(
+	clock					: input;
+	d[WIDTH-1..0]			: input;
+	q[WIDTH-1..0]			: output;	-- delayed (by DELAY clock cycles) version of d[]
+
+	pq[DELAY..0][WIDTH-1..0]: output;	-- intermediate delayed version of d[]
+										-- pq[0] is d[], pq[DELAY] is q[]
+
+	ena		 : input = vcc;				-- enables the pipe when VCC
+										-- stops the pipe when GND
+
+	sclr	 : input = gnd;				-- synchronous clear, active high
+	clrn, prn: input = vcc;				-- asynchronous clear and set, active low
+)
+
+--------------------------------------------------------------------
+variable
+IF (CBXI_PARAMETER == "NOTHING") GENERATE
+	if DELAY>0 generate
+		sr[DELAY-1..0][WIDTH-1..0]: dffe;
+	end generate;
+ELSE GENERATE
+	auto_generated : @CBXI_PARAMETER WITH (CBXI_PARAMETER = "NOTHING");
+END GENERATE;
+--------------------------------------------------------------------
+begin
+IF CBXI_PARAMETER == "NOTHING" GENERATE
+	pq[0][] = d[];
+
+	if DELAY>0 generate
+		sr[][].(clk, ena, clrn, prn) = (clock, ena, clrn, prn);
+
+		sr[0][] = d[] and !sclr;
+		if DELAY>1 generate
+			sr[DELAY-1..1][] = sr[DELAY-2..0][] and !sclr;
+		end generate;
+		q[] = sr[DELAY-1][];
+		pq[DELAY..1][] = sr[][];
+		
+	else generate
+		q[0] = clock and ena and clrn and prn and sclr and gnd;		-- avoid warnings
+		q[] = d[];
+	end generate;
+ELSE GENERATE
+	IF USED(clock) GENERATE
+		auto_generated.clock = clock;
+	END GENERATE;	
+	IF USED(d) GENERATE
+		auto_generated.d[] = d[];
+	END GENERATE;
+	IF USED(ena) GENERATE
+		auto_generated.ena = ena;
+	END GENERATE;
+	IF USED(clrn) GENERATE
+		auto_generated.clrn = clrn;
+	END GENERATE;
+	IF USED(prn) GENERATE
+		auto_generated.prn = prn;
+	END GENERATE;
+	IF USED(sclr) GENERATE
+		auto_generated.sclr = sclr;
+	END GENERATE;
+	IF USED(q) GENERATE
+		q[] = auto_generated.q[];
+	END GENERATE;
+	IF USED(pq) GENERATE
+		pq[][] = auto_generated.pq[][];
+	END GENERATE;
+END GENERATE;
+	IF !USED(q) GENERATE
+		q[] = GND;
+	END GENERATE;
+end;
+

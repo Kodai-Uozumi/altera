@@ -1,0 +1,1577 @@
+#//START_MODULE_HEADER/////////////////////////////////////////////////////////
+# 
+#  Filename:	makefile.mak
+# 
+#  Description: Gets BDF, BSF & TDF files for Maxplus2 macrofunctions 
+#				and edflib functions out of PVCS.
+# 
+#  Authors:		Mimi Luis	 
+# 
+#  Copyright (c)  Altera Corporation 1996 - 1999
+# 
+#  All rights reserved.
+# 
+# 
+#//END_MODULE_HEADER///////////////////////////////////////////////////////////
+
+#
+#  $Log:   /pvcs/quartus/libraries/others/maxplus2/makefile.ma_  $
+#**	
+#**	   Rev 25.0   08 Jul 2007 05:35:24   max
+#**	Quartus II 8.0 
+#**	SJ, Sat Jul  7 10:35:24 2007
+#**	
+#**	   Rev 24.1   22 Mar 2007 04:19:14   dsundara
+#**	move base dir setting to very beginning 
+#**	SJ, Wed Mar 21 09:19:14 2007
+#**	
+#**	   Rev 24.0   11 Feb 2007 04:27:58   max
+#**	Quartus II 7.2 
+#**	SJ, Sat Feb 10 08:27:59 2007
+#**	
+#**	   Rev 23.0   10 Sep 2006 02:16:58   max
+#**	Quartus II 7.1 
+#**	SJ, Sat Sep  9 07:16:58 2006
+#**	
+#**	   Rev 22.0   05 Feb 2006 01:48:58   max
+#**	Quartus II 6.1 
+#**	SJ, Sat Feb  4 05:48:59 2006
+#**	
+#**	   Rev 21.0   07 Aug 2005 02:05:18   max
+#**	Quartus II 6.0 
+#**	SJ, Sat Aug  6 07:05:17 2005
+#**	
+#**	   Rev 20.0   06 Feb 2005 08:55:56   max
+#**	Quartus II 5.1 
+#**	SJ, Sat Feb  5 12:55:57 2005
+#**	
+#**	   Rev 19.0   12 Sep 2004 06:49:50   max
+#**	Quartus II 5.0 
+#**	SJ, Sat Sep 11 11:49:50 2004
+#**	
+#**	   Rev 18.0   10 Apr 2004 06:21:50   max
+#**	Quartus II 4.2 
+#**	SJ, Fri Apr  9 11:21:50 2004
+#**	
+#**	   Rev 17.0   05 Oct 2003 08:46:42   max
+#**	Quartus II 4.1
+#**	SJ, Sat Oct 04 13:46:40 2003
+#**	
+#**	   Rev 16.0   06 Apr 2003 10:12:22   max
+#**	Quartus II 3.1
+#**	SJ, Sat Apr 05 14:12:20 2003
+#**	
+#**	   Rev 15.0   08 Sep 2002 23:27:06   max
+#**	Quartus II 3.0
+#**	SJ, Sun Sep 08 04:27:06 2002
+#**	
+#**	   Rev 14.0   21 Apr 2002 22:06:56   max
+#**	Quartus II 2.2
+#**	SJ, Sun Apr 21 03:06:54 2002
+#**	
+#**	   Rev 13.1   17 Feb 2002 13:31:42   barchell
+#**	Adding OWNED_FILES target
+#**	SJ, Sat Feb 16 17:31:40 2002
+#**	
+#**	   Rev 13.0   05 Nov 2001 05:47:38   max
+#**	Quartus II 2.1
+#**	SJ, Sun Nov 04 09:47:38 2001
+#**	
+#**	   Rev 12.0   23 Apr 2001 06:56:26   max
+#**	Quartus II 1.2
+#**	SJ, Sun Apr 22 11:56:26 2001
+#**	
+#**	   Rev 11.0   26 Nov 2000 08:03:04   max
+#**	QuartusII 1.1
+#**	SJ, Sat Nov 25 12:03:04 2000
+#**	
+#**	   Rev 10.0   07 Aug 2000 10:14:56   max
+#**	2000.12
+#**	
+#**	   Rev 9.0   17 Feb 2000 04:31:56   max
+#**	2000.08
+#**	
+#**	   Rev 8.0   25 Nov 1999 06:44:36   max
+#**	2000.06
+#**	
+#**	   Rev 7.1   03 Aug 1999 12:10:58   akumar
+#**	Add new EDIF primitives for Synopsys designware impl. using CarrySum Buffers
+#**	
+#**	
+#**	   Rev 7.0   22 Jun 1999 06:23:02   max
+#**	1999.09
+#**	
+#**	   Rev 6.0   30 May 1999 05:46:44   max
+#**	1999.06
+#**	
+#**	   Rev 5.0   27 Apr 1999 05:33:28   max
+#**	1999.05
+#**	
+#**	   Rev 1.5   Feb 19 1999 18:14:36   ejulias
+#**	Adding jkffe.tdf and srffe.tdf to map AHDL primitives.
+#**	
+#**	   Rev 1.4   26 Jan 1999 16:44:20   marcel
+#**	Adding *.inc from maxinc
+#**	
+#**	   Rev 1.3   Jan 26 1999 15:23:58   yning
+#**	Add tdf and inc for tff and tffe for MP2 compatibility
+#**	
+#**	   Rev 1.2   Nov 16 1998 14:12:20   mgonsalv
+#**	updating for NO_PVCS flag
+#**	
+#**	   Rev 1.1   12 Nov 1998 17:16:14   mluis
+#**	Add inc files to cleanup.
+#**	
+#**	   Rev 1.0   12 Nov 1998 17:02:26   mluis
+#**	Initial Revision.
+
+###############################################################################
+# Set up the environment
+###############################################################################
+
+BASE_DIR = ../../..
+
+
+include $(BASE_DIR)/environ.gmake
+
+PVCS_DIR = $(PVCS_ROOT)/libraries/others/maxplus2
+
+###############################################################################
+# Set target(s) and files used.
+###############################################################################
+
+OWNED_FILES = \
+	161mux.bdf \
+	161mux.bsf \
+	161mux.inc \
+	16cudslr.bdf \
+	16cudslr.bsf \
+	16cudslr.inc \
+	16cudsrb.bdf \
+	16cudsrb.bsf \
+	16cudsrb.inc \
+	16dmux.bdf \
+	16dmux.bsf \
+	16dmux.inc \
+	16ndmux.bdf \
+	16ndmux.bsf \
+	16ndmux.inc \
+	1a2nor2.bdf \
+	1a2nor2.bsf \
+	21mux.bdf \
+	21mux.bsf \
+	21mux.inc \
+	2a2nor2.bdf \
+	2a2nor2.bsf \
+	2or2na2.bdf \
+	2or2na2.bsf \
+	2x8mux.bdf \
+	2x8mux.bsf \
+	2x8mux.inc \
+	4a2nor4.bdf \
+	4a2nor4.bsf \
+	4count.bdf \
+	4count.bsf \
+	4count.inc \
+	7400.bdf \
+	7400.bsf \
+	7400.inc \
+	7402.bdf \
+	7402.bsf \
+	7402.inc \
+	7404.bdf \
+	7404.bsf \
+	7404.inc \
+	7408.bdf \
+	7408.bsf \
+	7408.inc \
+	7410.bdf \
+	7410.bsf \
+	7410.inc \
+	74107.bdf \
+	74107.bsf \
+	74107.inc \
+	74107a.bdf \
+	74107a.bsf \
+	74107a.inc \
+	74107o.bdf \
+	74107o.bsf \
+	74109.bdf \
+	74109.bsf \
+	74109.inc \
+	74109o.bdf \
+	74109o.bsf \
+	7411.bdf \
+	7411.bsf \
+	7411.inc \
+	74112.bdf \
+	74112.bsf \
+	74112.inc \
+	74112o.bdf \
+	74112o.bsf \
+	74113.bdf \
+	74113.bsf \
+	74113.inc \
+	74113o.bdf \
+	74113o.bsf \
+	74114.bdf \
+	74114.bsf \
+	74114.inc \
+	74116.bdf \
+	74116.bsf \
+	74116.inc \
+	74116o.bdf \
+	74116o.bsf \
+	74133.bdf \
+	74133.bsf \
+	74133.inc \
+	74134.bdf \
+	74134.bsf \
+	74134.inc \
+	74135.bdf \
+	74135.bsf \
+	74135.inc \
+	74135o.bdf \
+	74135o.bsf \
+	74137.bdf \
+	74137.bsf \
+	74137.inc \
+	74138.bdf \
+	74138.bsf \
+	74138.inc \
+	74139.bdf \
+	74139.bsf \
+	74139.inc \
+	74139m.bdf \
+	74139m.bsf \
+	74139o.bdf \
+	74139o.bsf \
+	74143.bdf \
+	74143.bsf \
+	74143.inc \
+	74145.bdf \
+	74145.bsf \
+	74145.inc \
+	74147.bdf \
+	74147.bsf \
+	74147.inc \
+	74148.bdf \
+	74148.bsf \
+	74148.inc \
+	74151.bsf \
+	74151.inc \
+	74151.tdf \
+	74151b.bsf \
+	74151b.inc \
+	74151b.tdf \
+	74153.bdf \
+	74153.bsf \
+	74153.inc \
+	74153m.bdf \
+	74153m.bsf \
+	74153o.bdf \
+	74153o.bsf \
+	74154.bdf \
+	74154.bsf \
+	74154.inc \
+	74155.bdf \
+	74155.bsf \
+	74155.inc \
+	74155o.bdf \
+	74155o.bsf \
+	74156.bdf \
+	74156.bsf \
+	74156.inc \
+	74157.bdf \
+	74157.bsf \
+	74157.inc \
+	74157m.bdf \
+	74157m.bsf \
+	74157o.bdf \
+	74157o.bsf \
+	74158.bdf \
+	74158.bsf \
+	74158.inc \
+	74158o.bdf \
+	74158o.bsf \
+	74160.bdf \
+	74160.bsf \
+	74160.inc \
+	74161.bsf \
+	74161.inc \
+	74161.tdf \
+	74162.bdf \
+	74162.bsf \
+	74162.inc \
+	74163.bsf \
+	74163.inc \
+	74163.tdf \
+	74164.bdf \
+	74164.bsf \
+	74164.inc \
+	74164b.bdf \
+	74164b.bsf \
+	74164b.inc \
+	74165.bdf \
+	74165.bsf \
+	74165.inc \
+	74165b.bdf \
+	74165b.bsf \
+	74165b.inc \
+	74166.bdf \
+	74166.bsf \
+	74166.inc \
+	74167.bdf \
+	74167.bsf \
+	74167.inc \
+	74168.bdf \
+	74168.bsf \
+	74168.inc \
+	74169.bdf \
+	74169.bsf \
+	74169.inc \
+	74171.bdf \
+	74171.bsf \
+	74171.inc \
+	74172.bdf \
+	74172.bsf \
+	74172.inc \
+	74173.bdf \
+	74173.bsf \
+	74173.inc \
+	74174.bdf \
+	74174.bsf \
+	74174.inc \
+	74174b.bdf \
+	74174b.bsf \
+	74174b.inc \
+	74174m.bdf \
+	74174m.bsf \
+	74175.bdf \
+	74175.bsf \
+	74175.inc \
+	74176.bdf \
+	74176.bsf \
+	74176.inc \
+	74177.bdf \
+	74177.bsf \
+	74177.inc \
+	74178.bdf \
+	74178.bsf \
+	74178.inc \
+	74179.bdf \
+	74179.bsf \
+	74179.inc \
+	74180.bdf \
+	74180.bsf \
+	74180.inc \
+	74180b.bdf \
+	74180b.bsf \
+	74180b.inc \
+	74181.bdf \
+	74181.bsf \
+	74181.inc \
+	74182.bdf \
+	74182.bsf \
+	74182.inc \
+	74183.bdf \
+	74183.bsf \
+	74183.inc \
+	74183o.bdf \
+	74183o.bsf \
+	74184.bdf \
+	74184.bsf \
+	74184.inc \
+	74185.bdf \
+	74185.bsf \
+	74185.inc \
+	74190.bdf \
+	74190.bsf \
+	74190.inc \
+	74191.bsf \
+	74191.inc \
+	74191.tdf \
+	74192.bdf \
+	74192.bsf \
+	74192.inc \
+	74193.bdf \
+	74193.bsf \
+	74193.inc \
+	74194.bdf \
+	74194.bsf \
+	74194.inc \
+	74195.bdf \
+	74195.bsf \
+	74195.inc \
+	74196.bdf \
+	74196.bsf \
+	74196.inc \
+	74197.bdf \
+	74197.bsf \
+	74197.inc \
+	74198.bdf \
+	74198.bsf \
+	74198.inc \
+	74199.bdf \
+	74199.bsf \
+	74199.inc \
+	7420.bdf \
+	7420.bsf \
+	7420.inc \
+	7421.bdf \
+	7421.bsf \
+	7421.inc \
+	7423.bdf \
+	7423.bsf \
+	7423.inc \
+	74240.bdf \
+	74240.bsf \
+	74240.inc \
+	74240b.bdf \
+	74240b.bsf \
+	74240b.inc \
+	74240o.bdf \
+	74240o.bsf \
+	74241.bdf \
+	74241.bsf \
+	74241.inc \
+	74241b.bdf \
+	74241b.bsf \
+	74241b.inc \
+	74244.bdf \
+	74244.bsf \
+	74244.inc \
+	74244b.bdf \
+	74244b.bsf \
+	74244b.inc \
+	74246.bdf \
+	74246.bsf \
+	74246.inc \
+	74247.bdf \
+	74247.bsf \
+	74247.inc \
+	74248.bdf \
+	74248.bsf \
+	74248.inc \
+	7425.bdf \
+	7425.bsf \
+	7425.inc \
+	74251.bdf \
+	74251.bsf \
+	74251.inc \
+	74253.bdf \
+	74253.bsf \
+	74253.inc \
+	74257.bdf \
+	74257.bsf \
+	74257.inc \
+	74258.bdf \
+	74258.bsf \
+	74258.inc \
+	74259.bdf \
+	74259.bsf \
+	74259.inc \
+	7425o.bdf \
+	7425o.bsf \
+	74260.bdf \
+	74260.bsf \
+	74260.inc \
+	74261.bdf \
+	74261.bsf \
+	74261.inc \
+	74265.bdf \
+	74265.bsf \
+	74265.inc \
+	7427.bdf \
+	7427.bsf \
+	7427.inc \
+	74273.bdf \
+	74273.bsf \
+	74273.inc \
+	74273b.bdf \
+	74273b.bsf \
+	74273b.inc \
+	74276.bdf \
+	74276.bsf \
+	74276.inc \
+	74276o.bdf \
+	74276o.bsf \
+	74278.bdf \
+	74278.bsf \
+	74278.inc \
+	74279.bdf \
+	74279.bsf \
+	74279.inc \
+	74279m.bdf \
+	74279m.bsf \
+	74279md.bdf \
+	74279md.bsf \
+	7428.bdf \
+	7428.bsf \
+	7428.inc \
+	74280.bdf \
+	74280.bsf \
+	74280.inc \
+	74280b.bdf \
+	74280b.bsf \
+	74280b.inc \
+	74283.bsf \
+	74283.inc \
+	74283.tdf \
+	74284.bdf \
+	74284.bsf \
+	74284.inc \
+	74285.bdf \
+	74285.bsf \
+	74285.inc \
+	74290.bdf \
+	74290.bsf \
+	74290.inc \
+	74292.bdf \
+	74292.bsf \
+	74292.inc \
+	74293.bdf \
+	74293.bsf \
+	74293.inc \
+	74294.bdf \
+	74294.bsf \
+	74294.inc \
+	74295.bdf \
+	74295.bsf \
+	74295.inc \
+	74297.bdf \
+	74297.bsf \
+	74297.inc \
+	74298.bdf \
+	74298.bsf \
+	74298.inc \
+	74299.bdf \
+	74299.bsf \
+	74299.inc \
+	7430.bdf \
+	7430.bsf \
+	7430.inc \
+	7432.bdf \
+	7432.bsf \
+	7432.inc \
+	74348.bdf \
+	74348.bsf \
+	74348.inc \
+	74350.bdf \
+	74350.bsf \
+	74350.inc \
+	74352.bdf \
+	74352.bsf \
+	74352.inc \
+	74352o.bdf \
+	74352o.bsf \
+	74353.bdf \
+	74353.bsf \
+	74353.inc \
+	74354.bdf \
+	74354.bsf \
+	74354.inc \
+	74356.bdf \
+	74356.bsf \
+	74356.inc \
+	74365.bdf \
+	74365.bsf \
+	74365.inc \
+	74366.bdf \
+	74366.bsf \
+	74366.inc \
+	74367.bdf \
+	74367.bsf \
+	74367.inc \
+	74368.bdf \
+	74368.bsf \
+	74368.inc \
+	7437.bdf \
+	7437.bsf \
+	7437.inc \
+	74373.bdf \
+	74373.bsf \
+	74373.inc \
+	74373b.bdf \
+	74373b.bsf \
+	74373b.inc \
+	74373m.bdf \
+	74373m.bsf \
+	74374.bdf \
+	74374.bsf \
+	74374.inc \
+	74374b.bdf \
+	74374b.bsf \
+	74374b.inc \
+	74374m.bdf \
+	74374m.bsf \
+	74374nt.bdf \
+	74374nt.bsf \
+	74374nt.inc \
+	74375.bdf \
+	74375.bsf \
+	74375.inc \
+	74376.bdf \
+	74376.bsf \
+	74376.inc \
+	74377.bdf \
+	74377.bsf \
+	74377.inc \
+	74377b.bdf \
+	74377b.bsf \
+	74377b.inc \
+	74378.bdf \
+	74378.bsf \
+	74378.inc \
+	74379.bdf \
+	74379.bsf \
+	74379.inc \
+	74381.bdf \
+	74381.bsf \
+	74381.inc \
+	74382.bdf \
+	74382.bsf \
+	74382.inc \
+	74385.bdf \
+	74385.bsf \
+	74385.inc \
+	74386.bdf \
+	74386.bsf \
+	74386.inc \
+	74390.bdf \
+	74390.bsf \
+	74390.inc \
+	74390o.bdf \
+	74390o.bsf \
+	74393.bdf \
+	74393.bsf \
+	74393.inc \
+	74393m.bdf \
+	74393m.bsf \
+	74395.bdf \
+	74395.bsf \
+	74395.inc \
+	74396.bdf \
+	74396.bsf \
+	74396.inc \
+	74398.bdf \
+	74398.bsf \
+	74398.inc \
+	74399.bdf \
+	74399.bsf \
+	74399.inc \
+	7440.bdf \
+	7440.bsf \
+	7440.inc \
+	7442.bdf \
+	7442.bsf \
+	7442.inc \
+	7443.bdf \
+	7443.bsf \
+	7443.inc \
+	7444.bdf \
+	7444.bsf \
+	7444.inc \
+	74445.bdf \
+	74445.bsf \
+	74445.inc \
+	7445.bdf \
+	7445.bsf \
+	7445.inc \
+	7446.bdf \
+	7446.bsf \
+	7446.inc \
+	74465.bdf \
+	74465.bsf \
+	74465.inc \
+	74466.bdf \
+	74466.bsf \
+	74466.inc \
+	74467.bdf \
+	74467.bsf \
+	74467.inc \
+	74467o.bdf \
+	74467o.bsf \
+	74468.bdf \
+	74468.bsf \
+	74468.inc \
+	7447.bdf \
+	7447.bsf \
+	7447.inc \
+	7448.bdf \
+	7448.bsf \
+	7448.inc \
+	7449.bdf \
+	7449.bsf \
+	7449.inc \
+	74490.bdf \
+	74490.bsf \
+	74490.inc \
+	74490o.bdf \
+	74490o.bsf \
+	7450.bdf \
+	7450.bsf \
+	7450.inc \
+	7451.bdf \
+	7451.bsf \
+	7451.inc \
+	74518.bsf \
+	74518.inc \
+	74518.tdf \
+	74518b.bsf \
+	74518b.inc \
+	74518b.tdf \
+	7452.bdf \
+	7452.bsf \
+	7452.inc \
+	7453.bdf \
+	7453.bsf \
+	7453.inc \
+	7454.bdf \
+	7454.bsf \
+	7454.inc \
+	74540.bdf \
+	74540.bsf \
+	74540.inc \
+	74541.bdf \
+	74541.bsf \
+	74541.inc \
+	74548.bdf \
+	74548.bsf \
+	74548.inc \
+	74549.bdf \
+	74549.bsf \
+	74549.inc \
+	7455.bdf \
+	7455.bsf \
+	7455.inc \
+	7456.bdf \
+	7456.bsf \
+	7456.inc \
+	74568.bdf \
+	74568.bsf \
+	74568.inc \
+	74569.bdf \
+	74569.bsf \
+	74569.inc \
+	7457.bdf \
+	7457.bsf \
+	7457.inc \
+	74589.bdf \
+	74589.bsf \
+	74589.inc \
+	74590.bdf \
+	74590.bsf \
+	74590.inc \
+	74592.bdf \
+	74592.bsf \
+	74592.inc \
+	74594.bdf \
+	74594.bsf \
+	74594.inc \
+	74595.bdf \
+	74595.bsf \
+	74595.inc \
+	74597.bdf \
+	74597.bsf \
+	74597.inc \
+	74604.bdf \
+	74604.bsf \
+	74604.inc \
+	74630.bdf \
+	74630.bsf \
+	74630.inc \
+	74636.bdf \
+	74636.bsf \
+	74636.inc \
+	7464.bdf \
+	7464.bsf \
+	7464.inc \
+	74668.bdf \
+	74668.bsf \
+	74668.inc \
+	74669.bdf \
+	74669.bsf \
+	74669.inc \
+	74670.bdf \
+	74670.bsf \
+	74670.inc \
+	74671.bdf \
+	74671.bsf \
+	74671.inc \
+	74672.bdf \
+	74672.bsf \
+	74672.inc \
+	74673.bdf \
+	74673.bsf \
+	74673.inc \
+	74674.bdf \
+	74674.bsf \
+	74674.inc \
+	7468.bdf \
+	7468.bsf \
+	7468.inc \
+	74684.bdf \
+	74684.bsf \
+	74684.inc \
+	74686.bdf \
+	74686.bsf \
+	74686.inc \
+	74688.bdf \
+	74688.bsf \
+	74688.inc \
+	7469.bdf \
+	7469.bsf \
+	7469.inc \
+	74690.bdf \
+	74690.bsf \
+	74690.inc \
+	74691.bdf \
+	74691.bsf \
+	74691.inc \
+	74693.bdf \
+	74693.bsf \
+	74693.inc \
+	74696.bdf \
+	74696.bsf \
+	74696.inc \
+	74697.bdf \
+	74697.bsf \
+	74697.inc \
+	74698.bdf \
+	74698.bsf \
+	74698.inc \
+	74699.bdf \
+	74699.bsf \
+	74699.inc \
+	7470.bdf \
+	7470.bsf \
+	7470.inc \
+	7471.bdf \
+	7471.bsf \
+	7471.inc \
+	7472.bdf \
+	7472.bsf \
+	7472.inc \
+	7473.bdf \
+	7473.bsf \
+	7473.inc \
+	7473a.bdf \
+	7473a.bsf \
+	7473a.inc \
+	7473o.bdf \
+	7473o.bsf \
+	7474.bdf \
+	7474.bsf \
+	7474.inc \
+	7475.bdf \
+	7475.bsf \
+	7475.inc \
+	7476.bdf \
+	7476.bsf \
+	7476.inc \
+	7476a.bdf \
+	7476a.bsf \
+	7476a.inc \
+	7477.bdf \
+	7477.bsf \
+	7477.inc \
+	7478.bdf \
+	7478.bsf \
+	7478.inc \
+	7478a.bdf \
+	7478a.bsf \
+	7478a.inc \
+	7480.bdf \
+	7480.bsf \
+	7480.inc \
+	7482.bdf \
+	7482.bsf \
+	7482.inc \
+	74821.bdf \
+	74821.bsf \
+	74821.inc \
+	74821b.bdf \
+	74821b.bsf \
+	74821b.inc \
+	74822.bdf \
+	74822.bsf \
+	74822.inc \
+	74822b.bdf \
+	74822b.bsf \
+	74822b.inc \
+	74823.bdf \
+	74823.bsf \
+	74823.inc \
+	74823b.bdf \
+	74823b.bsf \
+	74823b.inc \
+	74824.bdf \
+	74824.bsf \
+	74824.inc \
+	74824b.bdf \
+	74824b.bsf \
+	74824b.inc \
+	74825.bdf \
+	74825.bsf \
+	74825.inc \
+	74825b.bdf \
+	74825b.bsf \
+	74825b.inc \
+	74826.bdf \
+	74826.bsf \
+	74826.inc \
+	74826b.bdf \
+	74826b.bsf \
+	74826b.inc \
+	7483.bdf \
+	7483.bsf \
+	7483.inc \
+	74841.bdf \
+	74841.bsf \
+	74841.inc \
+	74841b.bdf \
+	74841b.bsf \
+	74841b.inc \
+	74842.bdf \
+	74842.bsf \
+	74842.inc \
+	74842b.bdf \
+	74842b.bsf \
+	74842b.inc \
+	74843.bdf \
+	74843.bsf \
+	74843.inc \
+	74844.bdf \
+	74844.bsf \
+	74844.inc \
+	74845.bdf \
+	74845.bsf \
+	74845.inc \
+	74846.bdf \
+	74846.bsf \
+	74846.inc \
+	7485.bsf \
+	7485.inc \
+	7485.tdf \
+	7486.bdf \
+	7486.bsf \
+	7486.inc \
+	7487.bdf \
+	7487.bsf \
+	7487.inc \
+	7490.bdf \
+	7490.bsf \
+	7490.inc \
+	7491.bdf \
+	7491.bsf \
+	7491.inc \
+	7492.bdf \
+	7492.bsf \
+	7492.inc \
+	7493.bdf \
+	7493.bsf \
+	7493.inc \
+	7494.bdf \
+	7494.bsf \
+	7494.inc \
+	7495.bdf \
+	7495.bsf \
+	7495.inc \
+	7496.bdf \
+	7496.bsf \
+	7496.inc \
+	7497.bdf \
+	7497.bsf \
+	7497.inc \
+	7498.bdf \
+	7498.bsf \
+	7498.inc \
+	7499.bdf \
+	7499.bsf \
+	7499.inc \
+	74990.bdf \
+	74990.bsf \
+	74990.inc \
+	81mux.bsf \
+	81mux.inc \
+	81mux.tdf \
+	8count.bsf \
+	8count.inc \
+	8count.tdf \
+	8dff.bdf \
+	8dff.bsf \
+	8dff.inc \
+	8dffe.bdf \
+	8dffe.bsf \
+	8dffe.inc \
+	8fadd.bsf \
+	8fadd.inc \
+	8fadd.tdf \
+	8faddb.bsf \
+	8faddb.inc \
+	8faddb.tdf \
+	8mcomp.bsf \
+	8mcomp.inc \
+	8mcomp.tdf \
+	8mcompb.bsf \
+	8mcompb.inc \
+	8mcompb.tdf \
+	add_f.inc \
+	add_f.tdf \
+	and10.tdf \
+	and11.tdf \
+	and5.bdf \
+	and5.bsf \
+	and7.bdf \
+	and7.bsf \
+	and9.bdf \
+	and9.bsf \
+	a_carry.tdf \
+	a_cascde.tdf \
+	a_exp.tdf \
+	a_global.tdf \
+	a_lcell.tdf \
+	a_soft.tdf \
+	a_tri.tdf \
+	band5.bdf \
+	band5.bsf \
+	barrelst.bdf \
+	barrelst.bsf \
+	barrelst.inc \
+	barrlstb.bdf \
+	barrlstb.bsf \
+	barrlstb.inc \
+	bnand5.bdf \
+	bnand5.bsf \
+	bnor5.bdf \
+	bnor5.bsf \
+	bnor7.bdf \
+	bnor7.bsf \
+	bnor9.bdf \
+	bnor9.bsf \
+	bor13.bdf \
+	bor13.bsf \
+	bor5.bdf \
+	bor5.bsf \
+	bor7.bdf \
+	bor7.bsf \
+	bor9.bdf \
+	bor9.bsf \
+	btri.bdf \
+	btri.bsf \
+	btri.inc \
+	carry.inc \
+	cascade.inc \
+	cbuf.bdf \
+	cbuf.bsf \
+	cbuf.inc \
+	dand2.bdf \
+	dand2.bsf \
+	dand3.bdf \
+	dand3.bsf \
+	dand4.bdf \
+	dand4.bsf \
+	dand8.bdf \
+	dand8.bsf \
+	dec38.bdf \
+	dec38.bsf \
+	dec_f.inc \
+	dec_f.tdf \
+	dff.inc \
+	dff2.bdf \
+	dff2.bsf \
+	dffe.inc \
+	dor2.bdf \
+	dor2.bsf \
+	dor3.bdf \
+	dor3.bsf \
+	dor4.bdf \
+	dor4.bsf \
+	dor8.bdf \
+	dor8.bsf \
+	dxor2.bdf \
+	dxor2.bsf \
+	dxor3.bdf \
+	dxor3.bsf \
+	dxor4.bdf \
+	dxor4.bsf \
+	dxor8.bdf \
+	dxor8.bsf \
+	enadff.bdf \
+	enadff.bsf \
+	enadff.inc \
+	exp.inc \
+	expdff.bsf \
+	expdff.inc \
+	expdff.tdf \
+	explatch.bdf \
+	explatch.bsf \
+	explatch.inc \
+	f74151.bdf \
+	f74151b.bdf \
+	f74161.bdf \
+	f74163.bdf \
+	f74191.bdf \
+	f74283.bdf \
+	f74518.bdf \
+	f74518b.bdf \
+	f7485.bdf \
+	f81mux.bdf \
+	f8count.bdf \
+	f8fadd.bdf \
+	f8faddb.bdf \
+	f8mcomp.bdf \
+	f8mcompb.bdf \
+	fexpdff.bdf \
+	fgray4.bdf \
+	freqdiv.bdf \
+	freqdiv.bsf \
+	freqdiv.inc \
+	f_add.tdf \
+	f_add_carry.tdf \
+	f_borrow.tdf \
+	f_c.tdf \
+	f_cnt.tdf \
+	f_csc_cnt.tdf \
+	f_cs_ge.tdf \
+	f_cs_gt.tdf \
+	f_cs_le.tdf \
+	f_cs_lt.tdf \
+	f_c_cnt.tdf \
+	f_c_dec.tdf \
+	f_c_ge.tdf \
+	f_c_gt.tdf \
+	f_c_inc.tdf \
+	f_c_le.tdf \
+	f_c_lt.tdf \
+	f_dec.tdf \
+	f_dec_carry.tdf \
+	f_ge.tdf \
+	f_gt.tdf \
+	f_inc.tdf \
+	f_inc_carry.tdf \
+	f_le.tdf \
+	f_lt.tdf \
+	f_sub.tdf \
+	f_sub_borrow.tdf \
+	ge_f.inc \
+	ge_f.tdf \
+	global.inc \
+	gray4.bsf \
+	gray4.inc \
+	gray4.tdf \
+	gt_f.inc \
+	gt_f.tdf \
+	inc_f.inc \
+	inc_f.tdf \
+	inhb.bdf \
+	inhb.bsf \
+	inhb.inc \
+	inpltch.bdf \
+	inpltch.bsf \
+	inpltch.inc \
+	jkff.inc \
+	jkff2.bdf \
+	jkff2.bsf \
+	jkffe.inc \
+	jkffe.tdf \
+	jkffre.bdf \
+	jkffre.bsf \
+	latch.inc \
+	lcell.inc \
+	le_f.inc \
+	le_f.tdf \
+	ltch_p_c.bdf \
+	ltch_p_c.bsf \
+	lt_f.inc \
+	lt_f.tdf \
+	memmodes.inc \
+	mlatch.bdf \
+	mlatch.bsf \
+	mult2.bdf \
+	mult2.bsf \
+	mult2.inc \
+	mult24.bdf \
+	mult24.bsf \
+	mult24.inc \
+	mult4.bdf \
+	mult4.bsf \
+	mult4.inc \
+	mult4b.bdf \
+	mult4b.bsf \
+	mult4b.inc \
+	mux41.bdf \
+	mux41.bsf \
+	nand13.bdf \
+	nand13.bsf \
+	nand5.bdf \
+	nand5.bsf \
+	nand7.bdf \
+	nand7.bsf \
+	nand9.bdf \
+	nand9.bsf \
+	nandltch.bdf \
+	nandltch.bsf \
+	nandltch.inc \
+	nor16.bdf \
+	nor16.bsf \
+	nor5.bdf \
+	nor5.bsf \
+	norltch.bdf \
+	norltch.bsf \
+	norltch.inc \
+	opndrn.inc \
+	or5.bdf \
+	or5.bsf \
+	p74151.bdf \
+	p74151b.bdf \
+	p74161.bdf \
+	p74163.bdf \
+	p74191.bdf \
+	p74283.bdf \
+	p74518.bdf \
+	p74518b.bdf \
+	p7485.bdf \
+	p81mux.bdf \
+	p8count.bdf \
+	p8fadd.bdf \
+	p8faddb.bdf \
+	p8mcomp.bdf \
+	p8mcompb.bdf \
+	pexpdff.bdf \
+	pgray4.bdf \
+	rdlatch.bdf \
+	rdlatch.bsf \
+	soft.inc \
+	srff.inc \
+	srffe.inc \
+	srffe.tdf \
+	sub_f.inc \
+	sub_f.tdf \
+	s_dff.tdf \
+	s_latch.tdf \
+	s_or10.tdf \
+	s_or11.tdf \
+	s_or12.tdf \
+	s_or2.tdf \
+	s_or3.tdf \
+	s_or4.tdf \
+	s_or5.tdf \
+	s_or6.tdf \
+	s_or7.tdf \
+	s_or8.tdf \
+	s_or9.tdf \
+	s_tff.tdf \
+	s_xor2.tdf \
+	tand2.bdf \
+	tand2.bsf \
+	tand3.bdf \
+	tand3.bsf \
+	tand4.bdf \
+	tand4.bsf \
+	tand8.bdf \
+	tand8.bsf \
+	tbl_1.tdf \
+	tbl_10.tdf \
+	tbl_2.tdf \
+	tbl_3.tdf \
+	tbl_4.tdf \
+	tbl_5.tdf \
+	tbl_6.tdf \
+	tbl_7.tdf \
+	tbl_8.tdf \
+	tbl_9.tdf \
+	tbor13.bdf \
+	tbor13.bsf \
+	tff.inc \
+	tff.tdf \
+	tffe.inc \
+	tffe.tdf \
+	tmult4.bdf \
+	tmult4.bsf \
+	tmult4.inc \
+	tnand13.bdf \
+	tnand13.bsf \
+	tnand2.bdf \
+	tnand2.bsf \
+	tnand3.bdf \
+	tnand3.bsf \
+	tnand4.bdf \
+	tnand4.bsf \
+	tnand8.bdf \
+	tnand8.bsf \
+	tnor2.bdf \
+	tnor2.bsf \
+	tnor3.bdf \
+	tnor3.bsf \
+	tnor4.bdf \
+	tnor4.bsf \
+	tnor8.bdf \
+	tnor8.bsf \
+	tor2.bdf \
+	tor2.bsf \
+	tor3.bdf \
+	tor3.bsf \
+	tor4.bdf \
+	tor4.bsf \
+	tor8.bdf \
+	tor8.bsf \
+	tri.inc \
+	tribuf.bdf \
+	tribuf.bsf \
+	trinot.bdf \
+	trinot.bsf \
+	udfdl.bdf \
+	udfdl.bsf \
+	ujkff.bdf \
+	ujkff.bsf \
+	unicnt.bdf \
+	unicnt.bsf \
+	unicnt.inc \
+	xnor3.bdf \
+	xnor3.bsf \
+	xnor4.bdf \
+	xnor4.bsf \
+	xnor8.bdf \
+	xnor8.bsf \
+	xor3.bdf \
+	xor3.bsf \
+	xor4.bdf \
+	xor4.bsf \
+	xor8.bdf \
+	xor8.bsf
+
+MACROLIB =\
+	7473a.bdf 7476a.bdf 7478a.bdf 74107a.bdf 74990.bdf 161mux.bdf btri.bdf\
+	7442.bdf 7449.bdf 7483.bdf p7485.bdf f7485.bdf 7485.tdf 7491.bdf 7493.bdf\
+	74138.bdf 74139.bdf p74151.bdf f74151.bdf 74151.tdf 74153.bdf 74157.bdf\
+	74160.bdf p74161.bdf f74161.bdf 74161.tdf 74162.bdf p74163.bdf f74163.bdf\
+	74163.tdf 74164.bdf 74165.bdf 74180.bdf 74190.bdf p74191.bdf f74191.bdf\
+	74191.tdf 74193.bdf 74194.bdf 74273.bdf 74279.bdf 74373.bdf 74374.bdf\
+	4count.bdf p8mcomp.bdf f8mcomp.bdf 8mcomp.tdf 16cudslr.bdf unicnt.bdf\
+	p81mux.bdf f81mux.bdf 81mux.tdf 7400.bdf 7402.bdf 7404.bdf 7408.bdf\
+	7410.bdf 7411.bdf 74116.bdf 74147.bdf 74148.bdf 74154.bdf 74155.bdf\
+	74156.bdf 74158.bdf 74166.bdf 74173.bdf 74174.bdf 74175.bdf 74178.bdf\
+	74179.bdf 74181.bdf 74183.bdf 74184.bdf 74185.bdf 74192.bdf 74198.bdf\
+	7420.bdf 7421.bdf 74259.bdf 74261.bdf 7427.bdf 74278.bdf\
+	74280.bdf 74298.bdf 7430.bdf 7432.bdf 74393.bdf 7443.bdf 7444.bdf\
+	7445.bdf 7446.bdf 7447.bdf 7448.bdf p74518.bdf f74518.bdf 74518.tdf\
+	7452.bdf 7470.bdf 7471.bdf 7472.bdf 7473.bdf 7474.bdf 7475.bdf 7476.bdf\
+	7477.bdf 7478.bdf 7480.bdf 7482.bdf 7486.bdf 7487.bdf 7494.bdf 7496.bdf\
+	7498.bdf 7499.bdf p8count.bdf f8count.bdf 8count.tdf p8fadd.bdf f8fadd.bdf\
+	8fadd.tdf barrelst.bdf cbuf.bdf freqdiv.bdf pgray4.bdf fgray4.bdf\
+	gray4.tdf inhb.bdf inpltch.bdf mult2.bdf mult24.bdf mult4.bdf nandltch.bdf\
+	norltch.bdf 21mux.bdf p74151b.bdf f74151b.bdf 74151b.tdf 74174b.bdf\
+	74180b.bdf 74240b.bdf 74241b.bdf 74244b.bdf 74280b.bdf 74273b.bdf\
+	74373b.bdf 74374b.bdf p74518b.bdf f74518b.bdf 74518b.tdf mult4b.bdf\
+	74821b.bdf p8mcompb.bdf f8mcompb.bdf 8mcompb.tdf p8faddb.bdf f8faddb.bdf\
+	8faddb.tdf 74822b.bdf barrlstb.bdf 16cudsrb.bdf 74841b.bdf 74842b.bdf\
+	74826b.bdf 74823b.bdf 74824b.bdf 74825b.bdf 74164b.bdf 74165b.bdf\
+	74377b.bdf 16dmux.bdf 16ndmux.bdf 74137.bdf 74143.bdf 74145.bdf 74167.bdf\
+	74168.bdf 74169.bdf 74171.bdf 74176.bdf 74177.bdf 74182.bdf\
+	74195.bdf 74199.bdf 74240.bdf 74241.bdf 74244.bdf 74246.bdf\
+	74248.bdf 74251.bdf 74253.bdf 74260.bdf 74265.bdf 74276.bdf\
+	74294.bdf 74295.bdf 74299.bdf 74348.bdf 74350.bdf 74352.bdf\
+	74353.bdf 74354.bdf 74356.bdf 74381.bdf 74382.bdf 74385.bdf\
+	74390.bdf 74395.bdf 74396.bdf 74399.bdf 74445.bdf 74465.bdf\
+	74490.bdf 7456.bdf 7457.bdf 74590.bdf 74592.bdf 74594.bdf\
+	74595.bdf 74597.bdf 74604.bdf 74668.bdf 74669.bdf 74670.bdf\
+	74671.bdf 74672.bdf 74673.bdf 74674.bdf 7468.bdf 74684.bdf\
+	74686.bdf 74688.bdf 7469.bdf 74690.bdf 74691.bdf 74693.bdf\
+	74696.bdf 74697.bdf 74698.bdf 74699.bdf 74821.bdf 74822.bdf\
+	74823.bdf 74824.bdf 74825.bdf 74826.bdf 74841.bdf 74842.bdf\
+	74843.bdf 74844.bdf 74845.bdf 74846.bdf 7490.bdf 7492.bdf\
+	7495.bdf 7497.bdf 2x8mux.bdf enadff.bdf pexpdff.bdf fexpdff.bdf\
+	expdff.tdf explatch.bdf tmult4.bdf 8dff.bdf 74374nt.bdf 8dffe.bdf\
+	7423.bdf 7425.bdf 7428.bdf 7437.bdf 7440.bdf 7450.bdf 7451.bdf\
+	7453.bdf 7454.bdf 7455.bdf 7464.bdf 74107.bdf 74109.bdf 74112.bdf\
+	74113.bdf 74114.bdf 74133.bdf 74134.bdf 74135.bdf 74172.bdf\
+	74196.bdf 74197.bdf 74247.bdf 74257.bdf 74258.bdf p74283.bdf\
+	f74283.bdf 74283.tdf 74284.bdf 74285.bdf 74290.bdf 74292.bdf 74293.bdf\
+	74297.bdf 74365.bdf 74366.bdf 74367.bdf 74368.bdf 74375.bdf 74376.bdf\
+	74377.bdf 74378.bdf 74379.bdf 74386.bdf 74398.bdf 74466.bdf\
+	74467.bdf 74468.bdf 74540.bdf 74541.bdf 74548.bdf 74549.bdf\
+	74568.bdf 74569.bdf 74589.bdf 74630.bdf 74636.bdf\
+	7473a.bsf 7476a.bsf 7478a.bsf 74107a.bsf 74990.bsf 161mux.bsf btri.bsf\
+	7442.bsf 7449.bsf 7483.bsf 7485.bsf 7491.bsf 7493.bsf 74138.bsf\
+	74139.bsf 74151.bsf 74153.bsf 74157.bsf 74160.bsf 74161.bsf\
+	74162.bsf 74163.bsf 74164.bsf 74165.bsf 74180.bsf 74190.bsf\
+	74191.bsf 74193.bsf 74194.bsf 74273.bsf 74279.bsf 74373.bsf\
+	74374.bsf 4count.bsf 8mcomp.bsf 16cudslr.bsf unicnt.bsf 81mux.bsf\
+	7400.bsf 7402.bsf 7404.bsf 7408.bsf 7410.bsf 7411.bsf 74116.bsf\
+	74147.bsf 74148.bsf 74154.bsf 74155.bsf 74156.bsf 74158.bsf\
+	74166.bsf 74173.bsf 74174.bsf 74175.bsf 74178.bsf 74179.bsf\
+	74181.bsf 74183.bsf 74184.bsf 74185.bsf 74192.bsf 74198.bsf\
+	7420.bsf 7421.bsf 74259.bsf 74261.bsf 7427.bsf 74278.bsf\
+	74280.bsf 74298.bsf 7430.bsf 7432.bsf 74393.bsf 7443.bsf 7444.bsf\
+	7445.bsf 7446.bsf 7447.bsf 7448.bsf 74518.bsf 7452.bsf 7470.bsf\
+	7471.bsf 7472.bsf 7473.bsf 7474.bsf 7475.bsf 7476.bsf 7477.bsf\
+	7478.bsf 7480.bsf 7482.bsf 7486.bsf 7487.bsf 7494.bsf 7496.bsf\
+	7498.bsf 7499.bsf 8count.bsf 8fadd.bsf barrelst.bsf cbuf.bsf\
+	freqdiv.bsf gray4.bsf inhb.bsf inpltch.bsf mult2.bsf mult24.bsf\
+	mult4.bsf nandltch.bsf norltch.bsf 21mux.bsf\
+	74151b.bsf 74174b.bsf 74180b.bsf 74240b.bsf 74241b.bsf 74244b.bsf\
+	74280b.bsf 74273b.bsf 74373b.bsf 74374b.bsf 74518b.bsf mult4b.bsf\
+	74821b.bsf 8mcompb.bsf 8faddb.bsf 74822b.bsf barrlstb.bsf\
+	16cudsrb.bsf 74841b.bsf 74842b.bsf 74826b.bsf 74823b.bsf\
+	74824b.bsf 74825b.bsf 74164b.bsf 74165b.bsf 74377b.bsf\
+	16dmux.bsf 16ndmux.bsf 74137.bsf 74143.bsf 74145.bsf 74167.bsf\
+	74168.bsf 74169.bsf 74171.bsf 74176.bsf 74177.bsf 74182.bsf\
+	74195.bsf 74199.bsf 74240.bsf 74241.bsf 74244.bsf 74246.bsf\
+	74248.bsf 74251.bsf 74253.bsf 74260.bsf 74265.bsf 74276.bsf\
+	74294.bsf 74295.bsf 74299.bsf 74348.bsf 74350.bsf 74352.bsf\
+	74353.bsf 74354.bsf 74356.bsf 74381.bsf 74382.bsf 74385.bsf\
+	74390.bsf 74395.bsf 74396.bsf 74399.bsf 74445.bsf 74465.bsf\
+	74490.bsf 7456.bsf 7457.bsf 74590.bsf 74592.bsf 74594.bsf\
+	74595.bsf 74597.bsf 74604.bsf 74668.bsf 74669.bsf 74670.bsf\
+	74671.bsf 74672.bsf 74673.bsf 74674.bsf 7468.bsf 74684.bsf\
+	74686.bsf 74688.bsf 7469.bsf 74690.bsf 74691.bsf 74693.bsf\
+	74696.bsf 74697.bsf 74698.bsf 74699.bsf 74821.bsf 74822.bsf\
+	74823.bsf 74824.bsf 74825.bsf 74826.bsf 74841.bsf 74842.bsf\
+	74843.bsf 74844.bsf 74845.bsf 74846.bsf 7490.bsf 7492.bsf\
+	7495.bsf 7497.bsf 2x8mux.bsf enadff.bsf expdff.bsf explatch.bsf\
+	tmult4.bsf 8dff.bsf 74374nt.bsf 8dffe.bsf\
+	7423.bsf 7425.bsf 7428.bsf 7437.bsf 7440.bsf 7450.bsf 7451.bsf\
+	7453.bsf 7454.bsf 7455.bsf 7464.bsf 74107.bsf 74109.bsf 74112.bsf\
+	74113.bsf 74114.bsf 74133.bsf 74134.bsf 74135.bsf 74172.bsf\
+	74196.bsf 74197.bsf 74247.bsf 74257.bsf 74258.bsf 74283.bsf\
+	74284.bsf 74285.bsf 74290.bsf 74292.bsf 74293.bsf 74297.bsf\
+	74365.bsf 74366.bsf 74367.bsf 74368.bsf 74375.bsf 74376.bsf\
+	74377.bsf 74378.bsf 74379.bsf 74386.bsf 74398.bsf 74466.bsf\
+	74467.bsf 74468.bsf 74540.bsf 74541.bsf 74548.bsf 74549.bsf\
+	74568.bsf 74569.bsf 74589.bsf 74630.bsf 74636.bsf\
+	a_carry.tdf a_cascde.tdf a_exp.tdf a_global.tdf a_lcell.tdf\
+	a_soft.tdf a_tri.tdf
+
+
+EDFLIB=\
+	1a2nor2.bdf 2a2nor2.bdf 4a2nor4.bdf and5.bdf and7.bdf and9.bdf\
+	band5.bdf bnand5.bdf bnor5.bdf bnor7.bdf bnor9.bdf bor13.bdf\
+	bor5.bdf bor7.bdf bor9.bdf dand2.bdf dand3.bdf dand4.bdf dand8.bdf\
+	dec38.bdf dff2.bdf dor2.bdf dor3.bdf dor4.bdf dor8.bdf dxor2.bdf\
+	dxor3.bdf dxor4.bdf dxor8.bdf jkff2.bdf jkffre.bdf ltch_p_c.bdf\
+	mlatch.bdf mux41.bdf nand13.bdf nand5.bdf nand7.bdf nand9.bdf\
+	nor16.bdf nor5.bdf or5.bdf tand2.bdf tand3.bdf tand4.bdf tand8.bdf\
+	tbor13.bdf tnand13.bdf tnand2.bdf tnand3.bdf tnand4.bdf tnand8.bdf\
+	tnor2.bdf tnor3.bdf tnor4.bdf tnor8.bdf tor2.bdf tor3.bdf tor4.bdf\
+	tor8.bdf tribuf.bdf trinot.bdf udfdl.bdf ujkff.bdf xnor3.bdf\
+	xnor4.bdf xnor8.bdf xor3.bdf xor4.bdf xor8.bdf 2or2na2.bdf\
+	74153m.bdf 74157m.bdf 74174m.bdf 74279m.bdf 74373m.bdf\
+	74374m.bdf 74279md.bdf 74139m.bdf 74393m.bdf rdlatch.bdf\
+	74276o.bdf 7425o.bdf 74153o.bdf 7473o.bdf 74155o.bdf 74157o.bdf\
+	74107o.bdf 74158o.bdf 74109o.bdf 74112o.bdf 74113o.bdf 74352o.bdf\
+	74116o.bdf 74135o.bdf 74139o.bdf 74183o.bdf 74240o.bdf 74390o.bdf\
+	74490o.bdf 74467o.bdf\
+	1a2nor2.bsf 2a2nor2.bsf 4a2nor4.bsf and5.bsf and7.bsf and9.bsf\
+	band5.bsf bnand5.bsf bnor5.bsf bnor7.bsf bnor9.bsf bor13.bsf\
+	bor5.bsf bor7.bsf bor9.bsf dand2.bsf dand3.bsf dand4.bsf dand8.bsf\
+	dec38.bsf dff2.bsf dor2.bsf dor3.bsf dor4.bsf dor8.bsf dxor2.bsf\
+	dxor3.bsf dxor4.bsf dxor8.bsf jkff2.bsf jkffre.bsf ltch_p_c.bsf\
+	mlatch.bsf mux41.bsf nand13.bsf nand5.bsf nand7.bsf nand9.bsf\
+	nor16.bsf nor5.bsf or5.bsf tand2.bsf tand3.bsf tand4.bsf tand8.bsf\
+	tbor13.bsf tnand13.bsf tnand2.bsf tnand3.bsf tnand4.bsf tnand8.bsf\
+	tnor2.bsf tnor3.bsf tnor4.bsf tnor8.bsf tor2.bsf tor3.bsf tor4.bsf\
+	tor8.bsf tribuf.bsf trinot.bsf udfdl.bsf ujkff.bsf xnor3.bsf\
+	xnor4.bsf xnor8.bsf xor3.bsf xor4.bsf xor8.bsf 2or2na2.bsf\
+	74153m.bsf 74157m.bsf 74174m.bsf 74279m.bsf 74373m.bsf\
+	74374m.bsf 74279md.bsf 74139m.bsf 74393m.bsf rdlatch.bsf\
+	74276o.bsf 7425o.bsf 74153o.bsf 7473o.bsf 74155o.bsf 74157o.bsf\
+	74107o.bsf 74158o.bsf 74109o.bsf 74112o.bsf 74113o.bsf 74352o.bsf\
+	74116o.bsf 74135o.bsf 74139o.bsf 74183o.bsf 74240o.bsf 74390o.bsf\
+	74490o.bsf 74467o.bsf\
+	s_dff.tdf s_latch.tdf s_or12.tdf s_or2.tdf s_or3.tdf s_or4.tdf\
+	s_or6.tdf s_or8.tdf s_tff.tdf s_xor2.tdf s_or5.tdf s_or7.tdf\
+	s_or9.tdf s_or10.tdf s_or11.tdf\
+	and10.tdf and11.tdf tbl_1.tdf tbl_2.tdf tbl_3.tdf tbl_4.tdf\
+	tbl_5.tdf tbl_6.tdf tbl_7.tdf tbl_8.tdf tbl_9.tdf tbl_10.tdf\
+	f_add.tdf f_borrow.tdf f_c.tdf f_c_dec.tdf\
+	f_c_gt.tdf f_c_ge.tdf f_c_inc.tdf\
+	f_c_lt.tdf f_c_le.tdf f_dec.tdf f_gt.tdf\
+	f_ge.tdf f_inc.tdf f_lt.tdf f_le.tdf f_sub.tdf\
+	f_add_carry.tdf  f_cs_ge.tdf f_cs_gt.tdf f_cs_le.tdf f_cs_lt.tdf\
+	f_csc_cnt.tdf  f_dec_carry.tdf f_inc_carry.tdf f_sub_borrow.tdf\
+	f_c_cnt.tdf  f_cnt.tdf add_f.inc add_f.tdf dec_f.inc dec_f.tdf\
+	ge_f.inc ge_f.tdf gt_f.inc gt_f.tdf inc_f.inc inc_f.tdf\
+	le_f.inc le_f.tdf lt_f.inc lt_f.tdf sub_f.inc sub_f.tdf\
+	tff.inc tff.tdf tffe.inc tffe.tdf jkffe.tdf srffe.tdf
+
+MAXINC = \
+	161mux.inc 16cudslr.inc 16cudsrb.inc 16dmux.inc 16ndmux.inc \
+	21mux.inc 2x8mux.inc 4count.inc 7400.inc 7402.inc 7404.inc \
+	7408.inc 7410.inc 74107.inc 74107a.inc 74109.inc 7411.inc \
+	74112.inc 74113.inc 74114.inc 74116.inc 74133.inc 74134.inc \
+	74135.inc 74137.inc 74138.inc 74139.inc 74143.inc 74145.inc \
+	74147.inc 74148.inc 74151.inc 74151b.inc 74153.inc \
+	74154.inc 74155.inc 74156.inc 74157.inc 74158.inc 74160.inc \
+	74161.inc 74162.inc 74163.inc 74164.inc 74164b.inc \
+	74165.inc 74165b.inc 74166.inc 74167.inc 74168.inc \
+	74169.inc 74171.inc 74172.inc 74173.inc 74174.inc 74174b.inc \
+	74175.inc 74176.inc 74177.inc 74178.inc 74179.inc 74180.inc \
+	74180b.inc 74181.inc 74182.inc 74183.inc 74184.inc \
+	74185.inc 74190.inc 74191.inc 74192.inc 74193.inc 74194.inc \
+	74195.inc 74196.inc 74197.inc 74198.inc 74199.inc 7420.inc \
+	7421.inc 7423.inc 74240.inc 74240b.inc 74241.inc 74241b.inc \
+	74244.inc 74244b.inc 74246.inc 74247.inc 74248.inc \
+	7425.inc 74251.inc 74253.inc 74257.inc 74258.inc 74259.inc \
+	74260.inc 74261.inc 74265.inc 7427.inc 74273.inc 74273b.inc \
+	74276.inc 74278.inc 74279.inc 7428.inc 74280.inc 74280b.inc \
+	74283.inc 74284.inc 74285.inc 74290.inc 74292.inc 74293.inc \
+	74294.inc 74295.inc 74297.inc 74298.inc 74299.inc 7430.inc \
+	7432.inc 74348.inc 74350.inc 74352.inc 74353.inc 74354.inc \
+	74356.inc 74365.inc 74366.inc 74367.inc 74368.inc 7437.inc \
+	74373.inc 74373b.inc 74374.inc 74374b.inc 74374nt.inc \
+	74375.inc 74376.inc 74377.inc 74377b.inc 74378.inc \
+	74379.inc 74381.inc 74382.inc 74385.inc 74386.inc 74390.inc \
+	74393.inc 74395.inc 74396.inc 74398.inc 74399.inc 7440.inc \
+	7442.inc 7443.inc 7444.inc 74445.inc 7445.inc 7446.inc \
+	74465.inc 74466.inc 74467.inc 74468.inc 7447.inc 7448.inc \
+	7449.inc 74490.inc 7450.inc 7451.inc 74518.inc 74518b.inc \
+	7452.inc 7453.inc 7454.inc 74540.inc 74541.inc 74548.inc \
+	74549.inc 7455.inc 7456.inc 74568.inc 74569.inc 7457.inc \
+	74589.inc 74590.inc 74592.inc 74594.inc 74595.inc 74597.inc \
+	74604.inc 74630.inc 74636.inc 7464.inc 74668.inc 74669.inc \
+	74670.inc 74671.inc 74672.inc 74673.inc 74674.inc 7468.inc \
+	74684.inc 74686.inc 74688.inc 7469.inc 74690.inc 74691.inc \
+	74693.inc 74696.inc 74697.inc 74698.inc 74699.inc 7470.inc \
+	7471.inc 7472.inc 7473.inc 7473a.inc 7474.inc 7475.inc \
+	7476.inc 7476a.inc 7477.inc 7478.inc 7478a.inc 7480.inc \
+	7482.inc 74821.inc 74821b.inc 74822.inc 74822b.inc \
+	74823.inc 74823b.inc 74824.inc 74824b.inc 74825.inc \
+	74825b.inc 74826.inc 74826b.inc 7483.inc 74841.inc \
+	74841b.inc 74842.inc 74842b.inc 74843.inc 74844.inc \
+	74845.inc 74846.inc 7485.inc 7486.inc 7487.inc 7490.inc \
+	7491.inc 7492.inc 7493.inc 7494.inc 7495.inc 7496.inc \
+	7497.inc 7498.inc 7499.inc 74990.inc 81mux.inc 8count.inc \
+	8dff.inc 8dffe.inc 8fadd.inc 8faddb.inc 8mcomp.inc \
+	8mcompb.inc barrelst.inc barrlstb.inc btri.inc carry.inc \
+	cascade.inc cbuf.inc dff.inc dffe.inc enadff.inc exp.inc \
+	expdff.inc explatch.inc freqdiv.inc global.inc gray4.inc \
+	inhb.inc inpltch.inc jkff.inc jkffe.inc latch.inc lcell.inc \
+	memmodes.inc mult2.inc mult24.inc mult4.inc mult4b.inc \
+	nandltch.inc norltch.inc opndrn.inc soft.inc srff.inc \
+	srffe.inc tmult4.inc tri.inc unicnt.inc
+
+###############################################################################
+# Builtins.mak
+###############################################################################
+
+
+include $(BASE_DIR)/builtins.gmake
+
+###############################################################################
+# Now the targets
+###############################################################################
+
+all : update_source
+lib : 
+prebuild : 
+
+update_source : $(MACROLIB) $(EDFLIB) $(MAXINC)
+
+clean : 
+	rm -f *.bsf
+	rm -f *.bdf
+	rm -f *.tdf
+	rm -f *.inc
+

@@ -1,0 +1,250 @@
+<?xml version="1.0"?>
+<ROOT IGNORE_CYCLICAL_DEPENDENCIES="TRUE" >
+	<INCLUDE FILE="alt4gxb_macros.xml" /> <!-- all macros -->
+	<INCLUDE FILE="alt4gxb_rbc_rules.xml" /> <!-- all RBC rules & macros -->
+	<INCLUDE FILE="alt4gxb_manual_rules.xml" />	<!-- manual rules -->
+	<!-- this file contains wizard only parameters -->
+  <MACROS>
+    <MACRO NAME="m_rx_wiz_inclk_freq">
+      <DEFINITION>
+        db_rbc_tcl$rbc_tcl_mega_rules_validator_interface(advanced_hssi_legality, TGX_HSSI_CONFIG, TGX_HSSI_PLL_INPUT_CLOCK_FREQUENCY, m_device_part, RX_CDR, effective_data_rate, protocol, UNUSED)
+      </DEFINITION>
+    </MACRO>
+    <MACRO NAME="m_tx_wiz_inclk_freq">
+      <DEFINITION>
+        db_rbc_tcl$rbc_tcl_mega_rules_validator_interface(advanced_hssi_legality, TGX_HSSI_CONFIG, TGX_HSSI_PLL_INPUT_CLOCK_FREQUENCY, m_device_part, UNUSED, effective_data_rate, UNUSED, protocol)
+      </DEFINITION>
+    </MACRO>
+    <MACRO NAME="m_rx_wiz_data_rate">
+      <DEFINITION>
+        db_rbc_tcl$rbc_tcl_mega_rules_validator_interface(advanced_hssi_legality, TGX_HSSI_CONFIG, TGX_HSSI_PLL_EFFECTIVE_DATA_RATE, m_device_part, RX_CDR, input_clock_frequency, protocol)
+      </DEFINITION>
+    </MACRO>
+    <MACRO NAME="m_tx_wiz_data_rate">
+      <DEFINITION>
+        db_rbc_tcl$rbc_tcl_mega_rules_validator_interface(advanced_hssi_legality, TGX_HSSI_CONFIG, TGX_HSSI_CLOCK_DIVIDER_EFFECTIVE_DATA_RATE, m_device_part, UNUSED, 0, protocol, CMU, UNUSED, input_clock_frequency, UNUSED, UNUSED, UNUSED)
+      </DEFINITION>
+    </MACRO>
+    <MACRO NAME="m_wiz_data_rate" >
+      <DEFINITION>
+        m_rx_only ? m_rx_wiz_data_rate : (m_tx_only ? m_tx_wiz_data_rate : (m_rx_wiz_data_rate intersection m_tx_wiz_data_rate))
+      </DEFINITION>
+    </MACRO>
+    <MACRO NAME="m_wiz_dprio_inclk_freq" >
+      <DEFINITION>
+        db_rbc_tcl$rbc_tcl_mega_rules_validator_interface(advanced_hssi_legality, TGX_HSSI_CONFIG, TGX_HSSI_PLL_INPUT_CLOCK_FREQUENCY, m_device_part, UNUSED, reconfig_base_data_rate, UNUSED, reconfig_protocol)
+      </DEFINITION>
+    </MACRO>
+    <MACRO NAME="m_wiz_dprio_data_rate" >
+      <DEFINITION>
+        db_rbc_tcl$rbc_tcl_mega_rules_validator_interface(advanced_hssi_legality, TGX_HSSI_CONFIG, TGX_HSSI_CLOCK_DIVIDER_EFFECTIVE_DATA_RATE, m_device_part, UNUSED, 0, reconfig_protocol, CMU, UNUSED, reconfig_input_clock_frequency, UNUSED, UNUSED, UNUSED)
+      </DEFINITION>
+    </MACRO>
+    <MACRO NAME="m_wiz_base_data_rate" >
+      <DEFINITION>
+        db_rbc_tcl$rbc_tcl_mega_rules_validator_interface(advanced_hssi_legality, TGX_HSSI_CONFIG, TGX_HSSI_PLL_BASE_DATA_RATE, m_device_part, UNUSED, input_clock_frequency, UNUSED, effective_data_rate, UNUSED, UNUSED, protocol)
+      </DEFINITION>
+    </MACRO>
+  </MACROS>
+	<PARAMETER_RULES>
+		<PARAMETER NAME="WIZ_PROTOCOL"  TYPE="STRING" CNX_TYPE="PRIVATE" >
+  		<FORCE_RANGE TO="'SONET/SDH'|Basic|'PCI Express (PIPE)'|SDI|'Serial RapidIO'|'(OIF) CEI Phy Interface'|GIGE|XAUI|'Basic (PMA Direct)'|'Deterministic Latency'" />
+      <FORCE_RANGE TO="'SONET/SDH'|Basic|SDI|'Serial RapidIO'|'(OIF) CEI Phy Interface'|XAUI|'Basic (PMA Direct)'" WHEN="m_gt_device"/>
+      <FORCE_RANGE TO="'SONET/SDH'|Basic|'PCI Express (PIPE)'|SDI|'Serial RapidIO'|GIGE|XAUI|'Deterministic Latency'" WHEN="mfam_family_arriaii" /> 
+		</PARAMETER>
+		<PARAMETER NAME="Wiz_Subprotocol" TYPE="STRING" CNX_TYPE="PRIVATE" >
+			<FORCE_RANGE TO="OC12|OC48|OC96" WHEN="m_sonet" />
+      <FORCE_RANGE TO="OC48|OC96" WHEN="m_sonet and m_gt_device" />
+      <FORCE_RANGE TO="OC12|OC48" WHEN="m_sonet and mfam_family_arriaii" />
+			<FORCE_RANGE TO="'Gen 1-x1'|'Gen 1-x4'|'Gen 1-x8'|'Gen 2-x1'|'Gen 2-x4'|'Gen 2-x8'" WHEN="m_pcie" />
+			<FORCE_RANGE TO="'Gen 1-x1'|'Gen 1-x4'|'Gen 1-x8'" WHEN="m_pcie and mfam_family_arriaii" />
+			<FORCE_RANGE TO="None" WHEN="m_srio" />
+			<FORCE_RANGE TO="None" WHEN="m_cei" />
+			<FORCE_RANGE TO="3G|HD" WHEN="m_sdi" />
+      <FORCE_RANGE TO="'3G'" WHEN="m_sdi and m_gt_device" />
+      <FORCE_RANGE TO="None" WHEN="m_gige" />
+      <FORCE_RANGE TO="None" WHEN="m_xaui" />
+      <FORCE_RANGE TO="X1|X4" WHEN="m_cpri" />
+      <FORCE_RANGE TO="None|XN" WHEN="m_basic_pma_direct" />
+      <FORCE_RANGE TO="None|X4|X8|BIST|PRBS" WHEN="m_basic" />
+		</PARAMETER>	
+		<PARAMETER NAME="wiz_inclk_freq" CNX_TYPE="PRIVATE" TYPE="STRING">
+    <!-- <FORCE_VALUE TO="124.416" IF="m_sonet96" />
+      <FORCE_RANGE TO="148.35|296.7" IF="m_sdi" />
+      <FORCE_RANGE TO="148.35|296.7" IF="m_sdi_3g and (m_data_rate == 2967)" />
+      <FORCE_RANGE TO="148.5|297" IF="m_sdi_3g and (m_data_rate == 2970)" />
+      <FORCE_RANGE TO="74.175|148.35" IF="m_sdi_hd and (m_data_rate == 1483)" />
+      <FORCE_RANGE TO="74.25|148.5" IF="m_sdi_hd and (m_data_rate == 1485)"/>
+      <FORCE_VALUE TO="ccl_pll_mwiz$get_freq_list_for_data_rate(INTENDED_DEVICE_FAMILY, m_pll_type, m_data_rate, m_data_rate_remainder, m_protocol, intended_device_speed_grade)" IF="m_basic || m_srio || m_valid_cei || m_xaui || m_basic_pma_direct" />
+			<FORCE_RANGE TO="'62.208'|77.76|155.52|'311.04'|'622.08'" IF="m_sonet12 || m_sonet" />
+			<FORCE_RANGE TO="77.76|155.52|'311.04'|'622.08'" IF="m_sonet48" />
+			<FORCE_RANGE TO="62.5|125" IF="m_gige" />
+			<FORCE_VALUE TO="100" IF="m_pcie" /> -->
+    </PARAMETER>
+    <PARAMETER NAME="input_clock_frequency" >
+      <FORCE_VALUE TO="m_rx_wiz_inclk_freq" WHEN="m_rx_only" />
+      <FORCE_VALUE TO="m_tx_wiz_inclk_freq" WHEN="m_tx_only" />
+      <FORCE_VALUE TO="m_rx_wiz_inclk_freq intersection m_tx_wiz_inclk_freq" WHEN="m_duplex" />
+      <FORCE_VALUE TO="'124.416 MHz'" IF="m_sonet96" />
+      <FORCE_RANGE TO="'148.35 MHz'|'296.7 MHz'" IF="m_sdi" />
+      <FORCE_RANGE TO="'148.35 MHz'|'296.7 MHz'" IF="m_sdi_3g and (m_data_rate == 2967)" />
+      <FORCE_RANGE TO="'148.5 MHz'|'297.0 MHz'" IF="m_sdi_3g and (m_data_rate == 2970)" />
+      <FORCE_RANGE TO="'74.175 MHz'|'148.35 MHz'" IF="m_sdi_hd and (m_data_rate == 1483)" />
+      <FORCE_RANGE TO="'74.25 MHz'|'148.5 MHz'" IF="m_sdi_hd and (m_data_rate == 1485)"/>
+    </PARAMETER>
+    <PARAMETER NAME="effective_data_rate" >
+      <FORCE_VALUE TO="m_rx_wiz_data_rate" WHEN="m_rx_only" />
+      <FORCE_VALUE TO="m_tx_wiz_data_rate" WHEN="m_tx_only" />
+      <FORCE_VALUE TO="m_rx_wiz_data_rate intersection m_tx_wiz_data_rate" WHEN="m_duplex" />
+      <FORCE_VALUE TO="'2967.0 Mbps'|'2970.0 Mbps'" IF="m_sdi_3g" />
+      <FORCE_VALUE TO="'1483.5 Mbps'|'1485.0 Mbps'" IF="m_sdi_hd" />
+      <FORCE_RANGE MIN="'3135 Mbps'" MAX="'6375 Mbps'" IF="m_cei" />
+      <FORCE_VALUE TO="'1250.0 Mbps'|'2500.0 Mbps'|'3125.0 Mbps'" IF="m_srio" />
+      <FORCE_VALUE TO="'2500.0 Mbps'|'3125.0 Mbps'" IF="m_srio and m_gt_device" />
+    </PARAMETER>
+		<PARAMETER NAME="wiz_data_rate" CNX_TYPE="PRIVATE" TYPE="STRING">
+    <!--<FORCE_VALUE TO="2967|2970" IF="m_sdi_3g" />
+      <FORCE_VALUE TO="1483.5|1485" IF="m_sdi_hd" />
+      <FORCE_RANGE MIN="3135" MAX="6375" IF="m_cei" />
+      <FORCE_VALUE TO="1250|2500|3125" IF="m_srio" />
+      <FORCE_VALUE TO="2500|3125" IF="m_srio and m_gt_device" />
+      <FORCE_VALUE TO="ccl_pll_mwiz$get_protocol_data_rate_list(INTENDED_DEVICE_FAMILY, m_pll_type, m_protocol, intended_device_speed_grade)" IF="!m_basic" /> 
+			<FORCE_VALUE TO="'622.08'" IF="m_sonet12 || m_sonet" />
+			<FORCE_VALUE TO="2488.32" IF="m_sonet48" />
+			<FORCE_VALUE TO="4976.64" IF="m_sonet96" />						
+			<FORCE_VALUE TO="1250" IF="m_gige" />
+			<FORCE_RANGE MIN="3125" MAX="3750" IF="m_xaui" />
+			<FORCE_VALUE TO="2500" IF="m_pcie_gen1" />
+			<FORCE_VALUE TO="5000" IF="m_pcie_gen2" /> -->
+    </PARAMETER>
+		
+		<PARAMETER NAME="WIZ_DPRIO_PROTOCOL"  TYPE="STRING" CNX_TYPE="PRIVATE" >
+			<FORCE_RANGE TO="'SONET/SDH'|Basic|'PCI Express (PIPE)'|SDI|'Serial RapidIO'|'(OIF) CEI Phy Interface'|GIGE|XAUI" />
+      <FORCE_RANGE TO="'SONET/SDH'|Basic|SDI|'Serial RapidIO'|'(OIF) CEI Phy Interface'|XAUI" WHEN="m_gt_device"/>
+      <FORCE_RANGE TO="'SONET/SDH'|Basic|'PCI Express (PIPE)'|SDI|'Serial RapidIO'|GIGE|XAUI" WHEN="mfam_family_arriaii" /> 
+		</PARAMETER>
+		<PARAMETER NAME="Wiz_DPRIO_Subprotocol" TYPE="STRING" CNX_TYPE="PRIVATE" >
+			<FORCE_RANGE TO="OC12|OC48|OC96" WHEN="m_sonet(WIZ_DPRIO_PROTOCOL)" />
+      <FORCE_RANGE TO="OC48|OC96" WHEN="m_sonet(WIZ_DPRIO_PROTOCOL) and m_gt_device" />
+      <FORCE_RANGE TO="OC12|OC48" WHEN="m_sonet(WIZ_DPRIO_PROTOCOL) and mfam_family_arriaii" />
+			<FORCE_RANGE TO="'Gen 1'|'Gen 2'" WHEN="m_pcie(WIZ_DPRIO_PROTOCOL)" />
+			<FORCE_RANGE TO="'Gen 1'" WHEN="m_pcie(WIZ_DPRIO_PROTOCOL) and mfam_family_arriaii" />
+			<FORCE_RANGE TO="3G|HD" WHEN="m_sdi(WIZ_DPRIO_PROTOCOL)" />
+      <FORCE_RANGE TO="3G" WHEN="m_sdi(WIZ_DPRIO_PROTOCOL) and m_gt_device" />
+      <FORCE_RANGE TO="None" WHEN="m_srio(WIZ_DPRIO_PROTOCOL) || m_cei(WIZ_DPRIO_PROTOCOL) || m_gige(WIZ_DPRIO_PROTOCOL) || m_xaui(WIZ_DPRIO_PROTOCOL) || m_basic(WIZ_DPRIO_PROTOCOL)" />
+		</PARAMETER>	
+		<PARAMETER NAME="wiz_DPRIO_inclk_freq" CNX_TYPE="PRIVATE" TYPE="STRING">
+		<!--<FORCE_VALUE TO="ccl_pll_mwiz$get_freq_list_for_data_rate(INTENDED_DEVICE_FAMILY, m_pll_type, m_reconfig_data_rate, m_reconfig_data_rate_remainder, reconfig_protocol, intended_device_speed_grade)" IF="m_basic(WIZ_DPRIO_PROTOCOL) || m_valid_srio(WIZ_DPRIO_PROTOCOL, WIZ_DPRIO_DATA_RATE) || m_valid_cei(WIZ_DPRIO_PROTOCOL, WIZ_DPRIO_DATA_RATE) || m_xaui(WIZ_DPRIO_PROTOCOL)" /> 
+			<FORCE_RANGE TO="'62.208'|77.76|155.52|'311.04'|'622.08'" IF="m_sonet12 || m_sonet(WIZ_DPRIO_PROTOCOL)" />
+			<FORCE_RANGE TO="77.76|155.52|'311.04'|'622.08'" IF="m_sonet48(WIZ_DPRIO_PROTOCOL, WIZ_DPRIO_SUBPROTOCOL)" />
+			<FORCE_VALUE TO="124.416" IF="m_sonet96(WIZ_DPRIO_PROTOCOL, WIZ_DPRIO_SUBPROTOCOL)" />						
+			<FORCE_RANGE TO="62.5|125" IF="m_gige(WIZ_DPRIO_PROTOCOL)" />
+			<FORCE_VALUE TO="100" IF="m_pcie(WIZ_DPRIO_PROTOCOL)" /> 
+			<FORCE_RANGE TO="148.35|296.7" IF="m_sdi_3g(WIZ_DPRIO_PROTOCOL, WIZ_DPRIO_SUBPROTOCOL) and (WIZ_DPRIO_DATA_RATE == 2967)" />
+			<FORCE_RANGE TO="148.5|297" IF="m_sdi_3g(WIZ_DPRIO_PROTOCOL, WIZ_DPRIO_SUBPROTOCOL) and (WIZ_DPRIO_DATA_RATE == 2970)" />			
+			<FORCE_RANGE TO="74.175|148.35" IF="m_sdi_hd(WIZ_DPRIO_PROTOCOL, WIZ_DPRIO_SUBPROTOCOL) and (WIZ_DPRIO_DATA_RATE == '1483.5')" />
+			<FORCE_RANGE TO="74.25|148.5" IF="m_sdi_hd(WIZ_DPRIO_PROTOCOL, WIZ_DPRIO_SUBPROTOCOL) and (WIZ_DPRIO_DATA_RATE == 1485)"/>			-->
+		</PARAMETER>
+    <PARAMETER NAME="reconfig_input_clock_frequency" >
+      <FORCE_VALUE TO="m_wiz_dprio_inclk_freq" />
+      <FORCE_RANGE TO="'62.208 MHz'|'77.76 MHz'|'155.52 MHz'|'311.04 MHz'|'622.08 MHz'" IF="m_sonet12 || m_sonet(WIZ_DPRIO_PROTOCOL)" />
+      <FORCE_RANGE TO="'77.76 MHz'|'155.52 MHz'|'311.04 MHz'|'622.08 MHz'" IF="m_sonet48(WIZ_DPRIO_PROTOCOL, WIZ_DPRIO_SUBPROTOCOL)" />
+      <FORCE_VALUE TO="'124.416 MHz'" IF="m_sonet96(WIZ_DPRIO_PROTOCOL, WIZ_DPRIO_SUBPROTOCOL)" />
+      <FORCE_RANGE TO="'62.5 MHz'|'125 MHz'" IF="m_gige(WIZ_DPRIO_PROTOCOL)" />
+      <FORCE_VALUE TO="'100 MHz'" IF="m_pcie(WIZ_DPRIO_PROTOCOL)" />
+      <FORCE_RANGE TO="'148.35 MHz'|'296.7 MHz'" IF="m_sdi_3g(WIZ_DPRIO_PROTOCOL, WIZ_DPRIO_SUBPROTOCOL) and (WIZ_DPRIO_DATA_RATE == 2967)" />
+      <FORCE_RANGE TO="'148.5 MHz'|'297 MHz'" IF="m_sdi_3g(WIZ_DPRIO_PROTOCOL, WIZ_DPRIO_SUBPROTOCOL) and (WIZ_DPRIO_DATA_RATE == 2970)" />
+      <FORCE_RANGE TO="'74.175 MHz'|'148.35 MHz'" IF="m_sdi_hd(WIZ_DPRIO_PROTOCOL, WIZ_DPRIO_SUBPROTOCOL) and (WIZ_DPRIO_DATA_RATE == '1483.5')" />
+      <FORCE_RANGE TO="'74.25 MHz'|'148.5 MHz'" IF="m_sdi_hd(WIZ_DPRIO_PROTOCOL, WIZ_DPRIO_SUBPROTOCOL) and (WIZ_DPRIO_DATA_RATE == 1485)"/>
+    </PARAMETER>
+		<PARAMETER NAME="wiz_DPRIO_data_rate" CNX_TYPE="PRIVATE" TYPE="STRING">
+      <!--<FORCE_VALUE TO="ccl_pll_mwiz$get_protocol_data_rate_list(INTENDED_DEVICE_FAMILY, m_pll_type, reconfig_proocol, intended_device_speed_grade)" IF="!m_basic(WIZ_DPRIO_PROTOCOL)" /> 
+			<FORCE_VALUE TO="'622.08'" IF="m_sonet12(WIZ_DPRIO_PROTOCOL, WIZ_DPRIO_SUBPROTOCOL) || m_sonet(WIZ_DPRIO_PROTOCOL)" />
+			<FORCE_VALUE TO="2488.32" IF="m_sonet48(WIZ_DPRIO_PROTOCOL, WIZ_DPRIO_SUBPROTOCOL)" />
+			<FORCE_VALUE TO="4976.64" IF="m_sonet96(WIZ_DPRIO_PROTOCOL, WIZ_DPRIO_SUBPROTOCOL)" />						
+			<FORCE_VALUE TO="1250" IF="m_gige(WIZ_DPRIO_PROTOCOL)" />
+			<FORCE_RANGE MIN="3125" MAX="3750" IF="m_xaui(WIZ_DPRIO_PROTOCOL)" />
+			<FORCE_VALUE TO="2500" IF="m_pcie_gen1(WIZ_DPRIO_PROTOCOL, WIZ_DPRIO_SUBPROTOCOL)" />
+			<FORCE_VALUE TO="5000" IF="m_pcie_gen2(WIZ_DPRIO_PROTOCOL, WIZ_DPRIO_SUBPROTOCOL)" />
+			<FORCE_VALUE TO="2967|2970" IF="m_sdi(WIZ_DPRIO_PROTOCOL)" />
+			<FORCE_VALUE TO="2967|2970" IF="m_sdi_3g(WIZ_DPRIO_PROTOCOL, WIZ_DPRIO_SUBPROTOCOL)" />
+			<FORCE_VALUE TO="1483.5|1485" IF="m_sdi_hd(WIZ_DPRIO_PROTOCOL, WIZ_DPRIO_SUBPROTOCOL)" />
+			<FORCE_RANGE MIN="3135" MAX="6375" IF="m_cei(WIZ_DPRIO_PROTOCOL)" />
+			<FORCE_VALUE TO="1250|2500|3125" IF="m_srio(WIZ_DPRIO_PROTOCOL)" /> -->
+		</PARAMETER>
+    <PARAMETER NAME="reconfig_base_data_rate" >
+      <FORCE_VALUE TO="m_wiz_dprio_data_rate" />
+      <FORCE_VALUE TO="'622.08 Mbps'" IF="m_sonet12(WIZ_DPRIO_PROTOCOL, WIZ_DPRIO_SUBPROTOCOL) || m_sonet(WIZ_DPRIO_PROTOCOL)" />
+      <FORCE_VALUE TO="'2488.32 Mbps'" IF="m_sonet48(WIZ_DPRIO_PROTOCOL, WIZ_DPRIO_SUBPROTOCOL)" />
+      <FORCE_VALUE TO="'4976.64 Mbps'" IF="m_sonet96(WIZ_DPRIO_PROTOCOL, WIZ_DPRIO_SUBPROTOCOL)" />
+      <FORCE_VALUE TO="'1250 Mbps'" IF="m_gige(WIZ_DPRIO_PROTOCOL)" />
+      <FORCE_RANGE MIN="'3125 Mbps'" MAX="'3750 Mbps'" IF="m_xaui(WIZ_DPRIO_PROTOCOL)" />
+      <FORCE_VALUE TO="'2500 Mbps'" IF="m_pcie(WIZ_DPRIO_PROTOCOL) || m_pcie_gen1(WIZ_DPRIO_PROTOCOL, WIZ_DPRIO_SUBPROTOCOL)" />
+      <FORCE_VALUE TO="'5000 Mbps'" IF="m_pcie_gen2(WIZ_DPRIO_PROTOCOL, WIZ_DPRIO_SUBPROTOCOL)" />
+      <FORCE_VALUE TO="'2967 Mbps'|'2970 Mbps'" IF="m_sdi(WIZ_DPRIO_PROTOCOL)" />
+      <FORCE_VALUE TO="'2967 Mbps'|'2970 Mbps'" IF="m_sdi_3g(WIZ_DPRIO_PROTOCOL, WIZ_DPRIO_SUBPROTOCOL)" />
+      <FORCE_VALUE TO="'1483.5 Mbps'|'1485 Mbps'" IF="m_sdi_hd(WIZ_DPRIO_PROTOCOL, WIZ_DPRIO_SUBPROTOCOL)" />
+      <FORCE_RANGE MIN="'3135 Mbps'" MAX="'6375 Mbps'" IF="m_cei(WIZ_DPRIO_PROTOCOL)" />
+      <FORCE_VALUE TO="'1250 Mbps'|'2500 Mbps'|'3125 Mbps'" IF="m_srio(WIZ_DPRIO_PROTOCOL)" />      
+    </PARAMETER>
+    <PARAMETER NAME="base_data_rate" >
+      <FORCE_VALUE TO="m_wiz_base_data_rate" />
+    </PARAMETER>
+		<PARAMETER NAME="wiz_base_data_rate" CNX_TYPE="PRIVATE" TYPE="STRING" VALUE="0" >
+		 <!--<FORCE_VALUE TO="ccl_pll_mwiz$get_base_data_rate_list(INTENDED_DEVICE_FAMILY, m_data_rate, m_data_rate_remainder, m_inclock_period, m_protocol, intended_device_speed_grade)"  />  -->
+    </PARAMETER>
+		<PARAMETER NAME="wiz_base_data_rate_enable" CNX_TYPE="PRIVATE" TYPE="INTEGER" />
+		<PARAMETER NAME="dprio_modes" TYPE="STRING" VALUE="none|pma_electricals|alt_pll|channel_interface|channel_internals|pll_reconfig" CNX_TYPE="PRIVATE" >
+      <FORCE_RANGE TO="none|pma_electricals" WHEN="(ENABLE_LC_TX_PLL == true) || m_basic_x4 || m_basic_x8 || m_pcie_sp_x4 || m_pcie_sp_x8 || m_xaui || m_cei || m_basic_pma_direct" />
+    </PARAMETER>
+    <PARAMETER NAME="pll_pfd_fb_mode" >
+      <FORCE_VALUE TO="db_rbc_tcl$rbc_tcl_mega_rules_validator_interface(advanced_hssi_legality, TGX_HSSI_CONFIG, TGX_HSSI_PLL_PFD_FB_SELECT, tx_pll_type, tx_pll_m_divider, tx_pll_vco_post_scale_divider, protocol, protocol, tx_use_double_data_mode, m_deser_factor)" />
+    </PARAMETER>
+
+
+		<!-- advanced parameters -->
+		<PARAMETER NAME="rx_cru_m_divider" ON_CONFLICT="USE_CALC_VAL"  TYPE="INTEGER" >
+		<!--	<FORCE_VALUE TO="ccl_pll_mwiz$get_pll_param('rx_cru_m_divider' ,INTENDED_DEVICE_FAMILY, RX_CDR_PLL, m_data_rate, m_data_rate_remainder, m_inclock_period, m_protocol, intended_device_speed_grade, m_base_data_rate, m_refclk_freq, m_use_refclk_pin)" />		-->
+      <FORCE_VALUE TO="db_rbc_tcl$rbc_tcl_mega_rules_validator_interface(advanced_hssi_legality, TGX_HSSI_CONFIG, TGX_HSSI_PLL_M, m_device_part, effective_data_rate, input_clock_frequency, rx_cru_n_divider, RX_CDR, protocol, UNUSED)" />  
+		</PARAMETER>
+		<PARAMETER NAME="rx_cru_n_divider" ON_CONFLICT="USE_CALC_VAL"  TYPE="INTEGER" >
+		<!--	<FORCE_VALUE TO="ccl_pll_mwiz$get_pll_param('rx_cru_n_divider' ,INTENDED_DEVICE_FAMILY, RX_CDR_PLL, m_data_rate, m_data_rate_remainder, m_inclock_period, m_protocol, intended_device_speed_grade, m_base_data_rate, m_refclk_freq, m_use_refclk_pin)" />		-->
+      <FORCE_VALUE TO="db_rbc_tcl$rbc_tcl_mega_rules_validator_interface(advanced_hssi_legality, TGX_HSSI_CONFIG, TGX_HSSI_PLL_N, m_device_part, effective_data_rate, input_clock_frequency, RX_CDR, protocol, UNUSED)" />      
+		</PARAMETER>
+		<PARAMETER NAME="rx_cru_vco_post_scale_divider" ON_CONFLICT="USE_CALC_VAL"  TYPE="INTEGER" >
+		<!--	<FORCE_VALUE TO="ccl_pll_mwiz$get_pll_param('rx_cru_vco_post_scale_divider' ,INTENDED_DEVICE_FAMILY, RX_CDR_PLL, m_data_rate, m_data_rate_remainder, m_inclock_period, m_protocol, intended_device_speed_grade, m_base_data_rate, m_refclk_freq, m_use_refclk_pin)" /> -->
+      <FORCE_VALUE TO="db_rbc_tcl$rbc_tcl_mega_rules_validator_interface(advanced_hssi_legality, TGX_HSSI_CONFIG, TGX_HSSI_PLL_VCO_POST_SCALE, m_device_part, effective_data_rate, rx_cru_m_divider, RX_CDR, protocol, UNUSED)" /> 
+    </PARAMETER>
+		
+		<PARAMETER NAME="tx_pll_m_divider" ON_CONFLICT="USE_CALC_VAL"  TYPE="INTEGER" >
+		<!--	<FORCE_VALUE TO="ccl_pll_mwiz$get_pll_param('tx_pll_m_divider' ,INTENDED_DEVICE_FAMILY, CMU_PLL, m_data_rate, m_data_rate_remainder, m_inclock_period, m_protocol, intended_device_speed_grade, m_base_data_rate, m_refclk_freq, m_use_refclk_pin)" />		-->
+      <FORCE_VALUE TO="db_rbc_tcl$rbc_tcl_mega_rules_validator_interface(advanced_hssi_legality, TGX_HSSI_CONFIG, TGX_HSSI_PLL_M, m_device_part, m_base_data_rate_in_big_time, input_clock_frequency, tx_pll_n_divider, tx_pll_type, UNUSED, protocol)" /> 
+    </PARAMETER>
+		<PARAMETER NAME="tx_pll_n_divider" ON_CONFLICT="USE_CALC_VAL"  TYPE="INTEGER" >
+		<!--	<FORCE_VALUE TO="ccl_pll_mwiz$get_pll_param('tx_pll_n_divider' ,INTENDED_DEVICE_FAMILY, CMU_PLL, m_data_rate, m_data_rate_remainder, m_inclock_period, m_protocol, intended_device_speed_grade, m_base_data_rate, m_refclk_freq, m_use_refclk_pin)" />		-->
+      <FORCE_VALUE TO="db_rbc_tcl$rbc_tcl_mega_rules_validator_interface(advanced_hssi_legality, TGX_HSSI_CONFIG, TGX_HSSI_PLL_N, m_device_part, m_base_data_rate_in_big_time, input_clock_frequency, tx_pll_type, UNUSED, protocol)" />      
+		</PARAMETER>
+		<PARAMETER NAME="tx_pll_vco_post_scale_divider" ON_CONFLICT="USE_CALC_VAL"  TYPE="INTEGER" >
+		<!--	<FORCE_VALUE TO="ccl_pll_mwiz$get_pll_param('tx_pll_vco_post_scale_divider' ,INTENDED_DEVICE_FAMILY, CMU_PLL, m_data_rate, m_data_rate_remainder, m_inclock_period, m_protocol, intended_device_speed_grade, m_base_data_rate, m_refclk_freq, m_use_refclk_pin)" />	 -->
+      <FORCE_VALUE TO="db_rbc_tcl$rbc_tcl_mega_rules_validator_interface(advanced_hssi_legality, TGX_HSSI_CONFIG, TGX_HSSI_PLL_VCO_POST_SCALE, m_device_part, m_base_data_rate_in_big_time, tx_pll_m_divider, tx_pll_type, UNUSED, protocol)" /> 
+    </PARAMETER>
+		<PARAMETER NAME="tx_pll_clock_post_divider" ON_CONFLICT="USE_CALC_VAL"  TYPE="INTEGER" >
+		<!--	<FORCE_VALUE TO="ccl_pll_mwiz$get_pll_param('tx_pll_clock_post_divider' ,INTENDED_DEVICE_FAMILY, CMU_PLL, m_data_rate, m_data_rate_remainder, m_inclock_period, m_protocol, intended_device_speed_grade, m_base_data_rate, m_refclk_freq, m_use_refclk_pin)" />		-->
+      <FORCE_VALUE TO="db_rbc_tcl$rbc_tcl_mega_rules_validator_interface(advanced_hssi_legality, TGX_HSSI_CONFIG, TGX_HSSI_CLOCK_DIVIDER_PRE_DIVIDE_BY, m_device_part, m_clk_divider_type, effective_data_rate, 0, protocol, m_base_data_rate_in_big_time, tx_pll_type, UNUSED, UNUSED)" />
+    </PARAMETER>
+
+    <PARAMETER NAME="tx_reconfig_pll_m_divider" ON_CONFLICT="USE_CALC_VAL"  TYPE="INTEGER" >
+    <!--  <FORCE_VALUE TO="ccl_pll_mwiz$get_pll_param('tx_pll_m_divider' ,INTENDED_DEVICE_FAMILY, CMU_PLL, m_reconfig_data_rate, m_reconfig_data_rate_remainder, cmu_pll_reconfig_inclock_period, reconfig_protocol, intended_device_speed_grade, m_reconfig_data_rate, m_refclk_freq, m_use_refclk_pin)" /> -->
+      <FORCE_VALUE TO="db_rbc_tcl$rbc_tcl_mega_rules_validator_interface(advanced_hssi_legality, TGX_HSSI_CONFIG, TGX_HSSI_PLL_M, m_device_part, reconfig_base_data_rate, reconfig_input_clock_frequency, tx_reconfig_pll_n_divider, CMU, UNUSED, reconfig_protocol)" /> 
+    </PARAMETER>
+    <PARAMETER NAME="tx_reconfig_pll_n_divider" ON_CONFLICT="USE_CALC_VAL"  TYPE="INTEGER" >
+    <!--  <FORCE_VALUE TO="ccl_pll_mwiz$get_pll_param('tx_pll_n_divider' ,INTENDED_DEVICE_FAMILY, CMU_PLL, m_reconfig_data_rate, m_reconfig_data_rate_remainder, cmu_pll_reconfig_inclock_period, reconfig_protocol, intended_device_speed_grade, m_reconfig_data_rate, m_refclk_freq, m_use_refclk_pin)" />  -->
+      <FORCE_VALUE TO="db_rbc_tcl$rbc_tcl_mega_rules_validator_interface(advanced_hssi_legality, TGX_HSSI_CONFIG, TGX_HSSI_PLL_N, m_device_part, reconfig_base_data_rate, reconfig_input_clock_frequency, CMU, UNUSED, protocol)" /> 
+    </PARAMETER>
+    <PARAMETER NAME="tx_reconfig_pll_vco_post_scale_divider" ON_CONFLICT="USE_CALC_VAL"  TYPE="INTEGER" >
+    <!-- <FORCE_VALUE TO="ccl_pll_mwiz$get_pll_param('tx_pll_vco_post_scale_divider' ,INTENDED_DEVICE_FAMILY, CMU_PLL, m_reconfig_data_rate, m_reconfig_data_rate_remainder, cmu_pll_reconfig_inclock_period, reconfig_protocol, intended_device_speed_grade, m_reconfig_data_rate, m_refclk_freq, m_use_refclk_pin)" />  -->
+      <FORCE_VALUE TO="db_rbc_tcl$rbc_tcl_mega_rules_validator_interface(advanced_hssi_legality, TGX_HSSI_CONFIG, TGX_HSSI_PLL_VCO_POST_SCALE, m_device_part, reconfig_base_data_rate, tx_reconfig_pll_m_divider, CMU, UNUSED, protocol)" /> 
+    </PARAMETER>
+    <PARAMETER NAME="cmu_pll_reconfig_inclock_period" TYPE="STRING" />
+  </PARAMETER_RULES>
+</ROOT>

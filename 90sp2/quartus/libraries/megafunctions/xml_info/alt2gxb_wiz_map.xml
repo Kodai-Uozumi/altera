@@ -1,0 +1,78 @@
+<?xml version="1.0"?>
+<ROOT>
+	<INCLUDE FILE="mfam_family_macros.xml" />
+	<PARAMETERS>
+		<PARAMETER NAME="WIZ_PROTOCOL" TYPE="STRING" CNX_TYPE="PRIVATE" />
+		<PARAMETER NAME="WIZ_SUBPROTOCOL" TYPE="STRING" CNX_TYPE="PRIVATE" />
+		<PARAMETER NAME="WIZ_INPUT_SELECTION" TYPE="INTEGER" CNX_TYPE="PRIVATE" />		
+	</PARAMETERS>
+	<MACROS>
+		<MACRO NAME="m_wiz_data_rate" >
+			<DEFINITION>
+				(OPERATION_MODE != TX) ? (RX_DATA_RATE + (RX_DATA_RATE_REMAINDER double_div 1000000)) : (TX_DATA_RATE + (TX_DATA_RATE_REMAINDER double_div 1000000))
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_wiz_freq" >
+			<DEFINITION>
+				(OPERATION_MODE != RX) ? (1000000 double_div CMU_PLL_INCLOCK_PERIOD) : (1000000 double_div RX_CRU_INCLOCK_PERIOD)			
+			</DEFINITION>
+		</MACRO>
+	</MACROS>
+	<WIZARD_DATA>
+		<WIZARD_MAP NAME="ALT2GXB" WIZARD_NAME="ALT2GXB" MODULE_NAME="alt2gxb" MAP_CONSTANTS="OFF">
+			<PARAMETER NAME="WIZ_PROTOCOL" TYPE="STRING" CNX_TYPE="PRIVATE" >
+				<FORCE_VALUE TO="Basic"/>
+				<FORCE_VALUE IF="PROTOCOL == gige" THEN="GIGE"/>
+				<FORCE_VALUE IF="PROTOCOL == xaui" THEN="XAUI"/>
+				<FORCE_VALUE IF="PROTOCOL == pipe" THEN="'PCI Express (PIPE)'"/>
+				<FORCE_VALUE IF="PROTOCOL == cei_6g" THEN="'(OIF) CEI PHY Interface'"/>
+				<FORCE_VALUE IF="PROTOCOL == 5g_scrambled" THEN="'Sonet/SDH'"/>
+				<FORCE_VALUE IF="PROTOCOL == sonet" THEN="'Sonet/SDH'"/>
+				<FORCE_VALUE IF="is_used(WIZ_PROTOCOL)" THEN="WIZ_PROTOCOL" />
+			</PARAMETER>
+			<PARAMETER NAME="WIZ_SUBPROTOCOL" TYPE="STRING" CNX_TYPE="PRIVATE" >
+				<FORCE_VALUE TO="None"/>
+				<FORCE_VALUE IF="PROTOCOL == 5g_scrambled" THEN="OC96"/>
+				<FORCE_VALUE IF="PROTOCOL == sonet" THEN="OC48"/>
+				<FORCE_VALUE IF="(PROTOCOL == sonet) and (RX_CHANNEL_WIDTH == 8)" THEN="OC12"/>
+				<FORCE_VALUE IF="PROTOCOL == pipe" THEN="x1"/>
+				<FORCE_VALUE IF="(PROTOCOL == pipe) and (RX_CHANNEL_BONDING == x4 || RX_CHANNEL_BONDING == x4_unbundled || TX_CHANNEL_BONDING == x4 || TX_CHANNEL_BONDING == x4_unbundled)" THEN="x4"/>
+				<FORCE_VALUE IF="(PROTOCOL == pipe) and (RX_CHANNEL_BONDING == x8 || RX_CHANNEL_BONDING == x8_unbundled || TX_CHANNEL_BONDING == x8 || TX_CHANNEL_BONDING == x8_unbundled)" THEN="x8"/>
+				<FORCE_VALUE IF="PROTOCOL == 3g_basic" THEN="'No Loopback'"/>
+				<FORCE_VALUE IF="PROTOCOL == 6g_basic" THEN="'No Loopback'"/>
+				<FORCE_VALUE IF="(PROTOCOL == 3g_basic) || (PROTOCOL == 6g_basic) and (REVERSE_LOOPBACK_MODE == postcdr_rslb)" THEN="'Rev. Serial loopback'" />
+				<FORCE_VALUE IF="(PROTOCOL == 3g_basic) || (PROTOCOL == 6g_basic) and (REVERSE_LOOPBACK_MODE == precdr_rslb)" THEN="'Rev. Serial loopback (pre-CDR)'" />
+				<FORCE_VALUE IF="(PROTOCOL == 3g_basic) || (PROTOCOL == 6g_basic) and (LOOPBACK_MODE == plb)" THEN="'Parallel loopback/BIST'" />
+				<FORCE_VALUE IF="((PROTOCOL == 3g_basic and RX_SELF_TEST_MODE == prbs_10) || (PROTOCOL == 6g_basic and RX_SELF_TEST_MODE == prbs_7) and LOOPBACK_MODE == slb)" THEN="'PRBS/Serial loopback'" />
+				<FORCE_VALUE IF="((PROTOCOL == 3g_basic and RX_SELF_TEST_MODE == prbs_10) || (PROTOCOL == 6g_basic and RX_SELF_TEST_MODE == prbs_7) and LOOPBACK_MODE == none)" THEN="'PRBS/No loopback'" />
+				<FORCE_VALUE IF="(PROTOCOL == 3g_basic) and (RX_CHANNEL_BONDING == x4 || TX_CHANNEL_BONDING == x4)" THEN="X4"/>
+				<FORCE_VALUE IF="((PROTOCOL == 3g_basic) || (PROTOCOL == 6g_basic)) and (LOOPBACK_MODE == slb)" THEN="'Serial Loopback'" />
+				<FORCE_VALUE IF="is_used(WIZ_SUBPROTOCOL)" THEN="WIZ_SUBPROTOCOL" />
+			</PARAMETER>
+			<PARAMETER NAME="WIZ_INPUT_A" TYPE="STRING" CNX_TYPE="PRIVATE" >
+				<FORCE_VALUE IF="WIZ_INPUT_SELECTION == 1" THEN="m_wiz_freq" ELSE="m_wiz_data_rate" />
+			</PARAMETER>
+			<PARAMETER NAME="WIZ_INPUT_B" TYPE="STRING" CNX_TYPE="PRIVATE" >
+				<FORCE_VALUE IF="WIZ_INPUT_SELECTION == 1" THEN="m_wiz_data_rate" ELSE="m_wiz_freq" />
+			</PARAMETER>
+			<PARAMETER NAME="WIZ_ENABLE_EQUALIZER_CTRL" TYPE="INTEGER" CNX_TYPE="PRIVATE" >
+				<FORCE_VALUE IF="((EQUALIZER_CTRL_A_SETTING == 0) and (EQUALIZER_CTRL_B_SETTING == 0) and (EQUALIZER_CTRL_C_SETTING == 0) and (EQUALIZER_CTRL_D_SETTING == 0) and (EQUALIZER_CTRL_V_SETTING == 0))" THEN="0" ELSE="1" />
+			</PARAMETER>	
+			<PARAMETER NAME="WIZ_EQUALIZER_CTRL_SETTING" TYPE="INTEGER" CNX_TYPE="PRIVATE" >
+				<FORCE_VALUE TO="((EQUALIZER_CTRL_D_SETTING == 7) ? 1 : 0) + ((EQUALIZER_CTRL_C_SETTING == 7) ? 3 : 0) + ((EQUALIZER_CTRL_B_SETTING == 7) ? 3 : 0) + ((EQUALIZER_CTRL_A_SETTING == 7) ? 4 : 0) + ((EQUALIZER_CTRL_V_SETTING gte 3) ? 1 : 0) + ((EQUALIZER_CTRL_V_SETTING gte 4) ? 1 : 0) + ((EQUALIZER_CTRL_V_SETTING gte 5) ? 1 : 0) + ((EQUALIZER_CTRL_V_SETTING gte 7) ? 1 : 0)" />
+			</PARAMETER>
+			<PARAMETER NAME="WIZ_RX_VCM" TYPE="STRING" CNX_TYPE="PRIVATE" >
+				<FORCE_VALUE TO="'0.85'" WHEN="rx_common_mode == '0.9v'" />
+				<FORCE_VALUE TO="'1.2'" WHEN="rx_common_mode == '1.2v'" />				
+				<FORCE_VALUE TO="'0.82'" WHEN="mfam_family_stratixiv and rx_common_mode == '0.9v'" />
+				<FORCE_VALUE TO="'1.1'" WHEN="mfam_family_stratixiv and rx_common_mode == '1.2v'" />				
+			</PARAMETER>
+			<PARAMETER NAME="WIZ_VCCHTX" TYPE="STRING" CNX_TYPE="PRIVATE" VALUE="TX_ANALOG_POWER" >
+				<FORCE_VALUE TO="'1.4'" WHEN="mfam_family_stratixiv and (tx_analog_power == '1.2')" />
+			</PARAMETER>
+			<PARAMETER NAME="WIZ_TX_VCM" TYPE="STRING" CNX_TYPE="PRIVATE" >
+				<FORCE_VALUE IF="TX_COMMON_MODE == 0.6v" THEN="0.6" ELSE="0.7" />
+			</PARAMETER>
+		</WIZARD_MAP>
+	</WIZARD_DATA>
+</ROOT>

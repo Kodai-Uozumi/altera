@@ -1,0 +1,518 @@
+<<<<versions>>>>
+1.0
+<<<</versions>>>>
+<<<<1.0>>>>
+<get_editable_mem_instances>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_editable_mem_instances [-h | -help] [-long_help] -device_name <device name> -hardware_name <hardware name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -device_name <device name>: Name of the device that holds the editable memory instances
+        -hardware_name <hardware name>: Name of the hardware that connects to the JTAG chain
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::insystem_memory_edit 1.0
+
+------------
+Description:
+------------
+
+Retrieve a list of editable memory, ROM, or lpm_constant instances.
+
+A list is returned, each element of which shows the configuration
+of each instance.  This element is an another list that specifies the 
+configuration in the following order: <instance index> <depth> <width> <read/write
+mode> <instance type> <instance name>. The <read/write mode> can be either "RW"
+or "W"; <instance type> can be either "ROM/RAM" or "CONSTANT". An example 
+showing a list of two instances of different types is shown below:
+
+{0 1024 8 RW ROM/RAM mem0} {1 1 32 RW CONSTANT con0}
+
+The hardware and device name can be obtained with the get_hardware_names 
+and get_device_names commands from the jtag package.
+
+It is recommended that you call this command before the TCL command, begin_memory_edit.
+Within a memory edit sequence, this command can be applied only to the same 
+device, on which the memory edit sequence has started.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# List information of all editable memories
+puts "Information on all editable memories:"
+puts "index,depth,width,mode,type,name"
+foreach instance [get_editable_mem_instances -hardware_name "USB-Blaster \[USB-0\]" -device_name "@1: EP1S25/_HARDCOPY_FPGA_PROTOTYPE (0x020030DD)"] {
+	puts "[lindex $instance 0],[lindex $instance 1],[lindex $instance 2],[lindex $instance 3],[lindex $instance 4],[lindex $instance 5]"
+}
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: The specified device is not found.
+TCL_ERROR	1   	ERROR: The specified hardware is not found.
+TCL_ERROR	1   	ERROR: The TCL command get_editable_mem_instances is called within a memory edit sequence for a different device.  End the memory edit first.
+TCL_ERROR	1   	ERROR: An internal TCL interpreter error occurred.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_editable_mem_instances>
+
+<begin_memory_edit>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: begin_memory_edit [-h | -help] [-long_help] -device_name <device name> -hardware_name <hardware name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -device_name <device name>: Name of the device that holds the editable memory instances
+        -hardware_name <hardware name>: Name of the hardware that connects to the JTAG chain
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::insystem_memory_edit 1.0
+
+------------
+Description:
+------------
+
+Start the memory editing sequence. The editing sequence should be 
+terminated with end_memory_edit.  The sequence does not have to be
+terminated unless the device configuration is changed or a different
+device is edited.
+
+The hardware and device name can be obtained with the get_hardware_names 
+and get_device_names commands from the jtag package.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Instance 0 is configured as {0 1024 8 RW ROM/RAM mem0}
+
+# Initiate a editing sequence
+begin_memory_edit -hardware_name "USB-Blaster \[USB-0\]" -device_name "@1: EP1S25/_HARDCOPY_FPGA_PROTOTYPE (0x020030DD)"
+
+# Write memory content using binary string
+write_content_to_memory -instance_index 0 -start_address 575 -word_count 2 -content "0000001011011100" 
+
+# Read back memory content in binary string written 
+puts [read_content_from_memory -instance_index 0 -start_address 575 -word_count 2 ]
+
+# Write memory content using hexadecimal string
+write_content_to_memory -instance_index 0 -start_address 575 -word_count 2 -content "E2F1" -content_in_hex
+
+# Read back memory content in hexadecimal string written 
+puts [read_content_from_memory -instance_index 0 -start_address 575 -word_count 2 -content_in_hex]
+
+# End the editing sequence
+end_memory_edit
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: The specified device is not found.
+TCL_ERROR	1   	ERROR: A memory edit sequence has been started. End it first before starting a another one.
+TCL_ERROR	1   	ERROR: The specified hardware is not found.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</begin_memory_edit>
+
+<end_memory_edit>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: end_memory_edit [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::insystem_memory_edit 1.0
+
+------------
+Description:
+------------
+
+Terminate the memory editing sequence.   The sequence does not have to be
+terminated unless the device configuration is changed or a different
+device is edited.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Instance 0 is configured as {0 1024 8 RW ROM/RAM mem0}
+
+# Initiate a editing sequence
+begin_memory_edit -hardware_name "USB-Blaster \[USB-0\]" -device_name "@1: EP1S25/_HARDCOPY_FPGA_PROTOTYPE (0x020030DD)"
+
+# Write memory content using binary string
+write_content_to_memory -instance_index 0 -start_address 575 -word_count 2 -content "0000001011011100" 
+
+# Read back memory content in binary string written 
+puts [read_content_from_memory -instance_index 0 -start_address 575 -word_count 2 ]
+
+# Write memory content using hexadecimal string
+write_content_to_memory -instance_index 0 -start_address 575 -word_count 2 -content "E2F1" -content_in_hex
+
+# Read back memory content in hexadecimal string written 
+puts [read_content_from_memory -instance_index 0 -start_address 575 -word_count 2 -content_in_hex]
+
+# End the editing sequence
+end_memory_edit
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: A memory edit sequence has not been started.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</end_memory_edit>
+
+<write_content_to_memory>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: write_content_to_memory [-h | -help] [-long_help] -content <content string> [-content_in_hex] -instance_index <instance index> -start_address <starting address> -word_count <word count>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -content <content string>: A string that represents all word values concatenated together in order in either binary or hexadecimal format
+        -content_in_hex: The memory content string is represented in hexadecimal format
+        -instance_index <instance index>: Index of the editable memory instance to modify
+        -start_address <starting address>: The lowest memory address to be modified
+        -word_count <word count>: The number of contiguous memory words to be modified
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::insystem_memory_edit 1.0
+
+------------
+Description:
+------------
+
+Writes the data represented in the bit stream into the specified 
+editable memory instance starting from the specified address.
+
+The bit stream should be ordered by word from high address to 
+low address, contiguously without gaps or delimiters. If the starting 
+address is ADDR, and word count is N, the order is 
+<word @ ADDR + N - 1> ... <word @ ADDR + 1><word @ ADDR>
+In each word, the MSB is on the left, LSB is on the right. The bit stream
+can be in either binary or hexadecimal. For example, if the word
+width is 8, and two words, 1 and 128, are written to address 0 and 1 
+respectively, the bitstream should be "1000000000000001" in binary or
+"8001" in hexadecimal. The TCL command is
+write_content_to_memory -instance_index 0 -start_address 0 -word_count 2 -content "1000000000000001" 
+or
+write_content_to_memory -instance_index 0 -start_address 0 -word_count 2 -content "8001" -content_in_hex
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Instance 0 is configured as {0 1024 8 RW ROM/RAM mem0}
+
+# Initiate a editing sequence
+begin_memory_edit -hardware_name "USB-Blaster \[USB-0\]" -device_name "@1: EP1S25/_HARDCOPY_FPGA_PROTOTYPE (0x020030DD)"
+
+# Write memory content using binary string
+write_content_to_memory -instance_index 0 -start_address 575 -word_count 2 -content "0000001011011100" 
+
+# Read back memory content in binary string written 
+puts [read_content_from_memory -instance_index 0 -start_address 575 -word_count 2 ]
+
+# Write memory content using hexadecimal string
+write_content_to_memory -instance_index 0 -start_address 575 -word_count 2 -content "E2F1" -content_in_hex
+
+# Read back memory content in hexadecimal string written 
+puts [read_content_from_memory -instance_index 0 -start_address 575 -word_count 2 -content_in_hex]
+
+# End the editing sequence
+end_memory_edit
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Data specified in the string does not match the number of bits to update the memory of the specified number of words.
+TCL_ERROR	1   	ERROR: A memory edit sequence has not been started.
+TCL_ERROR	1   	ERROR: The specified word count and the starting address exceeds the specified memory buffer size.
+TCL_ERROR	1   	ERROR: The specified editable memory instance index is invalid.
+TCL_ERROR	1   	ERROR: The specified editable memory instance index is invalid.
+TCL_ERROR	1   	ERROR: JTAG communication error is detected. It can be caused by the hardware failure or poor signal integrity in the JTAG chain.
+TCL_ERROR	1   	ERROR: The device is locked by another application.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</write_content_to_memory>
+
+<read_content_from_memory>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: read_content_from_memory [-h | -help] [-long_help] [-content_in_hex] -instance_index <instance index> -start_address <starting address> -word_count <word count>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -content_in_hex: The memory content string is represented in hexadecimal format
+        -instance_index <instance index>: Index of the editable memory instance to read
+        -start_address <starting address>: The lowest memory address to be read
+        -word_count <word count>: The number of contiguous memory words to be read
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::insystem_memory_edit 1.0
+
+------------
+Description:
+------------
+
+Retrieves the memory content represented in the bit stream from the specified 
+editable memory instance starting from the specified address.
+
+The memory content string is in the same format as the input content string 
+in the TCL command write_content_to_memory.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Instance 0 is configured as {0 1024 8 RW ROM/RAM mem0}
+
+# Initiate a editing sequence
+begin_memory_edit -hardware_name "USB-Blaster \[USB-0\]" -device_name "@1: EP1S25/_HARDCOPY_FPGA_PROTOTYPE (0x020030DD)"
+
+# Write memory content using binary string
+write_content_to_memory -instance_index 0 -start_address 575 -word_count 2 -content "0000001011011100" 
+
+# Read back memory content in binary string written 
+puts [read_content_from_memory -instance_index 0 -start_address 575 -word_count 2 ]
+
+# Write memory content using hexadecimal string
+write_content_to_memory -instance_index 0 -start_address 575 -word_count 2 -content "E2F1" -content_in_hex
+
+# Read back memory content in hexadecimal string written 
+puts [read_content_from_memory -instance_index 0 -start_address 575 -word_count 2 -content_in_hex]
+
+# End the editing sequence
+end_memory_edit
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: A memory edit sequence has not been started.
+TCL_ERROR	1   	ERROR: The specified word count and the starting address exceeds the specified memory buffer size.
+TCL_ERROR	1   	ERROR: The specified editable memory instance index is invalid.
+TCL_ERROR	1   	ERROR: JTAG communication error is detected. It can be caused by the hardware failure or poor signal integrity in the JTAG chain.
+TCL_ERROR	1   	ERROR: The device is locked by another application.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</read_content_from_memory>
+
+<update_content_to_memory_from_file>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: update_content_to_memory_from_file [-h | -help] [-long_help] -instance_index <instance index> -mem_file_path <path> -mem_file_type <file type>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -instance_index <instance index>: Index of the editable memory instance to modify
+        -mem_file_path <path>: Path to the memory file to load the memory content
+        -mem_file_type <file type>: Type of the memory file such as "mif" or "hex"
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::insystem_memory_edit 1.0
+
+------------
+Description:
+------------
+
+Writes the data stored in the memory file into the specified memory instance
+starting from address 0.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Initiate a editing sequence
+begin_memory_edit -hardware_name "USB-Blaster \[USB-0\]" -device_name "@1: EP1S25/_HARDCOPY_FPGA_PROTOTYPE (0x020030DD)"
+
+# Write memory content using the hex memory file
+update_content_to_memory_from_file -instance_index 0 -mem_file_path "image_8x1024.hex" -mem_file_type hex
+
+# Read memory content and save back to a hex memory file
+save_content_from_memory_to_file -instance_index 0 -mem_file_path "exported_image_8x1024.hex" -mem_file_type hex
+
+# Write memory content using the mif memory file
+update_content_to_memory_from_file -instance_index 0 -mem_file_path "exported_image_8x1024.mif" -mem_file_type mif 
+
+# Read memory content and save back to a mif memory file
+save_content_from_memory_to_file -instance_index 0 -mem_file_path "image_8x1024.mif" -mem_file_type mif 
+
+# End the editing sequence
+end_memory_edit
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: A memory edit sequence has not been started.
+TCL_ERROR	1   	ERROR: The specified memory file cannot be read because the content is corrupt or the configuration does not match the memory to be updated.
+TCL_ERROR	1   	ERROR: The specified memory file cannot be opened.
+TCL_ERROR	1   	ERROR: The specified file type is either invalid or unsupported by this command.
+TCL_ERROR	1   	ERROR: The specified editable memory instance index is invalid.
+TCL_ERROR	1   	ERROR: JTAG communication error is detected. It can be caused by the hardware failure or poor signal integrity in the JTAG chain.
+TCL_ERROR	1   	ERROR: The device is locked by another application.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</update_content_to_memory_from_file>
+
+<save_content_from_memory_to_file>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: save_content_from_memory_to_file [-h | -help] [-long_help] -instance_index <instance index> -mem_file_path <path> -mem_file_type <type>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -instance_index <instance index>: Index of the editable memory instance to read
+        -mem_file_path <path>: Path to the memory file in which to save the memory content
+        -mem_file_type <type>: Type of the memory file such as "mif" or "hex"
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::insystem_memory_edit 1.0
+
+------------
+Description:
+------------
+
+Retrieves the entire memory contents from the specified editable 
+memory instance starting from address 0 and saves it into the specified
+memory file.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Initiate a editing sequence
+begin_memory_edit -hardware_name "USB-Blaster \[USB-0\]" -device_name "@1: EP1S25/_HARDCOPY_FPGA_PROTOTYPE (0x020030DD)"
+
+# Write memory content using the hex memory file
+update_content_to_memory_from_file -instance_index 0 -mem_file_path "image_8x1024.hex" -mem_file_type hex
+
+# Read memory content and save back to a hex memory file
+save_content_from_memory_to_file -instance_index 0 -mem_file_path "exported_image_8x1024.hex" -mem_file_type hex
+
+# Write memory content using the mif memory file
+update_content_to_memory_from_file -instance_index 0 -mem_file_path "exported_image_8x1024.mif" -mem_file_type mif 
+
+# Read memory content and save back to a mif memory file
+save_content_from_memory_to_file -instance_index 0 -mem_file_path "image_8x1024.mif" -mem_file_type mif 
+
+# End the editing sequence
+end_memory_edit
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: A memory edit sequence has not been started.
+TCL_ERROR	1   	ERROR: The specified memory file cannot be written to.
+TCL_ERROR	1   	ERROR: The specified file type is either invalid or unsupported by this command.
+TCL_ERROR	1   	ERROR: The specified editable memory instance index is invalid.
+TCL_ERROR	1   	ERROR: JTAG communication error is detected. It can be caused by the hardware failure or poor signal integrity in the JTAG chain.
+TCL_ERROR	1   	ERROR: The device is locked by another application.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</save_content_from_memory_to_file>
+
+<<<</1.0>>>>

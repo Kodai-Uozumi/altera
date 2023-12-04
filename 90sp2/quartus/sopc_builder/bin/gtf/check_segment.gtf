@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<!-- check_segment.gtf - error if the indicated segment is not in the indicated list
+                         ...but first check to see if the segment matches the start of
+			    and existing module in the list (which means the segment
+			    has a slave on the end that can be truncated
+
+     Inputs:
+        SEGMENT                - the segment to check
+	SEGMENT_NAME           - the name to use in the error message
+	MODULE_SLAVE_NAME_LIST - the list to search against
+
+     Returns:
+        SEGMENT - the (possibly) modified segment
+-->     
+
+<generate_set>
+
+    <set_variable variable="SEGMENT_INDEX"
+                  to="list_index_of( %MODULE_SLAVE_NAME_LIST%, %SEGMENT% )"/>
+    <if condition="eq( -1, %SEGMENT_INDEX% )">
+        <set_variable variable="INVALID_SEGMENT" to="%SEGMENT%"/>
+        <for_each variable="MODULE_SLAVE" list="%MODULE_SLAVE_NAME_LIST%">
+	   <set_variable variable="MATCHES" to='regex( "^%MODULE_SLAVE%_.*$", %SEGMENT% )'/>
+	   <if condition="%MATCHES%">
+	      <set_variable variable="SEGMENT" to="%MODULE_SLAVE%"/>
+	      <set_variable variable="INVALID_SEGMENT" to=""/>
+	      <break/>
+	   </if>
+        </for_each>
+	<if condition="%INVALID_SEGMENT%">
+            <error>
+ERROR - Invalid %SEGMENT_NAME% segment setting: %SEGMENT%
+            </error>
+	</if>
+    </if>
+
+</generate_set>

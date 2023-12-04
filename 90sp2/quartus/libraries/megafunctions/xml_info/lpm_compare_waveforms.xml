@@ -1,0 +1,57 @@
+<?xml version="1.0" ?>
+<ROOT>
+	<MACROS>
+		<MACRO NAME="m_sub_datab" >
+			<DEFINITION>
+				ONE_INPUT_IS_CONSTANT == "YES" ? (datab - 1) : 0
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_add_datab" >
+			<DEFINITION>
+				ONE_INPUT_IS_CONSTANT == "YES" ? (datab + 1) : 0
+			</DEFINITION>
+		</MACRO>
+	</MACROS>
+	<HTML_TEXT>
+		<TITLE>Sample Waveforms for m_design_file_name</TITLE>
+		<HEADER>Sample behavioral waveforms for design file m_design_file_name</HEADER>
+		<INTRO>
+			<T>The following waveforms show the behavior of lpm_comparator megafunction for the chosen set of parameters in design m_design_file_name. </T>
+			<T> The design m_design_file_name is </T>
+			<T> LPM_WIDTH bit </T>
+			<IF> is_used(agb) || is_used(ageb) || is_used(alb) || is_used(aleb) </IF>
+			<THEN> LPM_REPRESENTATION </THEN>
+			<T> comparator. </T>
+			<IF> ONE_INPUT_IS_CONSTANT == "YES" </IF>
+			<THEN> One of the inputs of lpm_compare is the constant datab. </THEN>
+			<IF> LPM_PIPELINE > 0 </IF>
+			<THEN> The output(s) have a latency of LPM_PIPELINE. </THEN>
+		</INTRO>
+	</HTML_TEXT>
+	<WAVE_DATA>
+		<WAVE NAME="ALL" TIME_STEP="10" MAX_TIME="550">
+			<CAPTION>Wave showing comparator operation.</CAPTION>
+	
+			<IF> ONE_INPUT_IS_CONSTANT == "YES"</IF>
+			<THEN>
+				<STIM> force dataa 0 @0, datab @130, m_sub_datab @250, m_add_datab @370</STIM>
+			</THEN>
+			<ELSE>
+				<STIM> force dataa 0 @0, 1 @130, 2 @250, 3 @370</STIM>
+			</ELSE>
+			<STIM> force datab 0 @0, 3 @130, 2 @250, 1 @370</STIM>
+			<STIM> force clock 0 @0, 1 @20, -repeat @40</STIM>
+			<STIM> force clken 0 @0, 1 @50</STIM>
+			<STIM> force add_sub 0 @1, 0 @210, 1 @370</STIM>
+			<STIM> force cin 0 @0, 1 @130, 0 @290</STIM>
+			<IF> LPM_PIPELINE == 1 </IF>
+			<THEN>
+				<STIM> force aclr 0 @0, 1 @210, 0 @250</STIM>
+			</THEN>
+			<ELSE>
+				<STIM> force aclr 0 @0, 1 @90, 0 @130</STIM>
+			</ELSE>
+		</WAVE>
+	</WAVE_DATA>
+</ROOT>
+

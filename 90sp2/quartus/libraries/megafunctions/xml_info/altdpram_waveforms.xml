@@ -1,0 +1,134 @@
+<?xml version="1.0" ?>
+<ROOT>
+	<INCLUDE>
+		<FILE> mfam_family_macros.xml </FILE>
+	</INCLUDE>
+	<MACROS>
+		<MACRO NAME="m_dpram_mode" DEFINITION="(RAM_BLOCK_TYPE == mfam_lutram) and (mfam_family_stratixiii) and (RDADDRESS_REG == UNREGISTERED)" />
+		<MACRO NAME="m_num_words" DEFINITION="2 exp WIDTHAD" />
+	</MACROS>
+	<HTML_TEXT>
+		<TITLE>Sample Waveforms for m_design_file_name</TITLE>
+
+		<HEADER>Sample behavioral waveforms for design file m_design_file_name</HEADER>
+
+		<INTRO>
+			<T>The following waveforms show the behavior of altdpram megafunction for the chosen set of parameters in design m_design_file_name. For the purpose of this simulation, the contents of the memory at the start of the sample waveforms is assumed to be ( memory0, memory1, memory2, memory3, ...). The design m_design_file_name has</T>
+		        <T>one read port and one write port. The read port and write port have m_num_words words of WIDTH bits each.</T>
+         		<T> The ram block type of the design is RAM_BLOCK_TYPE. </T>
+		        <T>The output of the read port is</T>
+		        <IF>OUTDATA_REG == "UNREGISTERED"</IF>
+		        <THEN>unregistered.</THEN>
+		        <ELSE>registered by port_map(OUTDATA_REG).</ELSE>
+		</INTRO>
+
+		<END>
+		</END>
+	</HTML_TEXT>
+	<WAVE_DATA>
+		<WAVE NAME="READ" TIME_STEP="10" MAX_TIME="500" INDEX="1">
+			<WAVE_CONDITION> m_dpram_mode </WAVE_CONDITION>
+			<CAPTION>Wave showing read operation.</CAPTION>
+
+	        <DESCRIPTION>
+				<T>The above waveform shows the behavior of the design under normal read conditions. </T>
+				<IF> m_dpram_mode </IF>
+				<THEN> The read happens continuously. </THEN>
+			</DESCRIPTION>
+
+			<STIM> force rdaddress 0 @0, 3 @130, 2 @250, 1 @370</STIM>
+			<STIM> force inclock 0 @0, 1 @20, -repeat @40</STIM>
+			<STIM> force outclock 0 @0, 1 @20, -repeat @40</STIM>
+			<STIM> force inclocken 0 @0, 1 @50, 0 @250, 1 @290</STIM>
+			<STIM> force outclocken 0 @0, 1 @50, 0 @250, 1 @290</STIM>
+		</WAVE>
+
+		<WAVE NAME="WRITE" TIME_STEP="10" MAX_TIME="600" INDEX="3">
+			<WAVE_CONDITION> m_dpram_mode </WAVE_CONDITION>
+		        <CAPTION>Waveform showing write operation</CAPTION>
+			
+			<DESCRIPTION>
+				<T>The above waveform shows the behavior of the design under normal write conditions. </T>
+				<IF> m_dpram_mode</IF>
+				<THEN>Actual write into the RAM happens at the falling edge of the write clock.</THEN>
+		 		<T>When the write happens at the same address as the one being read in the other port, </T>
+		 		<IF> READ_DURING_WRITE_MODE_MIXED_PORTS == "OLD_DATA" </IF>
+               	<THEN>the read output is the old data at the address.</THEN>
+               	<ELSE>
+               		<IF> OUTDATA_REG == "UNREGISTERED" </IF>
+               		<THEN>the read output is the old data at the address when the clock is high, and new data when the clock is low.</THEN>
+               		<ELSE>the read output is unknown.</ELSE>
+          		</ELSE>
+				
+			</DESCRIPTION>
+
+			<STIM> force wren 0 @0, 1 @90, 0 @180, 1 @340, 0 @500</STIM>
+			<STIM> force data 0 @0, 1 @180, 2 @260, 3 @420</STIM>
+			<STIM> force wraddress 0 @0, 1 @100, 2 @340, 3 @540</STIM>
+			<STIM> force rdaddress 0 @0, 3 @180, 2 @340, 1 @500</STIM>
+			<STIM> force byteena 0 @0, 15 @20</STIM>
+			<STIM> force inclock 0 @0, 1 @40, -repeat @80</STIM>
+			<STIM> force outclock 0 @0, 1 @40, -repeat @80</STIM>
+			<STIM> force inclocken 0 @0, 1 @50, 0 @200, 1 @240</STIM>
+			<STIM> force outclocken 0 @0, 1 @50, 0 @200, 1 @240</STIM>
+		</WAVE>
+
+		<WAVE NAME="WRITE_BYTE_ENABLE" TIME_STEP="10" MAX_TIME="500" INDEX="5">
+			
+			<WAVE_CONDITION> is_used(byteena) and m_dpram_mode </WAVE_CONDITION>
+		        
+			<CAPTION>Waveform showing write operation with byte enable ports</CAPTION>
+			
+			<DESCRIPTION>
+				<T>The above waveform shows the behavior of the design under write conditions using byteenable ports.</T>
+			</DESCRIPTION>
+
+			<STIM> force wren 0 @0, 1 @50, 0 @170, 1 @210, 0 @410</STIM>
+			<STIM> force data 0 @0, 159 @130, 127 @210, 191 @370</STIM>
+			<STIM> force byteena 0 @0, 1 @50, 2 @170, 3 @290, 1 @410</STIM>
+			<STIM> force wraddress 0 @0, 1 @50, 2 @250, 3 @370</STIM>
+			<STIM> force rdaddress 0 @0, 3 @130, 1 @250, 2 @370</STIM>
+			<STIM> force inclock 0 @0, 1 @20, -repeat @40</STIM>
+			<STIM> force outclock 0 @0, 1 @20, -repeat @40</STIM>
+			<STIM> force inclocken 0 @0, 1 @50</STIM>
+			<STIM> force outclocken 0 @0, 1 @50</STIM>
+		</WAVE>
+		
+		<WAVE NAME="ADDR_STALL" TIME_STEP="10" MAX_TIME="500" INDEX="6">
+		
+			<WAVE_CONDITION> ( is_used(wraddressstall) || is_used(rdaddressstall) ) and m_dpram_mode </WAVE_CONDITION>
+			
+			<CAPTION>Waveform showing operation of address_stall ports</CAPTION>
+
+			<DESCRIPTION>
+				<T>The above waveform shows the behavior of the design under write / read conditions using address_stall ports.</T>
+				<IF>is_used(rdaddressstall)</IF>
+				<THEN>During the read cycle, if addressstall on the read address is enabled, the old address on the address register is retained and read happens on the old address. </THEN>
+				<IF>is_used(wraddressstall</IF>
+				<THEN>During the write cycle, if addressstall on the write address is enabled, the old address on the address register is retained and data is written into the old address. </THEN>
+			</DESCRIPTION>
+
+			<STIM> force wren 0 @0, 1 @50, 0 @170, 1 @210, 0 @410</STIM>
+			<STIM> force data 0 @0, 159 @130, 127 @210, 191 @370</STIM>
+			<STIM> force byteena 15 @0</STIM>
+			<STIM> force wraddress 0 @0, 1 @50, 2 @250, 3 @370</STIM>
+			<STIM> force rdaddress 0 @0, 3 @130, 1 @250, 2 @370</STIM>
+			<STIM> force wraddressstall 0 @0, 1 @90, 0 @250, 1 @370</STIM>
+			<STIM> force rdaddressstall 0 @0, 1 @130, 0 @290, 1 @370</STIM>
+			<STIM> force inclock 0 @0, 1 @20, -repeat @40</STIM>
+			<STIM> force outclock 0 @0, 1 @20, -repeat @40</STIM>
+			<STIM> force inclocken 0 @0, 1 @50</STIM>
+			<STIM> force outclocken 0 @0, 1 @50</STIM>
+		</WAVE>
+	</WAVE_DATA>
+	<HIDDEN_PARAMETERS>
+		<PARAMETER NAME="NUM_MEMORY_WORDS" VALUE="5"/>
+	</HIDDEN_PARAMETERS>
+	<PORTS>
+		<PORT NAME="memory4" TYPE="BURIED"/>
+		<PORT NAME="memory3" TYPE="BURIED"/>
+		<PORT NAME="memory2" TYPE="BURIED"/>
+		<PORT NAME="memory1" TYPE="BURIED"/>
+		<PORT NAME="memory0" TYPE="BURIED"/>
+	</PORTS>
+</ROOT>

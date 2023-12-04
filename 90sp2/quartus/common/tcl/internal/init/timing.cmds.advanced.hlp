@@ -1,0 +1,1715 @@
+<<<<versions>>>>
+1.0
+1.1
+1.2
+<<<</versions>>>>
+<<<<1.0>>>>
+<create_timing_netlist>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: create_timing_netlist [-h | -help] [-long_help] [-fast_model] [-post_map] [-set_fmax] [-skip_dat] [-speed <speed>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -fast_model: Option to use fast timing model
+        -post_map: Option to perform timing analysis on post-synthesis netlist
+        -set_fmax: Option to set global fmax for slack ratio
+        -skip_dat: Option to skip delay annotation
+        -speed <speed>: Speed grade
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::timing 1.0
+
+------------
+Description:
+------------
+
+Creates the timing netlist by annotating the atom netlist 
+with delay information using post-fitting results. Use the
+"-post_map" option to obtain post-synthesis results. 
+
+Use "-skip_dat" to create the timing netlist without rerunning
+delay annotation. This option can be used if you previously ran the 
+Timing Analyzer (quartus_tan) with delay annotation, or if the Fitter 
+(quartus_fit) ran delay annotation as the final step.
+	
+Some device families, such as Stratix(TM) and Cyclone(TM), 
+may use delay annotation as part of a set of post-fitting 
+operations. When this occurs, the Fitter displays the 
+following message:
+	
+	Info: Started post-fitting delay annotation
+	    
+In this case, you can save time by skipping delay annotation.
+
+If "--fast_model" has been used before, or if the fitter optimized
+to meet Fast Model Timing, then this option can be used together
+with "--timing_analysis_only."
+
+Run "create_timing_netlist" before using the "report_timing" 
+command if you have not run the Timing Analyzer (quartus_tan).
+	
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open my_top
+
+# Create timing netlist before calling
+# any report functions
+create_timing_netlist
+
+# Ready to call report functions
+report_timing -npaths 1 -clock_setup
+report_timing -npaths 1 -tsu
+report_timing -npaths 1 -tco
+
+# The following command is optional
+delete_timing_netlist
+
+project_close
+
+project_open my_top
+
+# Report worst case period for -9 speed grade
+create_timing_netlist -speed 9
+report_timing -clock_setup -clock_filter clk
+delete_timing_netlist
+
+# Report hold violation for fastest corner
+create_timing_netlist -fast_model
+report_timing -clock_hold -clock_filter clk
+delete_timing_netlist
+
+# If Delay Annotation has been run for the fast corner
+# Skip running it again
+create_timing_netlist -fast_model -skip_dat
+report_timing -clock_hold -clock_filter clk
+delete_timing_netlist
+
+# Report worst case period for post-technology mapping netlist
+create_timing_netlist -post_map
+report_timing -clock_setup -clock_filter clk
+delete_timing_netlist
+
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't find active revision. Make sure there is an open, active revision name.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new one.
+TCL_ERROR	1   	ERROR: <string> Device family is not supported by the Classic Timing Analyzer.
+TCL_ERROR	1   	ERROR: Can not create timing netlist with -post_map option for device family <string>. Create timing netlist without the -post_map OPTION
+TCL_ERROR	1   	ERROR: Fitter (quartus_fit) failed or was not run. Run the Fitter (quartus_fit) successfully before running the Timing Analyzer (quartus_tan).
+TCL_ERROR	1   	ERROR: Partition Merge (quartus_cdb --merge) failed or was not run. Run a partition merge (quartus_cdb --merge) successfully before running the Timing Analyzer (quartus_tan).
+TCL_ERROR	1   	ERROR: Analysis and Synthesis (quartus_map) failed or was not run. Run Analysis and Synthesis (quartus_map) successfully before running the Timing Analyzer (quartus_tan).
+TCL_ERROR	1   	ERROR: Run Analysis and Synthesis (quartus_map) with focus entity name <string> before running Timing Analyzer (quartus_tan)
+TCL_ERROR	1   	ERROR: Delay annotation not run. Run delay annotation before running the Timing Analyzer (quartus_tan).
+TCL_ERROR	1   	ERROR: Run Quartus Analysis & Synthesis (quartus_map) before running the Timing Analyzer (quartus_tan).
+TCL_ERROR	1   	ERROR: Timing netlist already exists. Delete the timing netlist before running this command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</create_timing_netlist>
+
+<delete_timing_netlist>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: delete_timing_netlist [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::timing 1.0
+
+------------
+Description:
+------------
+
+Deletes the timing netlist.
+
+Use this command to delete a timing netlist previously 
+created or to read from the database.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open my_top
+
+create_timing_netlist -speed 5
+report_timing -npath 1 -clock_setup
+delete_timing_netlist
+
+# Unless you delete the netlist, the following
+# command gives an error
+create_timing_netlist -speed 6
+report_timing -npath 1 -clock_setup
+delete_timing_netlist
+
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</delete_timing_netlist>
+
+<compute_slack_on_edges>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: compute_slack_on_edges [-h | -help] [-long_help] [-min]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -min: Option to compute minimum slack
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::timing 1.0
+
+------------
+Description:
+------------
+
+Computes slack on all edges between non-combinational nodes.
+
+This command computes slack on every edge in all constrained 
+data paths.The algorithm used to compute slack is the same as 
+that used by the Fitter.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package advanced_timing
+set max_slack "2147483.647"
+
+project_open chiptrip
+create_timing_netlist -skip_dat
+
+# Perform timing analysis on the design 
+# and compute slack on every edge that is part
+# of a constrained path
+compute_slack_on_edges
+
+# Iterate through all edges to display any edge with negative slack
+set fail_count 0
+set no_constraint_count 0
+set ok_count 0
+foreach_in_collection edge [get_timing_edges] {	
+    set slack [lindex [get_timing_edge_info -info slack $edge] 0]
+	
+    if { $slack < $max_slack } {
+        if { $slack < 0 } {
+           puts "$edge : Slack = $slack"
+           incr fail_count
+        } else {
+           incr ok_count
+        }
+    } else {
+        incr no_constraint_count
+    }
+}
+
+puts "Edges meeting timing:        $ok_count"
+puts "Edges failing timing:        $fail_count"
+puts "Edges without constraints:   $no_constraint_count"
+
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</compute_slack_on_edges>
+
+<report_timing>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: report_timing [-h | -help] [-long_help] [-all_failures] [-append] [-clock_filter <names>] [-clock_hold] [-clock_hold_core] [-clock_hold_io] [-clock_setup] [-clock_setup_core] [-clock_setup_io] [-dqs_read_capture] [-file <name>] [-from <names>] [-longest_paths] [-min_tco] [-min_tpd] [-npaths <number>] [-recovery] [-removal] [-shortest_paths] [-src_clock_filter <names>] [-stdout] [-table <name>] [-tco] [-th] [-to <names>] [-tpd] [-tsu]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -all_failures: Option to report only paths with negative slack
+        -append: Option to append results to output file
+        -clock_filter <names>: Legal clocks for clock analyses (string patterns are matched using Tcl string matching)
+        -clock_hold: Option to report clock hold paths
+        -clock_hold_core: Option to report clock hold core paths
+        -clock_hold_io: Option to report clock hold I/O paths
+        -clock_setup: Option to report clock setup paths
+        -clock_setup_core: Option to report clock setup core paths
+        -clock_setup_io: Option to report clock setup I/O paths
+        -dqs_read_capture: Option to report DQS strobe-to-core paths
+        -file <name>: File to which to write the report
+        -from <names>: List of legal sources (string patterns are matched using Tcl string matching)
+        -longest_paths: Option to report worst-case longest paths between specified nodes
+        -min_tco: Option to report minimum tco paths
+        -min_tpd: Option to report minimum tpd paths
+        -npaths <number>: Number of paths to report (default is 1)
+        -recovery: Option to report recovery paths
+        -removal: Option to report removal paths
+        -shortest_paths: Option to report worst-case shortest paths between specified nodes
+        -src_clock_filter <names>: Legal source clocks for clock analyses (string patterns are matched using Tcl string matching)
+        -stdout: Option to send report to standard output
+        -table <name>: Custom timing table to be created
+        -tco: Option to report tco paths
+        -th: Option to report th paths
+        -to <names>: List of legal destinations (string patterns are matched using Tcl string matching)
+        -tpd: Option to report tpd paths
+        -tsu: Option to report tsu paths
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::timing 1.0
+
+------------
+Description:
+------------
+
+Reports timing paths using Altera(R) or ASIC (industry-standard) format.
+
+You can use one or more of the filter options to specify 
+the number of paths displayed. You can redirect the output to 
+a file by using the "-file" option. Use the"-append" option 
+together with "-file" to append results to an existing file.
+
+The "-from", "-to", "-src_clock_filter", and "-clock_filter" options
+are case sensitive. These options can take list of names. For example,
+from Reg0 or inst3 to Reg1 or Out[3] clocked by clk0 or clk1 can be
+expressed as:
+
+report_timing -from Reg0 inst3 -to Reg1 Out[3] -clock_filter clk0 clk1
+
+The "-from", "-to", "-src_clock_filter", and "-clock_filter" options
+can take string	patterns containing special characters from the set
+"*?\[]" as values. The values are matched using Tcl string matching.
+Bus names are detected automatically and do not need to be escaped.
+Bus names have the following format:
+
+<bus name>[<bus index>] or <bus name>[*]
+
+The <bus name> portion is a string of alphanumeric characters.
+The <bus index> portion is an integer greater than or equal to
+zero or it can be the character "*" used for string matching.
+Notice that the <bus index> is enclosed by the square
+brackets "[" and "]". For example, "a[0]" and "a[*]" are
+supported bus names and can be used as follows:
+
+# To match index 0 of bus "a", type:
+report_timing -to a[0]
+
+# To match all indices of bus "a", type:
+report_timing -to a[*]
+
+All other uses of square brackets must be escaped if you do
+not intend to use them as string patterns. For example,
+to match indices 0, 1, and 2 of the bus "a", type:
+
+report_timing -to "a[escape_brackets \[]\[0-2\][escape_brackets \]]"
+
+For more information about escaping square brackets, type
+"escape_brackets -h".
+
+This command returns the number of timing paths reported. It 
+returns "0" if no paths are found for the specified filters.
+
+This command is similar to the "list_path" command in the 
+::quartus::timing_report package (available in the 
+quartus_tan executable). The difference is that the 
+"report_timing" command does not require a completed timing 
+analysis. The "report_timing" command computes the timing 
+paths and reports them.
+
+The "report_timing" command operates in a manner similar to 
+commands in other tools, such as the Synopsys(R) PrimeTime 
+software. Running "report_timing" may take a little longer 
+than running the "list_path" command, but is more memory 
+efficient.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open my_project
+
+# Always create the netlist first
+create_timing_netlist
+
+# List paths that represent input setup paths
+report_timing -tsu
+
+# List clock setup paths for clock clk
+report_timing -clock_setup -clock_filter clk
+
+# List clock setup paths for clock clk from source clock src_clock
+report_timing -clock_setup -clock_filter clk -src_clock_filter src_clock
+
+# List clock setup paths for clock clk
+# from registers abc* to registers xyz*
+report_timing -clock_setup -clock_filter clk -from abc* -to xyz*
+
+# List the top 5 pin-to-pin combinational paths
+report_timing -tpd -npaths 5
+
+# List the top 5 pin-to-pin combinational paths and 
+# write output to an out.tao file
+report_timing -tpd -npaths 5 -file out.tao
+
+# Compute min tpd and append results to existing out.tao
+report_timing -min_tpd -npaths 5 -file out.tao -append
+
+# Show longest path (register to register data path) between a* and b*
+report_timing -longest_paths -npaths 1
+
+# Specify bus
+set path_count [report_timing -from in[0]]
+if { $path_count == 0 } {
+    puts "No paths found from in[0]"
+}
+
+############################################################
+# Use this script to create a custom report that contains
+# both the Fast Timing Model results and the Slow Model results
+# in one combined report
+# Use report_timing with the -table
+# Usage:
+#    quartus_map top
+#    quartus_fit top
+#    quartus_tan -t <script>.tcl top
+#    (Then open Quartus II GUI's report)
+############################################################
+
+load_package report
+load_package advanced_timing
+
+# Assume one argument: Name of project (where project == revision)
+project_open [lindex $quartus(args) 0]
+
+load_report
+remove_timing_tables
+
+# First, Build Netlist usign the Fast Timing Model
+create_timing_netlist -fast_model
+
+# Create panels using Fast Model
+# Use -table option to create Quartus report panels
+foreach_in_collection clk [get_timing_nodes -type clk] {
+    set name [get_timing_node_info -info name $clk]
+    report_timing -clock_hold -clock_filter $name -npaths 200 -table "Min Clock Hold: $name"
+}
+report_timing -min_tco -npaths 200 -table "Min Tco"
+report_timing -tsu -npaths 200 -table "Min Tsu"
+report_timing -th -npaths 200 -table "Min Th"
+
+# Save changes to the report file before deleting netlist
+save_report_database
+delete_timing_netlist
+
+# Now do it again, but this time with the default slow timing model
+create_timing_netlist
+
+foreach_in_collection clk [get_timing_nodes -type clk] {
+    set name [get_timing_node_info -info name $clk]
+    report_timing -clock_setup -clock_filter $name -npaths 200 -table "Max Clock Setup: $name"
+    report_timing -clock_hold -clock_filter $name -npaths 200 -table "Max Clock Hold: $name"
+}
+report_timing -tsu -npaths 200 -table "Max Tsu"
+report_timing -th -npaths 200 -table "Max Th"
+report_timing -tco -npaths 200 -table "Max Tco"
+
+# Save changes again, delete netlist, unload report and close project
+save_report_database
+delete_timing_netlist
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't run <string> after running <string>
+TCL_ERROR	1   	ERROR: Option <string> requires clock path to be reported.
+TCL_ERROR	1   	ERROR: The specified table name <string> already exists in the Custom Timing folder. Specify a table name that does not already exist.
+TCL_ERROR	1   	ERROR: Found more than one clock with the specified filtering condition. Use the -clock_filter option to reduce the number of clocks to one.
+TCL_ERROR	1   	ERROR: Found no clocks with the specified filtering condition. Use the -clock_filter option to specify only one clock.
+TCL_ERROR	1   	ERROR: Option <string> has incorrect value: <string>. Specify a correct option value.
+TCL_ERROR	1   	ERROR: Timing netlist was not created by "create_timing_netlist". Use "delete_timing_netlist" and "create_timing_netlist" to recreate a timing netlist.
+TCL_ERROR	1   	ERROR: Option -<string> or <string> must be specified in order to use option -<string>. Use both options or none.
+TCL_ERROR	1   	ERROR: Options are mutually exclusive: -<string> and -<string>. Specify only one of the two options.
+TCL_ERROR	1   	ERROR: For option -table, options -<string> and -<string> are mutually exclusive. Specify only one of the two options.
+TCL_ERROR	1   	ERROR: Option -table requires one of the following options: -tsu, -th, -tco, -tpd, -min_tco,or -min_tpd. Specify one of the these options.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+TCL_ERROR	1   	ERROR: Run <string> before running <string>
+TCL_ERROR	1   	ERROR: Number of columns of the destination table is <string>, while number of columns to be appended is <string>. Number of columns to be appended must be the same as that of the destination table.
+TCL_ERROR	1   	ERROR: Can not append rows (table type of <string>) to the destination table. Make sure the destination table has the same table type as the appended rows.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</report_timing>
+
+<remove_timing_tables>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: remove_timing_tables [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::timing 1.0
+
+------------
+Description:
+------------
+
+Removes all custom timing tables from the database
+Requires that the ::quartus::report package be loaded
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open chiptrip
+
+# Required by creating a report panel
+load_package report
+load_report
+
+# Create timing netlist for reporting.
+create_timing_netlist -skip_dat
+
+# Remove all the previous timing tables.
+remove_timing_tables
+
+# Generate Top_10_Clock_Setup timing table.
+report_timing -clock_setup -table "Top_10_Clock_Setup" -npaths 10
+
+# Save changes to database. Otherwise changes will be discarded
+# when the project gets closed or the report gets unloaded.
+write_report_database
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't find active revision. Make sure there is an open, active revision name.
+TCL_ERROR	1   	ERROR: Can't find CMP_FACADE. Run Analysis & Synthesis (quartus_map) before running this command.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</remove_timing_tables>
+
+<<<</1.0>>>>
+<<<<1.1>>>>
+<create_timing_netlist>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: create_timing_netlist [-h | -help] [-long_help] [-fast_model] [-post_map] [-set_fmax] [-skip_dat] [-speed <speed>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -fast_model: Option to use fast timing model
+        -post_map: Option to perform timing analysis on post-synthesis netlist
+        -set_fmax: Option to set global fmax for slack ratio
+        -skip_dat: Option to skip delay annotation
+        -speed <speed>: Speed grade
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::timing 1.1
+
+------------
+Description:
+------------
+
+Creates the timing netlist by annotating the atom netlist 
+with delay information using post-fitting results. Use the
+"-post_map" option to obtain post-synthesis results. 
+
+Use "-skip_dat" to create the timing netlist without rerunning
+delay annotation. This option can be used if you previously ran the 
+Timing Analyzer (quartus_tan) with delay annotation, or if the Fitter 
+(quartus_fit) ran delay annotation as the final step.
+	
+Some device families, such as Stratix(TM) and Cyclone(TM), 
+may use delay annotation as part of a set of post-fitting 
+operations. When this occurs, the Fitter displays the 
+following message:
+	
+	Info: Started post-fitting delay annotation
+	    
+In this case, you can save time by skipping delay annotation.
+
+If "--fast_model" has been used before, or if the fitter optimized
+to meet Fast Model Timing, then this option can be used together
+with "--timing_analysis_only."
+
+Run "create_timing_netlist" before using the "report_timing" 
+command if you have not run the Timing Analyzer (quartus_tan).
+	
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open my_top
+
+# Create timing netlist before calling
+# any report functions
+create_timing_netlist
+
+# Ready to call report functions
+report_timing -npaths 1 -clock_setup
+report_timing -npaths 1 -tsu
+report_timing -npaths 1 -tco
+
+# The following command is optional
+delete_timing_netlist
+
+project_close
+
+project_open my_top
+
+# Report worst case period for -9 speed grade
+create_timing_netlist -speed 9
+report_timing -clock_setup -clock_filter clk
+delete_timing_netlist
+
+# Report hold violation for fastest corner
+create_timing_netlist -fast_model
+report_timing -clock_hold -clock_filter clk
+delete_timing_netlist
+
+# If Delay Annotation has been run for the fast corner
+# Skip running it again
+create_timing_netlist -fast_model -skip_dat
+report_timing -clock_hold -clock_filter clk
+delete_timing_netlist
+
+# Report worst case period for post-technology mapping netlist
+create_timing_netlist -post_map
+report_timing -clock_setup -clock_filter clk
+delete_timing_netlist
+
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't find active revision. Make sure there is an open, active revision name.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new one.
+TCL_ERROR	1   	ERROR: <string> Device family is not supported by the Classic Timing Analyzer.
+TCL_ERROR	1   	ERROR: Can not create timing netlist with -post_map option for device family <string>. Create timing netlist without the -post_map OPTION
+TCL_ERROR	1   	ERROR: Fitter (quartus_fit) failed or was not run. Run the Fitter (quartus_fit) successfully before running the Timing Analyzer (quartus_tan).
+TCL_ERROR	1   	ERROR: Partition Merge (quartus_cdb --merge) failed or was not run. Run a partition merge (quartus_cdb --merge) successfully before running the Timing Analyzer (quartus_tan).
+TCL_ERROR	1   	ERROR: Analysis and Synthesis (quartus_map) failed or was not run. Run Analysis and Synthesis (quartus_map) successfully before running the Timing Analyzer (quartus_tan).
+TCL_ERROR	1   	ERROR: Run Analysis and Synthesis (quartus_map) with focus entity name <string> before running Timing Analyzer (quartus_tan)
+TCL_ERROR	1   	ERROR: Delay annotation not run. Run delay annotation before running the Timing Analyzer (quartus_tan).
+TCL_ERROR	1   	ERROR: Run Quartus Analysis & Synthesis (quartus_map) before running the Timing Analyzer (quartus_tan).
+TCL_ERROR	1   	ERROR: Timing netlist already exists. Delete the timing netlist before running this command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</create_timing_netlist>
+
+<delete_timing_netlist>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: delete_timing_netlist [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::timing 1.1
+
+------------
+Description:
+------------
+
+Deletes the timing netlist.
+
+Use this command to delete a timing netlist previously 
+created or to read from the database.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open my_top
+
+create_timing_netlist -speed 5
+report_timing -npath 1 -clock_setup
+delete_timing_netlist
+
+# Unless you delete the netlist, the following
+# command gives an error
+create_timing_netlist -speed 6
+report_timing -npath 1 -clock_setup
+delete_timing_netlist
+
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</delete_timing_netlist>
+
+<compute_slack_on_edges>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: compute_slack_on_edges [-h | -help] [-long_help] [-min]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -min: Option to compute minimum slack
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::timing 1.1
+
+------------
+Description:
+------------
+
+Computes slack on all edges between non-combinational nodes.
+
+This command computes slack on every edge in all constrained 
+data paths.The algorithm used to compute slack is the same as 
+that used by the Fitter.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package advanced_timing
+set max_slack "2147483.647"
+
+project_open chiptrip
+create_timing_netlist -skip_dat
+
+# Perform timing analysis on the design 
+# and compute slack on every edge that is part
+# of a constrained path
+compute_slack_on_edges
+
+# Iterate through all edges to display any edge with negative slack
+set fail_count 0
+set no_constraint_count 0
+set ok_count 0
+foreach_in_collection edge [get_timing_edges] {	
+    set slack [lindex [get_timing_edge_info -info slack $edge] 0]
+	
+    if { $slack < $max_slack } {
+        if { $slack < 0 } {
+           puts "$edge : Slack = $slack"
+           incr fail_count
+        } else {
+           incr ok_count
+        }
+    } else {
+        incr no_constraint_count
+    }
+}
+
+puts "Edges meeting timing:        $ok_count"
+puts "Edges failing timing:        $fail_count"
+puts "Edges without constraints:   $no_constraint_count"
+
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</compute_slack_on_edges>
+
+<report_timing>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: report_timing [-h | -help] [-long_help] [-all_failures] [-append] [-clock_filter <names>] [-clock_hold] [-clock_hold_core] [-clock_hold_io] [-clock_setup] [-clock_setup_core] [-clock_setup_io] [-dqs_read_capture] [-file <name>] [-from <names>] [-longest_paths] [-min_tco] [-min_tpd] [-npaths <number>] [-recovery] [-removal] [-shortest_paths] [-src_clock_filter <names>] [-stdout] [-table <name>] [-tco] [-th] [-to <names>] [-tpd] [-tsu]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -all_failures: Option to report only paths with negative slack
+        -append: Option to append results to output file
+        -clock_filter <names>: Legal clocks for clock analyses (string patterns are matched using Tcl string matching)
+        -clock_hold: Option to report clock hold paths
+        -clock_hold_core: Option to report clock hold core paths
+        -clock_hold_io: Option to report clock hold I/O paths
+        -clock_setup: Option to report clock setup paths
+        -clock_setup_core: Option to report clock setup core paths
+        -clock_setup_io: Option to report clock setup I/O paths
+        -dqs_read_capture: Option to report DQS strobe-to-core paths
+        -file <name>: File to which to write the report
+        -from <names>: List of legal sources (string patterns are matched using Tcl string matching)
+        -longest_paths: Option to report worst-case longest paths between specified nodes
+        -min_tco: Option to report minimum tco paths
+        -min_tpd: Option to report minimum tpd paths
+        -npaths <number>: Number of paths to report (default is 1)
+        -recovery: Option to report recovery paths
+        -removal: Option to report removal paths
+        -shortest_paths: Option to report worst-case shortest paths between specified nodes
+        -src_clock_filter <names>: Legal source clocks for clock analyses (string patterns are matched using Tcl string matching)
+        -stdout: Option to send report to standard output
+        -table <name>: Custom timing table to be created
+        -tco: Option to report tco paths
+        -th: Option to report th paths
+        -to <names>: List of legal destinations (string patterns are matched using Tcl string matching)
+        -tpd: Option to report tpd paths
+        -tsu: Option to report tsu paths
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::timing 1.1
+
+------------
+Description:
+------------
+
+Reports timing paths using Altera(R) or ASIC (industry-standard) format.
+
+You can use one or more of the filter options to specify 
+the number of paths displayed. You can redirect the output to 
+a file by using the "-file" option. Use the"-append" option 
+together with "-file" to append results to an existing file.
+
+The "-from", "-to", "-src_clock_filter", and "-clock_filter" options
+are case sensitive. These options can take list of names. For example,
+from Reg0 or inst3 to Reg1 or Out[3] clocked by clk0 or clk1 can be
+expressed as:
+
+report_timing -from Reg0 inst3 -to Reg1 Out[3] -clock_filter clk0 clk1
+
+The "-from", "-to", "-src_clock_filter", and "-clock_filter" options
+can take string	patterns containing special characters from the set
+"*?\[]" as values. The values are matched using Tcl string matching.
+Bus names are detected automatically and do not need to be escaped.
+Bus names have the following format:
+
+<bus name>[<bus index>] or <bus name>[*]
+
+The <bus name> portion is a string of alphanumeric characters.
+The <bus index> portion is an integer greater than or equal to
+zero or it can be the character "*" used for string matching.
+Notice that the <bus index> is enclosed by the square
+brackets "[" and "]". For example, "a[0]" and "a[*]" are
+supported bus names and can be used as follows:
+
+# To match index 0 of bus "a", type:
+report_timing -to a[0]
+
+# To match all indices of bus "a", type:
+report_timing -to a[*]
+
+All other uses of square brackets must be escaped if you do
+not intend to use them as string patterns. For example,
+to match indices 0, 1, and 2 of the bus "a", type:
+
+report_timing -to "a[escape_brackets \[]\[0-2\][escape_brackets \]]"
+
+For more information about escaping square brackets, type
+"escape_brackets -h".
+
+This command returns the number of timing paths reported. It 
+returns "0" if no paths are found for the specified filters.
+
+This command is similar to the "list_path" command in the 
+::quartus::timing_report package (available in the 
+quartus_tan executable). The difference is that the 
+"report_timing" command does not require a completed timing 
+analysis. The "report_timing" command computes the timing 
+paths and reports them.
+
+The "report_timing" command operates in a manner similar to 
+commands in other tools, such as the Synopsys(R) PrimeTime 
+software. Running "report_timing" may take a little longer 
+than running the "list_path" command, but is more memory 
+efficient.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open my_project
+
+# Always create the netlist first
+create_timing_netlist
+
+# List paths that represent input setup paths
+report_timing -tsu
+
+# List clock setup paths for clock clk
+report_timing -clock_setup -clock_filter clk
+
+# List clock setup paths for clock clk from source clock src_clock
+report_timing -clock_setup -clock_filter clk -src_clock_filter src_clock
+
+# List clock setup paths for clock clk
+# from registers abc* to registers xyz*
+report_timing -clock_setup -clock_filter clk -from abc* -to xyz*
+
+# List the top 5 pin-to-pin combinational paths
+report_timing -tpd -npaths 5
+
+# List the top 5 pin-to-pin combinational paths and 
+# write output to an out.tao file
+report_timing -tpd -npaths 5 -file out.tao
+
+# Compute min tpd and append results to existing out.tao
+report_timing -min_tpd -npaths 5 -file out.tao -append
+
+# Show longest path (register to register data path) between a* and b*
+report_timing -longest_paths -npaths 1
+
+# Specify bus
+set path_count [report_timing -from in[0]]
+if { $path_count == 0 } {
+    puts "No paths found from in[0]"
+}
+
+############################################################
+# Use this script to create a custom report that contains
+# both the Fast Timing Model results and the Slow Model results
+# in one combined report
+# Use report_timing with the -table
+# Usage:
+#    quartus_map top
+#    quartus_fit top
+#    quartus_tan -t <script>.tcl top
+#    (Then open Quartus II GUI's report)
+############################################################
+
+load_package report
+load_package advanced_timing
+
+# Assume one argument: Name of project (where project == revision)
+project_open [lindex $quartus(args) 0]
+
+load_report
+remove_timing_tables
+
+# First, Build Netlist usign the Fast Timing Model
+create_timing_netlist -fast_model
+
+# Create panels using Fast Model
+# Use -table option to create Quartus report panels
+foreach_in_collection clk [get_timing_nodes -type clk] {
+    set name [get_timing_node_info -info name $clk]
+    report_timing -clock_hold -clock_filter $name -npaths 200 -table "Min Clock Hold: $name"
+}
+report_timing -min_tco -npaths 200 -table "Min Tco"
+report_timing -tsu -npaths 200 -table "Min Tsu"
+report_timing -th -npaths 200 -table "Min Th"
+
+# Save changes to the report file before deleting netlist
+save_report_database
+delete_timing_netlist
+
+# Now do it again, but this time with the default slow timing model
+create_timing_netlist
+
+foreach_in_collection clk [get_timing_nodes -type clk] {
+    set name [get_timing_node_info -info name $clk]
+    report_timing -clock_setup -clock_filter $name -npaths 200 -table "Max Clock Setup: $name"
+    report_timing -clock_hold -clock_filter $name -npaths 200 -table "Max Clock Hold: $name"
+}
+report_timing -tsu -npaths 200 -table "Max Tsu"
+report_timing -th -npaths 200 -table "Max Th"
+report_timing -tco -npaths 200 -table "Max Tco"
+
+# Save changes again, delete netlist, unload report and close project
+save_report_database
+delete_timing_netlist
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't run <string> after running <string>
+TCL_ERROR	1   	ERROR: Option <string> requires clock path to be reported.
+TCL_ERROR	1   	ERROR: The specified table name <string> already exists in the Custom Timing folder. Specify a table name that does not already exist.
+TCL_ERROR	1   	ERROR: Found more than one clock with the specified filtering condition. Use the -clock_filter option to reduce the number of clocks to one.
+TCL_ERROR	1   	ERROR: Found no clocks with the specified filtering condition. Use the -clock_filter option to specify only one clock.
+TCL_ERROR	1   	ERROR: Option <string> has incorrect value: <string>. Specify a correct option value.
+TCL_ERROR	1   	ERROR: Timing netlist was not created by "create_timing_netlist". Use "delete_timing_netlist" and "create_timing_netlist" to recreate a timing netlist.
+TCL_ERROR	1   	ERROR: Option -<string> or <string> must be specified in order to use option -<string>. Use both options or none.
+TCL_ERROR	1   	ERROR: Options are mutually exclusive: -<string> and -<string>. Specify only one of the two options.
+TCL_ERROR	1   	ERROR: For option -table, options -<string> and -<string> are mutually exclusive. Specify only one of the two options.
+TCL_ERROR	1   	ERROR: Option -table requires one of the following options: -tsu, -th, -tco, -tpd, -min_tco,or -min_tpd. Specify one of the these options.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+TCL_ERROR	1   	ERROR: Run <string> before running <string>
+TCL_ERROR	1   	ERROR: Number of columns of the destination table is <string>, while number of columns to be appended is <string>. Number of columns to be appended must be the same as that of the destination table.
+TCL_ERROR	1   	ERROR: Can not append rows (table type of <string>) to the destination table. Make sure the destination table has the same table type as the appended rows.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</report_timing>
+
+<remove_timing_tables>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: remove_timing_tables [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::timing 1.1
+
+------------
+Description:
+------------
+
+Removes all custom timing tables from the database
+Requires that the ::quartus::report package be loaded
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open chiptrip
+
+# Required by creating a report panel
+load_package report
+load_report
+
+# Create timing netlist for reporting.
+create_timing_netlist -skip_dat
+
+# Remove all the previous timing tables.
+remove_timing_tables
+
+# Generate Top_10_Clock_Setup timing table.
+report_timing -clock_setup -table "Top_10_Clock_Setup" -npaths 10
+
+# Save changes to database. Otherwise changes will be discarded
+# when the project gets closed or the report gets unloaded.
+write_report_database
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't find active revision. Make sure there is an open, active revision name.
+TCL_ERROR	1   	ERROR: Can't find CMP_FACADE. Run Analysis & Synthesis (quartus_map) before running this command.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</remove_timing_tables>
+
+<<<</1.1>>>>
+<<<<1.2>>>>
+<create_timing_netlist>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: create_timing_netlist [-h | -help] [-long_help] [-fast_model] [-post_map] [-set_fmax] [-skip_dat] [-speed <speed>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -fast_model: Option to use fast timing model
+        -post_map: Option to perform timing analysis on post-synthesis netlist
+        -set_fmax: Option to set global fmax for slack ratio
+        -skip_dat: Option to skip delay annotation
+        -speed <speed>: Speed grade
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::timing 1.2
+
+------------
+Description:
+------------
+
+Creates the timing netlist by annotating the atom netlist 
+with delay information using post-fitting results. Use the
+"-post_map" option to obtain post-synthesis results. 
+
+Use "-skip_dat" to create the timing netlist without rerunning
+delay annotation. This option can be used if you previously ran the 
+Timing Analyzer (quartus_tan) with delay annotation, or if the Fitter 
+(quartus_fit) ran delay annotation as the final step.
+	
+Some device families, such as Stratix(TM) and Cyclone(TM), 
+may use delay annotation as part of a set of post-fitting 
+operations. When this occurs, the Fitter displays the 
+following message:
+	
+	Info: Started post-fitting delay annotation
+	    
+In this case, you can save time by skipping delay annotation.
+
+If "--fast_model" has been used before, or if the fitter optimized
+to meet Fast Model Timing, then this option can be used together
+with "--timing_analysis_only."
+
+Run "create_timing_netlist" before using the "report_timing" 
+command if you have not run the Timing Analyzer (quartus_tan).
+	
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open my_top
+
+# Create timing netlist before calling
+# any report functions
+create_timing_netlist
+
+# Ready to call report functions
+report_timing -npaths 1 -clock_setup
+report_timing -npaths 1 -tsu
+report_timing -npaths 1 -tco
+
+# The following command is optional
+delete_timing_netlist
+
+project_close
+
+project_open my_top
+
+# Report worst case period for -9 speed grade
+create_timing_netlist -speed 9
+report_timing -clock_setup -clock_filter clk
+delete_timing_netlist
+
+# Report hold violation for fastest corner
+create_timing_netlist -fast_model
+report_timing -clock_hold -clock_filter clk
+delete_timing_netlist
+
+# If Delay Annotation has been run for the fast corner
+# Skip running it again
+create_timing_netlist -fast_model -skip_dat
+report_timing -clock_hold -clock_filter clk
+delete_timing_netlist
+
+# Report worst case period for post-technology mapping netlist
+create_timing_netlist -post_map
+report_timing -clock_setup -clock_filter clk
+delete_timing_netlist
+
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't find active revision. Make sure there is an open, active revision name.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new one.
+TCL_ERROR	1   	ERROR: <string> Device family is not supported by the Classic Timing Analyzer.
+TCL_ERROR	1   	ERROR: Can not create timing netlist with -post_map option for device family <string>. Create timing netlist without the -post_map OPTION
+TCL_ERROR	1   	ERROR: Fitter (quartus_fit) failed or was not run. Run the Fitter (quartus_fit) successfully before running the Timing Analyzer (quartus_tan).
+TCL_ERROR	1   	ERROR: Partition Merge (quartus_cdb --merge) failed or was not run. Run a partition merge (quartus_cdb --merge) successfully before running the Timing Analyzer (quartus_tan).
+TCL_ERROR	1   	ERROR: Analysis and Synthesis (quartus_map) failed or was not run. Run Analysis and Synthesis (quartus_map) successfully before running the Timing Analyzer (quartus_tan).
+TCL_ERROR	1   	ERROR: Run Analysis and Synthesis (quartus_map) with focus entity name <string> before running Timing Analyzer (quartus_tan)
+TCL_ERROR	1   	ERROR: Delay annotation not run. Run delay annotation before running the Timing Analyzer (quartus_tan).
+TCL_ERROR	1   	ERROR: Run Quartus Analysis & Synthesis (quartus_map) before running the Timing Analyzer (quartus_tan).
+TCL_ERROR	1   	ERROR: Timing netlist already exists. Delete the timing netlist before running this command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</create_timing_netlist>
+
+<delete_timing_netlist>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: delete_timing_netlist [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::timing 1.2
+
+------------
+Description:
+------------
+
+Deletes the timing netlist.
+
+Use this command to delete a timing netlist previously 
+created or to read from the database.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open my_top
+
+create_timing_netlist -speed 5
+report_timing -npath 1 -clock_setup
+delete_timing_netlist
+
+# Unless you delete the netlist, the following
+# command gives an error
+create_timing_netlist -speed 6
+report_timing -npath 1 -clock_setup
+delete_timing_netlist
+
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</delete_timing_netlist>
+
+<compute_slack_on_edges>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: compute_slack_on_edges [-h | -help] [-long_help] [-min]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -min: Option to compute minimum slack
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::timing 1.2
+
+------------
+Description:
+------------
+
+Computes slack on all edges between non-combinational nodes.
+
+This command computes slack on every edge in all constrained 
+data paths.The algorithm used to compute slack is the same as 
+that used by the Fitter.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package advanced_timing
+set max_slack "2147483.647"
+
+project_open chiptrip
+create_timing_netlist -skip_dat
+
+# Perform timing analysis on the design 
+# and compute slack on every edge that is part
+# of a constrained path
+compute_slack_on_edges
+
+# Iterate through all edges to display any edge with negative slack
+set fail_count 0
+set no_constraint_count 0
+set ok_count 0
+foreach_in_collection edge [get_timing_edges] {	
+    set slack [lindex [get_timing_edge_info -info slack $edge] 0]
+	
+    if { $slack < $max_slack } {
+        if { $slack < 0 } {
+           puts "$edge : Slack = $slack"
+           incr fail_count
+        } else {
+           incr ok_count
+        }
+    } else {
+        incr no_constraint_count
+    }
+}
+
+puts "Edges meeting timing:        $ok_count"
+puts "Edges failing timing:        $fail_count"
+puts "Edges without constraints:   $no_constraint_count"
+
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</compute_slack_on_edges>
+
+<report_timing>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: report_timing [-h | -help] [-long_help] [-all_failures] [-append] [-clock_filter <names>] [-clock_hold] [-clock_hold_core] [-clock_hold_io] [-clock_setup] [-clock_setup_core] [-clock_setup_io] [-dqs_read_capture] [-file <name>] [-from <names>] [-longest_paths] [-min_tco] [-min_tpd] [-npaths <number>] [-recovery] [-removal] [-shortest_paths] [-src_clock_filter <names>] [-stdout] [-table <name>] [-tco] [-th] [-to <names>] [-tpd] [-tsu]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -all_failures: Option to report only paths with negative slack
+        -append: Option to append results to output file
+        -clock_filter <names>: Legal clocks for clock analyses (string patterns are matched using Tcl string matching)
+        -clock_hold: Option to report clock hold paths
+        -clock_hold_core: Option to report clock hold core paths
+        -clock_hold_io: Option to report clock hold I/O paths
+        -clock_setup: Option to report clock setup paths
+        -clock_setup_core: Option to report clock setup core paths
+        -clock_setup_io: Option to report clock setup I/O paths
+        -dqs_read_capture: Option to report DQS strobe-to-core paths
+        -file <name>: File to which to write the report
+        -from <names>: List of legal sources (string patterns are matched using Tcl string matching)
+        -longest_paths: Option to report worst-case longest paths between specified nodes
+        -min_tco: Option to report minimum tco paths
+        -min_tpd: Option to report minimum tpd paths
+        -npaths <number>: Number of paths to report (default is 1)
+        -recovery: Option to report recovery paths
+        -removal: Option to report removal paths
+        -shortest_paths: Option to report worst-case shortest paths between specified nodes
+        -src_clock_filter <names>: Legal source clocks for clock analyses (string patterns are matched using Tcl string matching)
+        -stdout: Option to send report to standard output
+        -table <name>: Custom timing table to be created
+        -tco: Option to report tco paths
+        -th: Option to report th paths
+        -to <names>: List of legal destinations (string patterns are matched using Tcl string matching)
+        -tpd: Option to report tpd paths
+        -tsu: Option to report tsu paths
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::timing 1.2
+
+------------
+Description:
+------------
+
+Reports timing paths using Altera(R) or ASIC (industry-standard) format.
+
+You can use one or more of the filter options to specify 
+the number of paths displayed. You can redirect the output to 
+a file by using the "-file" option. Use the"-append" option 
+together with "-file" to append results to an existing file.
+
+The "-from", "-to", "-src_clock_filter", and "-clock_filter" options
+are case sensitive. These options can take list of names. For example,
+from Reg0 or inst3 to Reg1 or Out[3] clocked by clk0 or clk1 can be
+expressed as:
+
+report_timing -from Reg0 inst3 -to Reg1 Out[3] -clock_filter clk0 clk1
+
+The "-from", "-to", "-src_clock_filter", and "-clock_filter" options
+can take string	patterns containing special characters from the set
+"*?\[]" as values. The values are matched using Tcl string matching.
+Bus names are detected automatically and do not need to be escaped.
+Bus names have the following format:
+
+<bus name>[<bus index>] or <bus name>[*]
+
+The <bus name> portion is a string of alphanumeric characters.
+The <bus index> portion is an integer greater than or equal to
+zero or it can be the character "*" used for string matching.
+Notice that the <bus index> is enclosed by the square
+brackets "[" and "]". For example, "a[0]" and "a[*]" are
+supported bus names and can be used as follows:
+
+# To match index 0 of bus "a", type:
+report_timing -to a[0]
+
+# To match all indices of bus "a", type:
+report_timing -to a[*]
+
+All other uses of square brackets must be escaped if you do
+not intend to use them as string patterns. For example,
+to match indices 0, 1, and 2 of the bus "a", type:
+
+report_timing -to "a[escape_brackets \[]\[0-2\][escape_brackets \]]"
+
+For more information about escaping square brackets, type
+"escape_brackets -h".
+
+This command returns the number of timing paths reported. It 
+returns "0" if no paths are found for the specified filters.
+
+This command is similar to the "list_path" command in the 
+::quartus::timing_report package (available in the 
+quartus_tan executable). The difference is that the 
+"report_timing" command does not require a completed timing 
+analysis. The "report_timing" command computes the timing 
+paths and reports them.
+
+The "report_timing" command operates in a manner similar to 
+commands in other tools, such as the Synopsys(R) PrimeTime 
+software. Running "report_timing" may take a little longer 
+than running the "list_path" command, but is more memory 
+efficient.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open my_project
+
+# Always create the netlist first
+create_timing_netlist
+
+# List paths that represent input setup paths
+report_timing -tsu
+
+# List clock setup paths for clock clk
+report_timing -clock_setup -clock_filter clk
+
+# List clock setup paths for clock clk from source clock src_clock
+report_timing -clock_setup -clock_filter clk -src_clock_filter src_clock
+
+# List clock setup paths for clock clk
+# from registers abc* to registers xyz*
+report_timing -clock_setup -clock_filter clk -from abc* -to xyz*
+
+# List the top 5 pin-to-pin combinational paths
+report_timing -tpd -npaths 5
+
+# List the top 5 pin-to-pin combinational paths and 
+# write output to an out.tao file
+report_timing -tpd -npaths 5 -file out.tao
+
+# Compute min tpd and append results to existing out.tao
+report_timing -min_tpd -npaths 5 -file out.tao -append
+
+# Show longest path (register to register data path) between a* and b*
+report_timing -longest_paths -npaths 1
+
+# Specify bus
+set path_count [report_timing -from in[0]]
+if { $path_count == 0 } {
+    puts "No paths found from in[0]"
+}
+
+############################################################
+# Use this script to create a custom report that contains
+# both the Fast Timing Model results and the Slow Model results
+# in one combined report
+# Use report_timing with the -table
+# Usage:
+#    quartus_map top
+#    quartus_fit top
+#    quartus_tan -t <script>.tcl top
+#    (Then open Quartus II GUI's report)
+############################################################
+
+load_package report
+load_package advanced_timing
+
+# Assume one argument: Name of project (where project == revision)
+project_open [lindex $quartus(args) 0]
+
+load_report
+remove_timing_tables
+
+# First, Build Netlist usign the Fast Timing Model
+create_timing_netlist -fast_model
+
+# Create panels using Fast Model
+# Use -table option to create Quartus report panels
+foreach_in_collection clk [get_timing_nodes -type clk] {
+    set name [get_timing_node_info -info name $clk]
+    report_timing -clock_hold -clock_filter $name -npaths 200 -table "Min Clock Hold: $name"
+}
+report_timing -min_tco -npaths 200 -table "Min Tco"
+report_timing -tsu -npaths 200 -table "Min Tsu"
+report_timing -th -npaths 200 -table "Min Th"
+
+# Save changes to the report file before deleting netlist
+save_report_database
+delete_timing_netlist
+
+# Now do it again, but this time with the default slow timing model
+create_timing_netlist
+
+foreach_in_collection clk [get_timing_nodes -type clk] {
+    set name [get_timing_node_info -info name $clk]
+    report_timing -clock_setup -clock_filter $name -npaths 200 -table "Max Clock Setup: $name"
+    report_timing -clock_hold -clock_filter $name -npaths 200 -table "Max Clock Hold: $name"
+}
+report_timing -tsu -npaths 200 -table "Max Tsu"
+report_timing -th -npaths 200 -table "Max Th"
+report_timing -tco -npaths 200 -table "Max Tco"
+
+# Save changes again, delete netlist, unload report and close project
+save_report_database
+delete_timing_netlist
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't run <string> after running <string>
+TCL_ERROR	1   	ERROR: Option <string> requires clock path to be reported.
+TCL_ERROR	1   	ERROR: The specified table name <string> already exists in the Custom Timing folder. Specify a table name that does not already exist.
+TCL_ERROR	1   	ERROR: Found more than one clock with the specified filtering condition. Use the -clock_filter option to reduce the number of clocks to one.
+TCL_ERROR	1   	ERROR: Found no clocks with the specified filtering condition. Use the -clock_filter option to specify only one clock.
+TCL_ERROR	1   	ERROR: Option <string> has incorrect value: <string>. Specify a correct option value.
+TCL_ERROR	1   	ERROR: Timing netlist was not created by "create_timing_netlist". Use "delete_timing_netlist" and "create_timing_netlist" to recreate a timing netlist.
+TCL_ERROR	1   	ERROR: Option -<string> or <string> must be specified in order to use option -<string>. Use both options or none.
+TCL_ERROR	1   	ERROR: Options are mutually exclusive: -<string> and -<string>. Specify only one of the two options.
+TCL_ERROR	1   	ERROR: For option -table, options -<string> and -<string> are mutually exclusive. Specify only one of the two options.
+TCL_ERROR	1   	ERROR: Option -table requires one of the following options: -tsu, -th, -tco, -tpd, -min_tco,or -min_tpd. Specify one of the these options.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+TCL_ERROR	1   	ERROR: Run <string> before running <string>
+TCL_ERROR	1   	ERROR: Number of columns of the destination table is <string>, while number of columns to be appended is <string>. Number of columns to be appended must be the same as that of the destination table.
+TCL_ERROR	1   	ERROR: Can not append rows (table type of <string>) to the destination table. Make sure the destination table has the same table type as the appended rows.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</report_timing>
+
+<remove_timing_tables>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: remove_timing_tables [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::timing 1.2
+
+------------
+Description:
+------------
+
+Removes all custom timing tables from the database
+Requires that the ::quartus::report package be loaded
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open chiptrip
+
+# Required by creating a report panel
+load_package report
+load_report
+
+# Create timing netlist for reporting.
+create_timing_netlist -skip_dat
+
+# Remove all the previous timing tables.
+remove_timing_tables
+
+# Generate Top_10_Clock_Setup timing table.
+report_timing -clock_setup -table "Top_10_Clock_Setup" -npaths 10
+
+# Save changes to database. Otherwise changes will be discarded
+# when the project gets closed or the report gets unloaded.
+write_report_database
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't find active revision. Make sure there is an open, active revision name.
+TCL_ERROR	1   	ERROR: Can't find CMP_FACADE. Run Analysis & Synthesis (quartus_map) before running this command.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</remove_timing_tables>
+
+<<<</1.2>>>>

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ROOT NAME="arriaii_hssi_rx_pma">
+	<PARAMETERS>
+		<PARAMETER NAME="termination" TYPE="String" VALUE="Off|OCT 85 Ohms|OCT 100 Ohms|OCT 120 Ohms|OCT 150 Ohms" DEFAULT_VALUE="OCT 100 Ohms"/>
+		<PARAMETER NAME="common_mode" TYPE="String" VALUE="tristate|0.82V|0.85V|1.1V|1.2V" DEFAULT_VALUE="0.82V"/>
+		<PARAMETER NAME="dprio_config_mode" TYPE="Vector" WIDTH="6" DEFAULT_VALUE="000000"/>
+		<PARAMETER NAME="offset_cancellation" TYPE="Integer" VALUE="0..255" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="low_speed_test_select" TYPE="Integer" VALUE="0..15" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="channel_type" TYPE="String" VALUE="regular|central|high speed|gt|auto" DEFAULT_VALUE="auto"/>
+		<PARAMETER NAME="allow_serial_loopback" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="send_direct_reverse_serial_loopback" TYPE="String" VALUE="None|Pre-CDR|Post-CDR" DEFAULT_VALUE="None"/>
+		<PARAMETER NAME="channel_number" TYPE="Integer" VALUE="0..5" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="protocol_hint" TYPE="String" VALUE="gige|xaui|pcie|pcie2|sonet_oc12|sonet_oc48|sonet_oc96|ht_1_0|ht_3_0|sdi_3g|sdi_hd|srio|cpri|cei|basic|bist|prbs" DEFAULT_VALUE="basic"/>
+		<PARAMETER NAME="deserialization_factor" TYPE="Integer" VALUE="8|10|16|20|64" DEFAULT_VALUE="8"/>
+		<PARAMETER NAME="ignore_lock_detect" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="ppmselect" TYPE="Integer" VALUE="0..63" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="logical_channel_address" TYPE="Integer" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="use_deser_double_data_width" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="use_pma_direct" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="eqa_ctrl" TYPE="Integer" VALUE="0..15" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="eqb_ctrl" TYPE="Integer" VALUE="0..15" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="eqc_ctrl" TYPE="Integer" VALUE="0..7" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="eqd_ctrl" TYPE="Integer" VALUE="0..7" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="eqv_ctrl" TYPE="Integer" VALUE="0..7" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="eq_dc_gain" TYPE="Integer" VALUE="0|3|6|9|12" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="adaptive_equalization_mode" TYPE="String" VALUE="continuous|stopped|none" DEFAULT_VALUE="none"/>
+		<PARAMETER NAME="eq_adapt_seq_control" TYPE="Integer" VALUE="0..3" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="eq_max_gradient_control" TYPE="Integer" VALUE="0..7" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="signal_detect_hysteresis_valid_threshold" TYPE="Integer" VALUE="0..15" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="force_signal_detect" TYPE="String" VALUE="false|true" DEFAULT_VALUE="true"/>
+		<PARAMETER NAME="signal_detect_loss_threshold" TYPE="Integer" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="signal_detect_hysteresis" TYPE="Integer" VALUE="0..15" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="allow_vco_bypass" TYPE="Integer" VALUE="0..3" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="ppm_post_eidle" TYPE="Integer" VALUE="0..1" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="ppm_gen1_2_xcnt_en" TYPE="Integer" VALUE="0..1" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="analog_power" TYPE="String" VALUE="1.4V|1.5V|auto" DEFAULT_VALUE="1.4V"/>
+		<PARAMETER NAME="eyemon_bandwidth" TYPE="Integer" VALUE="0..4" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="enable_ltr" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="enable_ltd" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="LPM_TYPE" TYPE="STRING" VALUE="arriaii_hssi_rx_pma" />
+	</PARAMETERS>
+	<PORTS>
+		<PORT NAME="dpriodisable" TYPE="INPUT" DEFAULT_VALUE="1"/>
+		<PORT NAME="offsetcancellationen" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="powerdn" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxpmareset" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="plllocked" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="ppmdetectrefclk" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="ppmdetectdividedclk" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="locktodata" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="locktoref" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="freqlock" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="ignorephslck" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="datain" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="seriallpbken" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="seriallpbkin" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="adcepowerdn" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="adcereset" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="adaptcapture" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="adcestandby" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="dprioin" TYPE="INPUT" WIDTH="300" DEFAULT_VALUE="0"/>
+		<PORT NAME="deserclock" TYPE="INPUT" WIDTH="4" DEFAULT_VALUE="0"/>
+		<PORT NAME="recoverdatain" TYPE="INPUT" WIDTH="2" DEFAULT_VALUE="0"/>
+		<PORT NAME="testbussel" TYPE="INPUT" WIDTH="4" DEFAULT_VALUE="0"/>
+		<PORT NAME="extra10gin" TYPE="INPUT" WIDTH="38" DEFAULT_VALUE="0"/>
+		<PORT NAME="signaldetect" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="clockout" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="ppmdetectclkrel" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="locktorefout" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="dataout" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="revserialfdbkout" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="reverselpbkout" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="adaptdone" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="dprioout" TYPE="OUTPUT" WIDTH="300" DEFAULT_VALUE="0"/>
+		<PORT NAME="recoverdataout" TYPE="OUTPUT" WIDTH="64" DEFAULT_VALUE="0"/>
+		<PORT NAME="analogtestbus" TYPE="OUTPUT" WIDTH="8" DEFAULT_VALUE="0"/>
+		<PORT NAME="dataoutfull" TYPE="OUTPUT" WIDTH="20" DEFAULT_VALUE="0"/>
+		<PORT NAME="observableseriallpbken" TYPE="OUTPUT" CONTEXT="OBSERVABLE" DEFAULT_VALUE="0"/>
+		<PORT NAME="observablelocktodata" TYPE="OUTPUT" CONTEXT="OBSERVABLE" DEFAULT_VALUE="0"/>
+		<PORT NAME="observablelocktoref" TYPE="OUTPUT" CONTEXT="OBSERVABLE" DEFAULT_VALUE="0"/>
+		<PORT NAME="observablerxpmareset" TYPE="OUTPUT" CONTEXT="OBSERVABLE" DEFAULT_VALUE="0"/>
+	</PORTS>
+</ROOT>

@@ -1,0 +1,344 @@
+<<<<versions>>>>
+1.0
+1.1
+<<<</versions>>>>
+<<<<1.0>>>>
+<logiclock_back_annotate>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: logiclock_back_annotate [-h | -help] [-long_help] [-exclude_from] [-exclude_to] [-from <source name>] [-lock] [-no_contents] [-no_delay_chain] [-no_demote_lab] [-no_demote_mac] [-no_demote_pin] [-no_demote_ram] [-no_dont_touch] [-path_exclude <path_exclude name>] [-region <region name>] [-remove_assignments] [-resource_filter <resource_filter value>] [-routing] [-to <destination name>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -exclude_from: Option to exclude the source node
+        -exclude_to: Option to exclude the destination node
+        -from <source name>: Name (or wildcard expression) of the source node to be back-annotated
+        -lock: Option to lock back-annotated regions
+        -no_contents: Option not to back-annotate contents
+        -no_delay_chain: Option not to back-annotate delay chain settings
+        -no_demote_lab: Option not to demote LAB or LE assignments
+        -no_demote_mac: Option not to demote DSP block assignments
+        -no_demote_pin: Option not to demote pin assignments
+        -no_demote_ram: Option not to demote RAM assignments
+        -no_dont_touch: Option not to set the don't_touch flag for each back-annotated node
+        -path_exclude <path_exclude name>: Option to exclude the specified node from the path filter
+        -region <region name>: Name (or wildcard expression) of region to be back-annotated
+        -remove_assignments: Option to remove matching assignments instead of creating them
+        -resource_filter <resource_filter value>: Option to use the resource filter
+        -routing: Option to back-annotate the LogicLock region's routing
+        -to <destination name>: Name (or wildcard expression) of the destination node to be back-annotated
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::backannotate 1.0
+
+------------
+Description:
+------------
+
+Back-annotates a LogicLock region and its contents.
+
+When you use the "-routing" option, you must use the "-lock" 
+and "-no_demote_lab" options, without the "-no_contents" option, 
+or use the"-remove_assignments" option.
+
+The "-remove_assignments" option removes all matching region 
+contents. When you use the "-remove_assignments" option, the 
+demotion options, "-no_contents" and "-lock", are not applicable.
+
+The "-resource_filter" option allows you to back-annotate 
+only specific resource types on the device. For example:
+
+    logiclock_back_annotate -resource_filter "COMBINATORIAL"
+
+This command back-annotates all combinatorial nodes in the 
+design. The complete set of options is:
+
+    COMBINATORIAL    combinatorial nodes
+    REGISTER         registered nodes
+    MEGA             M-RAMs
+    MEDIUM           M4K memory blocks
+    SMALL            M512 memory blocks
+    IO               I/O elements
+    MAC              DSP blocks
+
+Altera recommends that you use a Verilog Quartus(R) Mapping 
+File (.vqm) as the source. When any of the advanced netlist 
+optimizations are enabled, it is possible for the Fitter 
+to create and rename nodes in the design during a place and 
+route operation. Back annotation requires that on subsequent 
+compilations the node names in the netlist match those in 
+the constraint file. Write out a VQM netlist and create a 
+new project using that netlist as its source. Copy all of 
+the existing constraint files into the new project directory 
+and remove all the design files except the new .vqm by using 
+the Add/Remove Files in a Project command (Project menu) 
+in the Quartus II GUI.
+
+The Quartus II software will create a root region if you 
+back-annotate nodes that are not members of a LogicLock 
+region. The root region is device-size and locked. You can 
+make assignments to the root region but you cannot delete 
+it or modify its size or location.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+
+# Open the project "example_project"
+project_open example_project
+
+# Compile the design
+package require ::quartus::flow
+execute_flow -compile
+
+package require ::quartus::backannotate
+
+# Back annotate all nodes and routing in the region "one_region"
+logiclock_back_annotate -routing -lock -no_demote_lab -region one_region
+
+# Back annotate the location of the nodes on all paths that 
+# start with a node that matches the "Data_in*" wildcard 
+# expression, and end with a node that matches the "Data_out*" 
+# wildcard expression
+logiclock_back_annotate -from Data_in* -to Data_out*
+
+# Back annotate the placement of all the registers in the design
+logiclock_back_annotate -resource_filter "REGISTER"
+
+# Close the project
+project_close
+
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Back annotation failed -- design did not compile properly. Run a successful compilation before performing back-annotation.
+TCL_ERROR	1   	ERROR: Project has no active revision. Make sure there is an open, active revision.
+TCL_ERROR	1   	ERROR: No project is currently open. Open an exising project or create a new project.
+TCL_ERROR	1   	ERROR: Device or device family does not support node location back annotation.
+TCL_ERROR	1   	ERROR: The "-routing" option is used with incompatible options. To use the "-routing" option, you must use the "-lock" and "-no_demote_lab" options without the "-no_contents" option, or use the "-remove_assignments" option.
+TCL_ERROR	1   	ERROR: Device or device family does not support LogicLock back annotation.
+TCL_ERROR	1   	ERROR: Wrong number of arguments. For correct syntax, refer to help for the "logiclock_back_annotate" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</logiclock_back_annotate>
+
+<<<</1.0>>>>
+<<<<1.1>>>>
+<logiclock_back_annotate>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: logiclock_back_annotate [-h | -help] [-long_help] [-exclude_from] [-exclude_to] [-from <source name>] [-lock] [-no_contents] [-no_delay_chain] [-no_demote_lab] [-no_demote_mac] [-no_demote_pin] [-no_demote_ram] [-no_dont_touch] [-path_exclude <path_exclude name>] [-region <region name>] [-remove_assignments] [-resource_filter <resource_filter value>] [-routing] [-to <destination name>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -exclude_from: Option to exclude the source node
+        -exclude_to: Option to exclude the destination node
+        -from <source name>: Name (or wildcard expression) of the source node to be back-annotated
+        -lock: Option to lock back-annotated regions
+        -no_contents: Option not to back-annotate contents
+        -no_delay_chain: Option not to back-annotate delay chain settings
+        -no_demote_lab: Option not to demote LAB or LE assignments
+        -no_demote_mac: Option not to demote DSP block assignments
+        -no_demote_pin: Option not to demote pin assignments
+        -no_demote_ram: Option not to demote RAM assignments
+        -no_dont_touch: Option not to set the don't_touch flag for each back-annotated node
+        -path_exclude <path_exclude name>: Option to exclude the specified node from the path filter
+        -region <region name>: Name (or wildcard expression) of region to be back-annotated
+        -remove_assignments: Option to remove matching assignments instead of creating them
+        -resource_filter <resource_filter value>: Option to use the resource filter
+        -routing: Option to back-annotate the LogicLock region's routing
+        -to <destination name>: Name (or wildcard expression) of the destination node to be back-annotated
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::backannotate 1.1
+
+------------
+Description:
+------------
+
+Back-annotates a LogicLock region and its contents.
+
+When you use the "-routing" option, you must use the "-lock" 
+and "-no_demote_lab" options, without the "-no_contents" option, 
+or use the"-remove_assignments" option.
+
+The "-remove_assignments" option removes all matching region 
+contents. When you use the "-remove_assignments" option, the 
+demotion options, "-no_contents" and "-lock", are not applicable.
+
+The "-resource_filter" option allows you to back-annotate 
+only specific resource types on the device. For example:
+
+    logiclock_back_annotate -resource_filter "COMBINATORIAL"
+
+This command back-annotates all combinatorial nodes in the 
+design. The complete set of options is:
+
+    COMBINATORIAL    combinatorial nodes
+    REGISTER         registered nodes
+    MEGA             M-RAMs
+    MEDIUM           M4K memory blocks
+    SMALL            M512 memory blocks
+    IO               I/O elements
+    MAC              DSP blocks
+
+Altera recommends that you use a Verilog Quartus(R) Mapping 
+File (.vqm) as the source. When any of the advanced netlist 
+optimizations are enabled, it is possible for the Fitter 
+to create and rename nodes in the design during a place and 
+route operation. Back annotation requires that on subsequent 
+compilations the node names in the netlist match those in 
+the constraint file. Write out a VQM netlist and create a 
+new project using that netlist as its source. Copy all of 
+the existing constraint files into the new project directory 
+and remove all the design files except the new .vqm by using 
+the Add/Remove Files in a Project command (Project menu) 
+in the Quartus II GUI.
+
+The Quartus II software will create a root region if you 
+back-annotate nodes that are not members of a LogicLock 
+region. The root region is device-size and locked. You can 
+make assignments to the root region but you cannot delete 
+it or modify its size or location.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+
+# Open the project "example_project"
+project_open example_project
+
+# Compile the design
+package require ::quartus::flow
+execute_flow -compile
+
+package require ::quartus::backannotate
+
+# Back annotate all nodes and routing in the region "one_region"
+logiclock_back_annotate -routing -lock -no_demote_lab -region one_region
+
+# Back annotate the location of the nodes on all paths that 
+# start with a node that matches the "Data_in*" wildcard 
+# expression, and end with a node that matches the "Data_out*" 
+# wildcard expression
+logiclock_back_annotate -from Data_in* -to Data_out*
+
+# Back annotate the placement of all the registers in the design
+logiclock_back_annotate -resource_filter "REGISTER"
+
+# Close the project
+project_close
+
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Back annotation failed -- design did not compile properly. Run a successful compilation before performing back-annotation.
+TCL_ERROR	1   	ERROR: Project has no active revision. Make sure there is an open, active revision.
+TCL_ERROR	1   	ERROR: No project is currently open. Open an exising project or create a new project.
+TCL_ERROR	1   	ERROR: Device or device family does not support node location back annotation.
+TCL_ERROR	1   	ERROR: The "-routing" option is used with incompatible options. To use the "-routing" option, you must use the "-lock" and "-no_demote_lab" options without the "-no_contents" option, or use the "-remove_assignments" option.
+TCL_ERROR	1   	ERROR: Device or device family does not support LogicLock back annotation.
+TCL_ERROR	1   	ERROR: Wrong number of arguments. For correct syntax, refer to help for the "logiclock_back_annotate" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</logiclock_back_annotate>
+
+<get_back_annotation_assignments>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_back_annotation_assignments [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::backannotate 1.1
+
+------------
+Description:
+------------
+
+Returns an output collection of back-annotation assignments.
+
+Each element of the collection is a list with the following 
+format:
+{ {<Source>} {<Destination>} {<Assignment name>} {<Assignment value>} {<Entity name>} }
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+## Print out all the back-annotation assignments
+set asgn_col [get_back_annotation_assignments]
+foreach_in_collection asgn $asgn_col {
+
+    ## Each element in the collection has the following
+    ## format:
+    ## { {<Source>} {<Destination>} {<Assignment name>} {<Assignment value>} {<Entity name>} }
+    set from   [lindex $asgn 0]
+    set to     [lindex $asgn 1]
+    set name   [lindex $asgn 2]
+    set value  [lindex $asgn 3]
+    set entity [lindex $asgn 4]
+    puts "$entity : $name ($from -> $to) = $value"
+}
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Back annotation failed -- design did not compile properly. Run a successful compilation before performing back-annotation.
+TCL_ERROR	1   	ERROR: Project has no active revision. Make sure there is an open, active revision.
+TCL_ERROR	1   	ERROR: No project is currently open. Open an exising project or create a new project.
+TCL_ERROR	1   	ERROR: Device or device family does not support node location back annotation.
+TCL_ERROR	1   	ERROR: Device or device family does not support LogicLock back annotation.
+TCL_ERROR	1   	ERROR: Wrong number of arguments. For correct syntax, refer to help for the "logiclock_back_annotate" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_back_annotation_assignments>
+
+<<<</1.1>>>>

@@ -1,0 +1,122 @@
+------------------------------------------------------------------
+-- altcal_dpa_pll parameterized megafunction
+-- Generated with 'clearbox' loader - do not edit
+------------------------------------------------------------------
+
+
+-- Copyright (C) 1991-2009 Altera Corporation
+--  Your use of Altera Corporation's design tools, logic functions 
+--  and other software and tools, and its AMPP partner logic 
+--  functions, and any output files from any of the foregoing 
+--  (including device programming or simulation files), and any 
+--  associated documentation or information are expressly subject 
+--  to the terms and conditions of the Altera Program License 
+--  Subscription Agreement, Altera MegaCore Function License 
+--  Agreement, or other applicable license agreement, including, 
+--  without limitation, that your use is for the sole purpose of 
+--  programming logic devices manufactured by Altera and sold by 
+--  Altera or its authorized distributors.  Please refer to the 
+--  applicable agreement for further details.
+
+--  Version 9.0 Build 235 06/17/2009
+
+OPTIONS NAME_SUBSTITUTION = ON;
+
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+
+PARAMETERS
+(
+	CALIBRATE_FOR_ALL_CHANNELS = "OFF",
+	CALIBRATION_START_THRESHOLD = 256,
+	CALIBRATION_WAIT_TIMER = 1024,
+	NUMBER_OF_CHANNELS,
+	CBXI_PARAMETER = "NOTHING"
+);
+FUNCTION @CBXI_PARAMETER (clock, dpa_locked[NUMBER_OF_CHANNELS-1..0], dpa_reset[NUMBER_OF_CHANNELS-1..0], pll_locked, pll_phasedone, pll_scanclk, recalibrate)
+RETURNS (calibration_busy, dpa_fifo_reset[NUMBER_OF_CHANNELS-1..0], dpa_lock_out[NUMBER_OF_CHANNELS-1..0], dpa_lock_reset[NUMBER_OF_CHANNELS-1..0], pll_phasecounterselect[3..0], pll_phasestep, pll_phaseupdown);
+
+
+SUBDESIGN altcal_dpa_pll
+(
+	calibration_busy		:	OUTPUT;
+	clock		:	INPUT;
+	dpa_fifo_reset[NUMBER_OF_CHANNELS-1..0]		:	OUTPUT;
+	dpa_lock_out[NUMBER_OF_CHANNELS-1..0]		:	OUTPUT;
+	dpa_lock_reset[NUMBER_OF_CHANNELS-1..0]		:	OUTPUT;
+	dpa_locked[NUMBER_OF_CHANNELS-1..0]		:	INPUT;
+	dpa_reset[NUMBER_OF_CHANNELS-1..0]		:	INPUT = GND;
+	pll_locked		:	INPUT;
+	pll_phasecounterselect[3..0]		:	OUTPUT;
+	pll_phasedone		:	INPUT;
+	pll_phasestep		:	OUTPUT;
+	pll_phaseupdown		:	OUTPUT;
+	pll_scanclk		:	INPUT;
+	recalibrate		:	INPUT = GND;
+)
+VARIABLE
+	IF CBXI_PARAMETER != "NOTHING" GENERATE
+		auto_generated : @CBXI_PARAMETER WITH ( CBXI_PARAMETER = "NOTHING" );
+	END GENERATE;
+BEGIN
+	ASSERT (CBXI_PARAMETER != "NOTHING")
+	REPORT "Valid clear box generator not found or Errors encountered during clear box generation"
+	SEVERITY ERROR;
+	IF (CBXI_PARAMETER != "NOTHING") GENERATE
+		IF USED(calibration_busy) GENERATE
+			calibration_busy = auto_generated.calibration_busy;
+		ELSE GENERATE
+			calibration_busy = GND;
+		END GENERATE;
+		IF USED(clock) GENERATE
+			auto_generated.clock = clock;
+		END GENERATE;
+		IF USED(dpa_fifo_reset) GENERATE
+			dpa_fifo_reset[] = auto_generated.dpa_fifo_reset[];
+		ELSE GENERATE
+			dpa_fifo_reset[] = GND;
+		END GENERATE;
+		IF USED(dpa_lock_out) GENERATE
+			dpa_lock_out[] = auto_generated.dpa_lock_out[];
+		ELSE GENERATE
+			dpa_lock_out[] = GND;
+		END GENERATE;
+		IF USED(dpa_lock_reset) GENERATE
+			dpa_lock_reset[] = auto_generated.dpa_lock_reset[];
+		ELSE GENERATE
+			dpa_lock_reset[] = GND;
+		END GENERATE;
+		IF USED(dpa_locked) GENERATE
+			auto_generated.dpa_locked[] = dpa_locked[];
+		END GENERATE;
+		IF USED(dpa_reset) GENERATE
+			auto_generated.dpa_reset[] = dpa_reset[];
+		END GENERATE;
+		IF USED(pll_locked) GENERATE
+			auto_generated.pll_locked = pll_locked;
+		END GENERATE;
+		IF USED(pll_phasecounterselect) GENERATE
+			pll_phasecounterselect[] = auto_generated.pll_phasecounterselect[];
+		ELSE GENERATE
+			pll_phasecounterselect[] = GND;
+		END GENERATE;
+		IF USED(pll_phasedone) GENERATE
+			auto_generated.pll_phasedone = pll_phasedone;
+		END GENERATE;
+		IF USED(pll_phasestep) GENERATE
+			pll_phasestep = auto_generated.pll_phasestep;
+		ELSE GENERATE
+			pll_phasestep = GND;
+		END GENERATE;
+		IF USED(pll_phaseupdown) GENERATE
+			pll_phaseupdown = auto_generated.pll_phaseupdown;
+		ELSE GENERATE
+			pll_phaseupdown = GND;
+		END GENERATE;
+		IF USED(pll_scanclk) GENERATE
+			auto_generated.pll_scanclk = pll_scanclk;
+		END GENERATE;
+		IF USED(recalibrate) GENERATE
+			auto_generated.recalibrate = recalibrate;
+		END GENERATE;
+	END GENERATE;
+END;

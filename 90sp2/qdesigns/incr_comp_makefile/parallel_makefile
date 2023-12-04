@@ -1,0 +1,69 @@
+######################################################################
+# 
+# LogicLock 2 Makefile Example
+#
+# Parallel makes of the bottom-level partitions for GNU Make
+#
+######################################################################
+
+# Specify the 'make.exe' that should be used in case not in path
+MAKE_EXE = $(MAKE)
+
+# Specify the makefile to be used in each directory
+MAKE_FILE_FLAG = -f makefile.mak
+
+SUBDIRS = auto_max speed_ch tick_cnt time_cnt
+
+# Rules to build all the projects
+all: top
+
+top: auto_max speed_ch tick_cnt time_cnt
+	cd chiptrip && $(MAKE_EXE) $(MAKE_FILE_FLAG) 
+
+#  The sub-directories are declared as phony because we need 
+#  separate targets if we are to allow parallel makes, but the
+#  makes don't produce actual files (hence the .PHONY declaration).
+#  Without the .PHONY specification, the rules would be ignored as
+#  the subdirectory names match the rules.
+.PHONY: $(SUBDIRS)
+	
+auto_max:
+	cd auto_max && $(MAKE_EXE) $(MAKE_FILE_FLAG) 
+	
+speed_ch:
+	cd speed_ch && $(MAKE_EXE) $(MAKE_FILE_FLAG) 
+	
+tick_cnt:
+	cd tick_cnt && $(MAKE_EXE) $(MAKE_FILE_FLAG) 
+	
+time_cnt:
+	cd time_cnt && $(MAKE_EXE) $(MAKE_FILE_FLAG)
+	
+view_commands:
+	cd auto_max && $(MAKE_EXE) -n
+	cd speed_ch && $(MAKE_EXE) -n 
+	cd tick_cnt && $(MAKE_EXE) -n
+	cd time_cnt && $(MAKE_EXE) -n
+	cd chiptrip && $(MAKE_EXE) -n
+	
+clean:
+	rm -rf chiptrip/*.rpt chiptrip/*.htm chiptrip/*.eqn chiptrip/*.pin chiptrip/*.sof
+	rm -rf chiptrip/*.pof chiptrip/db chiptrip/*.atm chiptrip/*.hdbx chiptrip/*.fit.*
+	rm -rf chiptrip/*.tan.* chiptrip/*.map.* chiptrip/out chiptrip/atom_netlists
+	rm -rf chiptrip/*.done chiptrip/*.qxp	
+	rm -rf auto_max/*.rpt auto_max/*.htm auto_max/*.eqn auto_max/*.pin auto_max/*.sof
+	rm -rf auto_max/*.pof auto_max/db auto_max/*.atm auto_max/*.hdbx auto_max/*.fit.*
+	rm -rf auto_max/*.tan.* auto_max/*.map.* auto_max/out auto_max/atom_netlists
+	rm -rf auto_max/*.done auto_max/*.qxp
+	rm -rf speed_ch/*.rpt speed_ch/*.htm speed_ch/*.eqn speed_ch/*.pin speed_ch/*.sof
+	rm -rf speed_ch/*.pof speed_ch/db speed_ch/*.atm speed_ch/*.hdbx speed_ch/*.fit.*
+	rm -rf speed_ch/*.tan.* speed_ch/*.map.* speed_ch/out speed_ch/atom_netlists
+	rm -rf speed_ch/*.done speed_ch/*.qxp
+	rm -rf tick_cnt/*.rpt tick_cnt/*.htm tick_cnt/*.eqn tick_cnt/*.pin tick_cnt/*.sof
+	rm -rf tick_cnt/*.pof tick_cnt/db tick_cnt/*.atm tick_cnt/*.hdbx tick_cnt/*.fit.*
+	rm -rf tick_cnt/*.tan.* tick_cnt/*.map.* tick_cnt/out tick_cnt/atom_netlists
+	rm -rf tick_cnt/*.done tick_cnt/*.qxp
+	rm -rf time_cnt/*.rpt time_cnt/*.htm time_cnt/*.eqn time_cnt/*.pin time_cnt/*.sof
+	rm -rf time_cnt/*.pof time_cnt/db time_cnt/*.atm time_cnt/*.hdbx time_cnt/*.fit.*
+	rm -rf time_cnt/*.tan.* time_cnt/*.map.* time_cnt/out time_cnt/atom_netlists
+	rm -rf time_cnt/*.qxp time_cnt/*.done

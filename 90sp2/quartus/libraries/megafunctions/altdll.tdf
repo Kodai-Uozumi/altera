@@ -1,0 +1,106 @@
+------------------------------------------------------------------
+-- altdll parameterized megafunction
+-- Generated with 'clearbox' loader - do not edit
+------------------------------------------------------------------
+
+
+-- Copyright (C) 1991-2009 Altera Corporation
+--  Your use of Altera Corporation's design tools, logic functions 
+--  and other software and tools, and its AMPP partner logic 
+--  functions, and any output files from any of the foregoing 
+--  (including device programming or simulation files), and any 
+--  associated documentation or information are expressly subject 
+--  to the terms and conditions of the Altera Program License 
+--  Subscription Agreement, Altera MegaCore Function License 
+--  Agreement, or other applicable license agreement, including, 
+--  without limitation, that your use is for the sole purpose of 
+--  programming logic devices manufactured by Altera and sold by 
+--  Altera or its authorized distributors.  Please refer to the 
+--  applicable agreement for further details.
+
+--  Version 9.0 Build 235 06/17/2009
+
+OPTIONS NAME_SUBSTITUTION = ON;
+
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+
+PARAMETERS
+(
+	DELAY_BUFFER_MODE = "low",
+	DELAY_CHAIN_LENGTH = 12,
+	DLL_OFFSET_CTRL_A_STATIC_OFFSET = "unused",
+	DLL_OFFSET_CTRL_A_USE_OFFSET = "false",
+	DLL_OFFSET_CTRL_B_STATIC_OFFSET = "unused",
+	DLL_OFFSET_CTRL_B_USE_OFFSET = "false",
+	INPUT_FREQUENCY = "unused",
+	JITTER_REDUCTION = "false",
+	USE_DLL_OFFSET_CTRL_A = "false",
+	USE_DLL_OFFSET_CTRL_B = "false",
+	CBXI_PARAMETER = "NOTHING"
+);
+FUNCTION @CBXI_PARAMETER (dll_aload, dll_clk[0..0], dll_offset_ctrl_a_addnsub, dll_offset_ctrl_a_offset[5..0], dll_offset_ctrl_b_addnsub, dll_offset_ctrl_b_offset[5..0])
+RETURNS (dll_delayctrlout[5..0], dll_dqsupdate, dll_offset_ctrl_a_offsetctrlout[5..0], dll_offset_ctrl_b_offsetctrlout[5..0]);
+
+
+SUBDESIGN altdll
+(
+	dll_aload		:	INPUT = GND;
+	dll_clk[0..0]		:	INPUT;
+	dll_delayctrlout[5..0]		:	OUTPUT;
+	dll_dqsupdate		:	OUTPUT;
+	dll_offset_ctrl_a_addnsub		:	INPUT = VCC;
+	dll_offset_ctrl_a_offset[5..0]		:	INPUT = GND;
+	dll_offset_ctrl_a_offsetctrlout[5..0]		:	OUTPUT;
+	dll_offset_ctrl_b_addnsub		:	INPUT = VCC;
+	dll_offset_ctrl_b_offset[5..0]		:	INPUT = GND;
+	dll_offset_ctrl_b_offsetctrlout[5..0]		:	OUTPUT;
+)
+VARIABLE
+	IF CBXI_PARAMETER != "NOTHING" GENERATE
+		auto_generated : @CBXI_PARAMETER WITH ( CBXI_PARAMETER = "NOTHING" );
+	END GENERATE;
+BEGIN
+	ASSERT (CBXI_PARAMETER != "NOTHING")
+	REPORT "Valid clear box generator not found or Errors encountered during clear box generation"
+	SEVERITY ERROR;
+	IF (CBXI_PARAMETER != "NOTHING") GENERATE
+		IF USED(dll_aload) GENERATE
+			auto_generated.dll_aload = dll_aload;
+		END GENERATE;
+		IF USED(dll_clk) GENERATE
+			auto_generated.dll_clk[] = dll_clk[];
+		END GENERATE;
+		IF USED(dll_delayctrlout) GENERATE
+			dll_delayctrlout[] = auto_generated.dll_delayctrlout[];
+		ELSE GENERATE
+			dll_delayctrlout[] = GND;
+		END GENERATE;
+		IF USED(dll_dqsupdate) GENERATE
+			dll_dqsupdate = auto_generated.dll_dqsupdate;
+		ELSE GENERATE
+			dll_dqsupdate = GND;
+		END GENERATE;
+		IF USED(dll_offset_ctrl_a_addnsub) GENERATE
+			auto_generated.dll_offset_ctrl_a_addnsub = dll_offset_ctrl_a_addnsub;
+		END GENERATE;
+		IF USED(dll_offset_ctrl_a_offset) GENERATE
+			auto_generated.dll_offset_ctrl_a_offset[] = dll_offset_ctrl_a_offset[];
+		END GENERATE;
+		IF USED(dll_offset_ctrl_a_offsetctrlout) GENERATE
+			dll_offset_ctrl_a_offsetctrlout[] = auto_generated.dll_offset_ctrl_a_offsetctrlout[];
+		ELSE GENERATE
+			dll_offset_ctrl_a_offsetctrlout[] = GND;
+		END GENERATE;
+		IF USED(dll_offset_ctrl_b_addnsub) GENERATE
+			auto_generated.dll_offset_ctrl_b_addnsub = dll_offset_ctrl_b_addnsub;
+		END GENERATE;
+		IF USED(dll_offset_ctrl_b_offset) GENERATE
+			auto_generated.dll_offset_ctrl_b_offset[] = dll_offset_ctrl_b_offset[];
+		END GENERATE;
+		IF USED(dll_offset_ctrl_b_offsetctrlout) GENERATE
+			dll_offset_ctrl_b_offsetctrlout[] = auto_generated.dll_offset_ctrl_b_offsetctrlout[];
+		ELSE GENERATE
+			dll_offset_ctrl_b_offsetctrlout[] = GND;
+		END GENERATE;
+	END GENERATE;
+END;

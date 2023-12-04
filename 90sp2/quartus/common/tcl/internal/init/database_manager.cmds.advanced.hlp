@@ -1,0 +1,371 @@
+<<<<versions>>>>
+1.0
+<<<</versions>>>>
+<<<<1.0>>>>
+<generate_bottom_up_scripts>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: generate_bottom_up_scripts [-h | -help] [-long_help] [-bottom_up_scripts_output_directory <bottom_up_scripts_output_directory value>] [-disable_auto_global_promotion <disable_auto_global_promotion value>] [-include_all_logiclock_regions <include_all_logiclock_regions value>] [-include_design_partitions <include_design_partitions value>] [-include_global_signal_promotion <include_global_signal_promotion value>] [-include_logiclock_regions <include_logiclock_regions value>] [-include_makefiles <include_makefiles value>] [-include_pin_locations <include_pin_locations value>] [-include_project_creation <include_project_creation value>] [-include_timing_assignments <include_timing_assignments value>] [-include_virtual_input_pin_timing <include_virtual_input_pin_timing value>] [-include_virtual_output_pin_timing <include_virtual_output_pin_timing value>] [-include_virtual_pin_locations <include_virtual_pin_locations value>] [-include_virtual_pins <include_virtual_pins value>] [-remove_existing_regions <remove_existing_regions value>] [-virtual_input_pin_delay <virtual_input_pin_delay value>] [-virtual_output_pin_delay <virtual_output_pin_delay value>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -bottom_up_scripts_output_directory <bottom_up_scripts_output_directory value>: Option to specify the destination directory for generated scripts
+        -disable_auto_global_promotion <disable_auto_global_promotion value>: Option to turn off automatic global signal promotion in the lower levels
+        -include_all_logiclock_regions <include_all_logiclock_regions value>: Option to include all LogicLock regions from top-level project in each script.
+        -include_design_partitions <include_design_partitions value>: Option to include design partitions from top-level in lower-level projects
+        -include_global_signal_promotion <include_global_signal_promotion value>: Option to promote any top-level global signal to global in the lower-levels
+        -include_logiclock_regions <include_logiclock_regions value>: Option to include LogicLock regions from top-level entity
+        -include_makefiles <include_makefiles value>: Option to also generate makefiles in addition to Tcl scripts
+        -include_pin_locations <include_pin_locations value>: Option to lock ports connected to top-level IOs to the top-level location
+        -include_project_creation <include_project_creation value>: Option to create the lower-level project and appropriate directory structure
+        -include_timing_assignments <include_timing_assignments value>: Option to include timing assignments from top-level in lower-level projects
+        -include_virtual_input_pin_timing <include_virtual_input_pin_timing value>: Option to include timing constraints representing maximum delay to all created virtual input pins from the driving modules
+        -include_virtual_output_pin_timing <include_virtual_output_pin_timing value>: Option to include timing constraints representing maximum delay from all created virtual output pins to the destination modules
+        -include_virtual_pin_locations <include_virtual_pin_locations value>: Option to lock created virtual pins to location assigned in top-level entity
+        -include_virtual_pins <include_virtual_pins value>: Option to include virtual pin creation on appropriate lower-level ports
+        -remove_existing_regions <remove_existing_regions value>: Option to include commands that remove any existing LogicLock regions in the lower-level
+        -virtual_input_pin_delay <virtual_input_pin_delay value>: Option to specify the virtual input pin timing constraint value in nanoseconds
+        -virtual_output_pin_delay <virtual_output_pin_delay value>: Option to specify the virtual output pin timing constraint value in nanoseconds
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::database_manager 1.0
+
+------------
+Description:
+------------
+
+----------
+Overview
+----------
+
+This tool is designed for use with a top-level project containing 
+incremental compilation design partitions. When run, it generates scripts 
+and makefiles which allow an easy conversion from top-down design 
+methodology (all partitions in one project) to a bottom-up design 
+methodology (separate projects for each partition).
+
+One Tcl script is generated for each partition. The Tcl script contains
+all top-level assignments relevant to the given partition, and optionally
+contains commands to create the lower-level project for the partition 
+if it does not exist. Each script also contains optionally generated 
+commands that can help guide the lower-level placement for better 
+results when exporting to the top-level project. You can customize the 
+content of the Tcl scripts with options.
+
+In addition to generating Tcl scripts, you can also generate makefiles 
+to create the lower-level projects with the generated Tcl scripts and 
+maintain them as source files change. The tool will also build a 
+'master_makefile' which builds all lower-level projects, exports the 
+results to the top-level project and performs a top-level compilation. 
+The makefiles are auto-generated and are designed for use with GNU make. 
+The makefiles also support parallel compilation of the the lower-level 
+projects by using the '-j' option of GNU make on systems with multiple 
+processors.
+
+-----------------
+Optional Content
+-----------------
+
+As mentioned above, you can customize the content of the Tcl files with 
+any of the following options.
+
+-include_makefiles <on|off>
+Default is on.			
+
+Option to generate makefiles for lower-level projects in addition to 
+the Tcl scripts. One makefile is generated for each lower-level project, 
+for the top-level project and for the overall design (known as the 
+master_makefile). The master makefile simply invokes all other makefiles.
+
+Makefiles are designed to work with GNU make and support the '-j' option
+which allows parallel compilation of the lower-level projects. The master 
+makefile is all that needs to be called by the user to ensure the 
+lower-level projects are up to date and that the top-level project has 
+imported the latest versions of the lower-level projects. You can invoke the 
+master makefile as follows (you must not turn off
+--include_project_creation_in_bottom_up_scripts for this to work without 
+modification):
+
+gnumake -f master_makefile.mak -j2 
+<The '-j2' means there are 2 processors to use.>
+
+Makefiles are placed in the directory of the project they control if project 
+creation is enabled and appropriate directories are automatically filled in. 
+If you elect not to have the tool create projects for you, all makefiles are 
+placed in the specified output directory and the user must fill in the 
+directory variables at the top of each makefile so that the tool knows where 
+the lower-level projects can be found.		
+
+
+-include_project_creation <on|off>
+Default is on.
+
+When you turn on this option, generated Tcl scripts contain commands to create the lower-level
+projects if they do not exist. The tool will create projects in subdirectories 
+under the output directory, named according to the corresponding partition's name.
+
+
+-include_virtual_pins <on|off>
+Default is on.
+
+When you turn on this option, generated Tcl scripts contain commands to mark all lower-level 
+pins that connect to other design entities in the top-level (i.e. not directly 
+to IOs) as 'virtual pins'.
+
+
+-include_virtual_pin_timing <on|off>
+Default is on.
+
+When you turn on this option, generated Tcl scripts contain INPUT_MAX_DELAY 
+or OUTPUT_MAX_DELAY assignments to constrain all paths to or from the newly 
+created virtual pins (see -include_virtual_pins). This helps constrain the 
+placement appropriately and produce a higher quality top-level solution.
+
+The option is ignored if -include_virtual_pins off is used.	
+
+If you use this option, you must also specify the delay (in nanoseconds) to 
+be used in the constraints with the -virtual_pin_delay=<val> command.		
+
+-include_virtual_pin_locations <on|off>
+Default is on.
+
+When you turn on this option, generated Tcl scripts contain location 
+constraints on the newly created virtual pins (see -include_virtual_pins). 
+The pins will be locked to their top-level source (for input pins) or sink 
+(for output pins) location.
+
+The option is ignored if '-include_virtual_pins off' is used.		
+
+-include_logiclock_regions <on|off>
+Default is on.
+
+When you turn on this option, generated Tcl scripts contain the top-level 
+LogicLock regions associated with this partition. This helps ensure the 
+lower-level project places its logic where the top-level project expects it.		
+
+-include_all_logiclock_regions <on|off>
+Default is on.
+
+When you turn on this option, generated Tcl scripts contain all of the 
+top-level LogicLock regions. Regions with logic not associated with the 
+script's target partition act as placeholders and will be both empty and 
+marked as reserved. This command helps give the lower-level project a better
+idea of how it fits into the final, top-level design.
+
+The option is ignored if '-include_logiclock_regions off' is used.			
+
+-include_global_signal_promotion <on|off>
+Default is off.
+
+When you turn on this option, generated Tcl scripts contain commands that 
+force any signals that were promoted to 'global' in the top-level to be 
+promoted in the lower-level.		
+
+-include_pin_locations <on|off>
+Default is on.
+
+When you turn on this option, generated Tcl scripts contain commands that 
+lock any lower-level pins connected directly to IOs in the top-level to the 
+IO bank they were placed at in the top-level. This helps keep a consistent 
+pin placement amongst projects.
+
+
+-include_timing_assignments <on|off>
+Default is on.
+
+When you turn on this option, generated Tcl scripts contain all relevant 
+timing assignments from the top-level.
+		
+-include_design_partitions <on|off>
+Default is on.
+
+When you turn on this option, generated Tcl scripts contain all relevant 
+design partition assignments from the top-level.
+		
+-remove_existing_regions <on|off>
+Default is on.
+
+When you turn on this option, generated Tcl scripts contain commands that 
+remove any LogicLock regions that exist in the project the script is being 
+called on.		
+
+-disable_auto_global_promotion <on|off>
+Default is off.
+
+When you turn on this option, generated Tcl scripts contain commands that 
+disable auto global signal promotion in the lower levels.
+		
+-bottom_up_scripts_output_directory <output_directory>
+Default is current project directory.
+
+Specifies the output directory for the scripts and makefiles.  If none is 
+set, the working directory of the project is used as a default.
+
+-virtual_input_pin_delay <delay_in_ns>
+No default.
+
+Specifies a delay, in nanoseconds, that is used to constrain all paths
+from any of the newly created virtual input pins in the lower-levels.  
+This is to help guide the lower-level placement and produce a better 
+quality top-level result.
+
+The value represents the maximum acceptable delay for an inter-partition 
+signal to arrive at the project's virtual input pin from another module. 
+The value helps guide lower-level placement.
+
+-virtual_output_pin_delay <delay_in_ns>
+No default.
+
+Specifies a delay, in nanoseconds, that is used to constrain all paths
+to any of the newly created virtual output pins in the lower-levels.  
+This is to help guide the lower-level placement and produce a better 
+quality top-level result.
+	
+The value represents the maximum acceptable delay for an inter-partition 
+signal driven by the virtual output pin to arrive at its destination.
+The value helps guide lower-level placement.
+		
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+This command currently contains no example usage.
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't find active revision name. Make sure there is an open, active revision name.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</generate_bottom_up_scripts>
+
+<export_database>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: export_database [-h | -help] [-long_help] <directory>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        <directory>: Directory of version-compatible database files to which to write
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::database_manager 1.0
+
+------------
+Description:
+------------
+
+Exports the project database to version-compatible database 
+files that are placed in the specified directory.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+## Open the project, run a compilation, and
+## export the project database to
+## version-compatible database files
+load_package database_manager
+load_package flow
+set project chiptrip
+project_new $project -overwrite
+execute_flow -compile
+export_database backup
+project_close $project
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't find active revision name. Make sure there is an open, active revision name.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</export_database>
+
+<import_database>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: import_database [-h | -help] [-long_help] <directory>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        <directory>: Directory of version-compatible database files from which to read
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::database_manager 1.0
+
+------------
+Description:
+------------
+
+Imports the project database from version-compatible database 
+files that reside in the specified directory.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+## Open the project, import from version-compatible
+## database files, and run the Timing Analyzer
+load_package database_manager
+load_package flow
+set project chiptrip
+project_open $project
+import_database backup
+execute_module -tool tan
+project_close $project
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't find active revision name. Make sure there is an open, active revision name.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</import_database>
+
+<<<</1.0>>>>

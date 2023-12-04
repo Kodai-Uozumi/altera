@@ -1,0 +1,916 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<template name="generated.x">
+
+    <call gtf="%GTF_DIR%/check_version.gtf"/>
+
+    <call gtf="%GTF_DIR%/XPATHs.gtf"/>
+
+    <call gtf="%GTF_DIR%/CPU.gtf"/>
+
+    <call gtf="%GTF_DIR%/file_heading.h.gtf"/>
+
+    <include source="%GTF_DIR%/warning.h"/>
+
+    <call gtf="%GTF_DIR%/RESET_ADDRESS.gtf"/>
+
+    <call gtf="%GTF_DIR%/EXC_ADDRESS.gtf"/>
+
+    <set_variable variable="USE_EXCEPTION_STACK"
+                  to='xpath( %STF_NAME%, "normalize-space(%OS_SPEC_XPATH%/@exception_stack)" )'/>
+
+    <set_variable variable="TEXT_SEGMENT"
+                  to='xpath( %STF_NAME%, "normalize-space(%SECTION_XPATH%[@name=\".text\"]/@memory)" )'/>
+    <set_variable variable="RODATA_SEGMENT"
+                  to='xpath( %STF_NAME%, "normalize-space(%SECTION_XPATH%[@name=\".rodata\"]/@memory)" )'/>    
+    <set_variable variable="RWDATA_SEGMENT"
+                  to='xpath( %STF_NAME%, "normalize-space(%SECTION_XPATH%[@name=\".rwdata\"]/@memory)" )'/>
+    <set_variable variable="STACK_SEGMENT"
+                  to='xpath( %STF_NAME%, "normalize-space(%SECTION_XPATH%[@name=\".stack\"]/@memory)" )'/>
+    <set_variable variable="HEAP_SEGMENT"
+                  to='xpath( %STF_NAME%, "normalize-space(%SECTION_XPATH%[@name=\".heap\"]/@memory)" )'/>
+    <set_variable variable="EXCEPTION_STACK_SEGMENT"
+                  to='xpath( %STF_NAME%, "normalize-space(%SECTION_XPATH%[@name=\".exceptionstack\"]/@memory)" )'/>
+
+    <set_variable variable="EXCEPTION_STACK_SIZE"
+                  to='xpath( %STF_NAME%, "normalize-space(%SECTION_XPATH%[@name=\".exceptionstack\"]/@size)" )'/>
+
+    <set_variable variable="EXCEPTIONS_SEGMENT_IN_ROM" to="0"/>
+    <set_variable variable="RODATA_SEGMENT_IN_ROM" to="0"/>
+
+    <set_variable variable="MMU_PRESENT"
+                  ptf_path="SYSTEM/MODULE %CPU%/WIZARD_SCRIPT_ARGUMENTS/mmu_present"/>
+    <switch>
+        <if condition="not( %MMU_PRESENT% )">
+            <!-- default to no -->
+            <set_variable variable="MMU_PRESENT" to="0"/>
+            <set_variable variable="RESET_OUTPUT_ADDRESS" to="%RESET_ADDRESS%"/>
+            <set_variable variable="LMA_ADDRESS" to=""/>
+            <set_variable variable="VMA_ADDRESS" to=""/>
+            <break/>
+        </if>
+
+        <!-- assert MMU_PRESENT is true -->
+
+        <set_variable variable="ADDRESS" to="%RESET_ADDRESS%"/>
+        <export variable="ADDRESS"/>
+        <set_variable variable="ADDRESS_DESCRIPTION" to="NIOS2_RESET_ADDR"/>
+        <export variable="ADDRESS_DESCRIPTION"/>
+        <call gtf="%GTF_DIR%/MMU_ADDRESS.gtf"/>
+        <set_variable variable="RESET_OUTPUT_ADDRESS" to="%ADDRESS%"/>
+    </switch>    
+
+    <set_variable variable="MEMORY_MODULES_ONLY" to="1"/>
+    <export variable="MEMORY_MODULES_ONLY"/>
+    <set_variable variable="IGNORE_DUAL_PORT_SLAVES" to="1"/>
+    <export variable="IGNORE_DUAL_PORT_SLAVES"/>
+    <call gtf="%GTF_DIR%/MODULE_lists.gtf"/>
+    
+    <set_variable variable="SEGMENT" to="%TEXT_SEGMENT%"/>
+    <export variable="SEGMENT"/>
+    <set_variable variable="SEGMENT_NAME" to=".text"/>
+    <export variable="SEGMENT_NAME"/>
+    <export variable="MODULE_SLAVE_NAME_LIST"/>
+    <call gtf="%GTF_DIR%/check_segment.gtf"/>
+    <set_variable variable="TEXT_SEGMENT" to="%SEGMENT%"/>
+    
+    <set_variable variable="SEGMENT" to="%RODATA_SEGMENT%"/>
+    <export variable="SEGMENT"/>
+    <set_variable variable="SEGMENT_NAME" to=".rodata"/>
+    <export variable="SEGMENT_NAME"/>
+    <export variable="MODULE_SLAVE_NAME_LIST"/>
+    <call gtf="%GTF_DIR%/check_segment.gtf"/>
+    <set_variable variable="RODATA_SEGMENT" to="%SEGMENT%"/>
+    
+    <set_variable variable="SEGMENT" to="%RWDATA_SEGMENT%"/>
+    <export variable="SEGMENT"/>
+    <set_variable variable="SEGMENT_NAME" to=".rwdata"/>
+    <export variable="SEGMENT_NAME"/>
+    <export variable="MODULE_SLAVE_NAME_LIST"/>
+    <call gtf="%GTF_DIR%/check_segment.gtf"/>
+    <set_variable variable="RWDATA_SEGMENT" to="%SEGMENT%"/>
+
+    <if condition="not( %STACK_SEGMENT% )">
+        <set_variable variable="STACK_SEGMENT" to="%RWDATA_SEGMENT%"/>
+    </if>
+    <if condition="not( %HEAP_SEGMENT% )">
+        <set_variable variable="HEAP_SEGMENT" to="%RWDATA_SEGMENT%"/>
+    </if>
+    
+    <set_variable variable="SEGMENT" to="%STACK_SEGMENT%"/>
+    <export variable="SEGMENT"/>
+    <set_variable variable="SEGMENT_NAME" to=".stack"/>
+    <export variable="SEGMENT_NAME"/>
+    <export variable="MODULE_SLAVE_NAME_LIST"/>
+    <call gtf="%GTF_DIR%/check_segment.gtf"/>
+    <set_variable variable="STACK_SEGMENT" to="%SEGMENT%"/>
+    
+    <set_variable variable="SEGMENT" to="%HEAP_SEGMENT%"/>
+    <export variable="SEGMENT"/>
+    <set_variable variable="SEGMENT_NAME" to=".heap"/>
+    <export variable="SEGMENT_NAME"/>
+    <export variable="MODULE_SLAVE_NAME_LIST"/>
+    <call gtf="%GTF_DIR%/check_segment.gtf"/>
+    <set_variable variable="HEAP_SEGMENT" to="%SEGMENT%"/>
+    
+    <if condition="eq( yes, %USE_EXCEPTION_STACK% )">
+        <set_variable variable="SEGMENT" to="%EXCEPTION_STACK_SEGMENT%"/>
+        <export variable="SEGMENT"/>
+        <set_variable variable="SEGMENT_NAME" to=".exceptionstack"/>
+        <export variable="SEGMENT_NAME"/>
+        <export variable="MODULE_SLAVE_NAME_LIST"/>
+        <call gtf="%GTF_DIR%/check_segment.gtf"/>
+        <set_variable variable="EXCEPTION_STACK_SEGMENT" to="%SEGMENT%"/>
+    </if>
+
+    <set_variable variable="RESET_ROUTINE_SIZE" to="32"/>
+
+    <!-- the memory segments... -->
+
+    <text>
+
+MEMORY
+{
+    reset : ORIGIN = %RESET_OUTPUT_ADDRESS%, LENGTH = %RESET_ROUTINE_SIZE%
+    </text> <!-- ...always one for the reset address -->
+
+    <!-- ...and one for each MODULE/SLAVE -->
+
+    <set_variable variable="MEMORY_RANGE_LIST" to=""/>    <!-- while we're looking at all the memories, might as well create these lists to use below -->
+    <set_variable variable="PARTITION_ADDRESS_LIST" to=""/>
+
+    <for_each variable="MODULE_SLAVE" index_variable="MODULE_SLAVE_LIST_INDEX" list="%MODULE_SLAVE_LIST%">
+        <export variable="MODULE_SLAVE"/>
+        <call gtf="%GTF_DIR%/BASE_ADDRESS_and_ADDRESS_SPAN.gtf"/>
+
+        <set_variable variable="MODULE_SLAVE_NAME" to="list_get( %MODULE_SLAVE_NAME_LIST%, %MODULE_SLAVE_LIST_INDEX% )"/>  
+        <switch>
+            <!-- if the base address for this MODULE/SLAVE is the same as the reset address, then make room for the reset handler -->
+            <if condition="eq( %BASE_ADDRESS%, %RESET_ADDRESS% )">
+                <set_variable variable="BASE_ADDRESS" to="add( %BASE_ADDRESS%, %RESET_ROUTINE_SIZE% )"/>
+                <set_variable variable="ADDRESS_SPAN" to="sub( %ADDRESS_SPAN%, %RESET_ROUTINE_SIZE% )"/>
+                <set_variable variable="RESET_SEGMENT" to="%MODULE_SLAVE_NAME%"/>
+                <break/>
+            </if>
+
+            <!-- if the reset address is in the address range of this MODULE/SLAVE, then we split the segment in two... -->
+            <if condition="and( gt( %RESET_ADDRESS%, %BASE_ADDRESS% ), lt( %RESET_ADDRESS%, add( %BASE_ADDRESS%, %ADDRESS_SPAN% ) ) )">
+                <set_variable variable="ADDRESS" to="%BASE_ADDRESS%"/>
+                <set_variable variable="RESET_SEGMENT" to="%MODULE_SLAVE_NAME%"/>
+                <export variable="ADDRESS"/>
+                <set_variable variable="ADDRESS_DESCRIPTION" to="%MODULE_SLAVE_NAME%_UNUSED"/>
+                <export variable="ADDRESS_DESCRIPTION"/>
+                <call gtf="%GTF_DIR%/MMU_ADDRESS.gtf"/>
+                <set_variable variable="BASE_OUTPUT_ADDRESS" to="%ADDRESS%"/>
+                <!-- ...everything less than the reset address is unused -->
+                <set_variable variable="NEW_SEGMENT_ADDRESS_SPAN" to="radix( sub( %RESET_ADDRESS%, %BASE_ADDRESS% ), 10 )"/>
+                <text>
+    %MODULE_SLAVE_NAME%_UNUSED : ORIGIN = %BASE_OUTPUT_ADDRESS%, LENGTH = %NEW_SEGMENT_ADDRESS_SPAN%
+                </text>
+                <!-- ...and start the usable segment after the reset handler -->
+                <set_variable variable="BASE_ADDRESS" to="add( %RESET_ADDRESS%, %RESET_ROUTINE_SIZE% )"/>
+                <set_variable variable="ADDRESS_SPAN" to="sub( %ADDRESS_SPAN%, %NEW_SEGMENT_ADDRESS_SPAN%, %RESET_ROUTINE_SIZE% )"/>
+            </if>
+        </switch>
+
+        <!-- ASSUME that the exception address is always higher than the reset address (if they're in the same memory) -->
+
+        <switch>
+            <!-- if the exception address is the same as the base address (for this MODULE/SLAVE), then the exception section is at the start of this segment -->
+            <if condition="eq( %EXC_ADDRESS%, %BASE_ADDRESS% )">
+                <set_variable variable="EXCEPTIONS_SEGMENT" to="%MODULE_SLAVE_NAME%"/>
+                <break/>
+            </if>
+            <!-- if the exception address is in the address range of this MODULE/SLAVE, then we split the segment in two... -->
+            <if condition="and( gt( %EXC_ADDRESS%, %BASE_ADDRESS% ), lt( %EXC_ADDRESS%, add( %BASE_ADDRESS%, %ADDRESS_SPAN% ) ) )">
+                <set_variable variable="ADDRESS" to="%BASE_ADDRESS%"/>
+                <export variable="ADDRESS"/>
+                <set_variable variable="ADDRESS_DESCRIPTION" to="%MODULE_SLAVE_NAME%_UNUSED"/>
+                <export variable="ADDRESS_DESCRIPTION"/>
+                <call gtf="%GTF_DIR%/MMU_ADDRESS.gtf"/>
+                <set_variable variable="BASE_OUTPUT_ADDRESS" to="%ADDRESS%"/>
+                <!-- ...everything less than the exception address is unused -->
+                <set_variable variable="NEW_SEGMENT_ADDRESS_SPAN" to="radix( sub( %EXC_ADDRESS%, %BASE_ADDRESS% ), 10 )"/>
+                <text>
+    %MODULE_SLAVE_NAME%_UNUSED : ORIGIN = %BASE_OUTPUT_ADDRESS%, LENGTH = %NEW_SEGMENT_ADDRESS_SPAN%
+                </text>
+                <!-- ...and start the usable segment at the exception address -->
+                <set_variable variable="BASE_ADDRESS" to="%EXC_ADDRESS%"/>
+                <set_variable variable="ADDRESS_SPAN" to="sub( %ADDRESS_SPAN%, %NEW_SEGMENT_ADDRESS_SPAN% )"/>
+                <set_variable variable="EXCEPTIONS_SEGMENT" to="%MODULE_SLAVE_NAME%"/>
+            </if>
+        </switch>
+
+        <if condition="and( eq( yes, %USE_EXCEPTION_STACK% ), eq( %MODULE_SLAVE_NAME%, %EXCEPTION_STACK_SEGMENT% ))">
+            <set_variable variable="ADDRESS_SPAN"
+                          to="sub( %ADDRESS_SPAN%, %EXCEPTION_STACK_SIZE% )"/>
+        </if>
+
+        <set_variable variable="PHYSICAL_END"
+                      to="add( %BASE_ADDRESS%, %ADDRESS_SPAN% )"/>
+        <set_variable variable="PARTITION_ADDRESS_LIST"
+                      to='list_add( %PARTITION_ADDRESS_LIST%, %PHYSICAL_END% )'/>
+        <set_variable variable="MEMORY_RANGE_LIST"
+                      to='list_add( %MEMORY_RANGE_LIST%, "(%BASE_ADDRESS%,%PHYSICAL_END%)" )'/>
+
+        <set_variable variable="ADDRESS" to="%BASE_ADDRESS%"/>
+        <export variable="ADDRESS"/>
+        <set_variable variable="ADDRESS_DESCRIPTION" to="%MODULE_SLAVE_NAME%"/>
+        <export variable="ADDRESS_DESCRIPTION"/>
+        <call gtf="%GTF_DIR%/MMU_ADDRESS.gtf"/>
+        <set_variable variable="BASE_OUTPUT_ADDRESS" to="%ADDRESS%"/>
+        <text>
+    %MODULE_SLAVE_NAME% : ORIGIN = %BASE_OUTPUT_ADDRESS%, LENGTH = %ADDRESS_SPAN%
+        </text>
+
+        <if condition="and( eq( yes, %USE_EXCEPTION_STACK% ), eq( %MODULE_SLAVE_NAME%, %EXCEPTION_STACK_SEGMENT% ))">
+            <set_variable variable="ADDRESS_SPAN"
+                          to="sub( %ADDRESS_SPAN%, %EXCEPTION_STACK_SIZE% )"/>
+            <set_variable variable="STACK_PTR"
+                          to="add( %PHYSICAL_END%, %EXCEPTION_STACK_SIZE% )"/>
+            <set_variable variable="STACK_LIMIT" to="%PHYSICAL_END%"/>
+            <text>
+    exception_stack : ORIGIN = %PHYSICAL_END%, LENGTH = %EXCEPTION_STACK_SIZE%
+            </text>
+        </if>
+
+    </for_each>
+
+    <text>
+}
+    </text>
+
+    <!-- TPA 4/12/2004: Define some simple symbols for the       --> 
+    <!--     base-address of every memory.  This makes certain   --> 
+    <!--     post-processing utilities (like the thing that      --> 
+    <!--     figgers your available stack-size) work correctly   --> 
+    <!--     and..it's just a darned nice thing to do.           --> 
+    <!--                                                         -->
+    <text>
+
+    /* Define symbols for each memory base-address */
+    </text>
+    <for_each variable="MODULE_SLAVE" index_variable="MODULE_SLAVE_LIST_INDEX" list="%MODULE_SLAVE_LIST%">
+        <export variable="MODULE_SLAVE"/>
+        <call gtf="%GTF_DIR%/BASE_ADDRESS_and_ADDRESS_SPAN.gtf"/>
+        <set_variable variable="MODULE_SLAVE_NAME" to="list_get( %MODULE_SLAVE_NAME_LIST%, %MODULE_SLAVE_LIST_INDEX% )"/>
+
+        <set_variable variable="ADDRESS" to="%BASE_ADDRESS%"/>
+        <export variable="ADDRESS"/>
+        <set_variable variable="ADDRESS_DESCRIPTION" to="__alt_mem_%MODULE_SLAVE_NAME%"/>
+        <export variable="ADDRESS_DESCRIPTION"/>
+        <call gtf="%GTF_DIR%/MMU_ADDRESS.gtf"/>
+        <set_variable variable="BASE_OUTPUT_ADDRESS" to="%ADDRESS%"/>
+
+        <text>
+ __alt_mem_%MODULE_SLAVE_NAME% = %BASE_OUTPUT_ADDRESS% ;
+        </text>
+
+        <set_variable variable="IS_NON_VOLATILE"
+                      ptf_path="SYSTEM/MODULE %MODULE_SLAVE%/SYSTEM_BUILDER_INFO/Is_Nonvolatile_Storage"/>
+
+        <!-- Mark the case that the rodata section is in ROM -->
+        <if condition="and( eq( %MODULE_SLAVE_NAME%, %RODATA_SEGMENT% ), %IS_NON_VOLATILE%)">
+          <set_variable variable="RODATA_SEGMENT_IN_ROM" to="1"/>
+        </if>
+
+        <!-- Mark the case that the exceptions section is in ROM -->
+        <if condition="and( eq( %MODULE_SLAVE_NAME%, %EXCEPTIONS_SEGMENT% ), %IS_NON_VOLATILE%)">
+          <set_variable variable="EXCEPTIONS_SEGMENT_IN_ROM" to="1"/>
+        </if>
+    </for_each>
+
+    <set_variable variable="RUN_FROM_FLASH"
+                  to="eq( %RESET_SEGMENT%, %TEXT_SEGMENT% )"/>
+    <set_variable variable="LOAD_RODATA"
+                  to="and( ne( %RESET_SEGMENT%, %RODATA_SEGMENT% ), not( %RODATA_SEGMENT_IN_ROM%))"/>
+    <set_variable variable="LOAD_RWDATA"
+                  to="ne( %RESET_SEGMENT%, %RWDATA_SEGMENT% )"/>
+    <set_variable variable="LOAD_EXCEPTIONS"
+                  to="and( ne( %RESET_SEGMENT%, %EXCEPTIONS_SEGMENT% ), not( %EXCEPTIONS_SEGMENT_IN_ROM% ))"/>
+
+    <text>
+
+    </text>
+    <!--                    -->
+    <!-- TPA: END 4/12/2004 -->
+
+    <if condition="%MMU_PRESENT%">
+        <set_variable variable="LMA_ADDRESS" to=" AT(ADDR(.entry) - 0xc0000000)"/>
+    </if>
+    <text>
+
+<![CDATA[
+OUTPUT_FORMAT( "elf32-littlenios2",
+               "elf32-littlenios2",
+               "elf32-littlenios2" )
+OUTPUT_ARCH( nios2 )
+ENTRY( _start )
+
+/* Do we need any of these for elf?
+   __DYNAMIC = 0;
+ */
+
+SECTIONS
+{
+    .entry :%LMA_ADDRESS%
+    {
+        KEEP (*(.entry))
+    } > reset ]]>
+    </text>
+    <!-- TODO - replace "reset" above with %TEXT_SEGMENT% if there is a boot-copier -->
+
+    <if condition="or( not(%LOAD_EXCEPTIONS%), not(%RUN_FROM_FLASH%))">
+        <if condition="%MMU_PRESENT%">
+            <set_variable variable="LMA_ADDRESS" to=" AT(ADDR(.exceptions) - 0xc0000000)"/>
+        </if>
+        <text>
+<![CDATA[
+    .exceptions :%LMA_ADDRESS%
+    {
+        PROVIDE (__ram_exceptions_start = ABSOLUTE(.));  
+        . = ALIGN(0x20);
+        *(.irq)
+        KEEP (*(.exceptions.entry.label));
+        KEEP (*(.exceptions.entry.user));
+        KEEP (*(.exceptions.entry));
+        KEEP (*(.exceptions.irqtest.user));
+        KEEP (*(.exceptions.irqtest));
+        KEEP (*(.exceptions.irqhandler.user));
+        KEEP (*(.exceptions.irqhandler));
+        KEEP (*(.exceptions.irqreturn.user));
+        KEEP (*(.exceptions.irqreturn));
+        KEEP (*(.exceptions.notirq.label));
+        KEEP (*(.exceptions.notirq.user));
+        KEEP (*(.exceptions.notirq));
+        KEEP (*(.exceptions.soft.user));
+        KEEP (*(.exceptions.soft));
+        KEEP (*(.exceptions.unknown.user));
+        KEEP (*(.exceptions.unknown));
+        KEEP (*(.exceptions.exit.label));
+        KEEP (*(.exceptions.exit.user));
+        KEEP (*(.exceptions.exit));
+        KEEP (*(.exceptions));        
+        PROVIDE (__ram_exceptions_end = ABSOLUTE(.)); 
+    } >]]> %EXCEPTIONS_SEGMENT%<![CDATA[ 
+
+    PROVIDE (__flash_exceptions_start = LOADADDR(.exceptions));
+    ]]></text>  <!-- TODO - figure out how to handle case where EXCEPTIONS_SEGMENT is undefined (because EXC_ADDRESS did not equal the BASE_ADDRESS of any memory segment above) -->
+
+    </if>
+
+    <if condition="%MMU_PRESENT%">
+        <set_variable variable="LMA_ADDRESS" to="AT(ADDR(.text) - 0xc0000000)"/>
+    </if>
+    <text>
+<![CDATA[
+    .text :  %LMA_ADDRESS%
+    {
+        /*
+         * All code sections are merged into the text output section, along with
+         * the read only data sections.
+         *
+         */
+
+        PROVIDE (stext = ABSOLUTE(.));
+
+        *(.interp)
+        *(.hash)
+        *(.dynsym) 
+        *(.dynstr) 
+        *(.gnu.version) 
+        *(.gnu.version_d) 
+        *(.gnu.version_r) 
+        *(.rel.init) 
+        *(.rela.init)
+        *(.rel.text .rel.text.* .rel.gnu.linkonce.t.*) 
+        *(.rela.text .rela.text.* .rela.gnu.linkonce.t.*)
+        *(.rel.fini) 
+        *(.rela.fini)
+        *(.rel.rodata .rel.rodata.* .rel.gnu.linkonce.r.*)
+        *(.rela.rodata .rela.rodata.* .rela.gnu.linkonce.r.*) 
+        *(.rel.data .rel.data.* .rel.gnu.linkonce.d.*) 
+        *(.rela.data .rela.data.* .rela.gnu.linkonce.d.*) 
+        *(.rel.tdata .rel.tdata.* .rel.gnu.linkonce.td.*) 
+        *(.rela.tdata .rela.tdata.* .rela.gnu.linkonce.td.*) 
+        *(.rel.tbss .rel.tbss.* .rel.gnu.linkonce.tb.*) 
+        *(.rela.tbss .rela.tbss.* .rela.gnu.linkonce.tb.*) 
+        *(.rel.ctors) 
+        *(.rela.ctors) 
+        *(.rel.dtors) 
+        *(.rela.dtors) 
+        *(.rel.got) 
+        *(.rela.got) 
+        *(.rel.sdata .rel.sdata.* .rel.gnu.linkonce.s.*) 
+        *(.rela.sdata .rela.sdata.* .rela.gnu.linkonce.s.*) 
+        *(.rel.sbss .rel.sbss.* .rel.gnu.linkonce.sb.*) 
+        *(.rela.sbss .rela.sbss.* .rela.gnu.linkonce.sb.*)
+        *(.rel.sdata2 .rel.sdata2.* .rel.gnu.linkonce.s2.*)
+        *(.rela.sdata2 .rela.sdata2.* .rela.gnu.linkonce.s2.*) 
+        *(.rel.sbss2 .rel.sbss2.* .rel.gnu.linkonce.sb2.*)
+        *(.rela.sbss2 .rela.sbss2.* .rela.gnu.linkonce.sb2.*) 
+        *(.rel.bss .rel.bss.* .rel.gnu.linkonce.b.*)
+        *(.rela.bss .rela.bss.* .rela.gnu.linkonce.b.*) 
+        *(.rel.plt) 
+        *(.rela.plt) 
+
+        KEEP (*(.init))
+        *(.plt)
+        *(.text .stub .text.* .gnu.linkonce.t.*)
+  
+        /* .gnu.warning sections are handled specially by elf32.em.  */
+ 
+        *(.gnu.warning.*)
+        KEEP (*(.fini))
+        PROVIDE (__etext = ABSOLUTE(.));
+        PROVIDE (_etext = ABSOLUTE(.));
+        PROVIDE (etext = ABSOLUTE(.));
+
+        *(.eh_frame_hdr) 
+        /* Ensure the __preinit_array_start label is properly aligned.  We
+           could instead move the label definition inside the section, but
+           the linker would then create the section even if it turns out to
+           be empty, which isn't pretty.  */
+        . = ALIGN(32 / 8);
+        PROVIDE (__preinit_array_start = ABSOLUTE(.));
+        *(.preinit_array)
+        PROVIDE (__preinit_array_end = ABSOLUTE(.));
+        PROVIDE (__init_array_start = ABSOLUTE(.));
+        *(.init_array)
+        PROVIDE (__init_array_end = ABSOLUTE(.));
+        PROVIDE (__fini_array_start = ABSOLUTE(.));
+        *(.fini_array)
+        PROVIDE (__fini_array_end = ABSOLUTE(.));
+        SORT(CONSTRUCTORS)
+        KEEP (*(.eh_frame))
+        *(.gcc_except_table)
+        *(.dynamic) 
+        PROVIDE (__CTOR_LIST__ = ABSOLUTE(.));
+        KEEP (*(.ctors))
+        KEEP (*(SORT(.ctors.*)))
+        PROVIDE (__CTOR_END__ = ABSOLUTE(.));
+        PROVIDE (__DTOR_LIST__ = ABSOLUTE(.));
+        KEEP (*(.dtors))        
+        KEEP (*(SORT(.dtors.*)))
+        PROVIDE (__DTOR_END__ = ABSOLUTE(.));
+        KEEP (*(.jcr)) 
+        . = ALIGN(32 / 8);
+    } >]]>  %TEXT_SEGMENT% =0x3a880100 /* NOP on Nios2 (big endian) */  </text>
+
+    <if condition="and( %RUN_FROM_FLASH%, or( %LOAD_EXCEPTIONS%, %LOAD_RODATA% ) )">
+        <set_variable variable="LMA_ADDRESS" to="AT (LOADADDR (.text) + SIZEOF (.text))"/>
+    </if>
+
+    <if condition="and( %RUN_FROM_FLASH%, %LOAD_EXCEPTIONS%, %LOAD_RODATA% )">
+        <set_variable variable="VMA_ADDRESS" to="LOADADDR (.exceptions) + SIZEOF (.exceptions))"/>
+        <text>
+<![CDATA[
+
+    .exceptions :%LMA_ADDRESS%
+    {         
+        PROVIDE (__ram_exceptions_start = ABSOLUTE(.)); 
+        . = ALIGN(32 / 8);
+        *(.irq)
+        KEEP (*(.exceptions.entry.label));
+        KEEP (*(.exceptions.entry.user));
+        KEEP (*(.exceptions.entry));
+        KEEP (*(.exceptions.irqtest.user));
+        KEEP (*(.exceptions.irqtest));
+        KEEP (*(.exceptions.irqhandler.user));
+        KEEP (*(.exceptions.irqhandler));
+        KEEP (*(.exceptions.irqreturn.user));
+        KEEP (*(.exceptions.irqreturn));
+        KEEP (*(.exceptions.notirq.label));
+        KEEP (*(.exceptions.notirq.user));
+        KEEP (*(.exceptions.notirq));
+        KEEP (*(.exceptions.soft.user));
+        KEEP (*(.exceptions.soft));
+        KEEP (*(.exceptions.unknown.user));
+        KEEP (*(.exceptions.unknown));
+        KEEP (*(.exceptions.exit.label));
+        KEEP (*(.exceptions.exit.user));
+        KEEP (*(.exceptions.exit));
+        KEEP (*(.exceptions));    
+        . = ALIGN(32 / 8);     
+        PROVIDE (__ram_exceptions_end = ABSOLUTE(.)); 
+    } >]]> %EXCEPTIONS_SEGMENT%<![CDATA[  
+
+   PROVIDE (__flash_exceptions_start = LOADADDR(.exceptions)); 
+]]></text>  <!-- TODO - figure out how to handle case where EXCEPTIONS_SEGMENT is undefined (because EXC_ADDRESS did not equal the BASE_ADDRESS of any memory segment above) -->
+
+         <set_variable variable="LMA_ADDRESS" to=""/>
+
+         <switch>
+             <if condition="and( %RUN_FROM_FLASH%, %LOAD_RODATA% )">
+                 <set_variable variable="LMA_ADDRESS" to="AT (LOADADDR (.exceptions) + SIZEOF (.exceptions))"/>
+                 <set_variable variable="VMA_ADDRESS" to="LOADADDR (.rodata) + SIZEOF (.rodata)"/>
+                 <break/>
+             </if>
+             <if condition="%MMU_PRESENT%">
+                 <set_variable variable="LMA_ADDRESS" 
+                               to=" AT(ADDR(.rodata) - 0xc0000000)"/>
+             </if>
+         </switch>
+     </if>
+
+    <text>
+<![CDATA[
+
+    .rodata :%LMA_ADDRESS%
+    {
+        PROVIDE (__ram_rodata_start = ABSOLUTE(.));  
+        . = ALIGN(32 / 8);
+        *(.rodata .rodata.* .gnu.linkonce.r.*) 
+        *(.rodata1)
+        . = ALIGN(32 / 8);
+        PROVIDE (__ram_rodata_end = ABSOLUTE(.));  
+    } >]]> %RODATA_SEGMENT%<![CDATA[
+
+    PROVIDE (__flash_rodata_start = LOADADDR(.rodata));
+    ]]></text>
+
+    <if condition="%RUN_FROM_FLASH%">
+        <set_variable variable="LMA_ADDRESS" to="AT (LOADADDR (.rodata) + SIZEOF (.rodata))"/>
+    </if>
+
+    <if condition="and( %RUN_FROM_FLASH%, %LOAD_EXCEPTIONS%, not(%LOAD_RODATA%) )">
+        <text>
+<![CDATA[
+
+    .exceptions :%LMA_ADDRESS%
+    {         
+        PROVIDE (__ram_exceptions_start = ABSOLUTE(.)); 
+        . = ALIGN(32 / 8);
+        *(.irq)    
+        KEEP (*(.exceptions.entry.label));
+        KEEP (*(.exceptions.entry.user));
+        KEEP (*(.exceptions.entry));
+        KEEP (*(.exceptions.irqtest.user));
+        KEEP (*(.exceptions.irqtest));
+        KEEP (*(.exceptions.irqhandler.user));
+        KEEP (*(.exceptions.irqhandler));
+        KEEP (*(.exceptions.irqreturn.user));
+        KEEP (*(.exceptions.irqreturn));
+        KEEP (*(.exceptions.notirq.label));
+        KEEP (*(.exceptions.notirq.user));
+        KEEP (*(.exceptions.notirq));
+        KEEP (*(.exceptions.soft.user));
+        KEEP (*(.exceptions.soft));
+        KEEP (*(.exceptions.unknown.user));
+        KEEP (*(.exceptions.unknown));
+        KEEP (*(.exceptions.exit.label));
+        KEEP (*(.exceptions.exit.user));
+        KEEP (*(.exceptions.exit));
+        KEEP (*(.exceptions));    
+        . = ALIGN(32 / 8);  
+        PROVIDE (__ram_exceptions_end = ABSOLUTE(.)); 
+    } >]]> %EXCEPTIONS_SEGMENT%<![CDATA[
+
+    PROVIDE (__flash_exceptions_start = LOADADDR(.exceptions));  
+]]></text>  <!-- TODO - figure out how to handle case where EXCEPTIONS_SEGMENT is undefined (because EXC_ADDRESS did not equal the BASE_ADDRESS of any memory segment above) -->
+
+    <set_variable variable="LMA_ADDRESS" to="AT (LOADADDR (.exceptions) + SIZEOF (.exceptions))"/>
+    <set_variable variable="VMA_ADDRESS" to="LOADADDR (.exceptions) + SIZEOF (.exceptions)"/>
+
+    </if>
+
+    <switch>
+        <if condition="and( %RUN_FROM_FLASH%, not(%LOAD_RWDATA%) )">
+            <set_variable variable="LMA_ADDRESS" to=""/>
+            <if condition="%MMU_PRESENT%">
+                <set_variable variable="VMA_ADDRESS" to=" %VMA_ADDRESS% + 0xc0000000)"/>
+            </if>
+            <break/>
+        </if>
+        <set_variable variable="VMA_ADDRESS" to=""/>
+    </switch>
+
+    <if condition="%MMU_PRESENT%">
+        <set_variable variable="LMA_ADDRESS" to=" AT(ADDR(.rwdata) - 0xc0000000)"/>
+        <break/>
+    </if>
+
+    <text>
+<![CDATA[
+    .rwdata %VMA_ADDRESS% :%LMA_ADDRESS%
+    {  
+        PROVIDE (__ram_rwdata_start = ABSOLUTE(.));  
+        . = ALIGN(32 / 8);
+        *(.got.plt) *(.got)
+        *(.data1)
+        *(.data .data.* .gnu.linkonce.d.*)
+
+        _gp = ABSOLUTE(. + 0x8000);
+        PROVIDE(gp = _gp);
+
+        *(.sdata .sdata.* .gnu.linkonce.s.*)
+        *(.sdata2 .sdata2.* .gnu.linkonce.s2.*)
+
+        . = ALIGN(32 / 8);
+        _edata = ABSOLUTE(.);
+        PROVIDE (edata = ABSOLUTE(.));
+        PROVIDE (__ram_rwdata_end = ABSOLUTE(.));  
+    } >]]> %RWDATA_SEGMENT%<![CDATA[
+
+    PROVIDE (__flash_rwdata_start = LOADADDR(.rwdata));
+]]></text>
+
+    <switch>
+        <if condition="%MMU_PRESENT%">
+            <set_variable variable="LMA_ADDRESS" to=" AT(ADDR(.bss) - 0xc0000000)"/>
+            <break/>
+        </if>
+        <set_variable variable="LMA_ADDRESS" to=""/>
+    </switch><text>
+
+    .bss : %LMA_ADDRESS%<![CDATA[
+    {
+        __bss_start = ABSOLUTE(.);
+        PROVIDE (__sbss_start = ABSOLUTE(.));
+        PROVIDE (___sbss_start = ABSOLUTE(.));
+
+        *(.dynsbss)
+        *(.sbss .sbss.* .gnu.linkonce.sb.*)
+        *(.sbss2 .sbss2.* .gnu.linkonce.sb2.*)
+        *(.scommon)
+
+        PROVIDE (__sbss_end = ABSOLUTE(.));
+        PROVIDE (___sbss_end = ABSOLUTE(.));
+
+        *(.dynbss)
+        *(.bss .bss.* .gnu.linkonce.b.*)
+        *(COMMON)
+
+        . = ALIGN(32 / 8);
+        __bss_end = ABSOLUTE(.);
+    } >]]> %RWDATA_SEGMENT%
+
+    /*
+     * One output section for each of the available partitions. These are not
+     * used by default, but can be used by users applications using the .section
+     * directive.
+     *
+     * The memory partition used for the heap is treated in  special way, i.e. a
+     * symbol is added to point to the heap start.
+     *
+     * Note that when running from flash, these sections are not loaded by the 
+     * HAL.
+     *
+     */
+    </text>
+
+    <switch>
+        <if condition="eq( %RWDATA_SEGMENT%, %TEXT_SEGMENT% )">
+            <set_variable variable="LAST_SECTION" to="bss"/>
+            <break/>
+        </if>
+        <set_variable variable="LAST_SECTION" to="rwdata"/>
+    </switch>
+
+    <for_each variable="MODULE_SLAVE_NAME" list="%MODULE_SLAVE_NAME_LIST%">
+        <set_variable variable="VMA_ADDRESS" to=""/>
+        <switch>
+            <if condition="%RUN_FROM_FLASH%">
+                <set_variable variable="LMA_ADDRESS" to="AT (LOADADDR (.%LAST_SECTION%) + SIZEOF (.%LAST_SECTION%))"/>
+                <if condition="eq( %MODULE_SLAVE_NAME%, %TEXT_SEGMENT% )">
+                    <if condition="%MMU_PRESENT%">
+                        <set_variable variable="VMA_ADDRESS" to="LOADADDR (.%LAST_SECTION%) + SIZEOF (.%LAST_SECTION%) + 0xc0000000"/>
+                        <break/>
+                    </if>
+                    <set_variable variable="VMA_ADDRESS" to="LOADADDR (.%LAST_SECTION%) + SIZEOF (.%LAST_SECTION%)"/>
+                </if>
+                <break/>
+            </if>
+  
+            <if condition="%MMU_PRESENT%">
+                <set_variable variable="LMA_ADDRESS"
+                              to=" AT(ADDR(.%MODULE_SLAVE_NAME%) - 0xc0000000)"/>
+            </if>
+        </switch>
+        
+        <set_variable variable="LAST_SECTION" to="%MODULE_SLAVE_NAME%"/>
+
+        <text>
+
+    .%MODULE_SLAVE_NAME% %VMA_ADDRESS%: %LMA_ADDRESS%
+    {
+        PROVIDE (_alt_partition_%MODULE_SLAVE_NAME%_start = ABSOLUTE(.));
+        *(.%MODULE_SLAVE_NAME% .%MODULE_SLAVE_NAME%.*)
+        . = ALIGN(32 / 8);
+        PROVIDE (_alt_partition_%MODULE_SLAVE_NAME%_end = ABSOLUTE(.));
+        </text>
+        <if condition="eq( %MODULE_SLAVE_NAME%, %HEAP_SEGMENT% )">
+            <text>
+        _end = ABSOLUTE(.);
+        end = ABSOLUTE(.);
+            </text>
+        </if>
+        <if condition="eq( %MODULE_SLAVE_NAME%, %STACK_SEGMENT% )">
+            <text>
+        __alt_stack_base = ABSOLUTE(.);
+            </text>
+        </if>
+        <text>
+    } > %MODULE_SLAVE_NAME%
+
+    PROVIDE (_alt_partition_%MODULE_SLAVE_NAME%_load_addr = LOADADDR(.%MODULE_SLAVE_NAME%));
+        </text>
+    </for_each>
+
+    <text>
+<![CDATA[
+    /*
+     * Stabs debugging sections.
+     *
+     */
+
+    .stab          0 : { *(.stab) } 
+    .stabstr       0 : { *(.stabstr) }
+    .stab.excl     0 : { *(.stab.excl) } 
+    .stab.exclstr  0 : { *(.stab.exclstr) } 
+    .stab.index    0 : { *(.stab.index) } 
+    .stab.indexstr 0 : { *(.stab.indexstr) } 
+    .comment       0 : { *(.comment) } 
+    /* DWARF debug sections.
+       Symbols in the DWARF debugging sections are relative to the beginning
+       of the section so we begin them at 0.  */
+    /* DWARF 1 */
+    .debug          0 : { *(.debug) }
+    .line           0 : { *(.line) } 
+    /* GNU DWARF 1 extensions */
+    .debug_srcinfo  0 : { *(.debug_srcinfo) } 
+    .debug_sfnames  0 : { *(.debug_sfnames) } 
+    /* DWARF 1.1 and DWARF 2 */
+    .debug_aranges  0 : { *(.debug_aranges) } 
+    .debug_pubnames 0 : { *(.debug_pubnames) } 
+    /* DWARF 2 */
+    .debug_info     0 : { *(.debug_info .gnu.linkonce.wi.*) }
+    .debug_abbrev   0 : { *(.debug_abbrev) }
+    .debug_line     0 : { *(.debug_line) } 
+    .debug_frame    0 : { *(.debug_frame) } 
+    .debug_str      0 : { *(.debug_str) } 
+    .debug_loc      0 : { *(.debug_loc) } 
+    .debug_macinfo  0 : { *(.debug_macinfo) }
+    /* SGI/MIPS DWARF 2 extensions */
+    .debug_weaknames 0 : { *(.debug_weaknames) } 
+    .debug_funcnames 0 : { *(.debug_funcnames) } 
+    .debug_typenames 0 : { *(.debug_typenames) } 
+    .debug_varnames  0 : { *(.debug_varnames) } 
+
+    /* Altera debug extensions */
+    .debug_alt_sim_info 0 : { *(.debug_alt_sim_info) }
+}
+/* provide a pointer for the stack */
+]]> </text>
+
+    <!-- calculate the stack pointer... -->
+
+    <!-- ...but first, add the exception address and reset address for
+            any other CPUs to the list of partition addresses... -->
+
+    <for_each variable="MODULE" ptf_path="SYSTEM/MODULE">
+        <if condition="ne( %MODULE%, %CPU% )">
+            <set_variable variable="IS_CPU"
+                          ptf_path="SYSTEM/MODULE %MODULE%/SYSTEM_BUILDER_INFO/Is_CPU"/>
+            <set_variable variable="IS_ENABLED"
+                          ptf_path="SYSTEM/MODULE %MODULE%/SYSTEM_BUILDER_INFO/Is_Enabled"/>
+            <if condition="and( %IS_CPU%, ne( %IS_ENABLED%, 0 ) )">  <!-- IS_ENABLED defaults to 1 (true) -->
+                <!-- check the reset address first -->
+                <set_variable variable="RESET_SLAVE"
+                              ptf_path="SYSTEM/MODULE %MODULE%/WIZARD_SCRIPT_ARGUMENTS/reset_slave"/>
+                <set_variable variable="RESET_SLAVE"
+                              to='regex_replace_all( /, "/SLAVE ", %RESET_SLAVE% )'/> <!-- convert RESET_SLAVE to the format used in MODULE_SLAVE_LIST -->
+                <if condition="list_contains( %MODULE_SLAVE_LIST%, %RESET_SLAVE% )"> <!-- is the reset slave also mastered by CPU? -->
+                    <set_variable variable="RESET_OFFSET"
+                                  ptf_path="SYSTEM/MODULE %MODULE%/WIZARD_SCRIPT_ARGUMENTS/reset_offset"/>
+                    <set_variable variable="MODULE_SLAVE" to="%RESET_SLAVE%"/>
+                    <export variable="MODULE_SLAVE"/>
+                    <call gtf="%GTF_DIR%/BASE_ADDRESS_and_ADDRESS_SPAN.gtf"/>
+                    <set_variable variable="PARTITION_ADDRESS"
+                                  to="add( %BASE_ADDRESS%, %RESET_OFFSET% )"/>
+                    <if condition="list_ranges_contain( %MEMORY_RANGE_LIST%, %PARTITION_ADDRESS% )">
+                        <set_variable variable="PARTITION_ADDRESS_LIST"
+                                      to="list_add( %PARTITION_ADDRESS_LIST%, %PARTITION_ADDRESS% )"/>
+                    </if>
+                </if>
+                <!-- then check the exception address -->
+                <!-- TODO - this code is duplicated directly above -->
+                <set_variable variable="EXC_SLAVE"
+                              ptf_path="SYSTEM/MODULE %MODULE%/WIZARD_SCRIPT_ARGUMENTS/exc_slave"/>
+                <set_variable variable="EXC_SLAVE"
+                              to='regex_replace_all( /, "/SLAVE ", %EXC_SLAVE% )'/> <!-- convert EXC_SLAVE to the format used in MODULE_SLAVE_LIST -->
+                <if condition="list_contains( %MODULE_SLAVE_LIST%, %EXC_SLAVE% )"> <!-- is the reset slave also mastered by CPU? -->
+                    <set_variable variable="EXC_OFFSET"
+                                  ptf_path="SYSTEM/MODULE %MODULE%/WIZARD_SCRIPT_ARGUMENTS/exc_offset"/>
+                    <set_variable variable="MODULE_SLAVE" to="%EXC_SLAVE%"/>
+                    <export variable="MODULE_SLAVE"/>
+                    <call gtf="%GTF_DIR%/BASE_ADDRESS_and_ADDRESS_SPAN.gtf"/>
+                    <set_variable variable="PARTITION_ADDRESS"
+                                  to="add( %BASE_ADDRESS%, %EXC_OFFSET% )"/>
+                    <if condition="list_ranges_contain( %MEMORY_RANGE_LIST%, %PARTITION_ADDRESS% )">
+                        <set_variable variable="PARTITION_ADDRESS_LIST"
+                                      to="list_add( %PARTITION_ADDRESS_LIST%, %PARTITION_ADDRESS% )"/>
+                    </if>
+                </if>
+            </if>
+        </if>
+    </for_each>
+
+    <set_variable variable="PARTITION_ADDRESS_LIST"
+                  to="list_sort( %PARTITION_ADDRESS_LIST% )"/>
+
+    <!-- ...now construct the stack pointer -->
+
+    <!-- first we need the base address of the stack section) -->
+    <set_variable variable="STACK_SEGMENT_INDEX"
+                  to="list_index_of( %MODULE_SLAVE_NAME_LIST%, %STACK_SEGMENT% )"/>
+    <set_variable variable="MODULE_SLAVE"
+                  to="list_get( %MODULE_SLAVE_LIST%, %STACK_SEGMENT_INDEX% )"/>
+    <export variable="MODULE_SLAVE"/>
+    <call gtf="%GTF_DIR%/BASE_ADDRESS_and_ADDRESS_SPAN.gtf"/>
+
+    <for_each variable="ADDRESS" index_variable="PARTITION_ADDRESS_LIST_INDEX" list="%PARTITION_ADDRESS_LIST%">
+        <if condition="gt( %ADDRESS%, %BASE_ADDRESS% )">
+            <set_variable variable="STACK_POINTER" to="%ADDRESS%"/>
+            <break/>
+        </if>
+    </for_each>
+
+    <!-- align downwards (truncate) to the next-lower word-aligned address -->
+    <set_variable variable="STACK_POINTER" to="bitwise_and( %STACK_POINTER%, 0xFFFFFFFC )"/>
+
+    <set_variable variable="ADDRESS" to="%STACK_POINTER%"/>
+    <export variable="ADDRESS"/>
+    <set_variable variable="ADDRESS_DESCRIPTION" to="stack pointer"/>
+    <export variable="ADDRESS_DESCRIPTION"/>
+    <call gtf="%GTF_DIR%/MMU_ADDRESS.gtf"/>
+    <set_variable variable="STACK_POINTER" to="%ADDRESS%"/>
+
+    <!-- ...now construct the heap limit - same code as above but with
+    different segment -->
+
+    <!-- first we need the base address of the heap section) -->
+    <set_variable variable="HEAP_SEGMENT_INDEX"
+                  to="list_index_of( %MODULE_SLAVE_NAME_LIST%, %HEAP_SEGMENT% )"/>
+    <set_variable variable="MODULE_SLAVE"
+                  to="list_get( %MODULE_SLAVE_LIST%, %HEAP_SEGMENT_INDEX% )"/>
+    <export variable="MODULE_SLAVE"/>
+    <call gtf="%GTF_DIR%/BASE_ADDRESS_and_ADDRESS_SPAN.gtf"/>
+
+    <for_each variable="ADDRESS" index_variable="PARTITION_ADDRESS_LIST_INDEX" list="%PARTITION_ADDRESS_LIST%">
+        <if condition="gt( %ADDRESS%, %BASE_ADDRESS% )">
+            <set_variable variable="HEAP_LIMIT" to="%ADDRESS%"/>
+            <break/>
+        </if>
+    </for_each>
+
+    <!-- align downwards (truncate) to the next-lower word-aligned address -->
+    <set_variable variable="HEAP_LIMIT" to="bitwise_and( %HEAP_LIMIT%, 0xFFFFFFFC )"/>
+
+    <set_variable variable="ADDRESS" to="%HEAP_LIMIT%"/>
+    <export variable="ADDRESS"/>
+    <set_variable variable="ADDRESS_DESCRIPTION" to="heap limit"/>
+    <export variable="ADDRESS_DESCRIPTION"/>
+    <call gtf="%GTF_DIR%/MMU_ADDRESS.gtf"/>
+    <set_variable variable="HEAP_LIMIT" to="%ADDRESS%"/>
+
+    <text>
+
+/*
+ * Don't override this, override the __alt_stack_* symbols instead.
+ */
+__alt_data_end = %STACK_POINTER%;
+
+/*
+ * The next two symbols define the location of the default stack.  You can
+ * override them to move the stack to a different memory.
+ */
+PROVIDE( __alt_stack_pointer = __alt_data_end );
+PROVIDE( __alt_stack_limit   = __alt_stack_base );
+    </text>
+
+    <if condition="eq( yes, %USE_EXCEPTION_STACK% )">
+        <text>
+
+/*
+ * These symbols define the location of the separate exception stack.
+ */
+PROVIDE( __alt_exception_stack_pointer = %STACK_PTR% );
+PROVIDE( __alt_exception_stack_limit   = %STACK_LIMIT% ); 
+        </text>
+    </if>
+
+    <text>
+
+/*
+ * This symbol controls where the start of the heap is.  If the stack is
+ * contiguous with the heap then the stack will contract as memory is
+ * allocated to the heap.
+ * Override this symbol to put the heap in a different memory.
+ */
+PROVIDE( __alt_heap_start    = end );
+PROVIDE( __alt_heap_limit    = %HEAP_LIMIT% );
+
+    </text>
+
+</template>

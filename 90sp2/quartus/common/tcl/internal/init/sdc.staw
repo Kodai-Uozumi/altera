@@ -1,0 +1,174 @@
+create_clock [-add] [-name <clock_name>] -period <value> [-waveform <edge_list>] [<targets>]
+ -add: Adds clock to a node with an existing clock
+ -name <clock_name>: Clock name of the created clock
+ -period <value>: Speed of the clock in terms of clock period
+ -waveform <edge_list>: List of edge values
+ <targets>: List or collection of targets
+create_generated_clock [-add] [-divide_by <factor>] [-duty_cycle <percent>] [-edge_shift <shift_list>] [-edges <edge_list>] [-invert] [-master_clock <clock>] [-multiply_by <factor>] [-name <clock_name>] [-offset <time>] [-phase <degrees>] -source <clock_source> [<targets>]
+ -add: Add clock to existing clock node
+ -divide_by <factor>: Division factor
+ -duty_cycle <percent>: Specifies the duty cycle as a percentage of the clock period--accepts floating point values
+ -edge_shift <shift_list>: List of edge shifts
+ -edges <edge_list>: List of edge values
+ -invert: Invert the clock waveform
+ -master_clock <clock>: Specifies clock of the source node
+ -multiply_by <factor>: Multiplication factor
+ -name <clock_name>: Name of generated clock
+ -offset <time>: Specifies the offset as an absolute time shift
+ -phase <degrees>: Specifies the phase shift in degrees
+ -source <clock_source>: Source node for the generated clock
+ <targets>: List or collection of targets
+set_clock_groups [-asynchronous] [-exclusive] -group <names>
+ -asynchronous: Specify mutually exclusive clocks (same as the -exclusive option).  Exists for compatibility. 
+ -exclusive: Specify mutually exclusive clocks
+ -group <names>: Valid destinations (string patterns are matched using Tcl string matching)
+remove_clock_groups -all
+ -all: Specify remove all clock group settings
+set_clock_latency [-clock <clock_list>] [-early] [-fall] [-late] [-rise] -source <delay> <targets>
+ -clock <clock_list>: Valid clock destinations (string patterns are matched using Tcl string matching)
+ -early: Specifies the early clock latency
+ -fall: Specifies the falling transition clock latency
+ -late: Specifies the late clock latency
+ -rise: Specifies the rising transition clock latency
+ -source: Specifies the source clock latency
+ <delay>: Latency delay value
+ <targets>: Valid destinations (string patterns are matched using Tcl string matching)
+remove_clock_latency -source <targets>
+ -source: Specifies the source clock latency
+ <targets>: Valid destinations (string patterns are matched using Tcl string matching)
+set_clock_uncertainty [-add] [-fall_from <fall_from_clock>] [-fall_to <fall_to_clock>] [-from <from_clock>] [-hold] [-rise_from <rise_from_clock>] [-rise_to <rise_to_clock>] [-setup] [-to <to_clock>] <uncertainty>
+ -add: Specifies that this assignment is an addition to the clock uncertainty derived by derive_clock_uncertainty call
+ -fall_from <fall_from_clock>: Valid destinations (string patterns are matched using Tcl string matching)
+ -fall_to <fall_to_clock>: Valid destinations (string patterns are matched using Tcl string matching)
+ -from <from_clock>: Valid destinations (string patterns are matched using Tcl string matching)
+ -hold: Specifies the uncertainty value (applies to clock hold or removal checks)
+ -rise_from <rise_from_clock>: Valid destinations (string patterns are matched using Tcl string matching)
+ -rise_to <rise_to_clock>: Valid destinations (string patterns are matched using Tcl string matching)
+ -setup: Specifies the uncertainty value (applies to clock setup or recovery checks) (default)
+ -to <to_clock>: Valid destinations (string patterns are matched using Tcl string matching)
+ <uncertainty>: Uncertainty
+remove_clock_uncertainty -from <from_clock> -to <to_clock>
+ -from <from_clock>: Valid destinations (string patterns are matched using Tcl string matching)
+ -to <to_clock>: Valid destinations (string patterns are matched using Tcl string matching)
+all_clocks
+all_inputs
+all_outputs
+all_registers
+get_clocks [-nocase] [-nowarn] [<filter>]
+ -nocase: Specifies the matching of node names to be case-insensitive
+ -nowarn: Do not issue warnings messages about unmatched patterns
+ <filter>: Valid destinations (string patterns are matched using Tcl string matching)
+get_ports [-nocase] [-nowarn] [<filter>]
+ -nocase: Specifies case-insensitive node name matching
+ -nowarn: Do not issue warnings messages about unmatched patterns
+ <filter>: Valid destinations (string patterns are matched using Tcl string matching)
+get_pins [-compatibility_mode] [-hierarchical] [-no_duplicates] [-nocase] [-nowarn] [<filter>]
+ -compatibility_mode: Use simple Tcl matching (Classic Timing Analyzer style)
+ -hierarchical: Specifies use of a hierarchical searching method
+ -no_duplicates: Do not match duplicated pin names
+ -nocase: Specifies case-insensitive node name matching
+ -nowarn: Do not issue warnings messages about unmatched patterns
+ <filter>: Valid destinations (string patterns are matched using Tcl string matching)
+get_cells [-compatibility_mode] [-hierarchical] [-no_duplicates] [-nocase] [-nowarn] [<filter>]
+ -compatibility_mode: Use simple Tcl matching (Classic Timing Analyzer style)
+ -hierarchical: Specifies use of a hierarchical searching method
+ -no_duplicates: Do not match duplicated cell names
+ -nocase: Specifies case insensitive node name matching
+ -nowarn: Do not issue warnings messages about unmatched patterns
+ <filter>: Valid destinations (string patterns are matched using Tcl string matching)
+get_nets [-no_duplicates] [-nocase] [-nowarn] [<filter>]
+ -no_duplicates: Do not match duplicated net names
+ -nocase: Specifies case-insensitive node name matching
+ -nowarn: Do not issue warnings messages about unmatched patterns
+ <filter>: Valid destinations (string patterns are matched using Tcl string matching)
+reset_design
+set_input_delay [-add_delay] -clock <name> [-clock_fall] [-fall] [-max] [-min] [-reference_pin <name>] [-rise] [-source_latency_included] <delay> <targets>
+ -add_delay: Add to existing delays instead of overriding them
+ -clock <name>: Clock name
+ -clock_fall: Specifies that input delay is relative to the falling edge of the clock
+ -fall: Specifies the falling input delay at the port
+ -max: Applies value as maximum data arrival time
+ -min: Applies value as minimum data arrival time
+ -reference_pin <name>: Specifies a port in the design to which the input delay is relative
+ -rise: Specifies the rising input delay at the port
+ -source_latency_included: Specifies that input delay includes added source latency
+ <delay>: Time value
+ <targets>: List of input port type objects
+remove_input_delay <targets>
+ <targets>: Collection or list of input ports
+set_output_delay [-add_delay] -clock <name> [-clock_fall] [-fall] [-max] [-min] [-reference_pin <name>] [-rise] [-source_latency_included] <delay> <targets>
+ -add_delay: Add to existing delays instead of overriding them
+ -clock <name>: Clock name
+ -clock_fall: Specifies output delay relative to the falling edge of the clock
+ -fall: Specifies the falling output delay at the port
+ -max: Applies value as maximum data required time
+ -min: Applies value as minimum data required time
+ -reference_pin <name>: Specifies a port in the design to which the output delay is relative
+ -rise: Specifies the rising output delay at the port
+ -source_latency_included: Specifies input delay already includes added source latency
+ <delay>: Time value
+ <targets>: Collection or list of output ports
+remove_output_delay <targets>
+ <targets>: Collection or list of output ports
+set_multicycle_path [-end] [-fall_from <names>] [-fall_to <names>] [-from <names>] [-hold] [-rise_from <names>] [-rise_to <names>] [-setup] [-start] [-through <names>] [-to <names>] <value>
+ -end: Specifies that the multicycle is relative to the destination clock waveform (default)
+ -fall_from <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+ -fall_to <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+ -from <names>: Valid sources (string patterns are matched using Tcl string matching)
+ -hold: Specifies that the multicycle value applies to clock hold or removal checks
+ -rise_from <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+ -rise_to <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+ -setup: Specifies that the multicycle value applies to clock setup or recovery checks (default)
+ -start: Specifies that the multicycle is relative to the source clock waveform
+ -through <names>: Valid through nodes (string patterns are matched using Tcl string matching)
+ -to <names>: Valid destinations (string patterns are matched using Tcl string matching)
+ <value>: Number of clock cycles
+set_max_delay [-fall_from <names>] [-fall_to <names>] [-from <names>] [-rise_from <names>] [-rise_to <names>] [-through <names>] [-to <names>] <value>
+ -fall_from <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+ -fall_to <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+ -from <names>: Valid sources (string patterns are matched using Tcl string matching)
+ -rise_from <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+ -rise_to <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+ -through <names>: Valid through nodes (string patterns are matched using Tcl string matching)
+ -to <names>: Valid destinations (string patterns are matched using Tcl string matching)
+ <value>: Time Value
+set_min_delay [-fall_from <names>] [-fall_to <names>] [-from <names>] [-rise_from <names>] [-rise_to <names>] [-through <names>] [-to <names>] <value>
+ -fall_from <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+ -fall_to <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+ -from <names>: Valid sources (string patterns are matched using Tcl string matching)
+ -rise_from <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+ -rise_to <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+ -through <names>: Valid through nodes (string patterns are matched using Tcl string matching)
+ -to <names>: Valid destinations (string patterns are matched using Tcl string matching)
+ <value>: Time Value
+set_false_path [-fall_from <names>] [-fall_to <names>] [-from <names>] [-hold] [-rise_from <names>] [-rise_to <names>] [-setup] [-through <names>] [-to <names>]
+ -fall_from <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+ -fall_to <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+ -from <names>: Valid sources (string patterns are matched using Tcl string matching)
+ -hold: Specifies the false_path value (applies only to clock hold or removal checks)
+ -rise_from <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+ -rise_to <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+ -setup: Specifies the false_path value (applies only to clock setup or recovery checks)
+ -through <names>: Valid through nodes (string patterns are matched using Tcl string matching)
+ -to <names>: Valid destinations (string patterns are matched using Tcl string matching)
+derive_clocks -period <period_value> [-waveform <edge_list>]
+ -period <period_value>: Speed of the default clock in terms of clock period
+ -waveform <edge_list>: List of edge values
+set_disable_timing [-from <name>] [-to <name>] <cells>
+ -from <name>: Valid source pin suffix
+ -to <name>: Valid destination pin suffix
+ <cells>: List of cells
+remove_disable_timing [-from <name>] [-to <name>] <cells>
+ -from <name>: Valid source pin suffix
+ -to <name>: Valid destination pin suffix
+ <cells>: List of cells
+set_input_transition [-clock <name>] [-clock_fall] [-fall] [-max] [-min] [-rise] <transition> <ports>
+ -clock <name>: Clock name
+ -clock_fall: Specifies that input delay is relative to the falling edge of the clock
+ -fall: Specifies the falling output delay at the port
+ -max: Applies value as maximum data required time
+ -min: Applies value as minimum data required time
+ -rise: Specifies the rising output delay at the port
+ <transition>: Time value
+ <ports>: Collection or list of input or bidir ports
+EOF

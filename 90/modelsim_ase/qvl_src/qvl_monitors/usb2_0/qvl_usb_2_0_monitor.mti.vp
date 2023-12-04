@@ -1,0 +1,738 @@
+//              Copyright 2006-2008 Mentor Graphics Corporation
+//                           All Rights Reserved.
+//
+//              THIS WORK CONTAINS TRADE SECRET AND PROPRIETARY
+//            INFORMATION WHICH IS THE PROPERTY OF MENTOR GRAPHICS
+//           CORPORATION OR ITS LICENSORS AND IS SUBJECT TO LICENSE
+//                                  TERMS.
+//
+//                   Questa Verification Library (QVL)
+//
+
+/*************************************************************************
+* 
+* PURPOSE     This file is part of Questa Verification Library (QVL).
+* 
+* DESCRIPTION This monitor checks the USB 2.0 interface for compliance with
+*             USB 2.0 specification and protocol.  
+* 
+* REFERENCES  Universal Serial Bus Specification, Revision 2.0, April 27 
+*             2000.
+*             Errata for USB 2.0 specification, May 28, 2002
+*             Errata for USB 2.0 specification, December 7, 2002
+* 
+* INPUTS      clock                   - Clock. 
+*             reset                   - Synchronous reset, active high.
+*             areset                  - Asynchronous reset, active high.
+*             dp                      - Data plus input/output. 
+*             dm                      - Data minus input/output. 
+*             oe_n                    - Output enable, active low.
+*             speed                   - Speed input.
+*             address                 - Device address.
+*             end_point_config        - End point configuration input. 
+*
+* NOTES   
+*
+*             1. Monitor should be instantiated in the interface between 
+*                USB transceiver and USB controller. This controller can
+*                be a host controller, HUB controller or a device 
+*                controller.
+* 
+*             2. Input dp is an input to the USB transceiver when oe_n is 
+*                asserted, and output from the transceiver when oe_n is 
+*                deasserted.
+*
+*             3. Input dm is an input to the USB transceiver when oe_n is 
+*                asserted, and output from the transceiver when oe_n is 
+*                deasserted.
+*
+*             4. Clock frequency should be same as the data rate of the USB
+*                interface. For a High speed interface connect 480Mhz clock 
+*                to this input. For a full speed interface connect 12Mhz clock
+*                to this input. For a low speed interface connect 1.5Mhz
+*                clock to this input. This clock will be used to sample 
+*                data on the USB bus.
+* 
+* MONITOR INSTANTIATION 
+*
+*  Monitor is instantiated in the Host to track the transactions of the
+*  downstream port of the host(Downstream port of root hub).
+*
+*       +----------------+                          +-----------------+
+*       |                |                          |                 |  
+*       | +-----------+  |                          |                 |  
+*       | | Monitor   |  |                          |                 |  
+*       | +-----------+  |     USB Bus              |     HUB or      |  
+*       |                |<------------------------>|                 |  
+*       |  HOST          |    High /Full speed      |     FUNCTION    |
+*       |                |                          |                 |  
+*       |                |                          |                 |  
+*       |                |                          |                 |  
+*       |                |                          |                 |  
+*       +----------------+                          +-----------------+
+*
+*  Monitor is instantiated in the Device to track the transactions of the
+*  upstream port of the Device. (Device can be Hub or Function)
+*
+*       +----------------+                          +-----------------+
+*       |                |                          |                 |  
+*       |                |                          | +-------------+ |
+*       |                |                          | | Monitor     | |
+*       |                |      USB Bus             | +-------------+ |
+*       |                |<------------------------>|     HUB or      |  
+*       |                |      High / Full speed   |                 |  
+*       |  HOST          |                          |    FUNCTION     |
+*       |                |                          |                 |  
+*       |                |                          |                 |  
+*       |                |                          |                 |  
+*       +----------------+                          +-----------------+
+*
+*  Monitor is instantiated in the Hub to track the transactions of the 
+*  downstream port of the Hub.
+*
+*        +----------------+                          +-----------------+
+*        |                |                          |                 | 
+*        | +-----------+  |                          |                 | 
+*        | | Monitor   |  |                          |                 | 
+*        | +-----------+  |     USB Bus              |     HUB or      | 
+*        |                |<------------------------>|                 | 
+*        |  HUB           |   High,Full or Low speed |   FUNCTION      |
+*        |                |                          |                 | 
+*        |                |                          |                 | 
+*        |                |                          |                 | 
+*        |                |                          |                 | 
+*        +----------------+                          +-----------------+
+* 
+**************************************************************************/
+
+`ifdef ZiCwDebug
+`define ZiCwDebugDelay1 #1
+`define ZiCwQuietIfNoCwDebug
+`else
+`define ZiCwDebugDelay1
+`define ZiCwQuietIfNoCwDebug -quiet
+`endif // ZiCwDebug
+
+`ifdef QVL_SVA_INTERFACE
+`define qvlmodule interface
+`define qvlendmodule endinterface
+`else
+`define qvlmodule module
+`define qvlendmodule endmodule
+`endif
+
+
+`ifdef QVL_ASSERT_ON
+  `define OVL_ASSERT_ON
+  `define OVL_SVA
+`endif
+
+`ifdef QVL_COVER_ON
+  `ifdef QVL_SV_COVERGROUP_OFF
+     // Do nothing
+  `else
+    `define QVL_SV_COVERGROUP
+  `endif
+
+  `ifdef QVL_MW_FINAL_COVER_OFF
+     // Do nothing
+  `else
+     `define QVL_MW_FINAL_COVER
+  `endif
+`endif
+
+`qvlmodule qvl_usb_2_0_monitor (
+                              clock,
+                              reset,
+                              areset,
+                              dp,
+                              dm,
+                              oe_n,
+			      speed,
+                              address,
+			      end_point_config
+                              );
+
+  // Parameter Constraints_Mode = 1 will configure some checks in this
+  // monitor as constraints during 0-In Search.
+
+  parameter Constraints_Mode = 0; // 0in constraint
+  wire [31:0] pw_Constraints_Mode = Constraints_Mode;
+
+  // Parameter PORT_TYPE configures the port type which will be tracked by  
+  // the monitor. PORT_TYPE = 0 configures the monitor to track the 
+  // transactions of the downstream port of the Host. PORT_TYPE = 1 
+  // configures the monitor to track the transactions of the upstream port
+  // of Hub. PORT_TYPE = 2 configures the monitor to track the transactions 
+  // of the downstream port of Hub. PORT_TYPE = 3 configures the monitor to
+  // track transactions of upstream port of a function. This information, 
+  // along with the value of parameter Constraints_Mode will decide the checks
+  // to be turned into constraints during 0-In Search.
+     
+  parameter PORT_TYPE = 0;
+  wire [31:0] pw_PORT_TYPE = PORT_TYPE;
+
+  // Parameter NUMBER_OF_ENDPOINTS configures the number of end points 
+  // to be tracked by the monitor. By default, monitor is configured
+  // to track only one end point.
+
+  parameter NUMBER_OF_ENDPOINTS = 1;
+  wire [31:0] pw_NUMBER_OF_ENDPOINTS = NUMBER_OF_ENDPOINTS;
+
+  // Parameter FRAME_INTERVAL_COUNT indicates the number of clock cycles
+  // between two successive SOF packets (USB specification specifies
+  // an interval of 1ms between frames. This time duration needs to be mapped
+  // into number of clock cycles). Typicaly 12000 clock cycles occur in a 
+  // full speed interface. 
+
+  parameter FRAME_INTERVAL_COUNT = 60000;
+  wire [31:0] pw_FRAME_INTERVAL_COUNT = FRAME_INTERVAL_COUNT;
+
+  // Parameter SEQUENCE_BIT_TRACKING_ENABLE configures the monitor to
+  // track data toggle synchronization.
+
+  parameter SEQUENCE_BIT_TRACKING_ENABLE = 1;
+  wire [31:0] pw_SEQUENCE_BIT_TRACKING_ENABLE = SEQUENCE_BIT_TRACKING_ENABLE;
+
+  // Parameter PACKET_ISSUE_CHECK_ENABLE configures the monitor to fire
+  // for illegal issue of token, requests. By default monitor fires
+  // for above mentioned conditions. Example : If IN token is issued
+  // to OUT only end point then monitor check fires when this parameter
+  // is set to 1. Similarly if undefined requests other than standard
+  // requests, device class requests are issued then monitor checks
+  // fire when this parameter is set to 1.
+
+  parameter PACKET_ISSUE_CHECK_ENABLE = 1;
+  wire [31:0] pw_PACKET_ISSUE_CHECK_ENABLE = PACKET_ISSUE_CHECK_ENABLE;
+
+  // Parameter OTG_DEVICE configures the monitor to track OTG compliant
+  // USB devices. By default, non OTG compliant devices are tracked.
+
+  parameter OTG_DEVICE = 0;
+  wire [31:0] pw_OTG_DEVICE = OTG_DEVICE;
+
+  // Parameter HUB_SETUP_INTERVAL configures the Hub setup time. this
+  // time is required to enable the low speed ports connected to
+  // low speed ports of the hub. This time is specified interms of
+  // full speed bit times. This parameter is valid only when the monitor
+  // is instantiated on ports other than upstream port of the function
+  // and in an full speed environment between Host and Hub.
+
+  parameter HUB_SETUP_INTERVAL = 4;
+  wire [31:0] pw_HUB_SETUP_INTERVAL = HUB_SETUP_INTERVAL;
+
+  // Input declarations
+
+  input clock;
+  input reset;
+  input areset;
+  input dp;
+  input dm;
+  input oe_n;
+  input [1:0] speed;
+  input [6:0] address;
+
+  // Input end_point_config specifies the configuration details
+  // for each the end point. This port contains all the information
+  // regarding all the end points that needs to tracked by the monitor.
+  // Fallowing encoding scheme should be utilized to specify the 
+  // end point configuration.
+  // End point encoding scheme used for each end point is as follows.
+  // A3 A2 A1 A0 D T2 T1 T0 O1 O0 S9 to S0 is the bit fields of a 21 bit reg.
+  // A3 bit is the MSB and S0 bit is the LSB of the 18 bit register.
+  // A3 A2 A1 A0 bits specifies the address of the end point.
+  // T1 T0 bit indicates whether type of the end point. D bit gives the
+  // direction of the end point. D = '0' indicates OUT direction.
+  // D = '1' indicates IN direction.
+  // T2 T1 T0 decoding is as follows.
+  // 0  0  0  ---> Undefined
+  // 0  0  1  ---> Control Transfer
+  // 0  1  0  ---> Interrupt Transfer
+  // 0  1  1  ---> Bulk Transfer
+  // 1  0  0  ---> ISO Transfer.
+  // S10 to S0 specifies the wMaxpacketsize. The maximum packet size
+  // supported by this end point.
+  // O1 O0 specify the additional transaction oppertunity per microframe
+  // This field is required for high bandwidth end points.
+  //
+  // 0 0     None         (1 Transaction per microframe).
+  // 0 1     1 Additional (2 Transactions per microframe).
+  // 1 0     2 Additional (3 Transactions per micrframe).
+  // 1 1     Reserved. 
+
+  input [(NUMBER_OF_ENDPOINTS * 21) - 1 :0] end_point_config;  
+  
+  // Internal parameter declarations.
+
+  parameter ZI_HOST_SIDE_CONSTRAINT = (Constraints_Mode &&
+                                       (PORT_TYPE == 0 || PORT_TYPE == 2));
+  parameter ZI_DEVICE_SIDE_CONSTRAINT = (Constraints_Mode &&
+                       (PORT_TYPE == 1 || PORT_TYPE == 3));
+
+  parameter ZI_HIGH_SPEED_MIN_INTER_PKT_DELAY = 8; // 8 bit times.
+  parameter ZI_FULL_LOW_SPEED_MIN_INTER_PKT_DELAY = 2; // 2 bit times.
+  parameter ZI_HIGH_SPEED_MAX_INTER_PKT_DELAY = 192; // 192 bit times.
+  parameter ZI_FULL_LOW_SPEED_MAX_INTER_PKT_DELAY = 7; // 7 bit times.
+  parameter ZI_HIGH_SPEED_MIN_DELAY_SUCCESSIVE_PKTS =
+                  (PORT_TYPE === 0) ?  88 : 32; // For hosts 88, others 32
+
+  // Parameter ZI_SE0_COUNT_LOW_SPD_RESET specifies the number of bit times
+  // an SE0 should be sampled to detect reset signaling on a low speed
+  // interface.
+
+  parameter ZI_SE0_COUNT_LOW_SPD_RESET = 6;
+  wire [31:0] pw_ZI_SE0_COUNT_LOW_SPD_RESET = ZI_SE0_COUNT_LOW_SPD_RESET;
+
+  // Parameter ZI_SE0_COUNT_FULL_SPD_RESET specifies the number of bit times
+  // an SE0 should be sampled to detect reset signaling on a full speed
+  // interface.
+ 
+  parameter ZI_SE0_COUNT_FULL_SPD_RESET = 30;
+  wire [31:0] pw_ZI_SE0_COUNT_FULL_SPD_RESET = ZI_SE0_COUNT_FULL_SPD_RESET;
+
+  // Parameter ZI_SE0_COUNT_HIGH_SPD_RESET specifies the number of bit times
+  // an SE0 should be sampled to detect reset signaling on a high speed 
+  // interface.
+
+  parameter ZI_SE0_COUNT_HIGH_SPD_RESET = 50000;
+  wire [31:0] pw_ZI_SE0_COUNT_HIGH_SPD_RESET = ZI_SE0_COUNT_HIGH_SPD_RESET;
+
+  // Parameter declaration for main state machine.
+
+  parameter ZI_IDLE_STATE = 0;
+  parameter ZI_ACTIVE_STATE = 1;
+  parameter ZI_RESET_STATE = 2;
+  parameter ZI_UNKNOWN_STATE = 3;
+
+  //-------------------------------------------------------------------
+  // Parameter declarations for start of packet detection statemachine
+  //-------------------------------------------------------------------
+
+  parameter ZI_SOP_IDLE_STATE = 0;
+  parameter ZI_S1_STATE = 1;
+  parameter ZI_S2_STATE = 2;
+  parameter ZI_S3_STATE = 3;
+  parameter ZI_S4_STATE = 4;
+  parameter ZI_S5_STATE = 5;
+  parameter ZI_S6_STATE = 6;
+  parameter ZI_S7_STATE = 7;
+  parameter ZI_S8_STATE = 8;
+  parameter ZI_S9_STATE = 9;
+  parameter ZI_S10_STATE = 10;
+  parameter ZI_S11_STATE = 11;
+
+  //-------------------------------------------------------------------
+  // Parameter declarations for USB bus signaling states.
+  //-------------------------------------------------------------------
+
+  parameter ZI_SE0_STATE = 0;
+  parameter ZI_J_STATE = 1;
+  parameter ZI_K_STATE = 2;
+  parameter ZI_SE1_STATE = 3;
+
+  // Internal register declarations.
+
+  // Registers to store the main state machine states.
+
+  reg [1:0] present_state_main;
+  reg [1:0] next_state_main;
+
+  // Registers to store the start of packet detecter state machine.
+
+  reg [3:0] present_state_sop;
+  reg [3:0] next_state_sop;
+  reg [3:0] r_present_state_sop;
+  reg [3:0] rr_present_state_sop;
+
+  // Register declarations for debugging purposes.
+
+  reg [4*8:1] present_state_main_string;
+  reg [4*8:1] next_state_main_string;
+  reg [5*8:1] present_state_sop_string;
+  reg [5*8:1] next_state_sop_string;
+  reg [3*8:1] line_state_string;
+
+  // int_reset is asserted when host signals a reset on the bus. This
+  // signal is internaly used to reset the rest of the logic.
+
+  reg int_reset;
+
+  // reset_counter keeps track of the SE0 signaling on the USB bus.
+  // Only hosts are allowed to signal a reset on the USB bus.
+
+  reg [15:0] reset_counter;
+ 
+  // j_state_counter counts the number of data_j_states on the USB bus.
+
+  reg [4:0] j_state_counter;
+
+  // Inter Packet Delay counter
+
+  reg [7:0] inter_pkt_delay_count;
+  reg disable_inter_pkt_delay_count;
+  reg enable_inter_pkt_delay_count;
+
+  reg start_of_pkt; // Start of packet signal 
+  reg pkt_receive_progress; 
+  reg [7:0] parallel_data; // Bit unstuffed data.
+  reg [2:0] bit_stuff_counter; // Counter to count the number of 1's.
+  reg [3:0] bit_counter; // Counter to count the number of bits received.
+  reg parameter_checks_active;
+  
+  // Register the internal data signals
+
+  reg [1:0] r_current_data_state; // Previous signaling state on the USB bus.
+  reg [1:0] current_data_state; // Current signaling state on the USB bus.
+  reg [1:0] rr_current_data_state; // Registered previous data state;
+   
+  reg [5:0] setup_interval_count;
+  reg [3:0] low_speed_bit_count;
+  reg low_speed_transaction;
+  reg low_speed_enable;
+  reg [9:0] response_timer;
+  reg sync_pattern_err;
+
+  // Register the sof_pkt_received signal. This signal indicates that
+  // whoever transmits the SOF pkt indicates that the device is acting
+  // as host.
+
+  reg sof_pkt_received_from_device;
+
+  // Wire declarations
+
+  wire host_is_transmitting; // Asserted whenever host is transmitting on 
+			    // the bus.
+  wire se0_on_bus; // Asserted whenever SEO is signaled on the bus.
+  wire data_j_state; // Asserted whenever J state is seen on the bus.
+  wire data_k_state; // Asserted whenever K state is seen on the bus.
+  wire se1_on_bus; // Asserted whenever SE1 is signalled on the bus.
+  wire end_of_pkt; // End of packet signal
+  wire nrzi_decoded_data; // Serial NRZI decoded data
+  wire parallel_data_valid; // Validates the parallel data 
+  wire [7:0] max_inter_pkt_delay;
+  wire [5:0] min_inter_pkt_delay;
+  wire [10:0] time_out_count;
+  wire time_out;
+  wire usb_2_0_compliant;
+  wire host_tx;
+  wire device_tx;
+
+  // Wire declarations for reception of various packet Ids.
+
+  wire support_low_speed_signaling_on_full_speed_bus;
+  wire sample_low_speed_data;
+  wire sample_data;
+  wire bit_stuff_err; // Asserted whenever bit stuff error is detected
+  wire min_inter_pkt_delay_violation_host;
+  wire max_inter_pkt_delay_violation_host;
+  wire min_inter_pkt_delay_violation_function;
+  wire max_inter_pkt_delay_violation_function;
+  wire illegal_se0_signaling;
+  wire pkt_size_error;
+  wire tkn_pkt_size_err;
+  wire split_tkn_pkt_size_err;
+  wire handshake_pkt_size_err; 
+  wire non_integral_number_of_bytes_in_data_pkt;
+
+  // Wire declarations for packet monitor hookup
+
+  wire [10:0] pkt_byte_count;
+  wire split_tkn_received;
+  wire tkn_pid_received;
+  wire data_pid_received;
+  wire handshake_pid_received;
+  wire back_to_back_transfer;
+  wire host_is_responding;
+  wire device_is_responding;
+  wire host_is_waiting;
+  wire device_is_waiting;
+  wire waiting_for_timeout;
+  wire enable_low_speed_port;
+  wire transfer_complete;
+  wire transfer_aborted;
+  wire transfer_incomplete;
+  wire pkt_received;
+  wire pre_pid_received;
+  wire sof_pkt_received;
+
+
+`protected
+
+    MTI!#I~~+;luRHAZTl,rCDYBmq35IppHXoGnLo~Y=|Qk!o=3H>Q=\wrx'D1;jK3Yko#R]1eGRiCu
+    ^k*zeHOE1xx+G1Yn@?]zDo~'A,J,]^$,5l]E5rO1Tx\>^}IXrYIfGV![i{7e}#=@x"7a2^#>e^EW
+    YAGH+[3Av2F7''#U_K^,]?rKo=TZH,$jxkA$^kAm_xi?rX'tEnJr7^7-AenXlP1>R$Jjk@'RCi!>
+    V<_R{7r[2~iV,@w=HA9^+G!&I_x{P;C$v$o#=Y/1BCs^pVJ};n<DZ*zJDx2-wjkJTZXu5vu%a'3J
+    S}@;X3nQi^9N(R*XYs}]aU$jkt<IAsCkGW/1><,{-'3s]]J7<Y>JaDW#n^Gx$eBrve^j1T'QpA?[
+    UDv@YRkX<z\wXI!QkW<+<1W@$R7FIW[o?*35[Km[R-Rpk\#!};GjHj[E5jI*"C7vY=T2*=*{\vKm
+    <RUQ<lXR3Q3QOToCG>$X;517*Q+>pTT[eeX2[!Cp+zR>@}j#=Y5ratVxD3HslX^3WXvUm>XA,B!'
+    ,D@C{<11--RnsRx~<nInOwmxk1;a@+Ys!'5xv@T+ZlE<7$LOU'Vg,h]+I;OwEUxjsl5^{HA]vs5i
+    D]]ZK^KVs3FIaDX=Gjoat.,Oen0eOpWkR*H[KaIJYz=hGVQ3Rw';_iw!Q^A=YHQr'_@]mU\n[c/O
+    >ZZO\3Hsl,ah*^2*}z7W~DX#8BC5}=?[JswYBr}km^@Tr08uGk=&7{nX^I=#>hE?D;IZAk#1Ka,r
+    >T5L2\@K}!W5uamu~DE!@ROHejs+n1p[xJl=ZB!e)Tl]pb$_AUYU]Gvr2rAR-*"^l^2q$b@\@}OO
+    HX-hkjzJ2}YkUw-rW=m2#r]s3TX-1YZ=?X\u3rrm}~ET}u-pI^*<lZHU^UO]Q{2\^=[a|eXuuWj*
+    *o{vW5lz+@}W^iY,e"nlO^LqDjlo|,A~@JxGUl,}K'[7z=aj@|\3rDm}iB"a'tr2C1a}!R*zWszz
+    =oy8m{TWBV3WmRG1GD7}H<K*vW>owo@-l5ABv-aGQHCK*l+e11@]1{w]_UII"p'QzBA\Ov>x?J,\
+    #-DH!VIz=e:^V+x\\nZ!}wkW[x_u_p[H5,],ts_\;#>W7'Ijpz>+^"v*!$Z$ca'}-nrwJr*kxoJ]
+    YuDv31Wn'aeC]7NA'}CBA^<{oG_Qf{oE<nCav[k7WeYJ-#wz?[?o5ZxE<+E2C-B;@o'!uIm_U~]_
+    ~Xa~Ynw{XaaK<W=T*-Vp["]H~r31pUbux,*EeD+EaGs+{3<Ja@HmG$x)B?Xj#Ul@\BzG/i1iEYJo
+    U2r7?#si]v@D]_;=V.AEj!G@pXGe?{p-K^1#5JzjBU5xm7Y7j?N*\sD#+RvBl?Bx<nzJ-W@FW>{^
+    7^;QoeQW2Y[X&-wB<1vn!;_\^$RA]#w*{~DVX_GExfnC*5|?G$m'k+^R5XmR][$mn]u#XY@'rRnv
+    J*@E2z!?IQ562=Ak<+xkX,T\e+{r$#RK>expjDaW;*+^GiT3mrB!G?r]f_&[B]]G^7@x_YKCjD}Y
+    #pw\W<}G}\WHG]j[sZmRkXUv27u#eupGiw?zV<}earBB<Jj]7YK?=KZ$]_iQ5R**+p?DXG?QiG_[
+    CAjpe\1~Q,G4la}z7+s,JUR59x@p'ih_#Q2D}k~Bue~~-Vu*aZ]R,]U_#I{[D*lieQB*2w{up%mH
+    7\{[BKc1-j*'~Y\$Z,m*Y!k%nNh?$Q~rZ+R!pBYDoABa{[@=p3?Bu!\alRnP]K},0q:e#$[^;zDm
+    l0+,C@0L*G\Qj[!E-}37eG5?R<V1F?TKHK-aJpAK}<C^m_Q#JQU+m^X=^B*#w~1nUJDiz}@2~1u{
+    B=aer_vw<r5xB'JWkWX;XDR$[pOQu^^Y-YmxGlH5zAQpZ$Hw\YrkmXOCAC_v~u=?$<a{;WD-?Y**
+    _oWz_MUw<+WoB]7WA_^~;{'$?O\DAA;G#WB?5vPo<JX1IY^HjX{>]$Tq$[xoI5D*:$VC7mjTlJ]*
+    jba]V+|a*I*A7AoCwma>,Wr^J{@?]H$T\-3/15<J7<~<G0Mi^zQvaAK^_Y,WlUu1#x@re@_e#$Kl
+    FYCaJ%&ks[Y.vHnH^_p>|ZwXD=;lHU^2',J![L,?<Y;{[rY5T2aRV-PlrUj'AR{=;;?h&-1UCl~*
+    -w+XH-wH<RaOmEurYNu75Og<D[#AND6pGiK==a$2E2!{*>1D5Y{s@+[>T~]R'DKEOB'lu{W+rvk;
+    r$nr__}[x@v3p']G>e{URZ<Ox^x]@<pnOB]7r7U-AT!rD1uNjuaTV#D22}+2xD\GR+*^,*[lk=_,
+    2viAH}xz*|BOjaOzw->5u2PAa5l|AlJe}*a<_DE!B_a]'KTn+G=pWo5='B@sno*BDxCRk>pm=[@C
+    lKIZTa}3n+~-sXA=Ksw'U]$J;[wD}@lroA}vE}nX1TY$7ue?zkRxIWsXvOp]iXVvlzkO'OH,K{w$
+    }>2s9}C+~uoHo$,vC{D7}!-a7_T~2n^isv5AV=C<?!HrGoL5Q@=et[;277}U[A1!H0X1Ro-q'@mj
+    h}'2}~IYK7!xnQAK'p'gr'aI#XB3e;e76i\@\x^@GT}*ZsVTrI@R[>EMs0R1U_W]X#B=}]t\X*YG
+    ~C<1z>2pl>YH7VA|*T@\=u-3R!-_$F31\R4az=I5{o;heRJ~'@xeV^vl'=I~>{lws@IiUCu*o_ZZ
+    :5rkoCo*Z:I7<p~DDzE{x{}5{A5-K-KUma_o5m\-A=BK-Kuv\!R-A=Q!O\p]Vr<T(<-Vk<r#~=-!
+    R$xm?8jT1}'zx*>vjUp1mI-B#e*?xw~H7UOOCUD,$rUa[x{]+v:l#3o',KXU]5~]<'@0Y$#ehSB@
+    w,RGw?T{1=vNY;;+?lsjZ7<+)gX*}u'$B@u>Ek4k\Qv7=m5RUOCth+<ZUQ{O^R?Jae[*#7B2[5ol
+    #szv'ze7KQXp!7u3$8*vY+I~H<!HxB?=e^q<>'DY;25uCH$;{J@f)n>ji]3X-,3wkUO\\J^Q{L-X
+    Bi,J^j=AHQu,p^rl?2-l*_G$$!maT#VY\loGjThm]W~gTx!3s1@ZzsE,Q#Z\luJ!a_T'R!}3V@W7
+    1Xw]v$iO@z$o,Y$!L7EZ--z2z}mj3w+O>DjOHB_aV.su*}Q7xGY3JZ#5\GY}}u>EwJleT'wj>#pv
+    O]"J$25;>WCf!^*zr$uY"FnVi'vV^XB?{aBr5Oo2Vm^\I5=K5D:eRZ\Ixe@wa+j}GT_KG?CO*<<n
+    AvwwwUl@H-Has5}ZG>jKnZ7$HjWVV^]jQ]e3l~T!T]>G]-D$ZoU+U+oG7CEogPQ-1\lInnc~[*,p
+    A5'3=WJ;AZkmX,CAY!li$VaIo+#F[3o-P?CZ<TrY=@lY3YkmQ*^,H7B_+sEKIdeI-H*]!5=!CJ7Y
+    x=Z>Gxpez7Ei{=Q-+p@_?-^==~&GBTR-Cs^porw_ozp]iOurT^Iy/B\]lj{,_sY3B'wjDj?UV7wO
+    VN'R2$IaBpVWm<tV,'!}ua*aooQ<XEA(QmjHpbc*xr}~w^nzo_5UXX#_mYGvAjl7;oo]}uBPVOT$
+    B_G@r=z{3YpG3\?O|nL:mp=5l'JRE>~mI*K3_1I?wI{~@XAaWokB'pszbq3YAjar?=}sxJ!-uXBK
+    7s(D'>zDEB5E5uJ>p>*uH!xn$Gzk*Br.mQI-CHRuszC!u[+[a+\Ol!o_tE_5VQY@Ipv1<O{D1^2;
+    vC^'-WX5=h*j}$I@TE'DVU1~o+3=-;z~5v2r'm1jAe[{r5UE!XHz'\lz_OsG;C_2o?I~1*E'#^vl
+    =J;[}ap?;<x7Is;1rZ_3KlO>1C[>^5eQn3=$R<OxEes!sX7YQp_X+VDp?JA7GGOaQ*[!5Cf%O;T$
+    HCWX'@pQI-wpxHO+l_KX?o~JC]]UYV7JV+zaI3X_[oC~kw'i?$a{OseGrajjj]+TBGm26_'G~E,I
+    ob'O7e=wlOz]GXZ12n;C'3~XOrTx'sB!oWR]VlQjDCC_IAdxXw]sJ<myR?3j=K}Z~,?eR^'EbzBR
+    WjZxsm\lK81-IGu$+^9R@forUIH5xeJU7CD}p=?1VomT5D${3<8pi12G7GY0CJB'zY_@1;}3[Hw#
+    jo<CI?uu$;A7EC3x|&:Bxk^pB1X0r5Xrn^G_5evivk;JVAmYl}i}L:WTAHdEr->+9hw<G=~,jEHe
+    l#B2EO=vuHX+XkOE{[oG{w=?Znp>]{eVrDD+}xsQ[~2vV^uBn-^^mwY!u$e_vD>{K!312RDZ31Kl
+    Y\B{z_:HwR!.Y{*>O1BIR2Oa#+X7>jCG!ea3Vj<*_s{o8kC7voZ]\kaJ^2peHj1Hs=nUCQsDu;_-
+    ~enVBV-J#]E@#^lJwBX>HkelQEHTuU[OI3H5!OCXQ]=o?z2r-$REEdT$DX{|}3K>$-7p3$i#fqD+
+    ,I$aj+smsrU]KjD\V}hGp]QkQ.4Te9xpu'oQImV2jGQu$e9VG[{^?]>B2\TLsu}REs~mkG?!ljHo
+    ED#WuwZYEiY["r,x#g;ou[T]^7HE}7-X\mH}TnEzQKOipvwvs3x'$GIZa5u7nGe?]*#w[<r$w^S%
+    UDB;|}uZn[6nazkg'X5AU=rk^;B*i>EC}#+BUA7]El*T[X!lTv>r6'7AWrk>=zTRA6Y\@~QR\V+D
+    ?*wC1HfG'?szBllbDr[X^]VV/!Ok>o3^-@zzV5HWkHV*2j1l^fE3I_Z,[Gzy[Z^'suYHrYD,jKpV
+    >zjw-$~YTavVp$_}RPoo+nRVupns2}r+$?mD3B7_Q+QjY[r3\o|[U>z>se-?H>Cw7o^UAAe+s*]v
+    ap-Wj\+6=jpQ|&=T{;laRE<QK!7,QmBr+-$Gs#~pmK^_vz9-HJ>=.ju'=Ek31mD$\C{rQOm*B|<Y
+    vDZz+<1,a5Or#kC,+XUDl3},z-FJA{Gk=Xnn}[jA$-ek><1^KEJ~a-XQOJw.:KUR@7{uJJUl<\;J
+    Rz_,[gX1w$7K>o$v;R^'asDOII!D\aV5]JZ1WR]H_={*_-U7]O\R]iW<lK*mRsH}X3D<o^A+-rK,
+    zB-lAzi^HCu]a7*1uG_T7RrkH'7lR-^=_T]B7l#oAAvm,pRZ~IWX]wQAmrkVuu1ATlO;}u5xQXR<
+    1Q*mW^5xVC5Ve{C>~\ip3C;YT5"Gn<Q-n$A]Q@Qx2$DuU{]pvpvQ{QXnCV$kz>xx?IXon!QvI]Jv
+    _Ux}mBA5!j?BOlRr$[@7^5Dj-ezP;C@I>Aj;HLpJ'r']+@]~EltuoC$<j>^[weWlu']Ev-r7l#ZR
+    ~!@K\,Tl#7K<GVRi\$Ir[?T[*=K,wwZ><+2#5}+Gp3mTqI.-TC1OAzUBXTUtn+EBaH=3aA{<a|YX
+    +'8['~l~5U=s=wRYzK1b>Uea3={l2CC5I?oZ\}Uw7'$*=KDD2vH5@A2D=Ba7R-;[~]EKJnjo1axr
+    oO1v$o,EcswA*Ci^*!xKu\j_$OZaDC<5DDl'{>RT@!Hm@l-+pxE?\7i5op1#_[T~}a\^Rk=<2J^r
+    ksalzoUrnl@>p{X2V^>]Q\JCu's2vd\s21Z,pOunj*{}saIVCOHl^J^3J'zsCBQ_~EfQ+JRP*B+]
+    zQeQ|kUu-}ye=YA1>o[!5#n~Uw<BB+}5=EU7UYH&C]7@'[u7Y<U^oGO-wC!3Ci2,*WAG-DJj7A_k
+    {n[D*sZB'w{-^i[v]>[I2,!~;pH{*5-[i7p'#<ZxDCa~le[lQVko}leGn^insO!{2vW@jCw!'wRo
+    pRXnj=1Uxz2YoD=+Rlvn7Ora<pk-^vQBmEws!v\zZ8edlrA@,$1R1VCl*=vVnR5u8nrupZxUYVXX
+    >$ZY+,U'>_{as10-,xW~\CGj#HalW*@o{VVeD=!-OzYRUzHLPzm*JVY<kZX@$K5j7G!nk5HqJ}r2
+    q&E=QiqxoumErDC*Cu~&{C=@OYj<WsD2:]Xu=JVx~j?sGn}DV7![ze7?!YGrvXV\#jRCr\$+pmTn
+    l#T5{,sJT8;<>7GOx@Trel^?\T'DVDeEauX5Op#{}V&-7=i,=krv@A1Q+-Y&5R^oI!BKQaav*1^i
+    wa~uw+K1POn=*9u5iao{!D{<XuCIRHvw@_zU*<5C@3A_K~qOms@vL#TT2RlTsXz}so]p_m{\]k5o
+    QJ}[1[1YU'[Y}\$+VDeWx<,OBKN[JUKZ^nX.=^Rwr3xJCeA?G$iw\T=>75Xp7O]^I3o]Mi7-WH5+
+    \1dR?AJG2Y*UD$Y<]3'?&9!r\B5?7^I1^^E+@r=p+pvn-z~rj}75v@D]]YCaal\sYmLs1EEu_}px
+    v_Qmr,{@+~JctVCuaeVE3EK2TGEX!]l[~Rx#A7GpU{1e2_}]x#7k$G}<aosBEW$oKV>-+52XIQw\
+    1,k[O4+lkGksj@}2pZK[**RAEZX.-U>=x*oez$n#~>j5Rem#h!Qj^^U{}pHTlQ,a5*X5Hjx;=v+s
+    7\*k>^s_KL[DA$$Q_C_Z[[''=A*-^'$GJmD,K*oO\z_1oAbq73Ez~D-HDUJC\+EW,lQxGo>{ir\2
+    mUm2vO~K[GX'AQ+!z!p$G~V'Ujk}EvQB*o[#u<>[}2Wkvx+~|Bm!]xrzE[7$ImzT$7-vX1*O$[UO
+    _{1A]'w{CoK\3v_GQ{\Q1!7]GG<Op5WBpnz~X[e?VYGU\o8,O;VGHWmR5,+nYm_~QGHx~7uUvC'\
+    kGl}?u1TRWQ3<7lE#{Jb;=1UTa<JUY+7uT\-VG3{#Q=Ba1zGSD*\\CRR's+u;axp5CZ2#'5To}Eo
+    l]DBD_aR!=?@EB]<V!,XYz_D2b}Vp]BA*ry"GpYUo6>vVDQ7=e^GrE_r2k$A>B]@Dew<3[E;~-xn
+    *2z5!DN.,UG~#,'x-aw22}CalO-;riG\i$DOQkr@j{au1r@Ur@'+W\aGgj'$wrz7H~+xzHH+2RDe
+    ,'eX5powJ:#(<lz$_nTuY]IvYHa{'^>xv}}36P_UEs^~=KTer\V5J>;H8I,u]5VOx[$T3HUQW.!\
+    e<u{D@;x=QCWAjV}-v,T'z^*BXOi~]C>,[KHoEa5A$^kKp?Xp+2x1$ws@*lADBrXGZ}\RRKYGp)-
+    ,]J@=*]J[<OWB3Zq!+VvI5+^hbia[;|s$_KX]EC^}U7[;WnXIXIYYs\1_-B]>GiO!WRZ+,Z1VZ\'
+    p2}JCk]Q(+o[7jlszR-m?#H[m^+V=?\+@'\aIK\'VI#}[HQ^$e#,KNa\x{wz@G5[w]\2}JZxWHmx
+    $i;BVwQy{71kVKor[YXpsN,?R,aplXx_uHVz1+>'I3Eu7{Q_Q#*~I]<<,QAQQnqQ1]2Q?T7SZ_r3
+    Y'Js*RQIXwp^IR1=j_Hpx[Wa2w=#+}R<uDJj[!$2<jp#6r3mHRza2/prJm*aD~Y<J#?n,<l'j~{{
+    \<fD-5B7KGxGZ\r7K-nUxo;^xp]Z5$D*]u?~+BWx=<JT}_ouB;IZnzl-_DlKBK5EpWG*^*'BWXUl
+    r*Hs{j,-CO}a\moZOiG+,2O*rjV.eax50;[Eo|_Yx=QUOlrl^3Rk[2e1iJ$JBa@7Jur,3,(\XH1/
+    Rs<]O2e$hK<mJ&>^C?RW^a+<E<2+1;'=JvxNjWG=;{mx>=xeB#3+[GYm2Dko\weZ&{1*,,=okEal
+    OOWVR1W;+uEB1maHZvJRA[x3=DEQ[m{om[n1YM!jOV-$>z*$K]ys@CJeKw@IG1CTjD-8Cpe$4@jk
+    ;n1VJ_rxzIseRXr_eVRVD1-mY\#DO[U{Xl$*VH'OwvNY+jQBoXvl]ist@<Ue'5v!H1QRr{EZ^>a,
+    [@+}B1ZB,Aza-X';9AAYa?V7OAA}v5-~u=lUre+}*~U3I>E>mkCRoDvxHQD?[?BRX}[DE]#\1xH+
+    AR#TG2L^KCuE7XvkDpx=',R=E1$e'a<Dw[QqiUWDpz!,zX_+1O~ZLsx!-2lpY2-v=<C'5}TurTV[
+    ~LT*A\DAw,d$?}k2C^V$X'vv$*keD=,jsKAepwu'u=z5l'^Hx!+ovGED^j3sR{-epsTl7Wo2<UOC
+    UE#&zvXJIX^_$-KGC#XZD[lWwYaO3QkI_KwK_]\vpXO,\UD$SsCDp1UVx(%1w~IlRWI}'*a'o*vC
+    25laII^p-u,v-sT275iNI)1E*I-n'llli>MJnv={BP]W]O2x<nVRol\^CZ[(r__Zbi[z}I;Oki(l
+    ,[arl;nlr>X,O#pC$-sij+5ApA>uouE^*aGeK'__$UnL6R]\DzR<ZuVE-\'sUs{H@$rD~ulzAHBZ
+    WW7~[^Q-A%YOCQ7#B^^roV]p-[\=ZUjRVV?<c]__Xu<}]WBV3>a3l1aa-I;{<\iAp9w^+H2sr>Dl
+    a],sQJpKV^zW'waO3OyQ^OelI@3j?@mIK\~lD73qpGoEu$s!]}H[Uo>EI@ox^!{793\r+CCx@LpR
+    ,CBzBA_\e$=^^pZ^?CP[e!x|rrTZ~pE~pDmE6oEB,IC?W;C$;;E5T)lBAW@_72Q=D^Bz;Gw71u-+
+    ss/b~+UAZ*kV?Qm_js;psR$1N~D$~vIJDz{j3Al5IvB-I/?\Km7{on]Rl]1Q+p\$B~I;=5]UCjOz
+    TC3_k]BI1#<rAxko<\owe=BoIU'pk_\_H;'_5iR!l$5A2G']k2ZaR277\{aSA-XmA^UGf(BuVUUR
+    Qn*~Q+sAE:']oXC~=IwOw=w+B#}{2R'&kro'Ve{ODUE7&5?B~'@HulV+w=I}$&'zVI+p;!JU\vEv
+    DrGIR#xT2,p6=?e#]=\EhCJs'lso*$n'*E1J{nsH#C3=m[sBG*\]3Cjuu=C]2@*~+1WoYzhJo=3?
+    ruku85DnavUU>NGi]=ixsRBR{Jm-A>^_'A25I#G]A+J\^KF(^E]G$w-GVA1X-]+!^-!m'm-\\#mR
+    6]@$,?,\O-ze]Vj5R@DGXGY[eaOe>JE^k,>s#Ph<I;Z;I7{GU1uQ3w>\Uj#[DXv?G<$E73*mxn={
+    \j!v#o${Qens^{roX+n\q"*rIr(\W_X0rz<lRB><sarW*K}R*xBx~X^$xj+3p2KDpH53_}nJj-5,
+    $REQp3{'BX+W@1Q^+B<>fE-7~Dj+X_O-1nsQT-EV\B<xz'mv=[G{raEZ*.=,=n_YRri*_7IB[vzx
+    nu~+3Da^1K,x{DU5H#7;T@l;x;ZB*]'=rU&vzi^=~\\;p\=+T=kBJV!}B;rTnW@lUV'xo>$aV}G1
+    x]#n+}>uY+_C}lBl_KXvIpHARae,R1W:'-+sIG@@Oi_a~HIR^eJ>V!B>*m\Gm7vjl@wjVWD1-G['
+    J-[_k.=?7p4rWe\E[w@x;E$,5l^$GoU>]-xjX,+smoU;I!u+RRU-auX,WQ@D-rn,e7GxE37Qrz!7
+    rZs=uIK~+_R9^a5u[C_I}#KwwV+'Hj#=L^Kr^#\$~,<!HR!>a/.[iHQWC}Jz~,YRr]I1'QuXHn_=
+    a!#27AR;w2Y1~}jBs**eDo'BEVl+T]UsoRr}r[xY_X76W]Bm,KxxC*=BS=-T#W$x!zp\Ir__'e@p
+    D2e!2mQ}5H5kH*<U=ElnpIeDJ>+zxR7'_j'onW5!wfs#VOO^O;A>,kz$ZZ'$p'~I#2h-HB\>Riv2
+    DjO,>1Zy2VDK[Hv=W5IE<*#V',2[aQe~EAx$pTH@vVsX\u-mLMYn;AYZnIaXmVskXD_ljxa\Ep1A
+    [}\{v#X*=pV~!7JjH<{j}~'Tw[@{^-wt%!{\p$<!Tz-[W=Zj?lGOkiEX[JBKa]QAHACIQ,@Depiv
+    kW$XsnDQ['u!0u{E>YI5$2_mwAe]Ksw=aQ@Gs!lsK]E?jl*3zZ,./l@orBJ$TlnQR2-XT-<EE@rI
+    !%$}6>wVEEzDu%7@]lrWK^x-wE=I?7=5H*fDx$B|iCmr^k7W@hEOY[VA$>x^3R,mlHYTDoiaV,QX
+    ^>~*Gw5%#+o\/WRvV'kIXd]nV~Oz1ix1$EO4XU_z?BQ#WH-*]Yk'f'3<1djVaIBRWV>BX#PZnX~(
+    _#TV@E?]A,G}m9qe+1Y[T[uL2t~}5aW[@3-TB}}IsGa=uO+<J^mXI[I<C7m>o7#q*H{\@5UY?Gj2
+    Ee$a2VZkJnlZkx!Hu[>o5_\DY-@,fY\JmoEpxr}IEB{^k1TE*DIBEBHAea*-O~_w$!['*K{Zx?{Z
+    *DmE]j[v>RWK?Cl'T@}<HGOiVR#YJx}75BE-^U1Tw<UA7B1r!aXO1Etx+>a+CI]iD#-TCGJ(c}i,
+    5S$eiQ*~^>V5zTQe3<YAH7A8Jr+V-sCwQ7@\$+Rar.KH]YlZW*Pa[Xe$Z>YWv^]A';Q;IK@@ewj$
+    \TsZ5!7=n$R\e'*w<;Zei[\KpKKB_K#l$RK\sJ\'V@>,+}39N=$VX]-*-te13uEG?WX'pVDKAZ=+
+    Y$oZUv;^W]L!I3-1DAv-Ru?k9Oi,ECauK3Vjk,T!,M5^2XPob_?12{Ij*GU3,omCOIXT]2>3]+_E
+    WAOjRz@K'*7s}M">Gu7n51K__2z@CYz*^DOCP;R1XKe[n,\UA-U<Bz+KvJIW@EY~u3v^7aw-;<5I
+    ;$~[We2wu.#nJI:$I@x\YE1!I@pcApX>2V#\pCz_<pwRyhKIk2'2W}OHRQ6nIKna+}#EGe$QTr##
+    ok?W*wkK>lieO+]Ho7jznoHmXXo$m=*m^I>'@[_;R2_li!E!n!^$\5o\QpV+Hnro*X~Kl{uBQX1e
+    -@u@r?YW->7\sn!uXWm,>D$d~=o]a$j$R_Eo?L}p^m52J=GiQZm-DW2]<{pX_E$vC~Xx@nio51Wn
+    xo[oVQGWX!c?|mx{jVoCT*Y3_v+a5m${'pwE's7Tri7eju^,;wVi'^7WsVlV3Qpwl;_1z[;.f$x\
+    DTUZG:ua\u$Z<QE2D}w<x\1C3whGa~G'Ja[Is#eH]DX^k[J<7HK$#*QW[J*EAp+<ve]Xom@Y2Bky
+    RJ~neF!ol[*J]]lw>'7Z{1p[\uH_'uHa,GYa_msr~xDJJGirwH7QZH@XQeC^2Tb&#{Vja*!+F>A~
+    ^Z$wjzn,wnLDm,kVKj\H'XjV2sA$!pJ1y~l[#i]nZ{>+{}OW^!YW*>psp&TnE{mEXB=E?V$BprJE
+    VJ$]-mliX]C<=~{AD-e2HB31ojYlk~NG'$Q=>J~,1WY6i^,DrK-3bDo,o2xQI,UT}|E#2@VOZ?=E
+    X*s,wO_n>'QkJ}I_l_kxzxjkoUc__GH7$a5!V]aoi4*nvBv}kOjYU*jE5QO;+=qWw2KL8=!$e!D<
+    ]=OklOuzHva<D>HxGrCeU8:[*}#{-Zn-sKe$aw;Bz-}xaQY,^=H5^p]m7~Y5+1CK>7u}1k#A*!GC
+    Up,xx$3xInp_F:Xv;{j]CpY:e='{,YW\}annn{UJR<Te?_DxB1=#OBZE\EkVvor+XXj]*K^CX[\O
+    7KnC$JDjRK7J^ZAX<oQuFKaXa*;Cxl'2vE>!\$TU#somI^upJVD2asQU\e<liAT1\p}nmx-@WGjl
+    z7*GJ?5'ZrzekjKe_QW-2]ZI~/?T$TCp;[_'JsAA^G'[vl5?B>U+@OJAv<{E{n$$eTl?Ua#>}mGG
+    ~$uX[{L,EEspCzv\!*}.G[}YKo5Qr~UJenJTZ*7_EDKkRI7>$U}r~x!HrY>n~RTz}IKm^"UHll)h
+    WC~[o7zB[\sKxxwjDGsk\U,-@=jrS.^_{vdQD,p;rYCA}Dp;UV<5!El&@rElcvOX#3}wBir>Ce!}
+    UE@HT!vXX\+Z?mB3l-I7W^]lp<R3Vor+}@rXC~<motReGOnrnnxx]C!eC3Y3pjokl_l;Aru+J'qb
+    Oioe<BX}l;>\][jYpK]{sX{'G=!3+[E<nlpaR#7Cx{!}ZE57_K5e{QAAA]smw-w>@Uv~-[au?sr,
+    lvDDP;+22m_<sUYH]lnZR\u@pL[}>;BQ{2*BVmBT\,~Yu@OsJ'Ja!!pkJ=O>n!z+@E!+ED@^EORJ
+    ,jG2*,vBD,#{j}3+T5G3rZXDDkO>;WYvru]Rwms!zD^;>+B22QK\?ExEGxi<@X,sKU~'pZ*\_B@n
+    ]'H5uUQ{UZI*'{'mv@I'l\rVa@''}slBE*8'BK,9v][O,-O?V+3@v{opwT{2?$8jGsVInT}m7W}~
+    GfwIWOE7,@s__UROs$jl**YQlZ3V'wC[@}o>3,@]Q[_@BK~+z?)Yj@WDz>pWG7>EOQ-j]Dezn]nT
+    Tt>jKZ[zn}@*Y_>r+e1izz@,5!PIm5HoK=,GSzZnlorH\e<
+`endprotected
+
+  // Packet monitor instantiation
+
+  qvl_usb_2_0_packet_monitor #(
+		/* Constraints_Mode */      Constraints_Mode,
+		/* PORT_TYPE */             PORT_TYPE,
+                /* DEVICE_SPEED */          0, // For UTMI only
+		/* NUMBER_OF_ENDPOINTS */   NUMBER_OF_ENDPOINTS,
+		/* FRAME_INTERVAL_COUNT */  FRAME_INTERVAL_COUNT,
+		/* SEQUENCE_BIT_TRACKING_ENABLE */ SEQUENCE_BIT_TRACKING_ENABLE,
+		/* PACKET_ISSUE_CHECK_ENABLE */ PACKET_ISSUE_CHECK_ENABLE)
+      USB_2_0_PKT_MON (
+
+		  // Inputs
+
+		  .reset(reset || int_reset),
+		  .areset(areset),
+		  .clock(clock),
+		  .start_of_pkt(start_of_pkt),
+		  .end_of_pkt(end_of_pkt),
+		  .speed(speed),
+		  .address(address),
+		  .end_point_config(end_point_config),
+		  .parallel_data ({8'b0,parallel_data}),
+		  .parallel_data_valid (sample_data && parallel_data_valid),
+		  .high_byte_valid (1'b0), // For UTMI only
+		  .databus16_8 (1'b0), // For UTMI only
+		  .bus_is_idle(next_state_main === ZI_IDLE_STATE),
+		  .usb_2_0_compliant (usb_2_0_compliant), // For future use
+		  .time_out_count (time_out_count),
+		  .time_out (time_out),
+		  .bit_stuff_error (bit_stuff_err),
+                  .op_mode (2'b00),
+                  .term_sel_xcvr_sel (1'b0),
+		  .pkt_size_error (pkt_size_error),
+		  .inter_pkt_dly_count (inter_pkt_delay_count),
+		  .data_k_state (data_k_state),
+		  .host_is_transmitting (host_is_transmitting),
+		  .device_is_transmitting (!host_is_transmitting),
+		  .low_speed_enable (low_speed_enable),
+
+		  // Outputs
+
+		  .tkn_pid_received (tkn_pid_received),
+		  .split_tkn_received (split_tkn_received),
+		  .handshake_pid_received (handshake_pid_received),
+		  .data_pid_received (data_pid_received),
+		  .pre_pid_received (pre_pid_received),
+		  .pkt_received (pkt_received),
+		  .host_is_waiting(host_is_waiting),
+		  .device_is_waiting(device_is_waiting),
+		  .host_is_responding(host_is_responding),
+		  .enable_low_speed_port(enable_low_speed_port),
+                  .sof_pkt_received(sof_pkt_received),
+		  .device_is_responding(device_is_responding),
+		  .waiting_for_timeout(waiting_for_timeout),
+		  .transfer_complete(transfer_complete),
+		  .transfer_aborted(transfer_aborted),
+		  .transfer_incomplete(transfer_incomplete),
+		  .pkt_byte_count (pkt_byte_count),
+                  .utmi_mon(1'b0),
+		  .back_to_back_transfer(back_to_back_transfer)
+		  );
+
+`protected
+
+    MTI!#@<\QY~u,R+pHWV~TY{rXj8\HlvCaIjeh0HY5irJp>j?uZ7m2'!B-\[&F)QU;@s;e>i7A!@r
+    s\P:xBlA=+~Bm<$!v3J]lu,@x1?RZDwJS=^a[NKnDravv~A[!\7k}7kXK[n]>^UDn[#X1[sG~[Z>
+    ^zz'H#<v#A,1Z3]eRG=K27o>xIkUl<Fk=@WCm_?l{KWKjRjGB,i+aG-?AH33rn[i}X?p+xm<1XTC
+    ]>pXrs;zzUl|wo[i*l-puDzv7mwvK'],!*^#{r,xDraOsG7Zi<R3GTpoB+o}"Kla}ovZ[Z173!\j
+    v)}\uO<X}l"}Ba[o^@{a$v-~R{_#S;YiA#e!-^$37^_$,:,?**n,,XZE~!_o"S5uT=EFT>Bve5KB
+    W'r5pv$\76#5W3=Ix<cp~Q#C1]jzjI~}Bl?!=}'nHznJj$]>a<V>{n}_G3n=+T[arn-<AQ#D3XIj
+    GZ}YAm~9gs\Qi&13xuIk[]|uoX+}WWZ,e#7}2GTI;=ku1j$^1aV5<@JBWXR)H=Z$lll2o{2abo,>
+    -Cj]pXo+:Gp{H|E_{jmlz[gsI}$k=<aEQ'2rGe@uOQXQjisq@+x+xuJk@}KpU^>\+1[Aj!TGjX(3
+    QpKY[kY2n'zVjJV~][ZUR+kI#~2k*mWzi,<vpTain,Tf{+a=!H-R?{osQR]m*OppreTU^{3'Qgt#
+    VC?,x^#c.Xoi7bOE^#vDv#k+[B[\n!=~Bv9DAp;BzzDu*=r{$<rmri[*3\K1Dj,'oj,n,O{PB}I7
+    U'^Gy]EUV@+D2>j<>o']iYX]GcG{ZeT1Ga'G<!=$1;r!oE*};Oeunev=Ep4.1c<<5\[qa\z^{s3<
+    [m>-j!oxmR~=?7JC*#_Y0#QA\X1[mj\}7{vZHr]\[<<=Z]7tev>=];C?o2D}Y~CB2Uvmus,V{1iA
+    L:AE(CkOw!V1!Ul9]3-X~EuaY~>u^;~o,Hrp7e}-H_i'?jAz|plC$VYKTTqqJnQ$*'knvG,YjV]E
+    eWErC<$e]cVj}Wv=pDnE-$~rKe!V--ke,?%x}}Q7X2,(bU-ul2X]xxRw?mjm_[kv{#<R,4,b_>_Y
+    *<=srOR5vGvaTCJ\<5W~z{!vj7I?kVW7rO;{~,Eau,z;^#5z2RVs<e$rmD~_^{Q_GZGVq>n=7p,J
+    Uwj$U\1rBvY~j73$vu\{+!Ul*a9hxl@V][kTxuE$/Kxi@emKm9z*WlC^\ij\I[IE[_X,Y\xZ\IJ[
+    '-OT];XAmkpa\R+e>1kVY?j@Wr:j1@X[A;K_uKXuB{jV'BY#jjQ1sGG$ij!4A]nAcE~peBXvvOzn
+    DR[!'e+~{QYaD2Ew~'XHV7j_Z,*^V*,K+lr?u'@vwlU^oI53mQY,jxZTD$Z222YK!$T+OoH=71x,
+    laoVkp/vr@u7~*wj'{x}el!ECEp$vKG*5HBgexAI+Dp!x-I#Yz}\]D#U,oVuID*AD_wn$uXYwT2z
+    D3>Ro'wIw=AJO\EzJeVCzvKATs#nUa]Wo+CW9YBvEDY\1]T5B'W=u>+{<}u-O}uR]$#,u$>@v]}\
+    1)$>w,}J7}-HK]7i7!p-=Z4]'+sHsep7+^ZI1>vk'J~Rzx,@>2u?<,WCI~H{=,@VmWp]Kp1Z_lmU
+    }=je5]vr?=+}Ojo=+$a17pY6)$ej'=uaBsBOu=?7Ja'-C9B$Bz=?1B>5#Xg,XAK7WUp=]~3G;G*k
+    XE!r_QlT,QNDOan,s<zCDaDII~-,eDK#,n'kQYasCaD_;e2}\!3*jGwl1aO}x^e'$^R}lX>@vCi~
+    5C5-7Y-1Y#u'K[{PRvs3*9QYX~Uej%XC*oW>wCC$1YSi7HZA]k[b,^2phpZRCG_B'_VCZ-XBQHHu
+    e=3IECHTOvl7K=L;'mvRwq\}VH[!C=rZ^~@Q+[C'v$D<J,O-E$uY[V#CGQ*@sjCKm^^JHjD{xe%~
+    >XT;o]UU[,u_T;lp>unBiw3GonQ5vx5~n7~+'DLOUaXVj[i*@I<Vxx$wO{2izej]=<<Ujn[oX-kk
+    U+Q7]wQ_!=3RJD?,u]Ax7mo7WCmQU_IZs2+kRT{-s+vv5jo*OZ[ysVA^D?eEV1v{xa$IATE^O}RW
+    V@*vV?'U7G!Qzvsi';uI*oO@nUAj&_$^o^@[BJxX#Pv#RAkjjpQY-r_WlV1l<ZZ$;OXxU5nw@]v*
+    ]aB+w;{r^n_xAQHUlj!V!GxRRuToRXVX+YmjjR$[\lue+nYl{AtmRJ[+[1!mp<#pc,xiHGDr3ioB
+    ^z?+-C_s7Y}Rz[kexR+VmnTrAj-xROkVprX<*,HI@V*ETDOHZ5++u3+YR3RyC[OO^?;<ZT{<joAA
+    }wzHi>;jxRr~kTURxm7\7~\zfO^Y!2Qp*L=v+ktt4>\#r~xW$J'xvpk<J-x<n[A\_VoEwaoDJCTR
+    ZAa$JYl?n\mm#wC2[X&=A^Z&31$D}~x!;svGqssErBW**>,xU^Qk}]_>ebsWXax'kIoR7!\lHZT_
+    \*CQ'$]1-ear_GR_r$Zo!?0kX5=#Yj@DB1Gvp#<[k7Hj4xaw-1Tu1,xZ!#C1O([ez[is{jFCK-eY
+    YI[ei
+`endprotected
+
+  //--------------------------------------------------------------------------
+  // OVL SVA Assertions are included here
+  //--------------------------------------------------------------------------
+
+`include "qvl_usb_2_0_monitor_assertions.inc"
+
+`ifdef ZI_INLINED_PSL
+`include "0in_ac_inline_for_mod_zi_cw_usb_2_0_monitor.inc"
+`endif
+`ifdef ZI_INLINED_CHX
+`include "zi_cw_usb_2_0_monitor.zi_chx.inc"
+`else
+`ifdef ZI_INLINED_CHX_zi_cw_usb_2_0_monitor
+`include "zi_cw_usb_2_0_monitor.zi_chx.inc"
+`endif
+`endif
+
+`qvlendmodule // End of qvl_usb_2_0_monitor

@@ -1,0 +1,20 @@
+# Add ::quartus::insystem_memory_edit to the table of packages
+lappend quartus(package_table) {insystem_memory_edit quartus_stp generic}
+
+if {[lsearch -exact [list quartus_stp] $quartus(nameofexecutable)] != -1} {
+
+    # Make ::quartus::insystem_memory_edit available to load
+    set qpkg_script_auto [file join [file dirname [info script]] insystem_memory_edit.tcl]
+    if {[file exist $qpkg_script_auto]} {
+       source $qpkg_script_auto
+    }
+    unset qpkg_script_auto
+
+}
+
+if {[lsearch -exact [list quartus_stp] $quartus(nameofexecutable)] != -1} {
+
+    # Load ::quartus::insystem_memory_edit by default
+    package require ::quartus::insystem_memory_edit
+
+}

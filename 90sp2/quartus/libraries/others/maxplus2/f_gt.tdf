@@ -1,0 +1,17 @@
+INCLUDE "gt_f.inc";
+SUBDESIGN f_gt 
+(
+     IN1,IN2,CI : INPUT = GND;
+     GT         : OUTPUT;
+)
+VARIABLE
+     	ufgt:gt_f with ( IGNORE_SOFT_BUFFERS = "OFF" );
+begin
+
+	ufgt.in1 = IN1;
+	ufgt.in2 = IN2;
+	ufgt.ci = CI;
+	GT = ufgt.gt;	
+end;
+
+

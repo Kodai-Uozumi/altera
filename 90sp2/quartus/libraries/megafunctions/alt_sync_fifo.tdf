@@ -1,0 +1,554 @@
+OPTIONS NAME_SUBSTITUTION = ON;
+
+INCLUDE "lpm_counter";
+INCLUDE "lpm_add_sub";
+INCLUDE "altdpram";
+INCLUDE "lpm_compare";
+INCLUDE "aglobal90";
+INCLUDE "lpm_constant";
+
+PARAMETERS
+(
+	LPM_WIDTH,								-- Bitwidth of the data
+	LPM_NUMWORDS,							-- Number of words to store in the fifo
+	LPM_SHOWAHEAD = "OFF",					-- Show data as soon as possible?
+	UNDERFLOW_CHECKING = "ON",				-- Add circuitry to check for underflow?  "ON" results in a larger/slower circuit
+	OVERFLOW_CHECKING = "ON",				-- Add circuitry to check for overflow?	 "ON" results in a larger/slower circuit
+	USE_EAB = "ON",							-- Implement the dpram in an ESB?
+
+	-- Altera Specific Parameters for obtaining user compiler options for the carry chain
+	CARRY_CHAIN = "IGNORE",					-- Gloabl Parameter -- not to be modified
+	CARRY_CHAIN_LENGTH = 32,					-- Global Parameter -- not to be modifies
+	DEVICE_FAMILY,
+	CBXI_PARAMETER = "NOTHING"
+);
+
+FUNCTION @CBXI_PARAMETER (data[LPM_WIDTH - 1..0], rdclk, rdreq, wrclk, wrreq, aclr) RETURNS (q[LPM_WIDTH - 1..0], rdempty, rdfull, wrempty, wrfull, rdusedw[ceil(log2(LPM_NUMWORDS))-1..0], wrusedw[ceil(log2(LPM_NUMWORDS))-1..0]);
+
+CONSTANT WIDTHAD = CEIL(LOG2(LPM_NUMWORDS));				-- The width of the address to feed to the dpram
+CONSTANT POSS_ADD = (2^WIDTHAD == LPM_NUMWORDS) ? 1 : 0;	-- For powers of 2, add an extra bit to the internal counts
+CONSTANT COUNTER_WIDTH = WIDTHAD + POSS_ADD;
+CONSTANT SUB_BUS_WIDTH = POSS_ADD == 1 ? COUNTER_WIDTH - 1 : COUNTER_WIDTH;	-- Width of the adders for the full computation bus
+
+-- Macros --
+-- These will control circuit construction and branching
+DEFINE WRITE_FULL_IN_USE() = USED(wrfull) # OVERFLOW_CHECKING != "OFF";
+DEFINE READ_FULL_IN_USE() = USED(rdfull);
+DEFINE NEED_SPECIAL_FULL_WRITE() = WRITE_FULL_IN_USE() & 2^WIDTHAD == LPM_NUMWORDS;
+DEFINE SUB_W() = NEED_SPECIAL_FULL_WRITE() & FAST_MODE() ? WIDTHAD : COUNTER_WIDTH;
+DEFINE NEED_SPECIAL_FULL_READ() = READ_FULL_IN_USE();
+DEFINE READ_EMPTY_IN_USE() = USED(rdempty) # UNDERFLOW_CHECKING != "OFF";
+DEFINE WRITE_EMPTY_IN_USE() = USED(wrempty);
+DEFINE NEED_EXTRA_COUNTERS_WRITE() = !NEED_SPECIAL_FULL_WRITE() & WRITE_FULL_IN_USE();
+DEFINE NEED_EXTRA_COUNTERS_READ() = ((2^WIDTHAD != LPM_NUMWORDS) & READ_FULL_IN_USE()) # NEED_EXTRA_COUNTERS_WRITE();
+DEFINE COMPARE_BY_CHAIN() = USE_CARRY_CHAINS() & (CARRY_CHAIN_LENGTH >= 32);  -- pointless unless chain is proper size
+DEFINE FAST_MODE() = COMPARE_BY_CHAIN();
+DEFINE FAST_ENABLE_FEED_WRITE() = FAST_MODE() & (NEED_SPECIAL_FULL_WRITE() # NEED_EXTRA_COUNTERS_WRITE()) & OVERFLOW_CHECKING == "ON";
+DEFINE FAST_ENABLE_FEED_READ() = FAST_MODE() & (NEED_SPECIAL_FULL_READ() # NEED_EXTRA_COUNTERS_READ());
+DEFINE STRATIX_EAB() = (FAMILY_STRATIX() == 1) & (USE_EAB == "ON");
+SUBDESIGN alt_sync_fifo
+(
+	-- the read side outputs
+	q[LPM_WIDTH - 1..0]								:	OUTPUT;
+	rdusedw[WIDTHAD - 1..0]							:	OUTPUT;
+	rdempty											:	OUTPUT;
+	rdfull											:	OUTPUT;
+
+	-- the read side inputs
+	rdclk											:	INPUT;
+	rdreq											:	INPUT;
+
+	-- the write side outputs
+	wrempty											:	OUTPUT;
+	wrfull											:	OUTPUT;
+	wrusedw[WIDTHAD - 1..0]							:	OUTPUT;
+
+	-- write side inputs
+	wrclk											:	INPUT;
+	wrreq											:	INPUT;
+	data[LPM_WIDTH - 1..0]							:	INPUT;
+
+	-- control signals
+	aclr											:	INPUT = GND;
+)
+VARIABLE
+
+    IF (CBXI_PARAMETER == "NOTHING") GENERATE
+	IF NEED_EXTRA_COUNTERS_READ() # NEED_EXTRA_COUNTERS_WRITE() GENERATE
+		IF FAST_MODE() GENERATE
+			read_full_counter_dff[COUNTER_WIDTH - 1..0] : DFF;
+			read_full_counter_cs[COUNTER_WIDTH - 1..0] : CARRY_SUM;
+			
+			-- node for isolating implementation details
+			read_full_actual[COUNTER_WIDTH - 1..0] : NODE;
+		ELSE GENERATE
+			read_full_compare : lpm_compare WITH (LPM_WIDTH = COUNTER_WIDTH, ONE_INPUT_IS_CONSTANT = "YES");
+		END GENERATE;
+	END GENERATE;
+
+	-- a useful hard-wired constant
+	IF NEED_EXTRA_COUNTERS_READ() # (NEED_EXTRA_COUNTERS_WRITE() & FAST_MODE()) GENERATE
+			-- constant input to read_full_count
+			numwords_bus : lpm_constant WITH (LPM_WIDTH = COUNTER_WIDTH, LPM_CVALUE = LPM_NUMWORDS);
+	END GENERATE;
+
+	IF FAST_ENABLE_FEED_READ() GENERATE
+		fast_feed_read : NODE;
+	END GENERATE;
+
+	IF NEED_EXTRA_COUNTERS_WRITE() & FAST_MODE() GENERATE
+		read_full_to_write_count[COUNTER_WIDTH - 1..0] : DFF;
+	END GENERATE;
+
+	-- normal counters
+	write_counter : lpm_counter WITH (LPM_WIDTH = COUNTER_WIDTH);
+
+	IF !STRATIX_EAB() GENERATE
+		-- useful constant
+		one : lpm_constant WITH (LPM_WIDTH = COUNTER_WIDTH, LPM_CVALUE = 1);
+	END GENERATE;
+
+	IF FAST_MODE() GENERATE
+		read_count_dff[COUNTER_WIDTH - 1..0] : DFF;
+		read_count_cs[COUNTER_WIDTH - 1..0] : CARRY_SUM;
+	ELSE GENERATE
+		read_counter  : lpm_counter WITH (LPM_WIDTH = COUNTER_WIDTH);
+		IF !STRATIX_EAB() GENERATE
+			read_count_add : lpm_add_sub WITH ( LPM_WIDTH = COUNTER_WIDTH, LPM_DIRECTION = "ADD", ONE_INPUT_IS_CONSTANT = "YES");
+		END GENERATE;
+	END GENERATE;
+
+	read_count_actual[COUNTER_WIDTH - 1..0] : NODE;
+
+	-- synchronization registers
+	write_synch_to_read[COUNTER_WIDTH - 1..0] 	: DFF;
+	write_delay_cycle[COUNTER_WIDTH - 1..0]		: DFF;
+	read_synch_to_write[COUNTER_WIDTH - 1..0] 	: DFF;
+
+	-- dff to dselay the read
+	IF !STRATIX_EAB() GENERATE
+		read_delay[COUNTER_WIDTH - 1..0]			: DFFE;
+	ELSE GENERATE
+		read_delay[COUNTER_WIDTH - 1..0]			: NODE;
+	END GENERATE;
+	
+	-- the subtractors
+	write_sub	:	lpm_add_sub WITH (LPM_WIDTH = SUB_W(), LPM_DIRECTION = "SUB");
+	read_sub	:	lpm_add_sub WITH (LPM_WIDTH = COUNTER_WIDTH, LPM_DIRECTION = "SUB");
+
+	-- specialized circuitry that may be necessary for the full flags
+	IF NEED_SPECIAL_FULL_WRITE() & FAST_MODE() GENERATE
+		write_full_cs[1..0]	: CARRY_SUM;
+	END GENERATE;
+
+	IF NEED_EXTRA_COUNTERS_WRITE() GENERATE
+		IF FAST_MODE() GENERATE
+			write_full_cs[COUNTER_WIDTH - 1..0] : CARRY_SUM;
+		ELSE GENERATE
+			write_full_compare : lpm_compare WITH (LPM_WIDTH = COUNTER_WIDTH, ONE_INPUT_IS_CONSTANT = "YES");
+		END GENERATE;
+	END GENERATE;
+
+	IF NEED_EXTRA_COUNTERS_READ() GENERATE
+		IF FAST_MODE() GENERATE
+			read_full_cs[COUNTER_WIDTH - 1..0] : CARRY_SUM;
+		END GENERATE;
+	END GENERATE;
+
+	IF FAST_MODE() GENERATE
+		write_empty_compare[COUNTER_WIDTH - 1..0] : CARRY_SUM;
+		read_empty_compare[COUNTER_WIDTH - 1..0] : CARRY_SUM;
+	ELSE GENERATE
+		write_empty_compare : lpm_compare WITH (LPM_WIDTH = COUNTER_WIDTH);
+		read_empty_compare : lpm_compare WITH (LPM_WIDTH = COUNTER_WIDTH);
+	END GENERATE;
+
+	-- finally allocate the ram for the fifo
+	FIFOram : altdpram WITH (WIDTH = LPM_WIDTH, WIDTHAD = WIDTHAD, USE_EAB = USE_EAB, RDCONTROL_REG = "UNREGISTERED",
+							 RDCONTROL_ACLR = "OFF", OUTDATA_REG = !STRATIX_EAB() ? (LPM_SHOWAHEAD == "ON" ? "UNREGISTERED" : "OUTCLOCK") : "UNREGISTERED", SUPPRESS_MEMORY_CONVERSION_WARNINGS = "ON");
+
+	-- internal controls
+	valid_write : NODE;
+	valid_read : NODE;
+
+  ELSE GENERATE
+	auto_generated : @CBXI_PARAMETER WITH (CBXI_PARAMETER = "NOTHING");
+  END GENERATE;
+
+--------------------------------------------------------------------------------------------------
+BEGIN
+  IF CBXI_PARAMETER == "NOTHING" GENERATE
+	-- set up the main counters
+	write_counter.(clock, cnt_en, aclr) = (wrclk, valid_write, aclr);
+
+	-- set up the read address pointer
+	IF FAST_MODE() GENERATE
+		-- set up the register
+		read_count_dff[].(clk, clrn) = (rdclk, !aclr);
+
+		-- do a push-back for proper power-up and clear
+		IF !STRATIX_EAB() GENERATE
+			read_count_dff[].d = read_count_cs[].sout $ one.result[];
+			read_count_actual[] = read_count_dff[].q $ one.result[];
+		ELSE GENERATE
+			read_count_dff[].d = read_count_cs[].sout;
+			read_count_actual[] = read_count_dff[].q;
+		END GENERATE;
+
+		IF FAST_ENABLE_FEED_READ() GENERATE
+			IF COUNTER_WIDTH == 1 GENERATE
+				read_count_cs[].sin = fast_feed_read $ read_count_actual[];
+				read_count_cs[].cin = GND; -- don't care
+			ELSE GENERATE -- COUNTER_WIDTH > 1
+				read_count_cs[].sin = 	(read_count_actual[COUNTER_WIDTH - 1..1] $ read_count_cs[COUNTER_WIDTH - 2..0].cout,
+										fast_feed_read $ read_count_actual[0]);
+				read_count_cs[].cin =	(read_count_actual[COUNTER_WIDTH - 1..1] & read_count_cs[COUNTER_WIDTH - 2..0].cout,
+										read_count_actual[0] & fast_feed_read);
+			END GENERATE;
+		ELSE GENERATE
+			IF COUNTER_WIDTH == 1 GENERATE
+				read_count_cs[].sin = valid_read $ read_count_dff.q[];
+				read_count_cs[].cin = GND; -- don't care
+			ELSE GENERATE
+				read_count_cs[].sin =	((valid_read & 	(read_count_dff[COUNTER_WIDTH - 1..1].q $
+														read_count_cs[COUNTER_WIDTH - 2..0].cout)) #
+										(!valid_read & read_count_dff[COUNTER_WIDTH - 1..1].q),
+										valid_read $ read_count_dff[0].q);
+				read_count_cs[].cin =	(read_count_dff[COUNTER_WIDTH - 1..1].q & read_count_cs[COUNTER_WIDTH - 2..0].cout,
+										 read_count_dff[0].q);
+			END GENERATE;
+		END GENERATE;
+	ELSE GENERATE
+		read_counter.(clock, cnt_en, aclr) = (rdclk, valid_read, aclr);
+
+		-- set the power up to 1
+		IF !STRATIX_EAB() GENERATE
+			read_count_add.dataa[] = one.result[];
+			read_count_add.datab[] = read_counter.q[];
+			read_count_actual[] = read_count_add.result[];
+		ELSE GENERATE
+			read_count_actual[] = read_counter.q[];
+		END GENERATE;
+	END GENERATE;
+
+	IF !STRATIX_EAB() GENERATE
+		read_delay[].(clk, ena, clrn) = (rdclk, valid_read, !aclr);
+		read_delay[].d = read_count_actual[];
+	ELSE GENERATE
+		read_delay[] = read_count_actual[];
+	END GENERATE;
+
+	-- delay a cycle on the transmission of the write address to the read side
+	-- to prevent the read side from reading until a total write cycle has completed
+	write_delay_cycle[].(clk, clrn) = (wrclk, !aclr);
+	write_delay_cycle[].d = write_counter.q[];
+
+	write_synch_to_read[].(clk, clrn) = (rdclk, !aclr);
+	write_synch_to_read[].d = write_delay_cycle[].q;
+	read_synch_to_write[].(clk, clrn) = (wrclk, !aclr);
+	read_synch_to_write[].d = read_delay[];
+
+	-- set up the extra counters if they are needed
+	IF NEED_EXTRA_COUNTERS_WRITE() GENERATE
+		IF FAST_MODE() GENERATE
+			-- set up the synchronization for the read + numwords counters
+			read_full_to_write_count[].(clrn, clk) = (!aclr, wrclk);
+			read_full_to_write_count[].d = read_full_actual[] $ numwords_bus.result[];
+
+			write_full_cs[0].(sin, cin) = write_counter.q[0] !$ (read_full_to_write_count[0].q $ numwords_bus.result[0]);
+			write_full_cs[COUNTER_WIDTH - 1..1].sin = 	(write_counter.q[COUNTER_WIDTH - 1..1] !$ 
+														(read_full_to_write_count[COUNTER_WIDTH - 1..1].q $
+															numwords_bus.result[COUNTER_WIDTH - 1..1]))
+														& write_full_cs[COUNTER_WIDTH - 2..0].cout;
+			write_full_cs[COUNTER_WIDTH - 1..1].cin = 	(write_counter.q[COUNTER_WIDTH - 1..1] !$ 
+														(read_full_to_write_count[COUNTER_WIDTH - 1..1].q $
+															numwords_bus.result[COUNTER_WIDTH - 1..1]))
+														& write_full_cs[COUNTER_WIDTH - 2..0].cout;
+
+			wrfull = write_full_cs[COUNTER_WIDTH - 1].sout;
+			IF OVERFLOW_CHECKING != "OFF" GENERATE
+				valid_write = CARRY_SUM	(
+											.sin = !write_full_cs[COUNTER_WIDTH - 1].cout & wrreq,
+											.cin = !write_full_cs[COUNTER_WIDTH - 1].cout & wrreq
+										)
+								  RETURNS
+										(
+											.sout
+										);
+			ELSE GENERATE
+				valid_write = wrreq;
+			END GENERATE;
+		ELSE GENERATE
+			write_full_compare.dataa[] = lpm_add_sub	(
+															.dataa[] = write_counter.q[],
+															.datab[] = read_synch_to_write[].q
+														)
+														WITH
+														(
+															LPM_DIRECTION = "SUB",
+															LPM_WIDTH = COUNTER_WIDTH
+														)
+														RETURNS
+														(
+															.result[]
+														);
+			write_full_compare.datab[] = numwords_bus.result[];
+			wrfull = write_full_compare.aeb;
+
+			IF OVERFLOW_CHECKING != "OFF" GENERATE
+				valid_write = !wrfull & wrreq;
+			ELSE GENERATE
+				valid_write = wrreq;
+			END GENERATE;
+		END GENERATE;
+
+		write_sub.dataa[] = write_counter.q[];
+		write_sub.datab[] = read_synch_to_write[].q;
+
+		wrusedw[] = write_sub.result[WIDTHAD - 1..0];
+	ELSE GENERATE
+		IF NEED_SPECIAL_FULL_WRITE() GENERATE
+			IF FAST_MODE() GENERATE
+				write_sub.dataa[] = write_counter.q[WIDTHAD - 1..0];
+				write_sub.datab[] = read_synch_to_write[WIDTHAD - 1..0].q;
+
+
+				write_full_cs[0].(sin, cin) = ( write_counter.q[COUNTER_WIDTH - 1] !$
+												read_synch_to_write[COUNTER_WIDTH - 1].q)
+												$ write_sub.cout;
+				write_full_cs[1].(sin, cin) = !write_full_cs[0].cout & wrreq;
+
+				IF OVERFLOW_CHECKING != "OFF" GENERATE
+					valid_write = write_full_cs[1].sout;
+				ELSE GENERATE
+					valid_write = wrreq;
+				END GENERATE;
+				wrfull = write_full_cs[0].sout;
+
+			ELSE GENERATE
+				write_sub.dataa[] = write_counter.q[];
+				write_sub.datab[] = read_synch_to_write[].q;
+				
+				wrfull = write_sub.result[COUNTER_WIDTH - 1];
+				IF OVERFLOW_CHECKING != "OFF" GENERATE
+					valid_write = !wrfull & wrreq;
+				ELSE GENERATE
+					valid_write = wrreq;
+				END GENERATE;
+			END GENERATE;
+
+			wrusedw[] = write_sub.result[WIDTHAD - 1..0];
+		ELSE GENERATE -- the default case
+			write_sub.dataa[] = write_counter.q[];
+			write_sub.datab[] = read_synch_to_write[].q;
+
+			wrusedw[] = write_sub.result[WIDTHAD - 1..0];
+			wrfull = GND;
+			valid_write = wrreq & !wrfull;
+		END GENERATE;
+	END GENERATE;
+
+	IF NEED_EXTRA_COUNTERS_READ() # NEED_EXTRA_COUNTERS_WRITE() GENERATE
+		IF FAST_MODE() GENERATE
+			read_full_counter_dff[].(clk, clrn) = (rdclk, !aclr);
+			read_full_counter_dff[].d = read_full_counter_cs[].sout $ numwords_bus.result[];
+			read_full_actual[] = read_full_counter_dff[].q $ numwords_bus.result[];
+
+			IF COUNTER_WIDTH == 1 GENERATE
+				read_full_counter_cs[].sin = valid_read $ read_full_actual[].q;
+				read_full_counter_cs[].cin = GND;
+			ELSE GENERATE -- COUNTER_WIDTH > 1
+				read_full_counter_cs[].sin =	((valid_read & (read_full_actual[COUNTER_WIDTH - 1..1] $
+													read_full_counter_cs[COUNTER_WIDTH - 2..0].cout)) #
+													(!valid_read & read_full_actual[COUNTER_WIDTH - 1..1]),
+												valid_read $ read_full_actual[0]);
+				read_full_counter_cs[].cin =	(read_full_actual[COUNTER_WIDTH - 1..1] &
+													read_full_counter_cs[COUNTER_WIDTH - 2..0].cout,
+												read_full_actual[0]);
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+
+	IF NEED_EXTRA_COUNTERS_READ() GENERATE
+		IF FAST_MODE() GENERATE
+			read_full_cs[0].(sin, cin) = read_full_actual[0] !$ write_synch_to_read[0].q;
+
+			IF COUNTER_WIDTH > 1 GENERATE
+				read_full_cs[COUNTER_WIDTH - 1..1].sin = (	read_full_actual[COUNTER_WIDTH - 1..1] !$
+															write_synch_to_read[COUNTER_WIDTH - 1..1].q)
+															& read_full_cs[COUNTER_WIDTH - 2..0].cout;
+				read_full_cs[COUNTER_WIDTH - 1..1].cin = (  read_full_actual[COUNTER_WIDTH - 1..1] !$
+															write_synch_to_read[COUNTER_WIDTH - 1..1].q)
+															& read_full_cs[COUNTER_WIDTH - 2..0].cout;
+			END GENERATE;
+			rdfull = read_full_cs[COUNTER_WIDTH - 1].sout;
+		ELSE GENERATE
+			read_full_compare.dataa[] = lpm_add_sub	(	.dataa[] = write_synch_to_read[],
+														.datab[] = read_delay[]
+													)
+													WITH
+													(
+														LPM_WIDTH = COUNTER_WIDTH,
+														LPM_DIRECTION = "SUB"
+													)
+													RETURNS
+													(
+														.result[]
+													);
+			read_full_compare.datab[] = numwords_bus.result[];
+
+			rdfull = read_full_compare.aeb;
+		END GENERATE;
+
+		read_sub.dataa[] = write_synch_to_read[].q;
+		read_sub.datab[] = read_delay[];
+
+		rdusedw[] = read_sub.result[WIDTHAD - 1..0];
+	ELSE GENERATE
+		IF NEED_SPECIAL_FULL_READ() GENERATE
+			read_sub.dataa[] = write_synch_to_read[].q;
+			read_sub.datab[] = read_delay[];
+			rdusedw[] = read_sub.result[WIDTHAD - 1..0];
+			rdfull = read_sub.result[COUNTER_WIDTH - 1];
+		ELSE GENERATE
+			read_sub.dataa[] = write_synch_to_read[].q;
+			read_sub.datab[] = read_delay[];
+			rdusedw[] = read_sub.result[WIDTHAD - 1..0];
+		END GENERATE;
+	END GENERATE;
+
+	-- now for the empty flags
+	IF FAST_MODE() GENERATE
+		write_empty_compare[0].(sin, cin) = write_counter.q[0] !$ read_synch_to_write[0].q;
+
+		IF COUNTER_WIDTH > 1 GENERATE
+			write_empty_compare[COUNTER_WIDTH - 1..1].sin = (write_counter.q[COUNTER_WIDTH - 1..1] !$
+																	read_synch_to_write[COUNTER_WIDTH - 1..1].q)
+																	& write_empty_compare[COUNTER_WIDTH - 2..0].cout;
+			write_empty_compare[COUNTER_WIDTH - 1..1].cin = (write_counter.q[COUNTER_WIDTH - 1..1] !$
+																	read_synch_to_write[COUNTER_WIDTH - 1..1].q)
+																	& write_empty_compare[COUNTER_WIDTH - 2..0].cout;
+
+		END GENERATE;
+		wrempty = write_empty_compare[COUNTER_WIDTH - 1].sout;
+		
+		read_empty_compare[0].(sin, cin) = write_synch_to_read[0].q !$ read_delay[0];
+
+		IF COUNTER_WIDTH > 1 GENERATE
+			read_empty_compare[COUNTER_WIDTH - 1..1].sin = (write_synch_to_read[COUNTER_WIDTH - 1..1].q !$
+																   read_delay[COUNTER_WIDTH - 1..1])
+																   & read_empty_compare[COUNTER_WIDTH - 2..0].cout;
+			read_empty_compare[COUNTER_WIDTH - 1..1].cin = (write_synch_to_read[COUNTER_WIDTH - 1..1].q !$
+																   read_delay[COUNTER_WIDTH - 1..1])
+																   & read_empty_compare[COUNTER_WIDTH - 2..0].cout;
+		END GENERATE;
+		rdempty = read_empty_compare[COUNTER_WIDTH - 1].sout;
+	ELSE GENERATE -- !FAST_MODE() empty flags
+		write_empty_compare.dataa[] = write_counter.q[];
+		write_empty_compare.datab[] = read_synch_to_write[].q;
+
+		read_empty_compare.dataa[] = write_synch_to_read[].q;
+		read_empty_compare.datab[] = read_delay[];
+
+		wrempty = write_empty_compare.aeb;
+		rdempty = read_empty_compare.aeb;
+	END GENERATE;
+
+	IF UNDERFLOW_CHECKING == "OFF" GENERATE
+		valid_read = rdreq;
+
+		IF FAST_MODE() GENERATE
+			fast_feed_read = rdreq;
+		END GENERATE;
+	ELSE GENERATE
+		IF FAST_ENABLE_FEED_READ() GENERATE
+			(valid_read, fast_feed_read)	= CARRY_SUM(
+												.sin = !read_empty_compare[COUNTER_WIDTH - 1].cout & rdreq,
+												.cin = !read_empty_compare[COUNTER_WIDTH - 1].cout & rdreq
+												)
+												RETURNS
+												(
+													.sout,
+													.cout
+												);
+		ELSE GENERATE
+			valid_read = !rdempty & rdreq;
+		END GENERATE;
+	END GENERATE;
+
+	-- Finally hook up the ram
+	-- write ports
+	FIFOram.(data[], wraddress[], wren, inclock) = (data[], write_counter.q[WIDTHAD - 1..0], valid_write, wrclk);
+	-- read ports
+	FIFOram.(rdaddress[], outclocken, outclock) = (read_count_actual[WIDTHAD - 1..0], valid_read, rdclk);
+	q[] = FIFOram.q[];
+
+	-- one and only control
+	IF USED(aclr) & !STRATIX_EAB() GENERATE
+		FIFOram.aclr = aclr;
+	END GENERATE;
+
+  ELSE GENERATE
+		IF USED(data) GENERATE
+			auto_generated.data[] = data[];
+		END GENERATE;
+		IF USED(aclr) GENERATE
+			auto_generated.aclr = aclr;
+		END GENERATE;
+		IF USED(wrclk) GENERATE
+			auto_generated.wrclk = wrclk;
+		END GENERATE;
+		IF USED(wrreq) GENERATE
+			auto_generated.wrreq = wrreq;
+		END GENERATE;
+		IF USED(rdclk) GENERATE
+			auto_generated.rdclk = rdclk;
+		END GENERATE;
+		IF USED(rdreq) GENERATE
+			auto_generated.rdreq = rdreq;
+		END GENERATE;
+
+		IF USED(q) GENERATE
+			q[] = auto_generated.q[];
+		END GENERATE;
+		IF USED(rdusedw) GENERATE
+			rdusedw[] = auto_generated.rdusedw[];
+		END GENERATE;
+		IF USED(rdempty) GENERATE
+			rdempty = auto_generated.rdempty;
+		END GENERATE;
+		IF USED(rdfull) GENERATE
+			rdfull = auto_generated.rdfull;
+		END GENERATE;
+		IF USED(wrusedw) GENERATE
+			wrusedw[] = auto_generated.wrusedw[];
+		END GENERATE;
+		IF USED(wrempty) GENERATE
+			wrempty = auto_generated.wrempty;
+		END GENERATE;
+		IF USED(wrfull) GENERATE
+			wrfull = auto_generated.wrfull;
+		END GENERATE;
+  END GENERATE;
+	IF !USED(wrempty) GENERATE
+		wrempty = GND;
+	END GENERATE;
+	IF !USED(rdusedw) GENERATE
+		rdusedw[] = GND;
+	END GENERATE;
+	IF !USED(rdempty) GENERATE
+		rdempty = GND;
+	END GENERATE;
+	IF !USED(wrfull) GENERATE
+		wrfull = GND;
+	END GENERATE;
+	IF !USED(rdfull) GENERATE
+		rdfull = GND;
+	END GENERATE;
+	IF !USED(wrusedw) GENERATE
+		wrusedw[] = GND;
+	END GENERATE;
+	IF !USED(q) GENERATE
+		q[] = GND;
+	END GENERATE;
+END;

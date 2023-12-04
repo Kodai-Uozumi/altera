@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<ROOT>
+	<INCLUDE FILE="mfam_family_macros.xml" />
+	<MACROS>
+		<MACRO NAME="m_stx_like" DEFINITION="(mfam_family_stratix or mfam_family_stratixiigx or mfam_family_stratixii) and (!mfam_family_stratixiii)" />
+		<MACRO NAME="m_s3_like" DEFINITION="mfam_family_stratixiii or mfam_family_arriaii" />
+		<MACRO NAME="m_c3_like" DEFINITION="mfam_family_cycloneiii" />
+		<MACRO NAME="m_write_supported" DEFINITION="is_used(write_param)" />
+	</MACROS>
+	<PARAMETER_RULES>
+		<PARAMETER NAME="IN_DATA_WIDTH" >
+			<FORCE_VALUE TO="12" WHEN="m_stx_like" />
+			<FORCE_VALUE TO="24" WHEN="m_s3_like" />
+			<FORCE_VALUE TO="29" WHEN="m_c3_like" />
+		</PARAMETER>
+		<PARAMETER NAME="OUT_DATA_WIDTH" >
+			<FORCE_VALUE TO="12" WHEN="m_stx_like" />
+			<FORCE_VALUE TO="24" WHEN="m_s3_like" />
+			<FORCE_VALUE TO="22" WHEN="m_c3_like" />
+		</PARAMETER>
+	</PARAMETER_RULES>
+	<PORT_RULES>
+		<PORT NAME="pgmout" USAGE="VARIABLE" >
+			<STATE TO="USED" WHEN="m_stx_like" ELSE="UNUSED" />
+		</PORT>
+		<PORT NAME="data_in" USAGE="VARIABLE" >
+			<STATE TO="USED" WHEN="m_write_supported" ELSE="UNUSED" />
+		</PORT>
+		<PORT NAME="write_param" USAGE="VARIABLE" />
+	</PORT_RULES>
+
+</ROOT>

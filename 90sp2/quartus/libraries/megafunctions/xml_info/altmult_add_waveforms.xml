@@ -1,0 +1,602 @@
+<?xml version="1.0" ?>
+<ROOT>
+	<INCLUDE FILE="mfam_family_macros.xml" /> 
+	<MACROS>
+		<MACRO NAME="m_no_rnd_sat" >
+			<DEFINITION> 
+				(!m_round_sat_mode_sii and !m_sat_mode_siii and !m_rnd_mode_siii and !m_shift_siii)
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_sat_mode_siii" >
+			<DEFINITION> 
+				(OUTPUT_SATURATION == "YES" || OUTPUT_SATURATION == "VARIABLE" || CHAINOUT_SATURATION == "YES" || CHAINOUT_SATURATION == "VERIABLE") and mfam_family_stratixiii
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_rnd_mode_siii" >
+			<DEFINITION> 
+				(OUTPUT_ROUNDING == "YES" || OUTPUT_ROUNDING == "VARIABLE" || CHAINOUT_ROUNDING == "YES" || CHAINOUT_ROUNDING == "VARIABLE") and mfam_family_stratixiii
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_shift_siii" >
+			<DEFINITION> 
+				(SHIFT_MODE == "LEFT" || SHIFT_MODE == "RIGHT" || SHIFT_MODE == "ROTATION" || SHIFT_MODE == "VARIABLE") and mfam_family_stratixiii
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_start_lsb" >
+			<DEFINITION> 
+				m_rnd_mode_siii ? (WIDTH_RESULT - WIDTH_MSB) : 0
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_start_lsb_1" >
+			<DEFINITION> 
+				m_rnd_mode_siii ? (WIDTH_RESULT - WIDTH_MSB - 1) : 0
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_start_msb" >
+			<DEFINITION> 
+				m_sat_mode_siii ? (WIDTH_RESULT - WIDTH_SATURATE_SIGN ) : (WIDTH_RESULT -1)
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_round_sat_mode_sii" >
+			<DEFINITION> 
+				(HAS_SAT_ROUND == 1) and mfam_family_stratixii and !mfam_family_stratixiii
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_use_round" >
+			<DEFINITION>
+				((NUMBER_OF_MULTIPLIERS gt 1) and ((ADDER1_ROUNDING == "YES") || (ADDER1_ROUNDING == "VARIABLE"))) 
+				|| ((MULTIPLIER01_ROUNDING == "YES") || (MULTIPLIER01_ROUNDING == "VARIABLE")) 
+				|| ((NUMBER_OF_MULTIPLIERS gt 2) and ((ADDER3_ROUNDING == "YES") || (ADDER3_ROUNDING == "VARIABLE"))) 
+				|| ((NUMBER_OF_MULTIPLIERS gt 2) and ((MULTIPLIER23_ROUNDING == "YES") || (MULTIPLIER23_ROUNDING == "VARIABLE")))						
+			</DEFINITION>	
+		</MACRO>
+		<MACRO NAME="m_use_saturation" >
+			<DEFINITION>
+				((MULTIPLIER01_SATURATION == "YES") || (MULTIPLIER01_SATURATION == "VARIABLE")) || ((NUMBER_OF_MULTIPLIERS gt 2) and ((MULTIPLIER23_SATURATION == "YES") || (MULTIPLIER23_SATURATION == "VARIABLE")))
+			</DEFINITION>	
+		</MACRO>
+		<MACRO NAME="m_dataout_display" >
+			<DEFINITION> 
+				(RQFORMAT == "Q1.15") ? "1.15" : (RQFORMAT == "Q1.30" ? "1.30" : (RQFORMAT == "Q1.31" ? "1.31" : "2.30") )
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_share_msb" >
+			<DEFINITION> 
+				((shift_mode == "NO") and (chainout_adder == "NO") and (accumulator == "NO")) and m_sat_mode_siii and (NUMBER_OF_MULTIPLIERS lt 3)
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_accum_sat_bit_samll" >
+			<DEFINITION> 
+				(ACCUMULATOR == "YES") and m_sat_mode_siii and (( WIDTH_RESULT - WIDTH_A - WIDTH_B ) lt 2)
+			</DEFINITION>
+		</MACRO>
+
+	</MACROS>
+	<HTML_TEXT>
+		<TITLE>Sample Waveforms for m_design_file_name</TITLE>
+
+		<HEADER>Sample behavioral waveforms for design file m_design_file_name</HEADER>
+
+		<INTRO>
+			<T>The following waveforms show the behavior of altmult_add megafunction for the chosen set of parameters in design m_design_file_name.</T>
+			<IF> m_round_sat_mode_sii </IF>
+			<THEN>The design m_design_file_name has NUMBER_OF_MULTIPLIERS 1.15 X 1.15 fixed point multiplier(s) producing an output of m_dataout_display fixed point representation. </THEN>
+			<ELSE> The design m_design_file_name has NUMBER_OF_MULTIPLIERS WIDTH_A X WIDTH_B multiplier(s) producing an output of WIDTH_RESULT bits. </ELSE>
+			<IF> CHAINOUT_ADDER == "YES" </IF>
+			<THEN> The output of multiplier-adder is connected to the input of chainout adder.</THEN>
+			<T> The A input to the multiplier </T>
+			<IF> is_used(signa) </IF>
+			<THEN> has dynamic sign control. </THEN>
+			<ELSE> is REPRESENTATION_A. </ELSE>
+			<IF> is_used(sourcea) </IF>
+			<THEN> The input source for the A input to the multiplier is dynamically controlled between data and scanin input ports by sourcea. </THEN>
+			<ELSE> 
+				<IF> INPUT_SOURCE_A == "SCANA" </IF>
+				<THEN> The input source for the A input to the multiplier is the scanin input. </THEN>
+			</ELSE>
+
+			<T> The B input to the multiplier </T>
+			<IF> is_used(signb) </IF>
+			<THEN> has dynamic sign control. </THEN>
+			<ELSE> is REPRESENTATION_B. </ELSE>
+
+			<IF> is_used(sourceb) </IF>
+			<THEN> The input source for the B input to the multiplier is dynamically controlled between data and scanin input ports by sourceb. </THEN>
+			<ELSE> 
+				<IF> INPUT_SOURCE_B == "SCANB" </IF>
+				<THEN> The input source for the B input to the multiplier is the scanin input. </THEN>
+			</ELSE>
+
+			<IF> (NUMBER_OF_MULTIPLIERS gt 1) </IF>
+			<THEN>
+				<IF> is_used(addnsub1) </IF>
+				<THEN> A dynamically controlled adder/subtractor </THEN>
+				<ELSE> MULTIPLIER1_DIRECTION </ELSE>
+				<T> operation is performed on the output of the first pair of multipliers.</T>
+			</THEN>
+			<IF> (NUMBER_OF_MULTIPLIERS gt 3) </IF>
+			<THEN>
+				<IF> is_used(addnsub3) </IF>
+				<THEN> A dynamically controlled adder/subtractor </THEN>
+				<ELSE> MULTIPLIER3_DIRECTION </ELSE>
+				<T> operation is performed on the output of the second pair of multipliers.</T>
+			</THEN>
+		
+			<IF> input_source_b0 == "loopback" </IF>
+			<THEN> This design uses lookback mode, datab_0 is connected to the upper 18 bits of result. </THEN>
+			<IF> is_used(zero_loopback) </IF>
+			<THEN> zero_loopback signal is used to clear the loopback value. </THEN>
+		
+			<IF> m_rnd_mode_siii </IF>
+			<THEN> The multiplier-adder uses the hardware rounding feature. Bits m_start_lsb_1 to 0 are rounded away.</THEN>
+			<IF> m_sat_mode_siii </IF>
+			<THEN> The multiplier-adder uses the hardware saturation feature. Saturation position is at bit m_start_msb.</THEN>
+			<IF> m_rnd_mode_siii || m_sat_mode_siii </IF>
+			<THEN> The valid range of result is from bit m_start_msb to bit m_start_lsb.</THEN>
+			
+	
+			<IF> is_used(output_round) </IF>
+			<THEN> The output of the multiplier-adder is rounded, when "output_round" is asserted. </THEN>
+			<ELSE> 
+				<IF> OUTPUT_ROUNDING == "YES" </IF>
+				<THEN> The output of the multiplier-adder is always rounded. </THEN>
+			</ELSE>
+			<IF> is_used(chainout_round) </IF>
+			<THEN> The output of the chainout is rounded, when "chainout_round" is asserted. </THEN>
+			<ELSE> 
+				<IF> CHAINOUT_ROUNDING == "YES" </IF>
+				<THEN> The output of the chainout is always rounded. </THEN>
+			</ELSE>
+
+			<IF> is_used(output_saturate) </IF>
+			<THEN> The output of the multiplier-adder is saturated, when "output_saturate" is asserted. </THEN>
+			<ELSE> 
+				<IF> OUTPUT_SATURATION == "YES" </IF>
+				<THEN> The output of the multiplier-adder is always saturated. </THEN>
+			</ELSE>
+			<IF> is_used(chainout_saturate) </IF>
+			<THEN> The output of the chainout adder is saturated, when "chainout_saturate" is asserted. </THEN>
+			<ELSE> 
+				<IF> CHAINOUT_SATURATION == "YES" </IF>
+				<THEN> The output of the chainout adder is always saturated. </THEN>
+			</ELSE>
+	
+
+			<IF> m_round_sat_mode_sii </IF>
+			<THEN> The multiplier-adder uses the hardware rounding and saturation feature. </THEN>
+
+			<IF> is_used(mult01_round) </IF>
+			<THEN> The output of the multiplier is rounded, when "mult_round" is asserted. </THEN>
+			<ELSE> 
+				<IF> MULTIPLIER01_ROUNDING == "YES" </IF>
+				<THEN> The output of the multiplier is always rounded. </THEN>
+			</ELSE>
+
+			<IF> is_used(mult23_round) </IF>
+			<THEN> The output of the multiplier is rounded, when "mult_round" is asserted. </THEN>
+			<ELSE> 
+				<IF> MULTIPLIER23_ROUNDING == "YES" </IF>
+				<THEN> The output of the multiplier is always rounded. </THEN>
+			</ELSE>
+
+			<IF> is_used(addnsub1_round) </IF>
+			<THEN> The output of the first adder is rounded, when "addnsub1_round" is asserted. </THEN>
+			<ELSE> 
+				<IF> ADDNSUB1_ROUNDING == "YES" </IF>
+				<THEN> The output of the first adder is always rounded. </THEN>
+			</ELSE>
+
+			<IF> is_used(addnsub3_round) </IF>
+			<THEN> The output of the second adder is rounded, when "addnsub3_round" is asserted. </THEN>
+			<ELSE> 
+				<IF> ADDNSUB3_ROUNDING == "YES" </IF>
+				<THEN> The output of the second adder is always rounded. </THEN>
+			</ELSE>
+
+			<IF> m_use_round </IF>
+			<THEN> Rounding operation is performed on both the multiplier(s) and adder(s) based on 1.15 fixed point representation. </THEN>
+
+			<IF> is_used(mult01_saturation) </IF>
+			<THEN> The output of the multiplier is checked for saturation, when "mult_saturation" is asserted. </THEN>
+			<ELSE> 
+				<IF> MULTIPLIER01_SATURATION == "YES" </IF>
+				<THEN> The output of the multiplier is always checked for saturation. </THEN>
+			</ELSE>
+			<IF> is_used(mult0_is_saturated) </IF>
+			<THEN> The output port "mult0_is_saturated" when the first multiplier output is saturated. </THEN>
+			<IF> is_used(mult1_is_saturated) </IF>
+			<THEN> The output port "mult1_is_saturated" when the second multiplier output is saturated. </THEN>
+			<IF> is_used(mult2_is_saturated) </IF>
+			<THEN> The output port "mult2_is_saturated" when the third multiplier output is saturated. </THEN>
+			<IF> is_used(mult3_is_saturated) </IF>
+			<THEN> The output port "mult3_is_saturated" when the fourth multiplier output is saturated. </THEN>
+
+			<IF> m_use_saturation </IF>
+			<THEN> Saturation operation is performed on the multiplier(s) and based on 1.31 fixed point representation. </THEN>
+			<IF> accumulator == "YES" </IF>
+			<THEN> The design has an text(accumulator) that performs ACCUM_DIRECTION operation.</THEN>
+
+			<IF> m_shift_siii </IF>
+			<THEN> Shift/rotate operation is performed on the multiplier. The A input to the multiplier is the source data. The B input to the multiplier specifies the number of bits to shift/rotate. The B input to the multiplier can have only one bit with a value "1" and the bit position indicates the value of shift/rotate. </THEN>
+
+		</INTRO>
+
+		<END>
+		</END>
+	</HTML_TEXT>
+	<WAVE_DATA>
+		<WAVE NAME="SAT_RND_SIII" TIME_STEP="10" MAX_TIME="2200" INDEX="1" DISPLAY_TRUNCATION="LOW" >
+			<WAVE_CONDITION> m_sat_mode_siii || m_rnd_mode_siii</WAVE_CONDITION>
+			<CAPTION>Waveforms showing saturation/rounding operation </CAPTION>
+			<DESCRIPTION> 
+				<T> The port "multout_*" is the internal output of the multiplier(s). </T>
+				<T> The port "out_no_rnd_sat" is the internal output before rounding and saturation </T>
+				<IF> OUTPUT_SATURATE_TYPE == "SYMMETRIC" and m_sat_mode_siii</IF>
+               			<THEN> When symmetric saturation happens, the absolute value of the maximum negative number is equal to the maximum positive number. When the output is negative, the least significant bit will be set to "1". </THEN>                                                                                                                                  
+				<IF> m_rnd_mode_siii</IF>
+               			<THEN>When rounding is performed, bits m_start_lsb_1 to 0 are undefined.  </THEN>                                                                                                                                                                                                         
+				<IF> OUTPUT_ROUND_TYPE == "NERAEST_EVEN" and m_rnd_mode_siii</IF>
+				<THEN> This design rounds the output to the nearest_even number.</THEN>
+				<IF>m_share_msb </IF>
+               			<THEN>When saturation happens, the most significant bit is undefined. </THEN>                                                                                                                                                                                                                                                                            
+				<IF> (WIDTH_SATURATE_SIGN lt 3) || (m_accum_sat_bit_samll) </IF>
+               			<THEN>Waveforms may not show saturation behavior, if "saturation fractional width" is small. To observe the effects of saturation in the sample waveforms, you can use a higher "saturation fractional width". </THEN>                                                                                                                                             
+			<IF> input_source_b0 == "loopback" </IF>
+                		<THEN>Lookback mode is turned on, datab_0 is connected to the upper 18 bits of result. </THEN>
+				<IF> is_used(chainin) </IF>
+                		<THEN>Port "chainin" should be connected to the output port of the previous dsp block. For the purpose of this simulation, "chainin" is assumed to have the values shown above.</THEN>
+			</DESCRIPTION>
+			<IF>  WIDTH_A == 18 </IF>
+		        <THEN>
+		                <STIM> force dataa_0 131072 @0, 131071 @680</STIM>
+		        	<STIM> force dataa_1 131072 @0, 131071 @680</STIM>
+		        	<STIM> force dataa_2 131072 @0, 131071 @680</STIM>
+		        	<STIM> force dataa_3 131072 @0, 131071 @680</STIM>
+		        </THEN>
+			<IF>  WIDTH_A == 17 </IF>
+		        <THEN>
+		              <STIM> force dataa_0 65536 @0, 65535 @680</STIM>
+		              <STIM> force dataa_1 65536 @0, 65535 @680</STIM>
+		              <STIM> force dataa_2 65536 @0, 65535 @680</STIM>
+		              <STIM> force dataa_3 65536 @0, 65535 @680</STIM>
+		        </THEN>
+			<IF>  WIDTH_A == 16 </IF>
+		        <THEN>
+		              <STIM> force dataa_0 32768 @0, 32767 @680</STIM>
+		              <STIM> force dataa_1 32768 @0, 32767 @680</STIM>
+		              <STIM> force dataa_2 32768 @0, 32767 @680</STIM>
+		              <STIM> force dataa_3 32768 @0, 32767 @680</STIM>
+		        </THEN>
+			<IF>  WIDTH_A == 15 </IF>
+		        <THEN>
+		              <STIM> force dataa_0 16384 @0, 16383 @680</STIM>
+		              <STIM> force dataa_1 16384 @0, 16383 @680</STIM>
+		              <STIM> force dataa_2 16384 @0, 16383 @680</STIM>
+		              <STIM> force dataa_3 16384 @0, 16383 @680</STIM>
+		        </THEN>
+			<IF>  WIDTH_A == 14 </IF>
+		        <THEN>
+		              <STIM> force dataa_0 8192 @0, 8191 @680</STIM>
+		              <STIM> force dataa_1 8192 @0, 8191 @680</STIM>
+		              <STIM> force dataa_2 8192 @0, 8191 @680</STIM>
+		              <STIM> force dataa_3 8192 @0, 8191 @680</STIM>
+		        </THEN>
+			<IF>  WIDTH_A == 12 </IF>
+		        <THEN>
+		              <STIM> force dataa_0 4096 @0, 4095 @680</STIM>
+		              <STIM> force dataa_1 4096 @0, 4095 @680</STIM>
+		              <STIM> force dataa_2 4096 @0, 4095 @680</STIM>
+		              <STIM> force dataa_3 4096 @0, 4095 @680</STIM>
+		        </THEN>
+			<IF>  WIDTH_A == 11 </IF>
+		        <THEN>
+		              <STIM> force dataa_0 2048 @0, 2047 @680</STIM>
+		              <STIM> force dataa_1 2048 @0, 2047 @680</STIM>
+		              <STIM> force dataa_2 2048 @0, 2047 @680</STIM>
+		              <STIM> force dataa_3 2048 @0, 2047 @680</STIM>
+		         </THEN>
+			<IF>  WIDTH_A == 10 </IF>
+		        <THEN>
+		              <STIM> force dataa_0 1024 @0, 1023 @680</STIM>
+		              <STIM> force dataa_1 1024 @0, 1023 @680</STIM>
+		              <STIM> force dataa_2 1024 @0, 1023 @680</STIM>
+		              <STIM> force dataa_3 1024 @0, 1023 @680</STIM>
+		         </THEN>
+			<IF>  WIDTH_A lt 9 </IF>
+		        <THEN>
+		        	<STIM> force dataa_0 1365 @0, 2730 @680</STIM>
+		        	<STIM> force dataa_1 1365 @0, 2730 @680</STIM>
+		        	<STIM> force dataa_2 1365 @0, 2730 @680</STIM>
+		        	<STIM> force dataa_3 1365 @0, 2730 @680</STIM>
+		        </THEN>
+			<IF>  WIDTH_B == 18 </IF>
+		        <THEN>
+		                <STIM> force datab_0 131072 @0</STIM>
+		        	<STIM> force datab_1 131072 @0</STIM>
+		        	<STIM> force datab_2 131072 @0</STIM>
+		        	<STIM> force datab_3 131072 @0</STIM>
+		        </THEN>
+			<IF>  WIDTH_B == 17 </IF>
+		        <THEN>
+		              <STIM> force datab_0 65536 @0</STIM>
+		              <STIM> force datab_1 65536 @0</STIM>
+		              <STIM> force datab_2 65536 @0</STIM>
+		              <STIM> force datab_3 65536 @0</STIM>
+		        </THEN>
+			<IF>  WIDTH_B == 16 </IF>
+		        <THEN>
+		              <STIM> force datab_0 32768 @0</STIM>
+		              <STIM> force datab_1 32768 @0</STIM>
+		              <STIM> force datab_2 32768 @0</STIM>
+		              <STIM> force datab_3 32768 @0</STIM>
+		        </THEN>
+			<IF>  WIDTH_B == 15 </IF>
+		        <THEN>
+		              <STIM> force datab_0 16384 @0</STIM>
+		              <STIM> force datab_1 16384 @0</STIM>
+		              <STIM> force datab_2 16384 @0</STIM>
+		              <STIM> force datab_3 16384 @0</STIM>
+		        </THEN>
+			<IF>  WIDTH_B == 14 </IF>
+		        <THEN>
+		              <STIM> force datab_0 8192 @0</STIM>
+		              <STIM> force datab_1 8192 @0</STIM>
+		              <STIM> force datab_2 8192 @0</STIM>
+		              <STIM> force datab_3 8192 @0</STIM>
+		        </THEN>
+			<IF>  WIDTH_B == 12 </IF>
+		        <THEN>
+		              <STIM> force datab_0 4096 @0</STIM>
+		              <STIM> force datab_1 4096 @0</STIM>
+		              <STIM> force datab_2 4096 @0</STIM>
+		              <STIM> force datab_3 4096 @0</STIM>
+		        </THEN>
+			<IF>  WIDTH_B == 11 </IF>
+		        <THEN>
+		              <STIM> force datab_0 2048 @0</STIM>
+		              <STIM> force datab_1 2048 @0</STIM>
+		              <STIM> force datab_2 2048 @0</STIM>
+		              <STIM> force datab_3 2048 @0</STIM>
+		         </THEN>
+			<IF>  WIDTH_B == 10 </IF>
+		        <THEN>
+		              <STIM> force datab_0 1024 @0</STIM>
+		              <STIM> force datab_1 1024 @0</STIM>
+		              <STIM> force datab_2 1024 @0</STIM>
+		              <STIM> force datab_3 1024 @0</STIM>
+		         </THEN>
+			<IF>  WIDTH_B lt 9 </IF>
+		        <THEN>
+		        	<STIM> force datab_0 1365 @0 </STIM>
+		        	<STIM> force datab_1 1365 @0 </STIM>
+		        	<STIM> force datab_2 1365 @0 </STIM>
+		        	<STIM> force datab_3 1365 @0 </STIM>
+		        </THEN>
+		        <STIM> force scanina 3 @0, 2 @520, 1 @1000, 0 @1480</STIM>
+		        <STIM> force scaninb 1 @0, 3 @520, 2 @1000, 1 @1480</STIM>
+		        <STIM> force sourcea 0 @0, 1 @520, 0 @1480</STIM>
+		        <STIM> force sourceb 1 @0, 0 @520, 1 @1000, 0 @1480</STIM>
+			<STIM> force addnsub1 1 @0, 0 @520, 1 @1000, 0 @1480</STIM>
+			<STIM> force addnsub3 1 @0, 0 @520, 1 @1480</STIM>
+			<STIM> force clock0 0 @0, 1 @80, -repeat @160</STIM>
+			<STIM> force clock1 0 @0, 1 @80, -repeat @160</STIM>
+			<STIM> force clock2 0 @0, 1 @80, -repeat @160</STIM>
+			<STIM> force clock3 0 @0, 1 @80, -repeat @160</STIM>
+			<STIM> force ena0 0 @0, 1 @200</STIM>
+			<STIM> force ena1 0 @0, 1 @200</STIM>
+			<STIM> force ena2 0 @0, 1 @200</STIM>
+			<STIM> force ena3 0 @0, 1 @200</STIM>
+			<STIM> force aclr0 0 @0, 1 @360, 0 @520</STIM>
+			<STIM> force aclr1 0 @0, 1 @360, 0 @520</STIM>
+			<STIM> force aclr2 0 @0, 1 @360, 0 @520</STIM>
+			<STIM> force aclr3 0 @0, 1 @360, 0 @520</STIM>
+		        <STIM> force accum_sload 0 @0, 1 @1000, 0 @1160</STIM>
+		        <STIM> force zero_chainout 0 @0, 1 @1000, 0 @1160</STIM>
+		        <STIM> force output_saturate 0 @0, 1 @1160, 0 @1320</STIM>
+		        <STIM> force chainout_saturate 0 @0, 1 @1320, 0 @1480</STIM>
+		        <STIM> force output_round 0 @0, 1 @1000, 0 @1320</STIM>
+		        <STIM> force chainout_round 0 @0, 1 @1000, 0 @1320</STIM>
+		        <STIM> force zero_loopback 0 @0, 1 @840, 0 @1000</STIM>
+			<STIM> force -hex chainin 0 @0, 7FFFFFFFFFF @840</STIM>
+		</WAVE>
+		<WAVE NAME="SIMPLE" TIME_STEP="10" MAX_TIME="1000" INDEX="0" >
+			<WAVE_CONDITION> m_no_rnd_sat </WAVE_CONDITION>
+			<CAPTION>Waveform showing multiplier-adder operation </CAPTION>
+			<DESCRIPTION> 
+				<T> The port "multout_*" is the internal output of the multiplier(s). </T>
+				<IF> input_source_b0 == "loopback" </IF>
+                		<THEN>Lookback mode is turned on, datab_0 is connected to the upper 18 bits of result. </THEN>
+				<IF> is_used(chainin) </IF>
+                		<THEN>Port "chainin" should be connected to the output port of the previous dsp block. For the purpose of this simulation, "chainin" is assumed to have the values shown above.</THEN>
+			</DESCRIPTION>
+
+
+		        <STIM> force dataa_0 1 @0, 2 @500, 3 @740</STIM>
+		        <STIM> force dataa_1 4 @0, 4 @500, 8 @740</STIM>
+		        <STIM> force dataa_2 3 @0, 2 @260, 1 @500, 2 @740</STIM>
+		        <STIM> force dataa_3 0 @0, 1 @260, 0 @500, 3 @740</STIM>
+		        <STIM> force datab_0 1 @0, 2 @260, 3 @500, 1 @740</STIM>
+			<IF> input_source_b0 == "loopback" </IF>
+			<THEN> <STIM> force datab_1 87381 @0, 1 @740</STIM></THEN>
+		        <ELSE><STIM> force datab_1 0 @0, 1 @260, 2 @500, 3 @740</STIM></ELSE>
+		        <STIM> force datab_2 2 @0, 3 @260, 0 @500, 1 @740</STIM>
+		        <STIM> force datab_3 3 @0, 0 @260, 1 @500, 2 @740</STIM>
+		        <STIM> force scanina 3 @0, 2 @260, 1 @500, 0 @740</STIM>
+		        <STIM> force scaninb 1 @0, 3 @260, 2 @500, 1 @740</STIM>
+		        <STIM> force sourcea 0 @0, 1 @260, 0 @740</STIM>
+		        <STIM> force sourceb 1 @0, 0 @260, 1 @500, 0 @740</STIM>
+			<STIM> force addnsub1 1 @0, 0 @260, 1 @500, 0 @740</STIM>
+			<STIM> force addnsub3 1 @0, 0 @260, 1 @740</STIM>
+			<STIM> force clock0 0 @0, 1 @40, -repeat @80</STIM>
+			<STIM> force clock1 0 @0, 1 @40, -repeat @80</STIM>
+			<STIM> force clock2 0 @0, 1 @40, -repeat @80</STIM>
+			<STIM> force clock3 0 @0, 1 @40, -repeat @80</STIM>
+			<STIM> force ena0 0 @0, 1 @100</STIM>
+			<STIM> force ena1 0 @0, 1 @100</STIM>
+			<STIM> force ena2 0 @0, 1 @100</STIM>
+			<STIM> force ena3 0 @0, 1 @100</STIM>
+			<STIM> force aclr0 0 @0, 1 @180, 0 @260</STIM>
+			<STIM> force aclr1 0 @0, 1 @180, 0 @260</STIM>
+			<STIM> force aclr2 0 @0, 1 @180, 0 @260</STIM>
+			<STIM> force aclr3 0 @0, 1 @180, 0 @260</STIM>
+		        <STIM> force accum_sload 0 @0, 1 @500, 0 @580</STIM>
+		        <STIM> force zero_chainout 0 @0, 1 @580, 0 @660, 0 @740</STIM>
+			 <STIM> force zero_loopback 0 @0, 1 @340, 0 @420</STIM>
+			<STIM> force chainin 0 @0, 0 @340, 16 @420</STIM>
+		</WAVE>
+		<WAVE NAME="ROUND_SAT_SII" TIME_STEP="10" MAX_TIME="1000" INDEX="1" DISPLAY_TRUNCATION="LOW" >
+			<WAVE_CONDITION>m_round_sat_mode_sii</WAVE_CONDITION>
+			<CAPTION>Wave showing rounding/saturation operation </CAPTION>
+			<DESCRIPTION> 
+				<T> The port "multout_*" is the internal output of the multiplier(s). </T>
+				<T> The waveforms are displayed in fixed point format, as the hardware does rounding/saturation based on 1.15 fixed point representation. </T>
+				<T> The input ports are in 1.15 fixed point representation. </T>
+				<T> The multiplier output(s) are in 2.30 fixed point representation. </T>
+				<T> The result output is in m_dataout_display fixed point representation. </T>	
+			</DESCRIPTION>
+			<DISPLAY> add wave -fixed_point(1.15) dataa_0 </DISPLAY>
+			<DISPLAY> add wave -fixed_point(1.15) datab_0 </DISPLAY>
+			<DISPLAY> add wave -fixed_point(1.15) dataa_1 </DISPLAY>
+			<DISPLAY> add wave -fixed_point(1.15) datab_1 </DISPLAY>
+			<DISPLAY> add wave -fixed_point(1.15) dataa_2 </DISPLAY>
+			<DISPLAY> add wave -fixed_point(1.15) datab_2 </DISPLAY>
+			<DISPLAY> add wave -fixed_point(1.15) dataa_3 </DISPLAY>
+			<DISPLAY> add wave -fixed_point(1.15) datab_3 </DISPLAY>
+			<DISPLAY> add wave -fixed_point(1.15) scanina </DISPLAY>
+			<DISPLAY> add wave -fixed_point(1.15) scaninb </DISPLAY>
+			<DISPLAY> add wave -fixed_point(1.15) scanouta </DISPLAY>
+			<DISPLAY> add wave -fixed_point(1.15) scanoutb </DISPLAY>
+			<DISPLAY> add wave -fixed_point(2.30) multout_0 </DISPLAY>
+			<DISPLAY> add wave -fixed_point(2.30) multout_1 </DISPLAY>
+			<DISPLAY> add wave -fixed_point(2.30) multout_2 </DISPLAY>
+			<DISPLAY> add wave -fixed_point(2.30) multout_3 </DISPLAY>
+			<DISPLAY> add wave -fixed_point(m_dataout_display) result </DISPLAY>
+
+			<IF>m_use_round and m_use_saturation</IF>
+			<THEN>
+			        <STIM> force -fixed_point(1.15) dataa_0 -0.5 @0, -1.0 @260, -0.333343567 @500, 0.5 @820</STIM>
+			        <STIM> force -fixed_point(1.15) dataa_1 0.5 @0, -1.0 @260, 0.5 @500, -0.5 @820</STIM>
+			        <STIM> force -fixed_point(1.15) dataa_2 0.5 @0, -1.0 @260, -0.333343567 @500, -0.5 @820</STIM>
+			        <STIM> force -fixed_point(1.15) dataa_3 -0.5 @0, -1.0 @260, -0.5 @500, 0.5 @820</STIM>
+
+			        <STIM> force -fixed_point(1.15) datab_0 0.5 @0, -1.0 @260, -0.25 @500, 0.125 @820</STIM>
+			        <STIM> force -fixed_point(1.15) datab_1 -0.5 @0, -1.0 @260, 0.25 @500, -0.25 @820</STIM>
+			        <STIM> force -fixed_point(1.15) datab_2 0.5 @0, -1.0 @260, 0.125 @500, -0.125 @820</STIM>
+			        <STIM> force -fixed_point(1.15) datab_3 -0.5 @0, -1.0 @260, -0.25 @500, 0.25 @820</STIM>
+
+			</THEN>
+			<IF>m_use_round and !m_use_saturation</IF>
+			<THEN>
+			        <STIM> force -fixed_point(1.15) dataa_0 -0.5 @0, -0.75 @260, -0.333343567 @500, 0.5 @820</STIM>
+			        <STIM> force -fixed_point(1.15) dataa_1 -0.75.0 @0, -0.333343567 @260, 0.5 @500, -0.5 @820</STIM>
+			        <STIM> force -fixed_point(1.15) dataa_2 0.5 @0, -0.75 @260, -0.333343567 @500, -0.5 @820</STIM>
+			        <STIM> force -fixed_point(1.15) dataa_3 -0.5 @0, -0.75 @260, -0.5 @500, 0.5 @820</STIM>
+
+			        <STIM> force -fixed_point(1.15) datab_0 0.5 @0, -0.75 @260, -0.25 @500, 0.125 @820</STIM>
+			        <STIM> force -fixed_point(1.15) datab_1 -0.5 @0, 0.75 @260, 0.25 @500, -0.25 @820</STIM>
+			        <STIM> force -fixed_point(1.15) datab_2 0.5 @0, -0.75 @260, 0.125 @500, -0.125 @820</STIM>
+			        <STIM> force -fixed_point(1.15) datab_3 -0.5 @0, 0.75 @260, -0.25 @500, 0.25 @820</STIM>
+			</THEN>
+			<IF>!m_use_round and m_use_saturation</IF>
+			<THEN>
+			        <STIM> force -fixed_point(1.15) dataa_0 -0.5 @0, -1.0 @260, -0.25 @500, 0.5 @820</STIM>
+			        <STIM> force -fixed_point(1.15) dataa_1 0.5 @0, -1.0 @260, 0.5 @500, -0.5 @820</STIM>
+			        <STIM> force -fixed_point(1.15) dataa_2 0.5 @0, -1.0 @260, -0.25 @500, -0.5 @820</STIM>
+			        <STIM> force -fixed_point(1.15) dataa_3 -0.5 @0, -1.0 @260, -0.5 @500, 0.5 @820</STIM>
+
+			        <STIM> force -fixed_point(1.15) datab_0 0.5 @0, -1.0 @260, -0.25 @500, 0.125 @820</STIM>
+			        <STIM> force -fixed_point(1.15) datab_1 -0.5 @0, -1.0 @260, 0.25 @500, -0.25 @820</STIM>
+			        <STIM> force -fixed_point(1.15) datab_2 0.5 @0, -1.0 @260, 0.125 @500, -0.125 @820</STIM>
+			        <STIM> force -fixed_point(1.15) datab_3 -0.5 @0, -1.0 @260, -0.25 @500, 0.25 @820</STIM>
+			</THEN>
+			<IF>!m_use_round and !m_use_saturation</IF>
+			<THEN>
+			        <STIM> force -fixed_point(1.15) dataa_0 -0.5 @0, -0.75 @260, -0.25 @500, 0.5 @820</STIM>
+			        <STIM> force -fixed_point(1.15) dataa_1 -0.75 @0, -0.25 @260, 0.5 @500, -0.5 @820</STIM>
+			        <STIM> force -fixed_point(1.15) dataa_2 0.5 @0, 0.75 @260, -0.25 @500, -0.5 @820</STIM>
+			        <STIM> force -fixed_point(1.15) dataa_3 -0.5 @0, -0.75 @260, -0.5 @500, 0.5 @820</STIM>
+
+			        <STIM> force -fixed_point(1.15) datab_0 0.5 @0, -0.75 @260, -0.25 @500, 0.125 @820</STIM>
+			        <STIM> force -fixed_point(1.15) datab_1 -0.5 @0, 0.75 @260, 0.25 @500, -0.25 @820</STIM>
+			        <STIM> force -fixed_point(1.15) datab_2 0.5 @0, 0.75 @260, 0.125 @500, -0.125 @820</STIM>
+			        <STIM> force -fixed_point(1.15) datab_3 -0.5 @0, 0.75 @260, -0.25 @500, 0.25 @820</STIM>
+			
+			</THEN>
+		        <STIM> force -fixed_point(1.15) scaninb -0.875 @0, 0.25 @260, -0.25 @500, -0.5 @820</STIM>
+        		<STIM> force -fixed_point(1.15) scanina -0.5 @0, -0.75 @260, 0.5 @500, -0.75 @820</STIM>
+		        <STIM> force sourcea 1 @0, 0 @820</STIM>
+		        <STIM> force sourceb 0 @0, 1 @260</STIM>
+			<STIM> force mult01_round 0 @0, 1 @660 </STIM>
+			<STIM> force mult23_round 0 @0, 1 @660 </STIM>
+			<STIM> force addnsub1_round 0 @0, 1 @660 </STIM>
+			<STIM> force addnsub3_round 0 @0, 1 @660 </STIM>
+			<STIM> force mult01_saturation 0 @0, 1 @340, 0 @660 </STIM>
+			<STIM> force mult23_saturation 0 @0, 1 @340, 0 @660 </STIM>
+			<STIM> force addnsub1 1 @0, 0 @260, 1 @500, 0 @740</STIM>
+			<STIM> force addnsub3 1 @0, 0 @260, 1 @740</STIM>
+			<STIM> force clock0 0 @0, 1 @40, -repeat @80</STIM>
+			<STIM> force clock1 0 @0, 1 @40, -repeat @80</STIM>
+			<STIM> force clock2 0 @0, 1 @40, -repeat @80</STIM>
+			<STIM> force clock3 0 @0, 1 @40, -repeat @80</STIM>
+			<STIM> force ena0 0 @0, 1 @100</STIM>
+			<STIM> force ena1 0 @0, 1 @100</STIM>
+			<STIM> force ena2 0 @0, 1 @100</STIM>
+			<STIM> force ena3 0 @0, 1 @100</STIM>
+			<STIM> force aclr0 0 @0, 1 @260, 0 @340</STIM>
+			<STIM> force aclr1 0 @0, 1 @260, 0 @340</STIM>
+			<STIM> force aclr2 0 @0, 1 @260, 0 @340</STIM>
+			<STIM> force aclr3 0 @0, 1 @260, 0 @340</STIM>
+		</WAVE>
+		<WAVE NAME="SHIFT" TIME_STEP="10" MAX_TIME="1000" INDEX="0" >
+			<WAVE_CONDITION> m_shift_siii </WAVE_CONDITION>
+			<CAPTION>Waveform showing shift/rotate operation </CAPTION>
+			<DESCRIPTION> 
+				<T> The B input to the multiplier can have only one bit with a value "1". Here bit 4 has a value of "1". </T>
+				<IF> shift_mode == "left" </IF>
+				<THEN> The A input to the multiplier will shift 4 bits to left and filled with zero. </THEN>
+				<IF> shift_mode == "right" </IF>
+				<THEN> The A input to the multiplier will shift 28 bits to right. When the A input to the multiplier is signed, the upper bits will be filled with sign bit. When the A input to the multiplier is unsigned, the upper bits  will be filled with zero.</THEN>
+				<IF> shift_mode == "ROTATION" </IF>
+				<THEN> The A input to the multiplier will rotate 4 bits to left. </THEN>
+				<IF> shift_mode == "VARIABLE" </IF>
+                		<THEN> The A input to the multiplier will be shifted/rotated. Rotation only works for unsigned data. When signa is asserted, rotate and shift_right should be de-asserted. </THEN>
+			</DESCRIPTION>
+
+		        <STIM> force dataa_0 2271560481 @0, 305419896 @500, 262144 @740</STIM>
+		        <STIM> force datab_0 16 @0, 16 @260, 16 @500, 16 @740</STIM>
+		        <STIM> force signa 0 @0, 1 @340, 0 @740</STIM>
+		        <STIM> force signb 1 @0, 0 @340, 0 @740</STIM>
+			<STIM> force clock0 0 @0, 1 @40, -repeat @80</STIM>
+			<STIM> force clock1 0 @0, 1 @40, -repeat @80</STIM>
+			<STIM> force clock2 0 @0, 1 @40, -repeat @80</STIM>
+			<STIM> force clock3 0 @0, 1 @40, -repeat @80</STIM>
+			<STIM> force ena0 0 @0, 1 @100</STIM>
+			<STIM> force ena1 0 @0, 1 @100</STIM>
+			<STIM> force ena2 0 @0, 1 @100</STIM>
+			<STIM> force ena3 0 @0, 1 @100</STIM>
+			<STIM> force aclr0 0 @0, 1 @180, 0 @260</STIM>
+			<STIM> force aclr1 0 @0, 1 @180, 0 @260</STIM>
+			<STIM> force aclr2 0 @0, 1 @180, 0 @260</STIM>
+			<STIM> force aclr3 0 @0, 1 @180, 0 @260</STIM>
+		        <STIM> force shift_right 0 @0, 1 @340, 0 @740</STIM>
+		        <STIM> force rotate 0 @0, 1 @180, 0 @260, 0 @740</STIM>
+		</WAVE>
+	</WAVE_DATA>
+	<PORTS>
+		<PORT NAME="multout_0" TYPE="BURIED" >
+        	    <STATE TO="UNUSED" WHEN="!m_shift_siii" />
+	        </PORT>
+		<PORT NAME="multout_1" TYPE="BURIED" >
+        	    <STATE TO="UNUSED" WHEN="NUMBER_OF_MULTIPLIERS lt 2" />
+	        </PORT>
+        	<PORT NAME="multout_2" TYPE="BURIED" >
+	            <STATE TO="UNUSED" WHEN="NUMBER_OF_MULTIPLIERS lt 3" />
+        	</PORT>
+	        <PORT NAME="multout_3" TYPE="BURIED" >
+        	    <STATE TO="UNUSED" WHEN="NUMBER_OF_MULTIPLIERS lt 4" />
+	        </PORT>
+	        <PORT NAME="out_no_rnd_sat" TYPE="BURIED" >
+        	    <STATE TO="UNUSED" WHEN="!m_sat_mode_siii || m_round_mode_siii" />
+	        </PORT>
+	</PORTS>
+</ROOT>

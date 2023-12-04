@@ -1,0 +1,732 @@
+//              Copyright 2006-2007 Mentor Graphics Corporation
+//                           All Rights Reserved.
+//
+//              THIS WORK CONTAINS TRADE SECRET AND PROPRIETARY
+//            INFORMATION WHICH IS THE PROPERTY OF MENTOR GRAPHICS
+//           CORPORATION OR ITS LICENSORS AND IS SUBJECT TO LICENSE
+//                                  TERMS.
+//
+//                   Questa Verification Library (QVL)
+//
+
+/*************************************************************************
+*
+* PURPOSE     This file is part of 0-In CheckerWare.
+*
+* DESCRIPTION This monitor checks the Serial ATA interface for compliance with
+*             Serial ATA specification>.
+*
+* REFERENCES  Serial ATA specification revision 2.5, 27th October 2005
+*             Serial ATA: High Speed Serialized AT Attachment Revision 1.0a,
+*             7-January-2003
+*             Serial ATA II: Extensions to Serial ATA 1.0a Revision 1.2,
+*             27-August-2004
+*             SATA PHY Interface Specification (SAPIS) Draft Rev 0.90, February
+*             8, 2002
+* USAGE       This sub-module is instantiated in qvl_sapis_monitor module
+*
+* LAST MODIFIED: 25th January 2006
+*
+**************************************************************************/
+`ifdef ZiCwDebug
+`define ZiCwDebugDelay1 #1
+`define ZiCwQuietIfNoCwDebug
+`else
+`define ZiCwDebugDelay1
+`define ZiCwQuietIfNoCwDebug -quiet
+`endif // ZiCwDebug
+
+`ifdef QVL_COVER_ON
+  `ifdef QVL_SV_COVERGROUP_OFF
+    // Do nothing
+  `else
+    `define QVL_SV_COVERGROUP
+  `endif
+  `ifdef QVL_MW_FINAL_COVER_OFF
+    // Do nothing
+  `else
+    `define QVL_MW_FINAL_COVER
+  `endif
+`endif
+
+`qvlmodule qvl_sata_power_on_sequence (areset,
+	                                  reset,
+	                                  clk,
+	                                  data_plus,
+	                                  data_minus,
+                                          phy_present_state,
+                                          align_p_D24_3_violation,
+                                          D10_2_detected,
+                                          pwr_mgmt_mode_entered,
+                                          four_pmack_detected,
+                                          bypass_power_on_seq,
+                                          level_select,
+                                          data_shifter,
+                                          data_valid,
+                                          idle,
+                                          first_align_p,
+                                          comwake_detected,
+                                          comwake_deasserted,
+                                          comreset_cominit_detected
+                                         );
+
+  //List of parameters
+
+  // This parameter configures the checks in the monitor as constraints
+  // during formal analysis
+
+
+  parameter Constraints_Mode = 0;
+  wire [31:0] pw_Constraints_Mode = Constraints_Mode;
+
+  // This parameter when set indicates that the monitor is instantiated on the
+  // Link side of the sapis interface
+
+  parameter LINK_SIDE = 1;
+  wire [31:0] pw_LINK_SIDE = LINK_SIDE;
+
+  // Interface type (Location of monitor instance)
+  // 0 => Serial interface
+  // 1 => 10B interface
+  // 2 => SAPIS interface
+
+  parameter INTERFACE_TYPE = 0;
+  wire [31:0] pw_INTERFACE_TYPE = INTERFACE_TYPE;
+
+  // This parameter configures the type of the DUT the monitor is hooked to
+  // 0 => Host
+  // 1 => Device
+
+  parameter DEVICE_TYPE = 0; 
+  wire [31:0] pw_DEVICE_TYPE = DEVICE_TYPE;
+
+  // This parameter defines the width of the parallel interface
+  // 10 - 10Bits
+  // 20 - 20Bits
+  // 40 - 40Bits
+
+  parameter PARALLEL_DATA_WIDTH = 10;
+  wire [31:0] pw_PARALLEL_DATA_WIDTH = PARALLEL_DATA_WIDTH;
+
+  // This parameter configures whether data is available on both clock edges or
+  // on single edge of the clock.
+ 
+  parameter DOUBLE_DATA_RATE = 0;
+  wire [31:0] pw_DOUBLE_DATA_RATE = DOUBLE_DATA_RATE;
+
+  // This parameter defines the speed of the SATA interface GEN1 or GEN2
+
+  parameter MAX_DEV_SPEED = 0; 
+  wire [31:0] pw_MAX_DEV_SPEED = MAX_DEV_SPEED;
+
+  // This parameter is used to indicate that the monitor sits on the host or
+  // device side of the port selector or on the host or device interface
+  // connected to the port selector
+
+  parameter PORT_SELECTOR_ENABLE = 0;
+  wire [31:0] pw_PORT_SELECTOR_ENABLE = PORT_SELECTOR_ENABLE;
+
+  // This parameter defines the pattern that indicates bus IDLE condition in 
+  // case of 10 B interface
+
+  parameter ELECTRICAL_IDLE_PATTERN = 0;
+  wire [31:0] pw_ELECTRICAL_IDLE_PATTERN = ELECTRICAL_IDLE_PATTERN;
+
+  parameter TX_INTERFACE = 0;
+  wire [31:0] pw_TX_INTERFACE = TX_INTERFACE;
+
+  parameter TX_COMRESET_COMINIT_IDLE_TIME = 480;
+  wire [31:0] pw_TX_COMRESET_COMINIT_IDLE_TIME =TX_COMRESET_COMINIT_IDLE_TIME;
+
+  parameter TX_COMWAKE_IDLE_TIME = 160; 
+  wire [31:0] pw_TX_COMWAKE_IDLE_TIME =TX_COMWAKE_IDLE_TIME;
+
+  parameter RX_COMRESET_COMINIT_IDLE_MAX = 788; 
+  wire [31:0] pw_RX_COMRESET_COMINIT_IDLE_MAX = RX_COMRESET_COMINIT_IDLE_MAX;
+
+  parameter RX_COMRESET_COMINIT_IDLE_MIN = 262;
+  wire [31:0] pw_RX_COMRESET_COMINIT_IDLE_MIN = RX_COMRESET_COMINIT_IDLE_MIN;
+
+  parameter RX_COMWAKE_IDLE_MAX = 262; 
+  wire [31:0] pw_RX_COMWAKE_IDLE_MAX = RX_COMWAKE_IDLE_MAX;
+
+  parameter RX_COMWAKE_IDLE_MIN = 82; 
+  wire [31:0] pw_RX_COMWAKE_IDLE_MIN = RX_COMWAKE_IDLE_MIN;
+
+  // Internal parameters
+  // This parameter is to configure the width of input tx & rx data bus
+  parameter ZI_DATA_WIDTH = (INTERFACE_TYPE == 0) 
+                             ? 1  
+                             : PARALLEL_DATA_WIDTH;
+  parameter ZI_LSB_WIDTH = (INTERFACE_TYPE == 0)
+                             ? 1
+                             : 10;
+  parameter ZI_RECEIVE_CONSTRAINT = (TX_INTERFACE ~^ LINK_SIDE) & 
+                                    Constraints_Mode;
+
+  // The below parameters for serial interface are less by 10 as locked is 
+  // achieved only after 10bits
+  // For 10B the count is less by 1 as lock is got after one bit
+  parameter ZI_TX_COMRESET_COMINIT_BURST_TIME = (INTERFACE_TYPE == 0)
+                                                ? 16
+                                                : ((PARALLEL_DATA_WIDTH == 10)
+                                                   ? 16
+                                                   : ((PARALLEL_DATA_WIDTH ==20)
+                                                      ? 8
+                                                      : 4
+                                                     )
+                                                  );
+  parameter ZI_TX_COMWAKE_BURST_TIME = (INTERFACE_TYPE == 0)
+                                        ? 16
+                                        : ((PARALLEL_DATA_WIDTH == 10)
+                                           ? 16 
+                                           : ((PARALLEL_DATA_WIDTH == 20)
+                                              ? 8
+                                              : 4
+                                             )
+                                          );
+
+  parameter ZI_RX_COMRESET_COMINIT_BURST_TIME = (INTERFACE_TYPE == 0)
+                                                ? 4
+                                                : ((PARALLEL_DATA_WIDTH == 10)
+                                                   ? 4
+                                                   : ((PARALLEL_DATA_WIDTH ==20)
+                                                      ? 2
+                                                      : 1
+                                                     )
+                                                  );
+
+  parameter ZI_RX_COMWAKE_BURST_TIME = (INTERFACE_TYPE == 0)
+                                        ? 4
+                                        : ((PARALLEL_DATA_WIDTH == 10)
+                                           ? 4
+                                           : ((PARALLEL_DATA_WIDTH == 20)
+                                              ? 2
+                                              : 1
+                                             )
+                                          );
+ 
+  parameter ZI_COMRESET_COMINIT_BURST_TIME = (TX_INTERFACE == 0) 
+                                           ? ZI_RX_COMRESET_COMINIT_BURST_TIME
+                                           : ZI_TX_COMRESET_COMINIT_BURST_TIME;
+
+  parameter ZI_COMWAKE_BURST_TIME = (TX_INTERFACE == 0)
+                                    ? ZI_RX_COMWAKE_BURST_TIME
+                                    : ZI_TX_COMWAKE_BURST_TIME;
+
+  parameter ZI_COMRESET_COMINIT_LAST_IDLE = (INTERFACE_TYPE == 0)
+					     ? 788
+					     : ((PARALLEL_DATA_WIDTH == 10)
+						? 79
+						: ((PARALLEL_DATA_WIDTH ==20)
+						   ? 39
+						   : 19
+						  )
+					       );//788;
+
+  parameter ZI_COMWAKE_LAST_IDLE_MAX = (INTERFACE_TYPE == 0)
+				       ? 342
+				       : ((PARALLEL_DATA_WIDTH == 10)
+					  ? 34
+					  : ((PARALLEL_DATA_WIDTH ==20)
+					     ? 17
+					     : 8
+					    )
+					 );//342; //228ns
+
+  parameter ZI_COMWAKE_LAST_IDLE_MIN = (INTERFACE_TYPE == 0)
+				       ? 262
+				       : ((PARALLEL_DATA_WIDTH == 10)
+					  ? 26
+					  : ((PARALLEL_DATA_WIDTH ==20)
+					     ? 13
+					     : 6
+					    )
+					 );//262; // 175ns
+  
+  parameter ZI_ALIGNp_BURST_TIME_G1 = (DEVICE_TYPE == 1 && TX_INTERFACE == 1)
+                                      ? ((INTERFACE_TYPE == 0)
+                                          ? 81910
+                                          : ((PARALLEL_DATA_WIDTH == 10)
+                                              ? 8192
+                                              : ((PARALLEL_DATA_WIDTH == 20)
+                                                 ? 4096
+                                                 : 2048
+                                                )
+                                            )
+                                        )
+                                      : ((INTERFACE_TYPE == 0)
+                                          ? 30
+                                          : ((PARALLEL_DATA_WIDTH == 10)
+                                              ? 4
+                                              : ((PARALLEL_DATA_WIDTH == 20)
+                                                 ? 2
+                                                 : 1
+                                                )
+                                            )
+                                        ); // For serial, the count is less 10.
+
+  parameter ZI_ALIGNp_BURST_TIME = MAX_DEV_SPEED 
+				   ? (ZI_ALIGNp_BURST_TIME_G1 << 1)
+                                   : ZI_ALIGNp_BURST_TIME_G1;
+
+  parameter ZI_ALIGNp_BYTE0 = 10'h17c;
+  parameter ZI_D24_3_BYTE = 10'h333;
+  parameter ZI_NO_OF_BURSTS = (TX_INTERFACE == 1) ? 6 : 4; 
+
+  // Parameters for the Sequence statemachine
+  parameter ZI_IDLE_STATE = 2'h0;
+  parameter ZI_BURST_DETECTED_STATE = 2'h1;
+  parameter ZI_INTER_BURST_DETECTED_STATE = 2'h2; 
+
+  // Parameters for the Phy statemachine
+  parameter ZI_PHY_IDLE_STATE = 4'h0;
+  parameter ZI_UNSOLICIT_COMINIT_STATE = 4'h1;
+  parameter ZI_COMRESET_DETECTED_STATE = 4'h2;
+  parameter ZI_COMINIT_DETECTED_STATE = 4'h3;
+  parameter ZI_H_COMWAKE_DETECTED_STATE = 4'h4;
+  parameter ZI_D_COMWAKE_DETECTED_STATE = 4'h5;
+  parameter ZI_D_ALIGNp_DETECTED_STATE = 4'h6;
+  parameter ZI_H_ALIGNp_DETECTED_STATE = 4'h7;
+  parameter ZI_3NON_ALIGNp_DETECTED_STATE = 4'h8;
+
+
+  input areset;
+  input reset;
+  input clk;
+  input [ZI_DATA_WIDTH-1:0] data_plus;
+  input [ZI_DATA_WIDTH-1:0] data_minus;
+  input [3:0] phy_present_state;
+  input align_p_D24_3_violation;
+  input D10_2_detected;
+  input pwr_mgmt_mode_entered;
+  input four_pmack_detected;
+  input bypass_power_on_seq;
+
+  output level_select;
+  output [39:0] data_shifter;
+  output data_valid;
+  output idle;
+  output first_align_p;
+  output comwake_detected;
+  output comwake_deasserted;
+  output comreset_cominit_detected;
+
+  // Internal signals
+  wire idle; //This signal when high indicates electrical idle on tx lines
+  wire clr_burst_count;
+  wire set_locked_align; // This signal will assert locked_align once the byte0
+                         // of align primitive or D24.3 character is detected.
+  wire first_align_p;
+  wire clr_inter_burst_count;
+  wire level_select;
+  wire locked_align;
+  wire locked_d24_3;
+  wire data_locked;
+  wire clr_data_bit_count;
+  wire [23:0] burst_spacing_count;
+  wire [23:0] inter_burst_spacing_count;
+  wire [2:0] no_of_bursts;
+  wire comreset_cominit_seq;
+  wire comwake_seq;
+  wire comreset_cominit_detected;
+  wire comwake_detected;
+  wire comreset_cominit_idle_detected;
+  wire comreset_cominit_last_idle_detected;
+  wire comwake_idle_detected;
+  wire comwake_last_idle_detected;
+  wire [1:0] present_state;
+  wire r_idle;
+  wire [39:0] data_shifter;   
+  wire [3:0] data_bit_count; // This counter is incremented on every bit on 
+                             // the serial bus.
+  wire set_locked_d24_3;
+  wire clr_lock;
+  wire r_pwr_mgmt_mode_entered;
+  wire comwake_deasserted;
+
+  // Violation signal declaration
+  wire comreset_burst_violation;
+  wire comreset_burst_time_violation;
+  wire comreset_inter_burst_time_violation;
+  wire h_comwake_wo_cominit_violation;
+  wire d_comwake_wo_h_comwake_violation;
+  wire d10_2_before_d_comwake_violation;
+  wire cominit_burst_violation;
+  wire cominit_burst_time_violation;
+  wire cominit_inter_burst_time_violation;
+  wire comwake_burst_violation;
+  wire comwake_burst_time_violation;
+  wire comwake_inter_burst_time_violation;
+  wire comwake_last_idle_violation;
+
+  reg [2:0] next_state;
+  reg locked_d24_3_pos;
+  reg locked_d24_3_neg;
+  reg r_pwr_mgmt_mode_entered_pos;
+  reg r_pwr_mgmt_mode_entered_neg;
+  reg first_align_p_pos;
+  reg first_align_p_neg;
+  reg comreset_cominit_seq_pos;
+  reg comreset_cominit_seq_neg;
+  reg comwake_seq_pos;
+  reg comwake_seq_neg;
+  reg comreset_cominit_detected_pos;
+  reg comreset_cominit_detected_neg;
+  reg comwake_detected_pos;
+  reg comwake_detected_neg;
+  reg [1:0] present_state_pos;
+  reg [1:0] present_state_neg;
+  reg [39:0] data_shifter_pos;
+  reg [39:0] data_shifter_neg;
+  reg [3:0] data_bit_count_pos;
+  reg [3:0] data_bit_count_neg;
+  reg first_pos_edge;
+  reg first_neg_edge;
+  reg pos_toggle;
+  reg neg_toggle;
+  reg r_idle_pos;
+  reg r_idle_neg;
+  reg locked_align_pos;
+  reg locked_align_neg;
+  reg [23:0] burst_spacing_count_pos;
+  reg [23:0] burst_spacing_count_neg;
+  reg [23:0] inter_burst_spacing_count_pos;
+  reg [23:0] inter_burst_spacing_count_neg;
+  reg [2:0] no_of_bursts_pos;
+  reg [2:0] no_of_bursts_neg;
+  reg [20*8-1:0] present_state_string;
+  reg [20*8-1:0] next_state_string;
+
+  // Internal signal declaration for stats
+  reg [63:0] total_comreset_cominit_count;
+  reg total_comreset_cominit_count_neg;
+  reg [3:0] serial_bits_count_pos, serial_bits_count_neg;
+  wire [3:0] serial_bits_count;
+
+`protected
+
+    MTI!#xI1#RE2[UXG!*~HWYpD*<=p3QWeE\A!n7~BoRhs?KwV~@QN~T52v;vjA1o=ZD~[w*uBIVp2
+    -}]7rG{*=uum1nEZX+KQ,27<!Qe~_$dXR+<}xW7znI3$>Dm!Y1GVG;'Q'Y,BOn*ElA?'BTrQ!HQI
+    [iEOm$<X]NQzCI~{QXC-!2M;BW@(~>_K@_n@@*3rlma}L7oG{EEpzo$m_7~KrxuVXZBxY,vI3Ge*
+    Xu1]Gy|^m<O=U_[GQ@2ex5]TDpC>X_>v2slI7=]KBB$:k-uJ~_lT-nmrDjB!D,RkrGrvH5>VVYYm
+    1B2sae-?><m{{jr]8,CT2}!};5kGo2[7=\J[Or}}A3lXu1k_lEi_z^2$pOQ@2^UV[?TUOQ4O5?G\
+    7EpY*2rrI]1{TR#]H7pri$7]'*XCmA~=ZVZ6r<'!FX=GWFVz7TfK-}VZR#T;$HJEOx,UEe_T^WuO
+    [2_Zw2+[2IK-Ca1Z_=aZ<-G}a-B\lEJ'A,pY'#'x3mTX-sUHEQvY<urI-$kJC2ktI@D]Y+KuQu]B
+    w5s{rV#B<R<<B3ZBj)<1XHkO3W[xonlKJxk>7r<7\KZU]kcK]<7lG?rIa;+z@^ruOn;(G;pr5XTu
+    ]]CO?YYQ={>+m}x*wraAZ>'md]jX{ir>Ur_JCl>XV1sUw#\sJrlTOQ-!X}{nD$_7KwYl^~CA7vKR
+    ?>l%9^7sKmG^w
+`endprotected
+
+  //----------------------------------------------------------------------------
+  assign idle = (INTERFACE_TYPE == 0) ? (data_plus === data_minus) 
+                                      : (data_plus === ELECTRICAL_IDLE_PATTERN);
+  assign r_idle = level_select ? r_idle_pos : r_idle_neg; 
+
+  assign clr_burst_count = idle & ~r_idle;
+  assign clr_inter_burst_count = ~idle & r_idle;
+  assign level_select = DOUBLE_DATA_RATE ? (~(pos_toggle ^ neg_toggle))
+			                 : 1'b1; 
+
+  // The posedge and negedge tx data shifter logic and bit counter logic
+
+  assign data_shifter = level_select ? data_shifter_pos : data_shifter_neg;
+  assign data_bit_count = level_select ? data_bit_count_pos
+                                       : data_bit_count_neg;
+  assign locked_align = level_select ? locked_align_pos
+                                     : locked_align_neg;
+  assign locked_d24_3 = level_select ? locked_d24_3_pos
+                                     : locked_d24_3_neg;
+  assign data_locked = (locked_align | locked_d24_3) & ~idle;
+  assign data_valid = (data_locked & (data_bit_count==4'h1));
+
+  assign set_locked_align = ((INTERFACE_TYPE == 0)
+                             ? (({data_plus[0], data_shifter[39:31]} ===
+                                                           ZI_ALIGNp_BYTE0) |
+                               ({data_plus[0], data_shifter[39:31]} ===
+                                                           ~ZI_ALIGNp_BYTE0))
+                             : ((data_plus[ZI_LSB_WIDTH-1:0] === 
+                                                           ZI_ALIGNp_BYTE0) |
+                                (data_plus[ZI_LSB_WIDTH-1:0] === 
+                                                           ~ZI_ALIGNp_BYTE0))
+                            ) & ~data_locked;
+
+  assign set_locked_d24_3 = ((INTERFACE_TYPE == 0)
+                             ? (({data_plus[0], data_shifter[39:31]} ===
+                                                           ZI_D24_3_BYTE) |
+                               ({data_plus[0], data_shifter[39:31]} ===
+                                                           ~ZI_D24_3_BYTE)) &
+                               (data_bit_count > 7)
+                             : ((data_plus[ZI_LSB_WIDTH-1:0] === 
+                                                           ZI_D24_3_BYTE) |
+                                (data_plus[ZI_LSB_WIDTH-1:0] === 
+                                                           ~ZI_D24_3_BYTE))
+                            ) & ~data_locked;
+  assign clr_lock = four_pmack_detected |
+                    (pwr_mgmt_mode_entered & ~r_pwr_mgmt_mode_entered); 
+  assign r_pwr_mgmt_mode_entered = level_select
+                                   ? r_pwr_mgmt_mode_entered_pos
+                                   : r_pwr_mgmt_mode_entered_neg;
+  assign clr_data_bit_count = set_locked_d24_3 | set_locked_align;
+
+  // The burst spacing counter combo logic
+  assign burst_spacing_count = level_select ? burst_spacing_count_pos
+                                            : burst_spacing_count_neg;
+  assign inter_burst_spacing_count = level_select
+                                     ? inter_burst_spacing_count_pos
+                                     : inter_burst_spacing_count_neg;
+  assign no_of_bursts = level_select
+                        ? no_of_bursts_pos
+                        : no_of_bursts_neg;
+
+  // OOB Signals generation combo logic
+  assign comreset_cominit_seq = level_select ? comreset_cominit_seq_pos
+                                             : comreset_cominit_seq_neg;
+  assign comwake_seq = level_select ? comwake_seq_pos
+                                    : comwake_seq_neg;
+  assign comreset_cominit_detected = level_select
+                                     ? comreset_cominit_detected_pos
+                                     : comreset_cominit_detected_neg;
+  assign comwake_detected = level_select ? comwake_detected_pos
+                                         : comwake_detected_neg;
+
+  // OOB signals idle detection and deassertion logic
+  assign comwake_idle_detected = ((TX_INTERFACE == 0)
+                                  ? ((inter_burst_spacing_count >=
+                                      RX_COMWAKE_IDLE_MIN) &
+                                      (inter_burst_spacing_count <=
+                                      RX_COMWAKE_IDLE_MAX))
+                                  : ((inter_burst_spacing_count >=
+                                      TX_COMWAKE_IDLE_TIME) &
+                                     (inter_burst_spacing_count <
+                                      TX_COMRESET_COMINIT_IDLE_TIME))
+                                 ) & clr_inter_burst_count &
+                                 (no_of_bursts <= ZI_NO_OF_BURSTS);
+  // In determining the last idle, clr_interburst_count is not used as the time 
+  // taken for comming out of host wake is longer.
+  assign comwake_last_idle_detected = ((inter_burst_spacing_count ==
+                                        ZI_COMWAKE_LAST_IDLE_MIN)
+                                      ) & (no_of_bursts == ZI_NO_OF_BURSTS);
+
+  assign comreset_cominit_idle_detected = ((TX_INTERFACE == 0)
+                                           ? ((inter_burst_spacing_count >=
+                                               RX_COMRESET_COMINIT_IDLE_MIN) &
+                                               (inter_burst_spacing_count <=
+                                               RX_COMRESET_COMINIT_IDLE_MAX))
+                                           : (inter_burst_spacing_count >=
+                                              TX_COMRESET_COMINIT_IDLE_TIME)
+                                          ) & clr_inter_burst_count &
+                                          (no_of_bursts <= ZI_NO_OF_BURSTS);
+
+  assign comreset_cominit_last_idle_detected = (inter_burst_spacing_count >=
+                                                ZI_COMRESET_COMINIT_LAST_IDLE
+                                               ) & clr_inter_burst_count &
+                                              (no_of_bursts == ZI_NO_OF_BURSTS);
+
+  assign comwake_deasserted  = comwake_last_idle_detected;
+  assign first_align_p = level_select ? first_align_p_pos : first_align_p_neg;
+  assign present_state = level_select ? present_state_pos
+                                      : present_state_neg;
+
+`protected
+
+    MTI!#==-k-1asWYwllrRjJz}Z?>B5uX@B)&[NFBXh"AQZ[|1Ha1^-=;V1#CZXI;'rOB#U[aD{3],
+    ,o[uTI@n'nG]So@]sr3C]-oAOx~)E,n7Nizx-~U}=H^~I'3n$7\ue{aQVvo_2r3nBIZvmk>lA~sB
+    Iin]["[TDx'!G<[sQe#IQ[2=C-K];'FFLwa<!~$eiCrrJ'1-p-='az3>7.vvj[pW{5}1szD}m'k]
+    Y]j+O?W>p7KlkHe^uEkU[!<=Gli5a!+Di!1CIz=klT']nv<w[E[ZuvE[Y#E7i]ewv@#I*=lK\K5X
+    {Tp+!WQu^Zp;jZD'{3IWjzvKwx(aU@_$i3URE?I3wU$C=BAI45,7@=}n,r\$sJoke1=7T!71KQ21
+    A]C#7KsCuml;G."31$g:*=wGT}=!\$lF*Oj$KTmB=X<C_V+J&Q'Ku,,>CN]Ok<{_Z^URTm;<z;&E
+    -+G2}r!TBsp5#V<31v>BGkK;]_YJXRe4!tVx*le*D\jn3uY,*Wu-72[PVlDsRKG+=Y\*SoHT{e'#
+    <E3x^['B<G_pnA_5YxYD]xl?>C?-*,Il^axS]@IJeG_}5CiR67vXUOKpk&CaDT]zI?1WJHU5-[*5
+    X\a'>sA5vZ5sARB_{'e{]_=3[_mYkreQ!s?_n3_Jw^tjz<lYxu<HDI~LE@Q@mVV-=tBRn{{CpGmj
+    OJ1DoB_Y!o4Ux;^!ssue#^#e$+IX>p}"YIQW;I@XH*GWa++XaxKA3+mBV{lDZ}^Z>av{jz\$iCYJ
+    s}1Juoixc@-Brs';+M#HU{ovnY=iYoH-$!;T']wwaTI*s}!Qx-I*[BwazV'}AO5i5@uwKT\G2U+D
+    A}Z7'EkR[{!A{=>Ixm?{5,lAZ]{[jYJAz*vvT@#OE2<jpH{v';Xjq@Qja@B7+7>oQ?'eG<rr~V+-
+    ;,1i'}yl_;>WRBO<YY$maE;!_?e\$!5Dr;krpV$q]pwO'zu55nnn27nv!AY[B#2lH}<#j>'l]VU,
+    {|POu$IZrW\}V^=-<Z[1GCW(w^rj;=p#,?jpKl@GI&^G>R=?o[g=eo2x1{C?=}z_Yjw1}jeevVVr
+    K7wj_THQ3D}7^VQ+jz;&YmDut,RDJrXu{RGYm{[#=}(Zpx^[;wCw]pu-8[nzY"D}B>1mYYG5,!s2
+    mwKpaaDAZ?O,mIiN,TvTP<,}p'mo~Y3YkoJAa,pvi?jC3o_~Yp]XX>eo\S=,j_r1},uIo'DiDkJ*
+    o5o?!wxKEn*Y]#j;+$>-lBxxA,7*C^KDvxoeJ#GYAo,>jwC#V2V'[W<YU;7T\QrwFG3^v2=l<G)m
+    +K'E]3~V{$G]!*?k+{oG{vuxb9[CZHs}e$@Be7I']Qkj_[A{!#[^B'lYR'CTnZ->D~WAxm<*{j'$
+    71Lr3z~tje2]kv^DG?QaZ=A'-QUXV^]InwC'ix\IujYAk-U#\$5$]90a1Xm[]-BeIAC];+XAE}r@
+    sVQO]z,E7$Ynor7m]ZJ+sVxRHe?Em1uOar5!Q*}U5p-AHGXkIVBQ-ZBwAjBg1u<HaV,j}n[1:[Vo
+    [P\'o{Ik*AqKs~Y)rjwX{j<vPmpUBVa-ThAoj_^teiZ@#e2U.VE5Z2vz7+XR+zBH,7*?Oz31z^A@
+    GOi]m!aDXfFVxKD]$Ruz!5QV5i~^?H<'@Y*KY=;l2VR?7m^?Ox;8CB'!{Hwxro1w$n3si'zYvC\A
+    ^CQV*S[~Y-7~V+.'aTRA}mAT51BR,>wxrYT[<'eTCQkGW~+7uumKo?7Vvwm1[W^=Y]k-]-{5k5[@
+    1<Q9!Ce$|+R~mBA+n!1vvH-sIOYx1OBD]r-zO~a+U]nRszurXHUQE1E4i[wa]Vv}'!+1lBkDr~HQ
+    vm*J>=neuIW]k>7p+rTG,C}Zj7=+OYz[*E{]&7-A26CE}QI++@kn<WlQ\X5sV!Gmw}n^i}vunHkH
+    A]sz{-R]jD;UoT_lklJ_ilZvK<[DHlDnBKDDD3jJe\boRo~51[=x-ZYQKnOl^'$V?-pIkIwe[DuC
+    <~GQzx3tDmvQXp]R^k1Cp<GkH8Y!m?$V5$SZ{@krXO?N?lREe$Q\i]B^,A+B~}2R9Y_lUKIEp#,n
+    ^JE<#EUQ_AIw}!]#xV_S#B^x[[HJUx22-<@2A7wBCRE-Fj'B_H[YC}Q#OmYBit-a5BxK\KQ$[Xp<
+    v2@j$+l[aIma[[sB]\R@][KAWB{7~Jjk22Wn}^7$Ei.$^rejp}]7uWx_!z/;B#(r?jC}8K1Duzk]
+    2_J'W,KA$\m[?zVe*Ina~o,Ee52z7_iZU/=Xv^Ua,Y2vZY43'ER6ODXE[}7OzU$Y$r^35Wonm\{1
+    1{2YC2]v2wzrMDTQT}R'<[$7Up}Venp\#k*%MarI]}u]lk>K3[euO}I=7-],A=7]>6DU^[_GX\Ul
+    7]*$>;MxEv1tR#Kkra,14[@QT_T*w$x,V~YU]1<^I-HGx)!\<7^BVA,R<ZUs-5}7DC9HE$wE{o~:
+    ;nXY}z2>:RB+jE>JsuE-\WS#,WYl5UKAlQe:l$Qa{s#3VX[2iQ~X_AWZxo?k_G_C7?Ga5UZ\x~Q+
+    OC^+~HuxkGh97_*<0!$luE*jJXvl^{6r^olP'BB']B\Y$AC2jvlRrTozBX=1[m3^%mlsAY}Ou2OO
+    ^]sYA=HJ7Ge?Rn}mzVpY3@nGeazuz!xs^^WD+vz7vBIO$ouYJP[VCk_7T\*GH>pUmVL9*_rz}a~I
+    ^Dp<W^A;CC+jYzWQ-Y[^oA7BD;5Ql^@{Q-!kR~rJ;[m<=2U\rYWn'?^ux}els$=]^2<;Q^m5{\AR
+    ;+<~jBm**<E$p1,D}wT3G\\a_@JD^j*>VT>x7C^;H{Cvr$G>(4mwoCKpRoe?*B|'{ys~BR*j;r'D
+    +C*onUz{72Xe#!J+^\.vx=jLG@'@@'k{~]_uYCn5;E{p$@[oL<'_lA81uX^e?lx>nB;K*jYxEI-r
+    Jmsrq3E-[OWzBE_7W-au+Rl$~IpAK7A7r:![+-V7uQ$>,o-U_QneOQIk-}-X2C5Y~z3aXW!=Xo7G
+    nrX_=_N;<OK}Qs2~QeDsz?*]l'sZ<$lrppA?rG3+&pNiBAQ;B*p'p-+J,'Q\2YnjiRu0.UT3CJCE
+    _]Q->lFRO1+Qx$>;xlrBXx2q11I+pCXG}w\v[U\^BTI+i\Y'e]iozV_?mBw^5rJ'e3'il,v{TxsI
+    <HwHo-YKdW}B>WOoWB{Im~Cj!eipvBXz#JNIQBuC+W,'w\ZT7?!wr*=nHa_+xD217@j51Q3dE72n
+    }3Ta#XjK*e<{EWO;l$ke7@1T2As3DnepL{RDGB+vI/_C}=R<u31[pZGITHyCnHD*@^$]Kr1VK[Cy
+    4mp{uO_7p;EiEBXC+eR_$*ZGj?wWI1$R!l$Cn]aRlG[?lJ>VKB-oX^k,7Ca>n!}DKwBAjYO^IL?U
+    s!rGk<5Glx~[WX+s+v|oW\lXeA?/skG^8#zp?=pA2}'@\y/?V,1IWlEW,Cxv4,Un?~<!^;$iH>XA
+    vnaKDop?aXY=\CXJ'3\R{~NeE}xlVB^EqTe$Ip]2uix=T(W}sZ_{nu}r$!mEE@TBOxY2[xKVQVmz
+    vH(-_}5k,W7Q~[pTEW]Vvnrx],<MT-jJA{]QxwY>1'+v~^iumeGmH[D,CjzE80+lrrK-;-s&1}BX
+    gIiV-vQF]J2nj+m;eQ,-5H\OHC>31$\p2Co;5z,nsB*^WzaRO6lCi;BC7zjbk^aO;V!1jxTHLD;a
+    e?B9+OnlXAxioT}[^?-Q=__Bn72?~=H;&!QIB'vxGZQs~aR'^lO2AYCA3YK\[CUTBwH=[,O\r]eH
+    B6EX>C[v5JOv'D:ex?=w7)lM1oT11XEBYHJRi{oKxU]wKQ+v7K-D>I*Y+nUO;awX5>TH=ek=^jQm
+    5U31z;*T}\\i-*HnwvU<'$;Z{I*^e7i7E[B2YVl-$C$KT$D#]RuVY{R+w*]{,]~arAza'IHRkjB'
+    0A1oAL"p,Bp{xOO>o2<UBHoQz,zjuZ\kO]!_@GV]a2-Im3W@>],E,1D^>aTE;ou]@=jY{}?IxYpi
+    aW'D#OZ]uv^12JTY3ZO}'j~heIKarsj@eFDoE':Bjp7|#E>V^zJ37KukGC!_al5!]IrU:oXWDy5@
+    YuZzQ+KwpKU*[5#lm}]TIJKRR]nxV<rYE}5{_\_'{Vc\Ge7_A+!.J'x\4b~rX^[VRHZEA!C#OAQ7
+    G$Z'rQrRRi#n12wBSE5T!h=C}Jc_rEl&ET-}@T}ev<]{?<o#C},r}}7pnHVpI2^*x,_m(E5K\+Di
+    #s~B\}~-ZI3DsO-UXZa_G_!xuJrO7{\-p<ArR=_X~VuHljQ_@YGGjv-aQ1],QF$XD;Y}Op5u->$w
+    }>*Hea+[mJVr]-Qhn^RsI=?n]EJ<{\;?OO3<WYvo]~lw'i'uCs2}_#5a#a{?Esu~'uHJluOOEKxG
+    o-2o@s-K,OV]R*<2=KI1"M63_7Q3x<]lEB@_r3pv\Wk-_73'$A,=7J77=!rg*JRv\+-}[)YE!5\U
+    @$?.d\w}-,/6Yrr;EsTv?{wl]>{l^_#;qYww\!BuOJ]i^,HnvgT[WzZlY[V1Y32lxuG$#kmTKGVa
+    lV'AYG]pmEOI~oG$aEgN$7\Zlsz^mx>1dj+TuIee-SljG7zep*[U5U$H1o\n@Y7#-5w*sA=QEi72
+    jD3H\'Z7
+`endprotected
+  //----------------------------------------------------------------------------
+  //----------------------------------------------------------------------------
+  // Check 2
+  assign comreset_burst_violation = (((DEVICE_TYPE == 1) & 
+				      (TX_INTERFACE == 0)) |
+                                     ((DEVICE_TYPE == 0) & 
+                                      (TX_INTERFACE == 1))
+                                    ) & comreset_cominit_seq &
+                                    (inter_burst_spacing_count >
+                                               ZI_COMRESET_COMINIT_LAST_IDLE) &
+                                    (no_of_bursts < ZI_NO_OF_BURSTS); 
+  // Check 3
+  assign comreset_burst_time_violation = ((DEVICE_TYPE == 0) &
+                                           (TX_INTERFACE == 1)) &
+                                         comreset_cominit_seq &
+                                         clr_burst_count &
+                                         (present_state == 
+                                               ZI_INTER_BURST_DETECTED_STATE) &
+                                         (burst_spacing_count != 
+                                                ZI_COMRESET_COMINIT_BURST_TIME);
+  // Check 4
+  assign comreset_inter_burst_time_violation = (DEVICE_TYPE == 0) &
+                                               (TX_INTERFACE == 1) &
+                                               comreset_cominit_seq &
+                                               clr_inter_burst_count &
+                                               (no_of_bursts < ZI_NO_OF_BURSTS)&
+                                               (present_state ==
+                                                    ZI_BURST_DETECTED_STATE) & 
+                                               (inter_burst_spacing_count !=
+                                                 TX_COMRESET_COMINIT_IDLE_TIME);
+  // Check 8
+  assign h_comwake_wo_cominit_violation = comwake_detected &
+                                          (phy_present_state !=
+                                                 ZI_H_COMWAKE_DETECTED_STATE) &
+                                          ((phy_present_state !=
+                                                 ZI_COMINIT_DETECTED_STATE) |
+                                           (pwr_mgmt_mode_entered &
+                                            (phy_present_state !=
+                                                   ZI_PHY_IDLE_STATE))) &
+                                          ((DEVICE_TYPE & ~TX_INTERFACE) |
+                                           (~DEVICE_TYPE & TX_INTERFACE));
+  // Check 11
+  assign d_comwake_wo_h_comwake_violation = comwake_detected &
+					    (phy_present_state !=
+					         ZI_H_COMWAKE_DETECTED_STATE) &
+					    (phy_present_state !=
+					         ZI_D_COMWAKE_DETECTED_STATE) &
+					    ((phy_present_state !=
+					          ZI_PHY_IDLE_STATE) |
+					     ~pwr_mgmt_mode_entered) &
+					    ~PORT_SELECTOR_ENABLE &
+                                          ((~DEVICE_TYPE & ~TX_INTERFACE) |
+                                           (DEVICE_TYPE & TX_INTERFACE));
+  // Check 10
+  // Generated when D10.2 is seen during transmission of comreset or cominit
+  assign d10_2_before_d_comwake_violation = D10_2_detected & 
+                                            ~((phy_present_state == 
+                                                 ZI_D_COMWAKE_DETECTED_STATE) |
+                                              (phy_present_state == 
+                                                 ZI_D_ALIGNp_DETECTED_STATE));
+
+  // Check 14
+  assign cominit_burst_violation = (((DEVICE_TYPE == 1) &
+                                      (TX_INTERFACE == 1)) |
+                                     ((DEVICE_TYPE == 0) &
+                                      (TX_INTERFACE == 0))
+                                    ) & comreset_cominit_seq &
+                                    (inter_burst_spacing_count >
+                                                ZI_COMRESET_COMINIT_LAST_IDLE) &
+                                    (no_of_bursts < ZI_NO_OF_BURSTS);
+  // Check 15
+  assign cominit_burst_time_violation = (DEVICE_TYPE == 1) &
+                                        (TX_INTERFACE == 1) &
+                                        comreset_cominit_seq &
+                                        clr_burst_count &
+                                        (present_state ==
+                                              ZI_INTER_BURST_DETECTED_STATE) &
+                                        (burst_spacing_count != 
+                                               ZI_COMRESET_COMINIT_BURST_TIME);
+  // Check 16
+  assign cominit_inter_burst_time_violation = (DEVICE_TYPE == 1) &
+                                              (TX_INTERFACE == 1) &
+                                              comreset_cominit_seq &
+                                              comreset_cominit_seq &
+                                              clr_inter_burst_count &
+                                              (no_of_bursts < ZI_NO_OF_BURSTS)&
+                                              (present_state ==
+                                                   ZI_BURST_DETECTED_STATE) &
+                                              (inter_burst_spacing_count !=
+                                                 TX_COMRESET_COMINIT_IDLE_TIME);
+  // Check 17
+  assign comwake_burst_violation = comwake_seq &
+                                    (inter_burst_spacing_count >
+                                                ZI_COMWAKE_LAST_IDLE_MIN) &
+                                    (no_of_bursts < ZI_NO_OF_BURSTS);
+  // Check 18
+  assign comwake_burst_time_violation = (TX_INTERFACE == 1) & comwake_seq &
+                                        clr_burst_count &
+                                        (present_state == 
+                                              ZI_INTER_BURST_DETECTED_STATE) &
+                                        (burst_spacing_count != 
+                                              ZI_COMWAKE_BURST_TIME);
+  // Check 19
+  assign comwake_inter_burst_time_violation = (TX_INTERFACE == 1) &
+                                              comwake_seq &
+                                              clr_inter_burst_count &
+                                              (no_of_bursts < ZI_NO_OF_BURSTS)&
+                                              (present_state ==
+                                                     ZI_BURST_DETECTED_STATE) &
+                                              (inter_burst_spacing_count !=
+                                                         TX_COMWAKE_IDLE_TIME);
+  // Check 20
+  // This check is done only on the device side hence this qualification.
+  assign comwake_last_idle_violation = (DEVICE_TYPE == 1) &
+                                       (TX_INTERFACE == 1) & comwake_seq &
+                                       clr_inter_burst_count &
+                                       (present_state ==
+                                                      ZI_BURST_DETECTED_STATE) &
+                                       (inter_burst_spacing_count > 
+                                                      ZI_COMWAKE_LAST_IDLE_MAX);
+
+  //--------------------------------------------------------------------------
+  // OVL SVA Assertions are included here
+  //--------------------------------------------------------------------------
+
+`include "qvl_sata_power_on_sequence_assertions.inc"
+
+`ifdef ZI_INLINED_PSL
+`include "0in_ac_inline_for_mod_zi_cw_sata_power_on_sequence.inc"
+`endif
+`ifdef ZI_INLINED_CHX
+`include "zi_cw_sata_power_on_sequence.zi_chx.inc"
+`else
+`ifdef ZI_INLINED_CHX_zi_cw_sata_power_on_sequence
+`include "zi_cw_sata_power_on_sequence.zi_chx.inc"
+`endif
+`endif
+`qvlendmodule

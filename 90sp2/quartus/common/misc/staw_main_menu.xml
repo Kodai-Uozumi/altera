@@ -1,0 +1,132 @@
+<?xml version="1.0"?>
+<!--
+*******************************************************************************
+*
+* File name:   staw_main_menu.xml
+*
+* Description: File to define some of the contents of the dynamic main
+*              menu in the Quartus II TimeQuest Timing Analyzer.
+*
+*
+* Notes:       Menus can be recursive to create submenus.
+*              Use the "insert_before" attribute on a menu or menuitem
+*              to define positioning relative to existing menus.
+*              Always separate tcl commands with a semicolon because whitespace
+*              will be condensed.
+*
+*
+*              Copyright (c) Altera Corporation 2005-2006.
+*              All rights reserved.
+*
+*
+*******************************************************************************
+*
+* $Revision: #1 $
+*
+*******************************************************************************
+-->
+<main_menu>
+	<menu insert_before="Reports">
+		<name>P&amp;rocessing</name>
+		<menuitem debug="true">
+			<name>Start Compilation</name>
+			<tcl>
+				load_package flow; 
+				execute_flow -compile
+			</tcl>
+		</menuitem>
+		<menuitem debug="true">
+			<name>Start Analysis &amp;&amp; Synthesis</name>
+			<tcl>
+				load_package flow; 
+				execute_module -tool map
+			</tcl>
+		</menuitem>
+	</menu>
+	<menu>
+		<name>Reports</name>
+		<menuitem type="separator" debug="true"/>
+		<menuitem debug="true">
+			<name>Generate Subdomain Summary Report</name>
+			<tcl>
+				load_package sta_internal; 
+				report_subdomains; 
+			</tcl>
+		</menuitem>
+		<menuitem debug="true">
+			<name>Generate Subdomain Detail Report</name>
+			<tcl>
+				load_package sta_internal; 
+				report_subdomains -detail; 
+			</tcl>
+		</menuitem>
+		<menuitem debug="true">
+			<name>Generate Subdomain Debug Report</name>
+			<tcl>
+				load_package sta_internal; 
+				report_subdomains -debug; 
+			</tcl>
+		</menuitem>
+		<menuitem debug="true">
+			<name>Generate Experiment Report Panels</name>
+			<tcl>
+				qsta_experiment::create_custom_tao_file
+			</tcl>
+		</menuitem>
+		<menuitem debug="true">
+			<name>Write out .experiment.sta file...</name>
+			<dialog>
+				<title>Write out .experiment.sta file</title>
+				<info>Generate file.experiemnt.sta</info>
+				<field index="1">File Name:</field>
+			</dialog>
+			<tcl>
+				set ::options(verbose) 1;
+				set outfile [open $1  w];
+				qsta_experiment::create_experiment_summary_file $outfile
+			</tcl>
+		</menuitem>
+		<menuitem debug="true">
+			<name>Write out Netlist (XML)...</name>
+			<dialog>
+				<title>Write out Netlist (XML)</title>
+				<info>Generate file.xml</info>
+				<field index="1">File Name:</field>
+			</dialog>
+			<tcl>
+				write_timing_netlist -xml -force $1
+			</tcl>
+		</menuitem>
+		<menuitem debug="true">
+			<name>Write out Netlist (SDB)...</name>
+			<dialog>
+				<title>Write out Netlist (SDB)</title>
+				<info>Generate file.sdb</info>
+				<field index="1">File Name:</field>
+			</dialog>
+			<tcl>
+				write_timing_netlist -sdb -force $1
+			</tcl>
+		</menuitem>
+		<menuitem debug="true">
+			<name>Write out Netlist (tandmp)...</name>
+			<dialog>
+				<title>Write out Netlist (tandmp)</title>
+				<info>Generate file.tandmp and file.tandot</info>
+				<field index="1">File Name:</field>
+			</dialog>
+			<tcl>
+				load_package sta_internal; 
+				sta_dump_timing_netlist $1
+			</tcl>
+		</menuitem>
+		<menuitem debug="true">
+			<name>Collect Statistics</name>
+			<tcl>
+				load_package sta_internal; 
+				sta_collect_tdb_statistics
+			</tcl>
+		</menuitem>
+	</menu>
+</main_menu>
+

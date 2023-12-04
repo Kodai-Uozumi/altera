@@ -1,0 +1,1061 @@
+--------------------------------------------------------------------
+--
+--	ALT_STRATIX_ADD_SUB Parameterized Megafunction
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 1.0
+--
+--------------------------------------------------------------------
+
+INCLUDE "stratix_lcell";
+INCLUDE "aglobal90.inc";
+
+CONSTANT LUT_MASK_ADD 		=	"96E8";
+CONSTANT NORMAL_LUT_MASK_ADD = "9696";
+CONSTANT PASS_CARRY 		=	"00F0";
+CONSTANT LUT_MASK_SUB 		= 	"69B2";
+CONSTANT NORMAL_LUT_MASK_SUB = "6969";
+CONSTANT PASS_INPUT 		=	"AA00";
+CONSTANT CARRY_SUM_OUT		=	"F0F0";
+CONSTANT DATA_CARRY_OUT		=	"00CC";
+CONSTANT OR_INPUT			=	"FAFA";
+CONSTANT AND_INPUT 			=	"A0A0";
+CONSTANT AND_OR_INPUT		=   "E8E8";
+
+
+PARAMETERS
+(	
+	LPM_WIDTH,
+	LPM_REPRESENTATION,
+	LPM_DIRECTION,		-- controlled by add_sub port
+	ONE_INPUT_IS_CONSTANT,
+	LPM_PIPELINE,
+	MAXIMIZE_SPEED,
+	REGISTERED_AT_END,
+	OPTIMIZE_FOR_SPEED,
+	USE_CS_BUFFERS,
+	CARRY_CHAIN = "IGNORE",
+	CARRY_CHAIN_LENGTH,
+	DEVICE_FAMILY,
+	STYLE = "NORMAL"
+);
+
+
+DEFINE BREAKPOINT(i)= (i MOD CARRY_CHAIN_LENGTH == 0); -- to see if a break is needed in the carry chain at i
+DEFINE EXTRACELL() = FLOOR ((LPM_WIDTH-1) / CARRY_CHAIN_LENGTH ); -- count of number of breaks in carry chain
+DEFINE POSITION(i) = i / CARRY_CHAIN_LENGTH - 1; -- break position in the carry chain 
+DEFINE LENGTH_PER_SEGMENT() = (LPM_PIPELINE > 1) ? (CEIL (LPM_WIDTH / (LPM_PIPELINE - 1))) : LPM_WIDTH; -- lenght of one pipeline segment
+DEFINE PIPELINE_SEGMENT(i) = FLOOR (i / LENGTH_PER_SEGMENT()); -- the segment an index belongs to
+DEFINE LAST_SEGMENT() = LPM_PIPELINE - 2; 
+DEFINE LAST_ELEMENT(i) = ( (i+1) mod LENGTH_PER_SEGMENT() == 0); -- check if an element is the last element of a segment
+DEFINE FIRST_ELEMENT(i) = ( i mod LENGTH_PER_SEGMENT() == 0); -- check if an element is the first element
+--DEFINE EXTRA_CELL_PIPELINE() = ((LENGTH_PER_SEGMENT()-1) mod CARRY_CHAIN_LENGTH) == 0 ? EXTRA_CELL_PIPELINE_1()-1 : ((LENGTH_PER_SEGMENT() mod CARRY_CHAIN_LENGTH == 0) ? EXTRA_CELL_PIPELINE_1()-1 : EXTRA_CELL_PIPELINE_1());
+DEFINE EXTRA_CELL_PIPELINE() = FLOOR (LENGTH_PER_SEGMENT() / CARRY_CHAIN_LENGTH); -- count of number of breaks in a pipeline segment
+DEFINE NUMBER_STAGES() = ((LPM_PIPELINE) * (LPM_PIPELINE-1)) / 2; -- number of break stages needed
+DEFINE NUMBER_OF_STAGES() = NUMBER_STAGES();
+DEFINE NORMALIZE(i) = i - PIPELINE_SEGMENT(i) * LENGTH_PER_SEGMENT(); -- normalize index in a pipeline segment
+DEFINE START_POINT(i) = (PIPELINE_SEGMENT(i) * (PIPELINE_SEGMENT(i)+1)) / 2; -- startpoint of the pipeline segment break in the sequence of cells used for carry chain breaking
+-- operation mode
+DEFINE OPERATION_MODE(i) = (i == LPM_WIDTH-1 ? (USED(cout) # (USED(overflow)& !(LPM_REPRESENTATION == "SIGNED")) ? "ARITHMETIC" : "NORMAL" ): "ARITHMETIC");
+--lutmask
+DEFINE LUT_MASK_ADD(i)	= (i == LPM_WIDTH-1 ? (USED(cout)# (USED(overflow)& !(LPM_REPRESENTATION == "SIGNED")) ? LUT_MASK_ADD : NORMAL_LUT_MASK_ADD) : LUT_MASK_ADD);
+DEFINE LUT_MASK_SUB(i)	= (i == LPM_WIDTH-1 ? (USED(cout)# (USED(overflow)& !(LPM_REPRESENTATION == "SIGNED")) ? LUT_MASK_SUB : NORMAL_LUT_MASK_SUB) : LUT_MASK_SUB);
+
+
+DEFINE INTER_LAST_ELEMENT(i,j) = LAST_ELEMENT(i) & (PIPELINE_SEGMENT(i) <= j);
+DEFINE INTER_OPERATION_MODE(i,j) = (i == LPM_WIDTH-1 ? (USED(cout) # (USED(overflow)& !(LPM_REPRESENTATION == "SIGNED")) ? "ARITHMETIC" : "NORMAL" ): ((INTER_LAST_ELEMENT(i,j)) ? "NORMAL" : "ARITHMETIC"));
+--lutmask
+DEFINE INTER_LUT_MASK_ADD(i,j)	= (i == LPM_WIDTH-1 ? (USED(cout)# (USED(overflow)& !(LPM_REPRESENTATION == "SIGNED")) ? LUT_MASK_ADD : NORMAL_LUT_MASK_ADD) : (INTER_LAST_ELEMENT(i,j) ? NORMAL_LUT_MASK_ADD : LUT_MASK_ADD));
+DEFINE INTER_LUT_MASK_SUB(i,j)	= (i == LPM_WIDTH-1 ? (USED(cout)# (USED(overflow)& !(LPM_REPRESENTATION == "SIGNED")) ? LUT_MASK_SUB : NORMAL_LUT_MASK_SUB) : (INTER_LAST_ELEMENT(i,j) ? NORMAL_LUT_MASK_SUB : LUT_MASK_SUB));
+
+DEFINE NUMBER_OF_PIPELINE_SEGMENTS()	= CEIL((LPM_WIDTH) / LENGTH_PER_SEGMENT());
+DEFINE BREAK_VALUE(i)	=  (i == 0) ? 0 : LPM_PIPELINE-1-i + BREAK_VALUE(i-1);
+DEFINE COUT_CELL_STAGES()	=	(LPM_PIPELINE-2) * LENGTH_PER_SEGMENT() >= LPM_WIDTH ? COUT_CELL_STAGES_2() : COUT_CELL_STAGES_1();
+DEFINE COUT_CELL_STAGES_1() =  ((LPM_PIPELINE-1) * (LPM_PIPELINE-2)) / 2;
+DEFINE COUT_CELL_STAGES_2() = ((NUMBER_OF_PIPELINE_SEGMENTS()) * (NUMBER_OF_PIPELINE_SEGMENTS()-1)) / 2;
+DEFINE CONNECT_VALUE(i)  =  (i == 0) ? 0 : LPM_PIPELINE-2-i + CONNECT_VALUE(i-1);
+DEFINE CONNECT_VALUE_BREAK(i) = (i== 0) ? 0 : NUMBER_OF_PIPELINE_SEGMENTS()-i + CONNECT_VALUE_BREAK(i-1);
+
+SUBDESIGN alt_stratix_add_sub
+(
+	dataa[LPM_WIDTH-1..0]					: INPUT = GND;
+	datab[LPM_WIDTH-1..0]					: INPUT = GND;
+	cin										: INPUT = GND;
+	add_sub									: INPUT = VCC;
+	clock									: INPUT = GND;
+	aclr									: INPUT = GND;
+	clken									: INPUT = VCC;
+	result[LPM_WIDTH-1..0]					: OUTPUT;
+	cout									: OUTPUT;
+	overflow								: OUTPUT;
+)
+
+VARIABLE
+	IF !(LPM_WIDTH == 1 & USED(add_sub) & !USED(cin) & !USED(cout) & (!USED(overflow) # (USED(overflow)& LPM_REPRESENTATION == "SIGNED" ) ))GENERATE
+	-- adder subtractor main cell
+	IF !USED(add_sub) & LPM_DIRECTION == "SUB" GENERATE
+		add_sub_cell[LPM_WIDTH-1..0] : 		
+			FOR i IN LPM_WIDTH-1 TO 0 GENERATE
+				stratix_lcell WITH (OPERATION_MODE = OPERATION_MODE(i),
+											SUM_LUTC_INPUT = "CIN",
+											LUT_MASK = LUT_MASK_SUB(i))
+			END GENERATE;											
+	ELSE GENERATE
+		add_sub_cell[LPM_WIDTH-1..0] : 		
+			FOR i IN LPM_WIDTH-1 TO 0 GENERATE
+				stratix_lcell WITH (OPERATION_MODE = OPERATION_MODE(i),
+											SUM_LUTC_INPUT = "CIN",
+											LUT_MASK = LUT_MASK_ADD(i))
+			END GENERATE;
+	END GENERATE;
+
+	-- input data and cin buffers
+	IF LPM_PIPELINE > 1 GENERATE
+		input_buffer_a[LPM_WIDTH-1..0]					:	DFFE;				
+		input_buffer_b[LPM_WIDTH-1..0]					:	DFFE;		
+		IF USED(cin) # !USED(add_sub) GENERATE		
+			cin_buffer						:	stratix_lcell WITH (OPERATION_MODE = "NORMAL",
+												LUT_MASK = CARRY_SUM_OUT);
+		END GENERATE;
+	END GENERATE;
+	
+	-- carry out buffer used when cout is used or overflow is used and it needs cout i.e unsigned represnetatiion overflow
+	IF ((LPM_PIPELINE > 2 & LPM_WIDTH <= LPM_PIPELINE) # (LPM_PIPELINE > 0 & LPM_PIPELINE <3 )) & ( USED(cout) # (USED(overflow) & !(LPM_REPRESENTATION == "SIGNED"))) GENERATE
+		cout_buffer						:	stratix_lcell WITH (OPERATION_MODE = "NORMAL",
+											LUT_MASK = CARRY_SUM_OUT);
+	END GENERATE;
+	
+	-- registers used to carry the MSB of dataa, datab and add_sub signal when overflow is used to calculate overflow in pipelined mode
+	IF (LPM_PIPELINE == 1) & USED(overflow) GENERATE
+		IF LPM_REPRESENTATION == "SIGNED" GENERATE	
+			dataa_regr	 					:	DFFE;
+			datab_regr	 					:	DFFE;
+		END GENERATE;
+		IF USED(add_sub) GENERATE
+			addsub_regr	 					:	DFFE;
+		END GENERATE;
+	END GENERATE;
+
+	-- intermediate add_sub and buffer stages, used when pipeline > 2 , i.e., when add_sub chain is broken
+	IF LPM_PIPELINE > 2 & LPM_WIDTH > LPM_PIPELINE GENERATE
+		IF LPM_DIRECTION == "SUB" & !USED(add_sub) GENERATE
+			inter_buffer[LPM_PIPELINE-3..0][LPM_WIDTH-1..0] 	:	
+				FOR j IN LPM_PIPELINE-3 TO 0 GENERATE
+					FOR i IN LPM_WIDTH-1 TO 0 GENERATE	
+															stratix_lcell WITH (OPERATION_MODE = INTER_OPERATION_MODE(i,j),
+																	SUM_LUTC_INPUT = "CIN",
+																	LUT_MASK = INTER_LUT_MASK_SUB(i,j))				
+					END GENERATE																	
+				END GENERATE;					
+		ELSE GENERATE
+			inter_buffer[LPM_PIPELINE-3..0][LPM_WIDTH-1..0] 	:	
+				FOR j IN LPM_PIPELINE-3 TO 0 GENERATE
+					FOR i IN LPM_WIDTH-1 TO 0 GENERATE
+																stratix_lcell WITH (OPERATION_MODE = INTER_OPERATION_MODE(i,j),
+																SUM_LUTC_INPUT = "CIN",
+																LUT_MASK = INTER_LUT_MASK_ADD(i,j))				
+					END GENERATE
+				END GENERATE;																	
+		END GENERATE;	
+			
+		-- the buffers used to pass the carry from one pipeline segment to another pipeline segment
+			inter_cout_in_buffer[COUT_CELL_STAGES()-1..0] 	: 	stratix_lcell WITH (OPERATION_MODE = "NORMAL",
+																				LUT_MASK = CARRY_SUM_OUT);
+			inter_cout_out_buffer[COUT_CELL_STAGES()-1..0] 	: 	stratix_lcell WITH (OPERATION_MODE = "ARITHMETIC",
+																				LUT_MASK = DATA_CARRY_OUT);
+
+	
+	END GENERATE;
+
+	-- extra latency data, cout and overflow buffers used when width < pipeline
+	IF LPM_PIPELINE > 2 & LPM_WIDTH <= LPM_PIPELINE GENERATE
+		extra_data_buffer[LPM_PIPELINE-3..0][LPM_WIDTH-1..0] 		:	DFFE;
+		IF USED(cout) # (USED(overflow)& !(LPM_REPRESENTATION == "SIGNED")) GENERATE
+			extra_cout_buffer[LPM_PIPELINE-3..0]						:	DFFE;
+		END GENERATE;
+		IF USED(overflow) GENERATE																		
+			extra_overflow_buffer[LPM_PIPELINE-3..0]					:	DFFE;
+		END GENERATE;																			
+	END GENERATE;
+		
+	-- cells used to break the carry chain in a pipeline segment
+	IF ((LPM_PIPELINE > 2) & (LPM_WIDTH > LPM_PIPELINE)) GENERATE
+		IF (LENGTH_PER_SEGMENT() > CARRY_CHAIN_LENGTH) GENERATE
+		inter_carry_in_buffer[NUMBER_OF_STAGES()-1..0][EXTRA_CELL_PIPELINE()-1..0] :		stratix_lcell WITH (OPERATION_MODE = "NORMAL",
+																											LUT_MASK = CARRY_SUM_OUT);
+		inter_carry_out_buffer[NUMBER_OF_STAGES()-1..0][EXTRA_CELL_PIPELINE()-1..0] :	stratix_lcell WITH (OPERATION_MODE = "ARITHMETIC",
+																													LUT_MASK = DATA_CARRY_OUT);
+		END GENERATE;																													
+	ELSE GENERATE			
+		-- cells used to break the carry chain 
+		IF LPM_WIDTH > CARRY_CHAIN_LENGTH GENERATE
+			out_cell[EXTRACELL()-1..0]	:	stratix_lcell WITH (OPERATION_MODE = "NORMAL",
+											LUT_MASK = 	CARRY_SUM_OUT);
+			in_cell[EXTRACELL()-1..0]	:	stratix_lcell WITH (OPERATION_MODE = "ARITHMETIC",
+											LUT_MASK = 	DATA_CARRY_OUT);
+		END GENERATE;
+	END GENERATE;
+	
+	-- add_sub signal buffer used to propagate add_sub signal to the appropriate add_sub block
+	IF USED(add_sub)& LPM_PIPELINE > 1  GENERATE
+		IF LPM_PIPELINE > 2 & LPM_WIDTH < LPM_PIPELINE GENERATE
+			add_sub_regr[1..0]							:	DFFE;
+		ELSE GENERATE
+			add_sub_regr[LPM_PIPELINE-1..0]							:	DFFE;
+		END GENERATE;
+	END GENERATE;
+
+	-- buffers used to carry MSB of dataa and datab to calculate overflow
+	IF LPM_PIPELINE > 1 & USED(overflow) GENERATE
+		IF LPM_PIPELINE >2 & LPM_WIDTH < LPM_PIPELINE GENERATE
+			IF LPM_REPRESENTATION == "SIGNED" GENERATE
+				data_a_regr[1..0]							:	DFFE;
+				data_b_regr[1..0]							:	DFFE;
+			END GENERATE;
+		ELSE GENERATE
+			IF LPM_REPRESENTATION == "SIGNED" GENERATE
+				data_a_regr[LPM_PIPELINE-1..0]				:	DFFE;
+		
+				data_b_regr[LPM_PIPELINE-1..0]				:	DFFE;
+			END GENERATE;																	
+		END GENERATE;													
+	
+	END GENERATE;
+	
+	-- regrs used to collect the cout at all the intermediate stages and find out the resultant cout
+	IF USED(cout) # (USED(overflow)& ! (LPM_REPRESENTATION == "SIGNED")) GENERATE
+		IF LPM_PIPELINE > 2 & LPM_WIDTH > LPM_PIPELINE GENERATE
+			IF !USED(add_sub) & LPM_DIRECTION == "SUB" GENERATE
+				cout_sum_regr[LPM_PIPELINE-2..0] 				:	DFFE; --stratix_lcell WITH (OPERATION_MODE = "NORMAL",
+																		--		LUT_MASK = AND_INPUT);
+			ELSE GENERATE
+				IF USED(add_sub) GENERATE
+					cout_sum_regr[LPM_PIPELINE-2..0] 				:	DFFE; --stratix_lcell WITH (OPERATION_MODE = "NORMAL",
+																				--	LUT_MASK = AND_OR_INPUT);
+				ELSE GENERATE
+					cout_sum_regr[LPM_PIPELINE-2..0] 				:	DFFE; --stratix_lcell WITH (OPERATION_MODE = "NORMAL",
+																				--	LUT_MASK = OR_INPUT);
+				END GENERATE;																				
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;																				
+	
+	IF USED(overflow) GENERATE
+		tmp_overflow 	:	SOFT;		
+	END GENERATE;
+	IF USED(cout) # (USED(overflow) & ! (LPM_REPRESENTATION == "SIGNED")) GENERATE
+		cout_node		:	SOFT;
+	END GENERATE;
+	ELSE GENERATE
+		IF LPM_PIPELINE > 0 GENERATE
+			extra_cell[LPM_PIPELINE-1..0]	:	DFFE;
+		END GENERATE;	
+		IF USED(overflow) GENERATE
+			tmp_overflow : SOFT;
+			IF LPM_PIPELINE > 0 GENERATE
+				overflow_regr[LPM_PIPELINE-1..0]	:	DFFE;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+	
+BEGIN
+	
+		
+	IF LPM_WIDTH == 1 & USED(add_sub) & !USED(cin) & !USED(cout) & (!USED(overflow) # (USED(overflow)& LPM_REPRESENTATION == "SIGNED" ) )GENERATE
+		IF LPM_PIPELINE == 0 GENERATE
+			result[0] = dataa[0] $ datab[0];	
+		ELSE GENERATE
+			extra_cell[].clk = clock;
+			IF USED(clken) GENERATE
+				extra_cell[].ena = clken;
+			END GENERATE;
+			IF USED(aclr) GENERATE
+				extra_cell[].clrn = !aclr;
+			END GENERATE;
+			extra_cell[0].d = dataa[0] $ datab[0];
+			IF LPM_PIPELINE > 1 GENERATE
+				FOR i IN 1 TO LPM_PIPELINE-1 GENERATE
+					extra_cell[i].d = extra_cell[i-1].q;
+				END GENERATE;
+			END GENERATE;			
+			result[0] = extra_cell[LPM_PIPELINE-1].q;
+		END GENERATE;
+		IF USED(overflow) GENERATE
+			overflow = tmp_overflow;
+			IF LPM_PIPELINE == 0 GENERATE
+				tmp_overflow = (!(dataa[0] $ datab[0]) $ !add_sub) & (dataa[0] $ result[0]);
+			ELSE GENERATE
+				overflow_regr[].clk = clock;
+				IF USED(clken) GENERATE
+					overflow_regr[].ena = clken;
+				END GENERATE;
+				IF USED(aclr) GENERATE
+					overflow_regr[].clrn = !aclr;
+				END GENERATE;
+				overflow_regr[0].d = datab[0] & (dataa[0] $ !add_sub);
+				IF LPM_PIPELINE > 1 GENERATE
+					FOR i IN 1 TO LPM_PIPELINE-1 GENERATE
+						overflow_regr[i].d = overflow_regr[i-1].q;
+					END GENERATE;
+				END GENERATE;
+				tmp_overflow = overflow_regr[LPM_PIPELINE-1].q;
+			END GENERATE;
+		END GENERATE;			
+	ELSE GENERATE	
+	IF LPM_PIPELINE == 0 GENERATE	
+		-- Assign inputs directly to the add_sub_cell
+		IF USED(add_sub) GENERATE
+			add_sub_cell[].inverta = !add_sub;		
+			add_sub_cell[].datab = dataa[];
+			add_sub_cell[].dataa = datab[];
+		ELSE GENERATE
+			add_sub_cell[].dataa = dataa[];
+			add_sub_cell[].datab = datab[];
+		END GENERATE;
+		--un resgitered output read straight out
+		result[] =  add_sub_cell[].combout;
+		IF USED(cout) # (USED(overflow)& !(LPM_REPRESENTATION == "SIGNED")) GENERATE
+			cout_node = add_sub_cell[LPM_WIDTH-1].cout;
+		END GENERATE;
+		IF USED(overflow) GENERATE
+			overflow = tmp_overflow;
+		END GENERATE;
+		-- set carry in based on add_sub signal or on LPM_DIRECTION
+		IF USED(cin)  GENERATE
+			add_sub_cell[0].cin = cin;
+		ELSE GENERATE
+			IF LPM_DIRECTION == "SUB" GENERATE
+				add_sub_cell[0].cin = VCC;
+			ELSE GENERATE
+				IF !USED(add_sub) GENERATE
+					add_sub_cell[0].cin = GND;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+		-- set the carry chains breaking them if they grow over the carry chain length
+		IF LPM_WIDTH > 1 GENERATE
+			FOR i IN 1 TO LPM_WIDTH-1 GENERATE		
+				IF BREAKPOINT(i) GENERATE
+					out_cell[POSITION(i)].cin = add_sub_cell[i-1].cout;
+					in_cell[POSITION(i)].datab = out_cell[POSITION(i)].combout;
+					IF USED(add_sub) GENERATE
+						out_cell[POSITION(i)].dataa = datab[i-1];
+						out_cell[POSITION(i)].inverta = !add_sub;
+						in_cell[POSITION(i)].dataa = datab[i];
+						in_cell[POSITION(i)].inverta = !add_sub;
+					END GENERATE;
+					add_sub_cell[i].cin = in_cell[POSITION(i)].cout;
+				ELSE GENERATE
+					add_sub_cell[i].cin = add_sub_cell[i-1].cout;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+	-- end pipeline == 0
+	ELSE GENERATE
+		IF LPM_PIPELINE == 1 GENERATE
+			IF USED(add_sub) GENERATE
+				add_sub_cell[].inverta = !add_sub;
+			END GENERATE;
+			IF USED(overflow) GENERATE
+				overflow = tmp_overflow;
+			END GENERATE;
+			-- set cin
+			IF USED(cin) GENERATE
+				add_sub_cell[0].cin = cin;
+			ELSE GENERATE
+				IF !USED(add_sub) GENERATE
+					IF LPM_DIRECTION == "SUB" GENERATE
+						add_sub_cell[0].cin = VCC;
+					ELSE GENERATE
+						add_sub_cell[0].cin = GND;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+			--carry dataa and datab MSBs and add_sub signals to calculate overflow
+			IF USED(overflow) GENERATE
+				IF LPM_REPRESENTATION == "SIGNED" GENERATE
+					dataa_regr.d = dataa[LPM_WIDTH-1];
+					datab_regr.d = datab[LPM_WIDTH-1];
+				END GENERATE;
+				IF USED(add_sub) GENERATE
+					addsub_regr.d = add_sub;
+				END GENERATE;
+			END GENERATE;
+			IF USED(add_sub) GENERATE
+				add_sub_cell[].datab= dataa[];
+				add_sub_cell[].dataa= datab[];
+			ELSE GENERATE
+				add_sub_cell[].dataa = dataa[];
+				add_sub_cell[].datab = datab[];
+			END GENERATE;
+			-- regr result
+			result[] = add_sub_cell[].regout;
+			-- regr cout
+			IF USED(cout) # (USED(overflow)& !(LPM_REPRESENTATION == "SIGNED")) GENERATE
+				cout_buffer.cin = add_sub_cell[LPM_WIDTH-1].cout;
+				IF USED(add_sub) GENERATE
+					cout_buffer.dataa = GND;
+					cout_buffer.inverta = !add_sub;
+				END GENERATE;
+				cout_node = cout_buffer.regout;
+				
+			END GENERATE;
+			-- set carry chains 
+			IF LPM_WIDTH > 1 GENERATE
+				FOR i IN 1 TO LPM_WIDTH-1 GENERATE		
+					IF BREAKPOINT(i) GENERATE
+						out_cell[POSITION(i)].cin = add_sub_cell[i-1].cout;
+						in_cell[POSITION(i)].datab = out_cell[POSITION(i)].combout;
+						IF USED(add_sub) GENERATE
+							out_cell[POSITION(i)].dataa = datab[i-1];
+							out_cell[POSITION(i)].inverta = !add_sub;
+							in_cell[POSITION(i)].dataa = datab[i];
+							in_cell[POSITION(i)].inverta = !add_sub;
+						END GENERATE;
+						add_sub_cell[i].cin = in_cell[POSITION(i)].cout;
+					ELSE GENERATE
+						add_sub_cell[i].cin = add_sub_cell[i-1].cout;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+		ELSE GENERATE -- pipeline > 1
+			-- buffer the inputs 
+			-- if add_sub signal is used swap inputs as ygr calculates b-a
+			IF USED(add_sub) GENERATE
+				input_buffer_b[].d = dataa[];
+				input_buffer_a[].d = datab[];	
+			ELSE GENERATE
+				input_buffer_a[].d = dataa[];
+				input_buffer_b[].d = datab[];	
+			END GENERATE;
+			-- set cin
+			IF USED(cin) GENERATE
+				cin_buffer.cin = cin;
+			ELSE GENERATE
+				IF !USED(add_sub) GENERATE
+					IF LPM_DIRECTION == "SUB" GENERATE
+						cin_buffer.cin = VCC;
+					ELSE GENERATE
+						cin_buffer.cin = GND;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+			-- carry forward MSB of dataa and datab		
+			IF USED(overflow) GENERATE
+				IF LPM_REPRESENTATION == "SIGNED" GENERATE
+					data_a_regr[0].d = dataa[LPM_WIDTH-1];
+					data_b_regr[0].d = datab[LPM_WIDTH-1];
+				END GENERATE;
+			END GENERATE;		
+			-- carry forward add_sub signal 
+			IF USED(add_sub) GENERATE
+				add_sub_regr[0].d = !add_sub;
+			END GENERATE;
+			IF USED(add_sub) GENERATE
+				add_sub_regr[1].d = add_sub_regr[0].q;
+			END GENERATE;
+			IF LPM_PIPELINE > 2 & LPM_WIDTH > LPM_PIPELINE GENERATE
+				FOR i IN 1 TO LPM_PIPELINE-1 GENERATE
+					IF USED(add_sub) GENERATE
+						add_sub_regr[i].d = add_sub_regr[i-1].q;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+			IF USED(overflow) GENERATE
+				IF LPM_PIPELINE > 2 & LPM_WIDTH < LPM_PIPELINE GENERATE
+					IF LPM_REPRESENTATION == "SIGNED" GENERATE
+						data_a_regr[1].d = data_a_regr[0].q;
+						data_b_regr[1].d = data_b_regr[0].q;
+					END GENERATE;
+				ELSE GENERATE
+					FOR i IN 1 TO LPM_PIPELINE-1 GENERATE
+						IF LPM_REPRESENTATION == "SIGNED" GENERATE
+							data_a_regr[i].d = data_a_regr[i-1].q;
+							data_b_regr[i].d = data_b_regr[i-1].q;
+						END GENERATE;
+					END GENERATE;	
+				END GENERATE;
+			END GENERATE;
+			IF LPM_PIPELINE == 2 GENERATE
+				-- pipeline 2
+				IF USED(add_sub) GENERATE
+					add_sub_cell[].inverta = add_sub_regr[0].q;
+				END GENERATE;
+				-- read input from buffers
+				add_sub_cell[].dataa = input_buffer_a[].q;	
+				add_sub_cell[].datab = input_buffer_b[].q;	
+				IF USED(cin) # !USED(add_sub) GENERATE			
+					add_sub_cell[0].cin = cin_buffer.regout;
+				END GENERATE;
+				-- buffer carry out
+				IF USED(cout) # (USED(overflow)& !(LPM_REPRESENTATION == "SIGNED")) GENERATE
+					cout_buffer.cin = add_sub_cell[LPM_WIDTH-1].cout;
+					IF USED(add_sub) GENERATE
+						cout_buffer.dataa = GND;
+						cout_buffer.inverta = add_sub_regr[0].q;
+					END GENERATE;
+					cout_node = cout_buffer.regout;
+				END GENERATE;
+				-- regr output
+				result[] = add_sub_cell[].regout;
+				IF USED(overflow) GENERATE
+					overflow = tmp_overflow;
+				END GENERATE;
+				-- break carry chains if needed
+				IF LPM_WIDTH >1 GENERATE				
+					FOR i IN 1 TO LPM_WIDTH-1 GENERATE		
+						IF BREAKPOINT(i) GENERATE
+							out_cell[POSITION(i)].cin = add_sub_cell[i-1].cout;
+							in_cell[POSITION(i)].datab = out_cell[POSITION(i)].combout;
+							IF USED(add_sub) GENERATE
+								out_cell[POSITION(i)].dataa = input_buffer_a[i-1].q;
+								out_cell[POSITION(i)].inverta = add_sub_regr[0].q;
+								in_cell[POSITION(i)].dataa = input_buffer_a[i].q;
+								in_cell[POSITION(i)].inverta = add_sub_regr[0].q;
+							END GENERATE;
+							add_sub_cell[i].cin = in_cell[POSITION(i)].cout;
+						ELSE GENERATE
+							add_sub_cell[i].cin = add_sub_cell[i-1].cout;
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+			ELSE GENERATE -- pipeline > 2
+				IF USED(add_sub) GENERATE
+					add_sub_cell[].inverta = add_sub_regr[0].q;
+				END GENERATE;
+				IF USED(cin) # !USED(add_sub) GENERATE
+					add_sub_cell[0].cin = cin_buffer.regout;
+				END GENERATE;
+				IF LPM_WIDTH > LPM_PIPELINE GENERATE
+					IF USED(overflow) GENERATE
+						overflow = tmp_overflow;
+					END GENERATE;
+					-- set cout regrs to accumulate the cout at all stages
+					IF USED(cout) # (USED(overflow)& !(LPM_REPRESENTATION == "SIGNED")) GENERATE
+						cout_sum_regr[0].d = add_sub_cell[LPM_WIDTH-1].cout;
+						FOR i IN 1 TO LPM_PIPELINE-2 GENERATE
+							IF !USED(add_sub) & LPM_DIRECTION == "SUB" GENERATE
+								cout_sum_regr[i].d = cout_sum_regr[i-1].q & inter_buffer[i-1][LPM_WIDTH-1].cout;
+							ELSE GENERATE
+								IF USED(add_sub) GENERATE
+									cout_sum_regr[i].d = (!add_sub_regr[i].q & (cout_sum_regr[i-1].q $ inter_buffer[i-1][LPM_WIDTH-1].cout)) # (cout_sum_regr[i-1].q & inter_buffer[i-1][LPM_WIDTH-1].cout); 
+								ELSE GENERATE
+									cout_sum_regr[i].d = cout_sum_regr[i-1].q # inter_buffer[i-1][LPM_WIDTH-1].cout; 
+								END GENERATE;
+							END GENERATE;
+						END GENERATE;
+						cout_node = cout_sum_regr[LPM_PIPELINE-2].q;
+					END GENERATE;
+					-- read inputs from buffers
+					add_sub_cell[].dataa = input_buffer_a[].q;
+					add_sub_cell[].datab = input_buffer_b[].q;
+					FOR i IN 0 TO LPM_PIPELINE-3 GENERATE
+						IF USED(add_sub) GENERATE
+							inter_buffer[i][].inverta = add_sub_regr[i+1].q;
+						END GENERATE;
+					END GENERATE;
+					
+					-- connect output of add_sub_cell to intermediate stages
+					IF USED(add_sub) GENERATE
+						inter_buffer[0][].datab = add_sub_cell[].regout;
+					ELSE GENERATE
+						inter_buffer[0][].dataa = add_sub_cell[].regout;
+					END GENERATE;
+					IF LPM_PIPELINE-3 > 0 GENERATE
+						FOR i IN 1 TO LPM_PIPELINE-3 GENERATE
+							IF USED(add_sub) GENERATE
+								inter_buffer[i][].datab = inter_buffer[i-1][].regout;
+							ELSE GENERATE
+								inter_buffer[i][].dataa = inter_buffer[i-1][].regout;
+							END GENERATE;									
+						END GENERATE;
+					END GENERATE;
+					-- read output from last stage
+					result[] = inter_buffer[LPM_PIPELINE-3][].regout;
+
+					FOR i IN 0 TO LPM_WIDTH-1 GENERATE
+						-- if element is the last element in the pipeline segment
+						IF LAST_ELEMENT(i)GENERATE
+							IF USED(add_sub) GENERATE
+								inter_buffer[][i].dataa = GND;
+							ELSE GENERATE
+								inter_buffer[][i].datab = GND;
+							END GENERATE;
+							IF BREAKPOINT(NORMALIZE(i)) GENERATE
+									-- break carry chain
+								inter_carry_in_buffer[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = add_sub_cell[i-1].cout;
+								inter_carry_out_buffer[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].datab = inter_carry_in_buffer[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].combout;																							
+								IF USED(add_sub) GENERATE								
+									inter_carry_out_buffer[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].dataa =  input_buffer_a[i].q;
+									inter_carry_out_buffer[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].inverta = add_sub_regr[0].q;
+									inter_carry_in_buffer[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].dataa =  input_buffer_a[i].q;
+									inter_carry_in_buffer[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].inverta = add_sub_regr[0].q;
+								END GENERATE;								
+								add_sub_cell[i].cin = inter_carry_out_buffer[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout;
+								IF PIPELINE_SEGMENT(i) > 0 GENERATE
+									FOR j IN 1 TO PIPELINE_SEGMENT(i) GENERATE
+										inter_carry_in_buffer[BREAK_VALUE(j)+PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = inter_buffer[j-1][i-1].cout;
+										inter_carry_out_buffer[BREAK_VALUE(j)+PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].datab = inter_carry_in_buffer[BREAK_VALUE(j)+PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].combout;																							
+										IF USED(add_sub) GENERATE
+											inter_carry_in_buffer[BREAK_VALUE(j)+PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].inverta = add_sub_regr[j].q;
+											inter_carry_out_buffer[BREAK_VALUE(j)+PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].inverta = add_sub_regr[j].q;
+										END GENERATE;											
+										inter_buffer[j-1][i].cin = inter_carry_out_buffer[BREAK_VALUE(j)+PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout;
+									END GENERATE;
+								END GENERATE;
+								IF PIPELINE_SEGMENT(i)+1 <= LPM_PIPELINE-2 GENERATE
+									FOR j IN PIPELINE_SEGMENT(i)+1 TO LPM_PIPELINE-2 GENERATE
+										inter_buffer[j-1][i].cin = inter_buffer[j-1][i-1].cout;
+									END GENERATE;
+								END GENERATE;
+							ELSE GENERATE
+								add_sub_cell[i].cin = add_sub_cell[i-1].cout;
+								inter_buffer[][i].cin = inter_buffer[][i-1].cout;
+							END GENERATE;
+							-- send the carry out to the buffer that feeds the next stage						
+							IF i != LPM_WIDTH-1 GENERATE
+								inter_cout_in_buffer[PIPELINE_SEGMENT(i)].cin = add_sub_cell[i].cout;
+								inter_cout_out_buffer[PIPELINE_SEGMENT(i)].datab = inter_cout_in_buffer[PIPELINE_SEGMENT(i)].regout;
+								IF USED(add_sub) GENERATE
+									inter_cout_in_buffer[PIPELINE_SEGMENT(i)].inverta = add_sub_regr[0];
+									inter_cout_out_buffer[PIPELINE_SEGMENT(i)].inverta = add_sub_regr[1];
+								END GENERATE;
+								IF PIPELINE_SEGMENT(i) > 0 GENERATE
+									FOR j IN 1 TO PIPELINE_SEGMENT(i) GENERATE									
+										IF (LPM_PIPELINE-2) * LENGTH_PER_SEGMENT() >= LPM_WIDTH GENERATE
+											inter_cout_in_buffer[CONNECT_VALUE_BREAK(j)+PIPELINE_SEGMENT(i)-j].cin = inter_buffer[j-1][i].cout;
+											inter_cout_out_buffer[CONNECT_VALUE_BREAK(j)+PIPELINE_SEGMENT(i)-j].datab = inter_cout_in_buffer[CONNECT_VALUE_BREAK(j)+PIPELINE_SEGMENT(i)-j].regout;
+											IF USED(add_sub) GENERATE
+												inter_cout_in_buffer[CONNECT_VALUE_BREAK(j)+PIPELINE_SEGMENT(i)-j].inverta = add_sub_regr[j].q;
+												inter_cout_out_buffer[CONNECT_VALUE_BREAK(j)+PIPELINE_SEGMENT(i)-j].inverta = add_sub_regr[j+1].q;
+											END GENERATE;
+										ELSE GENERATE
+											inter_cout_in_buffer[CONNECT_VALUE(j)+PIPELINE_SEGMENT(i)].cin = inter_buffer[j-1][i].cout;
+											inter_cout_out_buffer[CONNECT_VALUE(j)+PIPELINE_SEGMENT(i)].datab = inter_cout_in_buffer[CONNECT_VALUE(j)+PIPELINE_SEGMENT(i)].regout;
+											IF USED(add_sub) GENERATE
+												inter_cout_in_buffer[CONNECT_VALUE(j)+PIPELINE_SEGMENT(i)].inverta = add_sub_regr[j].q;
+												inter_cout_out_buffer[CONNECT_VALUE(j)+PIPELINE_SEGMENT(i)].inverta = add_sub_regr[j+1].q;
+											END GENERATE;
+										END GENERATE;											
+									END GENERATE;
+								END GENERATE;
+							END GENERATE;
+						ELSE GENERATE
+							IF FIRST_ELEMENT(i) GENERATE
+								IF i != 0 GENERATE
+									IF USED(add_sub) GENERATE
+										add_sub_cell[i].cin = add_sub_regr[0].q;
+									ELSE GENERATE
+										IF LPM_DIRECTION == "SUB" GENERATE
+											add_sub_cell[i].cin = VCC;
+										ELSE GENERATE
+											add_sub_cell[i].cin = GND;
+										END GENERATE;
+									END GENERATE;
+								END GENERATE;
+								IF USED(add_sub) GENERATE
+									inter_buffer[][i].dataa = GND;
+								ELSE GENERATE
+									inter_buffer[][i].datab = GND;
+								END GENERATE;
+								-- read the carry from the buffer from the previous stage
+								FOR j IN 0 TO LPM_PIPELINE-3 GENERATE
+									IF j <= PIPELINE_SEGMENT(i)-1 GENERATE
+										IF (LPM_PIPELINE-2) * LENGTH_PER_SEGMENT() >= LPM_WIDTH GENERATE										
+											inter_buffer[j][i].cin = inter_cout_out_buffer[CONNECT_VALUE_BREAK(j)+PIPELINE_SEGMENT(i)-j-1].cout;																	
+										ELSE GENERATE
+											inter_buffer[j][i].cin = inter_cout_out_buffer[CONNECT_VALUE(j)+PIPELINE_SEGMENT(i)-1].cout;							
+										END GENERATE;											
+									ELSE GENERATE
+										IF USED(add_sub) GENERATE
+											inter_buffer[j][i].cin = add_sub_regr[j+1].q;
+										ELSE GENERATE
+											IF LPM_DIRECTION == "SUB" GENERATE
+												inter_buffer[j][i].cin = VCC;
+											ELSE GENERATE
+												inter_buffer[j][i].cin = GND;
+											END GENERATE;
+										END GENERATE;
+									END GENERATE;
+								END GENERATE;
+							ELSE GENERATE
+								-- if element is not first or last of segment, see if it needs to be borken at the point bcos of carry chain length
+								IF BREAKPOINT(NORMALIZE(i)) GENERATE
+									-- break carry chain
+									inter_carry_in_buffer[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = add_sub_cell[i-1].cout;
+									inter_carry_out_buffer[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].datab = inter_carry_in_buffer[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].combout;																							
+									IF USED(add_sub) GENERATE								
+										inter_carry_out_buffer[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].dataa =  input_buffer_a[i].q;
+										inter_carry_out_buffer[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].inverta = add_sub_regr[0].q;
+										inter_carry_in_buffer[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].dataa =  input_buffer_a[i].q;
+										inter_carry_in_buffer[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].inverta = add_sub_regr[0].q;
+									END GENERATE;								
+									add_sub_cell[i].cin = inter_carry_out_buffer[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout;
+									IF PIPELINE_SEGMENT(i) > 0 GENERATE
+										FOR j IN 1 TO PIPELINE_SEGMENT(i) GENERATE
+											inter_carry_in_buffer[BREAK_VALUE(j)+PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = inter_buffer[j-1][i-1].cout;
+											inter_carry_out_buffer[BREAK_VALUE(j)+PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].datab = inter_carry_in_buffer[BREAK_VALUE(j)+PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].combout;																							
+											IF USED(add_sub) GENERATE
+												inter_carry_in_buffer[BREAK_VALUE(j)+PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].inverta = add_sub_regr[j].q;
+												inter_carry_out_buffer[BREAK_VALUE(j)+PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].inverta = add_sub_regr[j].q;
+											END GENERATE;
+											inter_buffer[j-1][i].cin = inter_carry_out_buffer[BREAK_VALUE(j)+PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout;
+										END GENERATE;
+									END GENERATE;
+									IF PIPELINE_SEGMENT(i)+1 <= LPM_PIPELINE-2 GENERATE
+										FOR j IN PIPELINE_SEGMENT(i)+1 TO LPM_PIPELINE-2 GENERATE
+											inter_buffer[j-1][i].cin = inter_buffer[j-1][i-1].cout;
+										END GENERATE;
+									END GENERATE;
+								ELSE GENERATE
+									add_sub_cell[i].cin = add_sub_cell[i-1].cout;
+									inter_buffer[][i].cin = inter_buffer[][i-1].cout;
+								END GENERATE;
+								IF USED(add_sub) GENERATE
+									inter_buffer[][i].dataa = GND;
+								ELSE GENERATE
+									inter_buffer[][i].datab = GND;
+								END GENERATE;
+							END GENERATE;
+						END GENERATE;
+					END GENERATE;
+				ELSE GENERATE
+					-- width < pipeline length
+						IF LPM_WIDTH > 1 GENERATE
+							-- connect the whole carry chain and break if needed
+							FOR i IN 1 TO LPM_WIDTH-1 GENERATE		
+								IF BREAKPOINT(i) GENERATE
+									out_cell[POSITION(i)].cin = add_sub_cell[i-1].cout;
+									in_cell[POSITION(i)].dataa = out_cell[POSITION(i)].combout;
+									IF USED(add_sub) GENERATE
+										in_cell[POSITION(i)].dataa = input_buffer_a[].q;
+										in_cell[POSITION(i)].inverta = !add_sub_regr[0].q;
+									END GENERATE;
+									add_sub_cell[i].cin = in_cell[POSITION(i)].cout;
+								ELSE GENERATE
+									add_sub_cell[i].cin = add_sub_cell[i-1].cout;
+								END GENERATE;
+							END GENERATE;
+						END GENERATE;
+						add_sub_cell[].dataa = input_buffer_a[].q;
+						add_sub_cell[].datab = input_buffer_b[].q;
+						-- buffer carry out
+						IF USED(cout) # (USED(overflow)& !(LPM_REPRESENTATION == "SIGNED")) GENERATE
+							cout_buffer.cin = add_sub_cell[LPM_WIDTH-1].cout;
+							IF USED(add_sub) GENERATE
+								cout_buffer.inverta = add_sub_regr[0];
+							END GENERATE;
+						END GENERATE;		
+						-- extra latency buffers to buffer data, cout and overflow				
+						extra_data_buffer[0][].d = add_sub_cell[].regout;
+						IF USED(cout) # (USED(overflow)& !(LPM_REPRESENTATION == "SIGNED")) GENERATE
+							extra_cout_buffer[0].d = cout_buffer.regout;
+						END GENERATE;
+						IF USED(overflow) GENERATE
+							extra_overflow_buffer[0].d = tmp_overflow;
+						END GENERATE;
+			
+						-- set the buffer connections
+						IF LPM_PIPELINE > 3 GENERATE
+							FOR i IN 1 TO LPM_PIPELINE-3 GENERATE
+								extra_data_buffer[i][].d = extra_data_buffer[i-1][].q;
+								IF USED(cout)# (USED(overflow)& !(LPM_REPRESENTATION == "SIGNED")) GENERATE
+									extra_cout_buffer[i].d = extra_cout_buffer[i-1].q;
+								END GENERATE;
+								IF USED(overflow) GENERATE
+									extra_overflow_buffer[i].d = extra_overflow_buffer[i-1].q;		
+								END GENERATE;
+							END GENERATE;
+							result[] = extra_data_buffer[LPM_PIPELINE-3][].q;
+							IF USED(cout)# (USED(overflow)& !(LPM_REPRESENTATION == "SIGNED")) GENERATE
+								cout_node = extra_cout_buffer[LPM_PIPELINE-3].q;
+							END GENERATE;
+							IF USED(overflow) GENERATE
+								overflow = extra_overflow_buffer[LPM_PIPELINE-3].q;
+							END GENERATE;
+						ELSE GENERATE
+							result[] = extra_data_buffer[0][].q;
+							IF USED(cout) # (USED(overflow)& !(LPM_REPRESENTATION == "SIGNED")) GENERATE
+								cout_node = extra_cout_buffer[0].q;
+							END GENERATE;
+							IF USED(overflow) GENERATE
+								overflow = extra_overflow_buffer[0].q;
+							END GENERATE;
+						END GENERATE;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+	IF USED(cout) GENERATE
+		cout = cout_node;
+	END GENERATE;
+
+
+	-- feed asyn clr signal
+	IF USED(aclr) GENERATE
+		add_sub_cell[].aclr = aclr;
+		IF USED(cout) # ( USED(overflow) & !(LPM_REPRESENTATION == "SIGNED")) GENERATE
+			IF LPM_PIPELINE > 2 & LPM_WIDTH > LPM_PIPELINE GENERATE
+				cout_sum_regr[].clrn = !aclr;
+			END GENERATE;
+		END GENERATE;
+		IF (LPM_PIPELINE == 1) & USED(overflow) GENERATE
+			IF LPM_REPRESENTATION == "SIGNED" GENERATE
+				dataa_regr.clrn = !aclr;
+				datab_regr.clrn = !aclr;
+			END GENERATE;
+			IF USED(add_sub) GENERATE
+				addsub_regr.clrn = !aclr;
+			END GENERATE;
+		END GENERATE;
+		IF LPM_PIPELINE > 1 GENERATE
+			input_buffer_a[].clrn = !aclr;
+			input_buffer_b[].clrn = !aclr;
+			IF USED(cin) # !USED(add_sub) GENERATE
+				cin_buffer.aclr = aclr;
+			END GENERATE;
+		END GENERATE;
+		IF LPM_PIPELINE > 1 & USED(overflow) GENERATE
+			IF LPM_REPRESENTATION == "SIGNED" GENERATE
+				data_a_regr[].clrn = !aclr;
+				data_b_regr[].clrn = !aclr;
+			END GENERATE;
+		END GENERATE;
+		IF LPM_PIPELINE > 1 GENERATE
+			IF USED(add_sub) GENERATE
+				add_sub_regr[].clrn = !aclr;
+			END GENERATE;
+		END GENERATE;
+		IF ((LPM_PIPELINE > 2 & LPM_WIDTH <= LPM_PIPELINE)#(LPM_PIPELINE > 0 & LPM_PIPELINE <3 )) & ( USED(cout) # (USED(overflow) & !(LPM_REPRESENTATION == "SIGNED"))) GENERATE
+			cout_buffer.aclr = aclr;
+		END GENERATE;
+		IF LPM_PIPELINE > 2 & LPM_WIDTH > LPM_PIPELINE GENERATE
+			inter_buffer[][].aclr = aclr;
+			inter_cout_in_buffer[].aclr = aclr;
+		END GENERATE;
+		IF LPM_PIPELINE > 2 & LPM_WIDTH <= LPM_PIPELINE GENERATE
+			extra_data_buffer[][].clrn = !aclr;
+			IF USED(cout) # (USED(overflow)& !(LPM_REPRESENTATION == "SIGNED")) GENERATE
+				extra_cout_buffer[].clrn = !aclr;
+			END GENERATE;
+			IF USED(overflow) GENERATE
+				extra_overflow_buffer[].clrn = !aclr;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+
+	-- feed the clock enable signal 
+	IF USED(clken) GENERATE
+		add_sub_cell[].ena = clken;
+		IF USED(cout) # ( USED(overflow) & !(LPM_REPRESENTATION == "SIGNED")) GENERATE
+			IF LPM_PIPELINE > 2 & LPM_WIDTH > LPM_PIPELINE GENERATE
+				cout_sum_regr[].ena = clken;
+			END GENERATE;
+		END GENERATE;
+		IF (LPM_PIPELINE == 1) & USED(overflow) GENERATE
+			IF LPM_REPRESENTATION == "SIGNED" GENERATE
+				dataa_regr.ena = clken;
+				datab_regr.ena = clken;
+			END GENERATE;
+			IF USED(add_sub) GENERATE
+				addsub_regr.ena = clken;
+			END GENERATE;
+		END GENERATE;
+		IF LPM_PIPELINE > 1 GENERATE
+			input_buffer_a[].ena = clken;
+			input_buffer_b[].ena = clken;
+			IF USED(cin) # !USED(add_sub) GENERATE
+				cin_buffer.ena = clken;
+			END GENERATE;
+		END GENERATE;
+		IF LPM_PIPELINE > 1 & USED(overflow) GENERATE
+			IF LPM_REPRESENTATION == "SIGNED" GENERATE
+				data_a_regr[].ena = clken;
+				data_b_regr[].ena = clken;
+			END GENERATE;
+		END GENERATE;
+		IF LPM_PIPELINE > 1 GENERATE
+			IF USED(add_sub) GENERATE
+				add_sub_regr[].ena = clken;
+			END GENERATE;
+		END GENERATE;
+
+		IF ((LPM_PIPELINE > 2 & LPM_WIDTH <= LPM_PIPELINE)#(LPM_PIPELINE > 0 & LPM_PIPELINE <3 )) & ( USED(cout) # (USED(overflow) & !(LPM_REPRESENTATION == "SIGNED"))) GENERATE
+			cout_buffer.ena = clken;
+		END GENERATE;
+		IF LPM_PIPELINE > 2 & LPM_WIDTH > LPM_PIPELINE GENERATE
+			inter_buffer[][].ena = clken;
+			inter_cout_in_buffer[].ena = clken;
+		END GENERATE;
+		IF LPM_PIPELINE > 2 & LPM_WIDTH <= LPM_PIPELINE GENERATE
+			extra_data_buffer[][].ena = clken;
+			IF USED(cout)# (USED(overflow)& !(LPM_REPRESENTATION == "SIGNED")) GENERATE
+				extra_cout_buffer[].ena = clken;
+			END GENERATE;
+			IF USED(overflow) GENERATE
+				extra_overflow_buffer[].ena = clken;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+
+	-- feed the clock signal
+	IF USED(clock) GENERATE
+		add_sub_cell[].clk = clock;
+		IF USED(cout) # ( USED(overflow) & !(LPM_REPRESENTATION == "SIGNED")) GENERATE
+			IF LPM_PIPELINE > 2 & LPM_WIDTH > LPM_PIPELINE GENERATE
+				cout_sum_regr[].clk = clock;
+			END GENERATE;
+		END GENERATE;
+
+		IF (LPM_PIPELINE == 1) & USED(overflow) GENERATE
+			IF LPM_REPRESENTATION == "SIGNED" GENERATE
+				dataa_regr.clk = clock;
+				datab_regr.clk = clock;
+			END GENERATE;
+			IF USED(add_sub) GENERATE
+				addsub_regr.clk = clock;
+			END GENERATE;
+		END GENERATE;
+		IF LPM_PIPELINE > 1 GENERATE
+			input_buffer_a[].clk = clock;
+			input_buffer_b[].clk = clock;
+			IF USED(cin) # !USED(add_sub) GENERATE
+				cin_buffer.clk = clock;
+			END GENERATE;
+		END GENERATE;
+		IF LPM_PIPELINE > 1 & USED(overflow) GENERATE
+			IF LPM_REPRESENTATION == "SIGNED" GENERATE
+				data_a_regr[].clk = clock;
+				data_b_regr[].clk = clock;
+			END GENERATE;
+		END GENERATE;
+		IF LPM_PIPELINE > 1 GENERATE
+			IF USED(add_sub) GENERATE
+				add_sub_regr[].clk = clock;
+			END GENERATE;
+		END GENERATE;
+		IF ((LPM_PIPELINE > 2 & LPM_WIDTH <= LPM_PIPELINE) # (LPM_PIPELINE > 0 & LPM_PIPELINE <3 )) & ( USED(cout) # (USED(overflow) & !(LPM_REPRESENTATION == "SIGNED"))) GENERATE
+			cout_buffer.clk = clock;
+		END GENERATE;
+		IF LPM_PIPELINE > 2 & LPM_WIDTH > LPM_PIPELINE GENERATE
+			inter_buffer[][].clk = clock;
+			inter_cout_in_buffer[].clk = clock;
+		END GENERATE;
+		IF LPM_PIPELINE > 2 & LPM_WIDTH <= LPM_PIPELINE GENERATE
+			extra_data_buffer[][].clk = clock;
+			IF USED(cout) # (USED(overflow)& !(LPM_REPRESENTATION == "SIGNED"))GENERATE
+				extra_cout_buffer[].clk = clock;
+			END GENERATE;
+			IF USED(overflow) GENERATE
+				extra_overflow_buffer[].clk = clock;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+
+
+	-- calculate overflow
+	IF USED(overflow) GENERATE
+	IF LPM_REPRESENTATION == "SIGNED" GENERATE
+		IF LPM_PIPELINE == 0 GENERATE
+		    IF USED(add_sub) GENERATE
+				tmp_overflow = (!(dataa[LPM_WIDTH-1] $ datab[LPM_WIDTH-1]) $ !add_sub) & (dataa[LPM_WIDTH-1] $ result[LPM_WIDTH-1]);
+			ELSE GENERATE
+				IF LPM_DIRECTION == "SUB" GENERATE
+					tmp_overflow = ((dataa[LPM_WIDTH-1] $ datab[LPM_WIDTH-1])) & (dataa[LPM_WIDTH-1] $ result[LPM_WIDTH-1]);			
+				ELSE GENERATE	
+					tmp_overflow = (!(dataa[LPM_WIDTH-1] $ datab[LPM_WIDTH-1]))& (dataa[LPM_WIDTH-1] $ result[LPM_WIDTH-1]);				
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+		IF LPM_PIPELINE == 1 GENERATE
+		    IF USED(add_sub) GENERATE
+				tmp_overflow = (!(dataa_regr.q $ datab_regr.q) $ !addsub_regr.q) & (dataa_regr.q $ result[LPM_WIDTH-1]);
+			ELSE GENERATE
+				IF LPM_DIRECTION == "SUB" GENERATE
+					tmp_overflow = ((dataa_regr.q $ datab_regr.q)) & (dataa_regr.q $ result[LPM_WIDTH-1]);			
+				ELSE GENERATE	
+					tmp_overflow = (!(dataa_regr.q $ datab_regr.q))& (dataa_regr.q $ result[LPM_WIDTH-1]);				
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+		IF LPM_PIPELINE > 1 GENERATE
+			IF LPM_PIPELINE >2 & LPM_WIDTH <= LPM_PIPELINE GENERATE
+			    IF USED(add_sub) GENERATE
+					tmp_overflow = (!(data_a_regr[1].q $ data_b_regr[1].q) $ add_sub_regr[1].q) & (data_a_regr[1].q $ add_sub_cell[LPM_WIDTH-1].regout);
+				ELSE GENERATE
+					IF LPM_DIRECTION == "SUB" GENERATE	
+						tmp_overflow = ((data_a_regr[1].q $ data_b_regr[1].q)) & (data_a_regr[1].q $ add_sub_cell[LPM_WIDTH-1].regout);			
+					ELSE GENERATE	
+						tmp_overflow = (!(data_a_regr[1].q $ data_b_regr[1].q))& (data_a_regr[1].q $ add_sub_cell[LPM_WIDTH-1].regout);				
+					END GENERATE;
+				END GENERATE;
+			ELSE GENERATE
+			    IF USED(add_sub) GENERATE
+					tmp_overflow = (!(data_a_regr[LPM_PIPELINE-1].q $ data_b_regr[LPM_PIPELINE-1].q) $ add_sub_regr[LPM_PIPELINE-1].q) & (data_a_regr[LPM_PIPELINE-1].q $ result[LPM_WIDTH-1]);
+				ELSE GENERATE
+					IF LPM_DIRECTION == "SUB" GENERATE	
+						tmp_overflow = ((data_a_regr[LPM_PIPELINE-1].q $ data_b_regr[LPM_PIPELINE-1].q)) & (data_a_regr[LPM_PIPELINE-1].q $ result[LPM_WIDTH-1]);			
+					ELSE GENERATE	
+						tmp_overflow = (!(data_a_regr[LPM_PIPELINE-1].q $ data_b_regr[LPM_PIPELINE-1].q))& (data_a_regr[LPM_PIPELINE-1].q $ result[LPM_WIDTH-1]);				
+					END GENERATE;
+				END GENERATE;
+
+			END GENERATE;
+		END GENERATE;
+ 	ELSE GENERATE
+		IF LPM_DIRECTION == "SUB" GENERATE
+			tmp_overflow = !cout_node;
+		ELSE GENERATE
+			IF USED(add_sub) GENERATE
+				IF LPM_PIPELINE == 0 GENERATE
+					tmp_overflow = !add_sub $ cout_node;
+				END GENERATE;
+				IF LPM_PIPELINE > 0 GENERATE
+					IF LPM_PIPELINE >2 & LPM_WIDTH <= LPM_PIPELINE GENERATE
+						tmp_overflow = !add_sub_regr[1].q $ cout_buffer.regout;								
+					ELSE GENERATE
+						IF LPM_PIPELINE > 1 GENERATE
+							tmp_overflow = add_sub_regr[LPM_PIPELINE-1].q $ cout_node;
+						ELSE GENERATE
+							tmp_overflow = addsub_regr.q $ cout_node;
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+			ELSE GENERATE
+				IF LPM_PIPELINE > 2 & LPM_WIDTH <= LPM_PIPELINE GENERATE
+					tmp_overflow = cout_buffer.regout;
+				ELSE GENERATE
+					tmp_overflow = cout_node;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+	END GENERATE;
+	
+	END GENERATE; -- special case
+	IF !USED(cout) GENERATE
+		cout = GND;
+	END GENERATE;
+	IF !USED(overflow) GENERATE
+		overflow = GND;
+	END GENERATE;
+	IF !USED(result) GENERATE
+		result[] = GND;
+	END GENERATE;
+END;
+

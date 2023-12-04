@@ -1,0 +1,327 @@
+<<<<versions>>>>
+1.0
+<<<</versions>>>>
+<<<<1.0>>>>
+<get_family_list>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_family_list [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::device 1.0
+
+------------
+Description:
+------------
+
+Returns a list of available families.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+get_family_list
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_family_list>
+
+<report_family_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: report_family_info [-h | -help] [-long_help] <family>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        <family>: Family name
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::device 1.0
+
+------------
+Description:
+------------
+
+Returns a string value containing the report with information 
+about the specified family, such as the following:
+    Available devices
+    Available packages
+    Available speed grades
+    Available pin counts
+    Some additional information specific to the family
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+set report [report_family_info Stratix]
+puts $report
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal family name: <string>. Specify a legal family name.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</report_family_info>
+
+<get_part_list>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_part_list [-h | -help] [-long_help] [-device <value>] [-family <value>] [-package <value>] [-pin_count <value>] [-speed_grade <value>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -device <value>: Option to match device name
+        -family <value>: Option to match family name
+        -package <value>: Option to match package name
+        -pin_count <value>: Option to match pin count
+        -speed_grade <value>: Option to match speed grade
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::device 1.0
+
+------------
+Description:
+------------
+
+Returns a list of available parts based on the options 
+that are specified. Examples are as follows:
+    Return a list of all supported parts
+        get_part_list
+    Return a list of all supported parts for Cyclone
+        get_part_list -family Cyclone
+    Return a list of all supported parts with the FBGA 
+    package and 780 pins
+        get_part_list -package fbga -pin_count 780
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+get_part_list -family Stratix
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_part_list>
+
+<report_part_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: report_part_info [-h | -help] [-long_help] <part>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        <part>: Part name
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::device 1.0
+
+------------
+Description:
+------------
+
+Returns a string value containing the report with information 
+about the specified part, such as the following:
+    Family name
+    Device name
+    Package name
+    Pin count
+    Speed grade
+    Any additional information
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+set report [report_part_info EP20K1000EFC33-3]
+puts $report
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal part name: <string>. Specify a legal part name. Use "report_family_info", "report_device_info", or "get_part_list" to find available parts.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</report_part_info>
+
+<report_device_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: report_device_info [-h | -help] [-long_help] <device>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        <device>: Device name
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::device 1.0
+
+------------
+Description:
+------------
+
+Returns a string value containing the report with information 
+about the specified device, such as the following:
+    Available parts
+    Some additional information specific to the device
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+set report [report_device_info APEX20K1000E]
+puts $report
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal device name: <string>. Specify a legal device name.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</report_device_info>
+
+<get_part_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_part_info [-h | -help] [-long_help] [-default_voltage] [-device] [-family] [-family_variant] [-package] [-pin_count] [-speed_grade] [-temperature_grade] <part>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -default_voltage: Option to get the default core voltage (such as 0.9V or 1.1V)
+        -device: Option to get device name (such as EP1S25 or EP1S80)
+        -family: Option to get family name (such as Stratix or Cyclone)
+        -family_variant: Option to get family variant (such as Base, E or GX)
+        -package: Option to get package name (such as FBGA or BGA)
+        -pin_count: Option to get total number of pins in the package
+        -speed_grade: Option to get speed grade (such as 5, 6, or 7)
+        -temperature_grade: Option to get temperature grade of the package (such as COMMERCIAL or INDUSTRIAL)
+        <part>: Part name
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::device 1.0
+
+------------
+Description:
+------------
+
+Returns part characteristics for the specified part.
+
+If you use multiple options, the command returns a list 
+in the following order:
+    <family> <device> <package> <pin_count> <speed grade> <temperature_grade> <family_variant>
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+tcl> get_part_info -family EP1S25F780C5
+tcl> Stratix
+
+tcl> get_part_info -family -device EP1S25F780C5
+tcl> Stratix EP1S25
+
+tcl> get_part_info -device -package -pin_count -speed_grade EP1S25F780C5
+tcl> EP1S25 FBGA 780 5
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_part_info>
+
+<<<</1.0>>>>

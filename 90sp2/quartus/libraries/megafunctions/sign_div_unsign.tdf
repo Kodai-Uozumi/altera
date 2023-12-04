@@ -1,0 +1,384 @@
+-----------------------------------------------------------------------------------------------------
+-- sign_div_unsign
+--
+-- Version 1.0
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--
+-- Description: This module is used by the LPM_DIVDE megafunction.  It is responsible for 
+-- 				handling the cases of an unsigned division and all signed divisions which 
+--				involve an always positive remainder.
+--
+-- Algorithm:	Based on the taking of a one's complement of the numerator and quotient.
+--				This saves (for a positive denominator) the divider from having to take the
+--				relatively expensive absolute value operation.  The flow of the algorithm 
+--				follows for a positive denominator (negative follows same except that an 
+--				absolute value is taken)
+--
+--				IF 
+--				[]	numer < 0  --> numer := ONES_COMP(numer)
+--				[]	numer >= 0 --> skip
+--				FI;
+--				quotient, remain := numer div denom, numer mod denom;
+--				IF
+--				[]	numer < 0  --> quotient, remain := ONES_COMP(quotient), denom - remain - 1
+--				[]	numer >= 0 --> skip
+--				FI
+--
+------------------------------------------------------------------------------------------------------
+
+PARAMETERS(
+	NUM_WIDTH,							-- number of bits in numerator
+	DEN_WIDTH,							-- number of bits in denominator
+	LPM_PIPELINE = 0,					-- the pipeline latency
+	NUM_REPRESENTATION = "SIGNED",		-- representation of numerator
+	DEN_REPRESENTATION = "SIGNED",		-- representatin of denominator
+	MAXIMIZE_SPEED = 5,					-- the speed factor
+	CARRY_CHAIN = "IGNORE"				-- to inherit carry chain information
+);
+
+INCLUDE "alt_u_div";						-- the unsigned divider
+INCLUDE "lpm_add_sub";					-- subtractor for mopping up stages
+
+-- obtain carry chain information
+INCLUDE "aglobal90.inc";
+
+-- constants for accessing MSB
+CONSTANT NUM_TOP = NUM_WIDTH - 1;
+CONSTANT DEN_TOP = DEN_WIDTH - 1;
+
+-- how many stages possible in the unsigned divide section
+CONSTANT MAX_INT_STAGES = NUM_WIDTH;
+
+-- is this a signed division
+DEFINE SIGNED_DIV() = (NUM_REPRESENTATION == "SIGNED") # (DEN_REPRESENTATION == "SIGNED");
+
+-- to calculate if LCELL is necessary (for large differnece carry chains are broken)
+CONSTANT SIZE_DIFFERENTIAL = SIGNED_DIV() & (NUM_WIDTH > DEN_WIDTH) ? NUM_WIDTH - DEN_WIDTH : 0;
+
+-- useful macro
+DEFINE MIN(a, b) = a < b ? a : b;
+
+-- pipeline information
+CONSTANT N_INTERNAL_STAGES = MIN(MAX_INT_STAGES, LPM_PIPELINE);  -- stages internal to the divider
+CONSTANT N_EXTERNAL_STAGES = LPM_PIPELINE - N_INTERNAL_STAGES;	 -- stages outside divider
+
+SUBDESIGN sign_div_unsign(
+	numerator[NUM_TOP..0] : INPUT;
+	denominator[DEN_TOP..0] : INPUT;
+	
+	remainder[DEN_TOP..0] : OUTPUT;
+	quotient[NUM_TOP..0] : OUTPUT;
+	
+	-- pipelined signals
+	clock, aclr : INPUT = GND;
+	clk_en : INPUT = VCC;
+)
+VARIABLE
+	IF NUM_REPRESENTATION == "SIGNED" GENERATE
+		neg_quot[NUM_TOP..0] : NODE;	-- quotient is not one-complimented
+	END GENERATE;						-- for unsigned numerator
+	
+	IF (USE_CARRY_CHAINS() & NUM_REPRESENTATION == "UNSIGNED" & DEN_REPRESENTATION == "SIGNED" & LPM_PIPELINE == 0)
+		# (USE_CARRY_CHAINS() & (SIZE_DIFFERENTIAL > 0)) GENERATE
+		protect_quotient[NUM_TOP..0] : LCELL;
+	ELSE GENERATE
+		protect_quotient[NUM_TOP..0] : NODE;
+	END GENERATE;
+	
+	protect_remainder[DEN_TOP..0] : NODE;
+	norm_num[NUM_TOP..0] : NODE;
+	IF NUM_REPRESENTATION == "SIGNED" GENERATE	-- numerator doesnt get complemented if it's unsigned
+		neg_num[NUM_TOP..0] : NODE;
+	END GENERATE;
+	divider : alt_u_div WITH (LPM_PIPELINE = N_INTERNAL_STAGES, WIDTH_N = NUM_WIDTH, WIDTH_D = DEN_WIDTH,
+						   WIDTH_Q = NUM_WIDTH, WIDTH_R = DEN_WIDTH, MAXIMIZE_SPEED = MAXIMIZE_SPEED);
+	adder : lpm_add_sub WITH (LPM_WIDTH = DEN_WIDTH, LPM_DIRECTION = "SUB");
+	
+	IF N_EXTERNAL_STAGES > 0 GENERATE
+		DFF_Numerator[NUM_TOP..0] : DFFE;
+		DFF_Denominator[DEN_TOP..0] : DFFE;
+	END GENERATE;
+	
+	IF N_EXTERNAL_STAGES > 1 GENERATE
+		DFF_Quotient[N_EXTERNAL_STAGES - 2..0][NUM_TOP..0] : DFFE;
+		DFF_Den_Out[N_EXTERNAL_STAGES - 2..0][DEN_TOP..0] : DFFE;
+		DFF_Remainder[N_EXTERNAL_STAGES - 2..0][DEN_TOP..0] : DFFE;
+	END GENERATE;
+	
+	IF LPM_PIPELINE > 0 GENERATE
+		IF NUM_REPRESENTATION == "SIGNED" GENERATE	-- not necessary to track sign of unsigned
+			DFF_Num_Sign[LPM_PIPELINE - 1..0] : DFFE;
+		END GENERATE;
+		IF DEN_REPRESENTATION == "SIGNED" GENERATE
+			DFF_q_is_neg[LPM_PIPELINE - 1..0] : DFFE;
+		END GENERATE;
+	END GENERATE;
+	
+	IF DEN_REPRESENTATION == "SIGNED" GENERATE		-- variables for signed representation
+		pre_neg_den[DEN_TOP..0] : NODE;
+		num_choice[NUM_TOP..0] : NODE;
+		den_choice[DEN_TOP..0] : NODE;
+		q_is_neg : NODE;
+		IF NUM_REPRESENTATION == "SIGNED" GENERATE
+			pre_quot[NUM_TOP..0] : NODE;
+		END GENERATE;
+		pre_neg_quot[NUM_TOP..0] : NODE;
+	END GENERATE;
+BEGIN
+	-- hook up pipelined signals to the unsigned divider	
+	IF LPM_PIPELINE > 0 GENERATE
+		IF USED(clock) GENERATE
+			divider.clock = clock;
+		END GENERATE;
+	
+		IF USED(aclr) GENERATE
+			divider.aclr = aclr;
+		END GENERATE;
+	
+		IF USED(clk_en) GENERATE
+			divider.clk_en = clk_en;
+		END GENERATE;
+	END GENERATE;
+	
+	-- prepare to possibly invert the numerator and the denominator
+	-- if using a signed representation for the denominator
+	IF DEN_REPRESENTATION == "SIGNED" GENERATE
+		q_is_neg = denominator[DEN_TOP];
+		IF DEN_WIDTH == 1 GENERATE
+			pre_neg_den[] = denominator[];
+		ELSE GENERATE
+			pre_neg_den[] = -denominator[];
+		END GENERATE;
+		num_choice[] = numerator[];
+		den_choice[] = (denominator[] & !denominator[DEN_TOP]) # (pre_neg_den[] & denominator[DEN_TOP]);
+	END GENERATE;
+	
+	-- set up numerator sign retrieval
+	-- and retrieval if both are negative
+	IF LPM_PIPELINE > 0 GENERATE
+		IF DEN_REPRESENTATION == "UNSIGNED" & NUM_REPRESENTATION == "SIGNED" GENERATE
+			DFF_Num_Sign[LPM_PIPELINE - 1] = numerator[NUM_TOP];
+		ELSE % IF DEN_REPRESENTATION = "SIGNED" % GENERATE
+			IF NUM_REPRESENTATION == "SIGNED" GENERATE
+				DFF_Num_Sign[LPM_PIPELINE - 1] = num_choice[NUM_TOP];
+			END GENERATE;
+			IF DEN_REPRESENTATION == "SIGNED" GENERATE
+				DFF_q_is_neg[LPM_PIPELINE - 1] = q_is_neg;
+			END GENERATE;
+		END GENERATE;
+				
+		IF (NUM_REPRESENTATION == "SIGNED") & (LPM_PIPELINE > 1) GENERATE
+			DFF_Num_Sign[LPM_PIPELINE-2..0] = DFF_Num_Sign[LPM_PIPELINE-1..1];
+		END GENERATE;
+		IF (DEN_REPRESENTATION == "SIGNED") & (LPM_PIPELINE > 1) GENERATE
+			DFF_q_is_neg[LPM_PIPELINE-2..0] = DFF_q_is_neg[LPM_PIPELINE-1..1];
+		END GENERATE;
+	
+		-- latch control signals
+		IF NUM_REPRESENTATION == "SIGNED" GENERATE
+			DFF_Num_Sign[].clk = clock;
+			DFF_Num_Sign[].ena = clk_en;
+			DFF_Num_Sign[].clrn = !aclr;
+		END GENERATE;
+		IF DEN_REPRESENTATION == "SIGNED" GENERATE
+			DFF_q_is_neg[].clk = clock;
+			DFF_q_is_neg[].ena = clk_en;
+			DFF_q_is_neg[].clrn = !aclr;
+		END GENERATE;
+	END % IF % GENERATE;
+	
+	-- set up the latches for first stage
+	IF N_EXTERNAL_STAGES > 0 GENERATE
+		DFF_Numerator[].clk = clock;
+		DFF_Denominator[].clk = clock;
+		DFF_Numerator[].ena = clk_en;
+		DFF_Denominator[].ena = clk_en;
+		DFF_Numerator[].clrn = !aclr;
+		DFF_Denominator[].clrn = !aclr;
+	END GENERATE;
+	
+	-- set up latches for the final stage
+	IF N_EXTERNAL_STAGES > 1 GENERATE
+		DFF_Quotient[][].clk = clock;
+		DFF_Remainder[][].clk = clock;
+		DFF_Den_Out[][].clk = clock;
+		
+		DFF_Quotient[][].ena = clk_en;
+		DFF_Remainder[][].ena = clk_en;
+		DFF_Den_Out[][].ena = clk_en;
+		
+		DFF_Quotient[][].clrn = !aclr;
+		DFF_Remainder[][].clrn = !aclr;
+		DFF_Den_Out[][].clrn = !aclr;
+		
+		-- hook up the pipeline
+		-- first one
+		IF N_EXTERNAL_STAGES == 2 GENERATE
+			DFF_Quotient[0][] = divider.quotient[];
+			DFF_Remainder[0][] = divider.remainder[];
+			DFF_Den_Out[0][] = divider.den_out[];
+		END GENERATE;
+		IF N_EXTERNAL_STAGES > 2 GENERATE
+			DFF_Quotient[N_EXTERNAL_STAGES-2..0][] = (divider.quotient[], DFF_Quotient[N_EXTERNAL_STAGES-2..1][]);
+			DFF_Remainder[N_EXTERNAL_STAGES-2..0][] = (divider.remainder[], DFF_Remainder[N_EXTERNAL_STAGES-2..1][]);
+			DFF_Den_Out[N_EXTERNAL_STAGES-2..0][] = (divider.den_out[], DFF_Den_Out[N_EXTERNAL_STAGES-2..1][]);
+		END GENERATE;
+	END % IF % GENERATE;
+	
+	-- set numerator to one's compliment if it's negative
+	IF DEN_REPRESENTATION == "UNSIGNED" GENERATE
+		IF NUM_REPRESENTATION == "SIGNED" GENERATE
+			neg_num[] = !numerator[];
+			norm_num[] = (numerator[] & !numerator[NUM_TOP]) # (neg_num[] & numerator[NUM_TOP]);
+		ELSE GENERATE
+			norm_num[] = numerator[];	-- dont flip the bits
+		END GENERATE;
+	ELSE GENERATE -- signed representation
+		IF NUM_REPRESENTATION == "SIGNED" GENERATE
+			neg_num[] = !num_choice[];
+			norm_num[] = (num_choice[] & !num_choice[NUM_TOP]) # (neg_num[] & num_choice[NUM_TOP]);
+		ELSE GENERATE
+			norm_num[] = num_choice[];	-- preserve the numerator
+		END GENERATE;
+	END GENERATE;
+	 
+	-- set up the divider
+	IF N_EXTERNAL_STAGES == 0 GENERATE
+		divider.numerator[] = norm_num[];
+		IF DEN_REPRESENTATION == "UNSIGNED" GENERATE
+			divider.denominator[] = denominator[];
+		ELSE GENERATE -- signed representation
+			divider.denominator[] = den_choice[];
+		END GENERATE;
+	ELSE GENERATE
+		DFF_Numerator[] = norm_num[];
+		IF DEN_REPRESENTATION == "UNSIGNED" GENERATE
+			DFF_Denominator[] = denominator[];
+		ELSE GENERATE -- signed representation
+			DFF_Denominator[] = den_choice[];
+		END GENERATE;
+		
+		divider.numerator[] = DFF_Numerator[];
+		divider.denominator[] = DFF_Denominator[];
+	END GENERATE;
+	
+	-- set up the adder
+	adder.cin = GND;
+	IF N_EXTERNAL_STAGES <= 1 GENERATE
+		protect_remainder[] = divider.remainder[];
+		IF DEN_REPRESENTATION == "UNSIGNED" GENERATE
+			IF LPM_PIPELINE == 0 GENERATE
+				adder.dataa[] = denominator[];
+			ELSE GENERATE  -- must use the latched denominator internal to the divider
+				adder.dataa[] = divider.den_out[];
+			END GENERATE;
+		ELSE GENERATE		-- for signed representation
+			IF LPM_PIPELINE == 0 GENERATE
+				adder.dataa[] = den_choice[];	
+			ELSE GENERATE		-- must use the latched denominator internal to the divider
+				adder.dataa[] = divider.den_out[];
+			END GENERATE;
+		END GENERATE;
+		adder.datab[] = protect_remainder[];
+	
+		protect_quotient[] = divider.quotient[];
+		IF NUM_REPRESENTATION == "SIGNED" GENERATE
+			neg_quot[] = !protect_quotient[];
+		END GENERATE;			
+	ELSE GENERATE
+		protect_remainder[] = DFF_Remainder[0][];
+		adder.dataa[] = DFF_Den_Out[0][];
+		adder.datab[] = DFF_Remainder[0][];
+		
+		protect_quotient[] = DFF_Quotient[0][];
+		
+		IF NUM_REPRESENTATION == "SIGNED" GENERATE
+			neg_quot[] = !protect_quotient[];
+		END GENERATE;	
+	END % IF % GENERATE;
+	
+	IF LPM_PIPELINE > 0 GENERATE
+		IF DEN_REPRESENTATION == "UNSIGNED" GENERATE
+			IF NUM_REPRESENTATION == "SIGNED" GENERATE
+				quotient[] = (protect_quotient[] & !DFF_Num_Sign[0]) # (neg_quot[] & DFF_Num_Sign[0]);
+			ELSE GENERATE
+				quotient[] = protect_quotient[];
+			END GENERATE;
+		ELSE GENERATE -- signed representation
+			IF NUM_REPRESENTATION == "SIGNED" GENERATE
+				pre_quot[] = (protect_quotient[] & !DFF_Num_Sign[0]) # (neg_quot[] & DFF_Num_Sign[0]);
+				IF NUM_WIDTH == 1 GENERATE
+					pre_neg_quot[] = pre_quot[];
+				ELSE GENERATE
+					pre_neg_quot[] = -pre_quot[];
+				END GENERATE;
+				quotient[] = (pre_quot[] & !DFF_q_is_neg[0]) # (pre_neg_quot[] & DFF_q_is_neg[0]);
+			ELSE GENERATE -- unsigned numerator
+				IF NUM_WIDTH == 1 GENERATE
+					pre_neg_quot[] = protect_quotient[];
+				ELSE GENERATE
+					pre_neg_quot[] = -protect_quotient[];
+				END GENERATE;
+				quotient[] = (protect_quotient[] & !DFF_q_is_neg[0]) # (pre_neg_quot[] & DFF_q_is_neg[0]);
+			END GENERATE;
+        END GENERATE;
+		IF NUM_REPRESENTATION == "SIGNED" GENERATE
+			remainder[] = (protect_remainder[] & !DFF_Num_Sign[0]) # (adder.result[] & DFF_Num_Sign[0]);			
+		ELSE GENERATE
+			remainder[] = protect_remainder[];
+		END GENERATE;			
+	ELSE GENERATE	
+		IF DEN_REPRESENTATION == "UNSIGNED" GENERATE
+			IF NUM_REPRESENTATION == "SIGNED" GENERATE
+				quotient[] = (protect_quotient[] & !numerator[NUM_TOP]) # (neg_quot[] & numerator[NUM_TOP]);
+				remainder[] = (protect_remainder[] & !numerator[NUM_TOP]) # (adder.result[] & numerator[NUM_TOP]);
+			ELSE GENERATE
+				quotient[] = protect_quotient[];
+				remainder[] = protect_remainder[];
+			END GENERATE;				
+		ELSE GENERATE -- signed representaion
+			IF NUM_REPRESENTATION == "SIGNED" GENERATE
+				pre_quot[] = (protect_quotient[] & !num_choice[NUM_TOP]) # (neg_quot[] & num_choice[NUM_TOP]);
+				IF NUM_WIDTH == 1 GENERATE
+					pre_neg_quot[] = pre_quot[];
+				ELSE GENERATE
+					pre_neg_quot[] = -pre_quot[];
+				END GENERATE;
+			
+				quotient[] = (pre_quot[] & !q_is_neg) # (pre_neg_quot[] & q_is_neg);
+				remainder[] = (protect_remainder[] & !num_choice[NUM_TOP]) # (adder.result[] & num_choice[NUM_TOP]);	
+			ELSE GENERATE
+				IF NUM_WIDTH == 1 GENERATE
+					pre_neg_quot[] = protect_quotient[];
+				ELSE GENERATE
+					pre_neg_quot[] = -protect_quotient[];
+				END GENERATE;
+				
+				quotient[] = (protect_quotient[] & !q_is_neg) # (pre_neg_quot[] & q_is_neg);
+				remainder[] = protect_remainder[];
+			END GENERATE;				
+		END GENERATE;
+	END GENERATE;	
+	IF !USED(remainder) GENERATE
+		remainder[] = GND;
+	END GENERATE;
+	IF !USED(quotient) GENERATE
+		quotient[] = GND;
+	END GENERATE;
+END;	

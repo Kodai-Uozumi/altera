@@ -1,0 +1,109 @@
+<CSF_ID>
+Option to specify which revision and its associated
+Quartus II Settings File (.qsf) to use.
+
+This option directs the Quartus(R) II software to use
+the existing settings in the specified revision's QSF,
+if any. However, all arguments passed from command line
+and all assignments obtained from the database override 
+assignments from the QSF.
+
+If not specified, the revision name is assumed to be the
+same as that of the project. Altera(R) recommends using
+the same name for the project and the revision to avoid
+the use of this option.
+</CSF_ID>
+
+<DISABLE>
+
+Option to disable either the SignalTap(R) II Logic Analzyer or the
+    Logic Analyzer Interface in the Quartus II Settings File (.qsf).
+
+Example:
+
+quartus_stp <project_name> --disable --signaltap
+quartus_stp <project_name> --disable --logic_analyzer_interface
+
+If neither --logic_analyzer_interface or --signaltap is used, 
+both tools are disabled.
+</DISABLE>
+
+<ENABLE>
+Option to enable either the SignalTap(R) II Logic Analyzer or the 
+Logic Analyzer Interface in the Quartus II Setting File (.qsf).  
+
+Example:
+
+quartus_stp <project_name> --enable --signaltap --stp_file=<filename>
+quartus_stp <project_name> --enable --logic_analyzer_interface --lai_file=<filename>
+
+If neither --logic_analyzer_interface or --signaltap is used, 
+both tools are enabled.
+</ENABLE>
+
+<SIGNALTAP>
+Option to set the enable option or disable option to affect SignalTap II
+settings only.
+</SIGNALTAP>
+
+<LOGIC_ANALYZER_INTERFACE>
+Option to set the enable option or disable option to affect the Logic 
+Analyzer Interface settings only.
+</LOGIC_ANALYZER_INTERFACE>
+
+<STP_FILE>
+Option to specify which SignalTap(R) II File (.stp) to use 
+for processing. If you do not specify a file name, the file 
+name defined in the Quartus II Settings File (.qsf) is used 
+by default. If there is no file name defined in the QSF, 
+you must specify a valid file name.
+</STP_FILE>
+
+<LAI_FILE>
+Option to specify which Logic Analyzer Interface file (.lai) 
+to use for processing. If you do not specify a file name, the 
+file name defined in the Quartus II Settings File (.qsf) is 
+used by default. If there is no file name defined in the QSF, 
+you must specify a valid file name.
+</LAI_FILE>
+
+<CREATE_SIGNALTAP_HDL_FILE>
+Option to back-annotate SignalTap(R) entities instantiated
+in the design to a SignalTap II File (.stp).  This generated
+SignalTap II File is used to carry out SignalTap II acquisition
+from the device.
+
+Example:
+
+quartus_stp <project name> --create_signaltap_hdl_file --stp_file=<filename>
+</CREATE_SIGNALTAP_HDL_FILE>
+
+<APP_DESCRIPTION_ID>
+The Quartus(R) II SignalTap(R) II Logic Analyzer captures 
+signals from internal device nodes while the device is 
+running at speed. The captured data is displayed as a waveform 
+within the SignalTap II Logic Analyzer and can be saved as a 
+SignalTap II File (.stp). A comprehensive trigger condition can 
+be specified, and is also saved in a SignalTap II File (.stp).
+The quartus_stp executable creates a Quartus Setting File (.qsf) 
+based on the SignalTap II File specified if enabled.  It also 
+removes the settings if the SignalTap II Logic Analyzer is 
+disabled.  It must be run successfully before running Quartus II 
+Analysis & Synthesis.
+
+This command also supports Quartus Setting File (.qsf) setup for 
+Logic Analyzer Interface.  A Logic Analyzer Interface (.lai) file 
+is used to determine how Quartus Setting File should be changed.
+
+This command also loads Tcl packages for a number of tools that
+communicate with the device via the JTAG interface.  The 
+::quartus::stp package provides commands for SignalTap II 
+acquisition; the ::quartus::jtag package provides commands for 
+primitive JTAG shift and virtual JTAG shift; the 
+::quartus::insystem_memory_edit package provides commands that 
+read and modify memory content when this feature is enabled; the 
+::quartus::logic_analyzer_interface package provides commands 
+that control the drivers of output pins interfacing with the 
+logic analyzer.
+</APP_DESCRIPTION_ID>
+

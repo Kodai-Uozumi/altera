@@ -1,0 +1,20 @@
+#!/bin/sh -x
+
+PATH=/bin
+export PATH
+
+TERMINFO_FILE=/etc/terminfo/rxvt-unicode.terminfo
+TERMCAP_FILE=/etc/terminfo/rxvt-unicode.termcap
+
+if [ -x "/usr/bin/tic" -a -e ${TERMINFO_FILE} ] ; then
+  /usr/bin/tic ${TERMINFO_FILE}
+fi
+
+if [ -e /etc/termcap ] ; then
+  if ! grep -E '^rxvt-unicode\|' /etc/termcap >/dev/null 2>&1 ; then
+    cat ${TERMCAP_FILE} >> /etc/termcap
+  fi
+else
+  cat ${TERMCAP_FILE} > /etc/termcap
+fi
+

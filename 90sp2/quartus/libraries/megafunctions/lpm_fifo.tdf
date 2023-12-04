@@ -1,0 +1,78 @@
+-- **************************************************************************
+--	LPM_FIFO
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 1.0
+--
+------------------------------
+
+include "scfifo";
+
+parameters
+(
+	LPM_WIDTH,
+	LPM_NUMWORDS,
+	LPM_WIDTHU = ceil(log2(LPM_NUMWORDS)),
+	LPM_SHOWAHEAD = "OFF",
+
+	UNDERFLOW_CHECKING = "ON",
+	OVERFLOW_CHECKING = "ON",
+	ALLOW_RWCYCLE_WHEN_FULL = "OFF",
+	USE_EAB = "ON"
+);
+
+subdesign lpm_fifo
+(
+	data[LPM_WIDTH-1..0]	: input;
+	q[LPM_WIDTH-1..0]		: output;
+	clock, rdreq, wrreq		: input;
+	sclr					: input = gnd;
+	aclr					: input = gnd;
+
+	empty, full				: output;
+	usedw[LPM_WIDTHU-1..0]	: output;
+)
+
+-------------------------------------------------------------------------------
+variable
+	myFIFO: scfifo with( LPM_WIDTH=LPM_WIDTH, LPM_NUMWORDS=LPM_NUMWORDS, 
+		LPM_SHOWAHEAD=LPM_SHOWAHEAD, UNDERFLOW_CHECKING=UNDERFLOW_CHECKING, OVERFLOW_CHECKING=OVERFLOW_CHECKING, 
+		ALLOW_RWCYCLE_WHEN_FULL=ALLOW_RWCYCLE_WHEN_FULL, USE_EAB=USE_EAB
+	);
+
+begin
+	if used(aclr) generate
+		myFIFO.(data[], clock, rdreq, wrreq, sclr, aclr) = (data[], clock, rdreq, wrreq, sclr, aclr);
+	else generate
+		myFIFO.(data[], clock, rdreq, wrreq, sclr) = (data[], clock, rdreq, wrreq, sclr);
+	end generate;
+	(q[], empty, full, usedw[]) = myFIFO.(q[], empty, full, usedw[]);
+	IF !USED(usedw) GENERATE
+		usedw[] = GND;
+	END GENERATE;
+	IF !USED(q) GENERATE
+		q[] = GND;
+	END GENERATE;
+	IF !USED(empty) GENERATE
+		empty = GND;
+	END GENERATE;
+	IF !USED(full) GENERATE
+		full = GND;
+	END GENERATE;
+end;
+

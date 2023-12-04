@@ -1,0 +1,1145 @@
+//              Copyright 2006-2007 Mentor Graphics Corporation
+//                           All Rights Reserved.
+//
+//              THIS WORK CONTAINS TRADE SECRET AND PROPRIETARY
+//            INFORMATION WHICH IS THE PROPERTY OF MENTOR GRAPHICS
+//           CORPORATION OR ITS LICENSORS AND IS SUBJECT TO LICENSE
+//                                  TERMS.
+//
+//                   Questa Verification Library (QVL)
+//
+
+/*************************************************************************
+*
+* PURPOSE     This file is part of the Questa Verification Library (QVL).
+*
+* DESCRIPTION This monitor checks the PCI Express interface for compliance
+*             with PCI Express Base specification - Transaction layer 
+*             specification.
+*
+* REFERENCES  PCI Express Base Specification, Revision 1.0, July 22, 2002.
+*             PCI Express Base Specification, Revision 1.0a, April 15,2003.
+*             PCI Express Base Specification, Revision 1.1, March 28, 2005.
+*
+* USAGE       This sub-module is instantiated in the top level  pci express 
+*             monitor module
+*
+**************************************************************************/
+
+`ifdef ZiCwDebug
+`define ZiCwDebugDelay1 #1
+`define ZiCwQuietIfNoCwDebug
+`else
+`define ZiCwDebugDelay1
+`define ZiCwQuietIfNoCwDebug -quiet
+`endif //ZiCwDebug
+
+`ifdef QVL_COVER_ON
+  `ifdef QVL_SV_COVERGROUP_OFF
+     // Do nothing
+  `else
+    `define QVL_SV_COVERGROUP
+  `endif
+
+  `ifdef QVL_MW_FINAL_COVER_OFF
+     // Do nothing
+  `else
+     `define QVL_MW_FINAL_COVER
+  `endif
+`endif
+
+
+`qvlmodule qvl_pci_express_transaction_layer_pkt_monitor(
+                                             reset,
+                                             areset,
+					     level_select,
+					     transaction_layer_checks_disable,
+
+                                             // Transmit interface signals
+
+                                             clk,
+                                             descrambled_data,
+                                             data_d_or_k_code,
+					     data_10b_code_violation_n,
+                                             valid_code,
+                                             link_width,
+                                             dll_status,
+  // Additional gen1 code start								 
+					     phy_status,
+                                             tc_mapped_to_vc_id_0,
+                                             tc_mapped_to_vc_id_1,
+                                             tc_mapped_to_vc_id_2,
+                                             tc_mapped_to_vc_id_3,
+                                             tc_mapped_to_vc_id_4,
+                                             tc_mapped_to_vc_id_5,
+                                             tc_mapped_to_vc_id_6,
+                                             tc_mapped_to_vc_id_7,
+                                             fc_init1_done, 		 
+  // Additional gen1 code end							 
+					     // Configuration inputs
+
+					     extended_tag_field_enable,
+					     max_payload_size,
+					     max_read_req_size,
+					     tc_mapped_bitmap,
+  // PCI_EXPRESS_GEN2 code start						
+					     // enables the ACS translation blocking in config space 	 
+					     acs_translation_blocking_enable, 
+  // PCI_EXPRESS_GEN2 code end
+
+					     // PIPE
+
+					     no_check_edb,
+// Additional gen1 code start
+					     initial_cfg_started_other_dev,
+					     last_captured_req_id_other_dev,
+					     lock_established_other_device,
+                                             lock_completed_other_device,		 
+// Additional gen1 code end							 
+					     // Output signals
+
+					     tlp_packet_detected,
+					     tlp_pkt1,
+					     tlp_pkt2,
+					     malformed_tlp_detected,
+
+                                             // Stats control signals
+
+                                             inc_tlps_with_digests,
+                                             inc_tlps_with_ecrc,
+// Additional gen1 code start							 
+                                             initial_cfg_started,
+					     last_captured_req_id,
+					     lock_established,
+                                             lock_completed, 		 
+// Additional gen1 code end							 
+                                             // Power Management related
+
+                                             pm_active_state_nak_detected,
+                                             pm_pme_detected,
+                                             pme_turn_off_detected,
+                                             pme_to_ack_detected
+
+                                             );
+
+  // Parameter declarations
+
+  parameter Constraints_Mode = 0;
+  parameter PCI_EXPRESS_DEVICE_TYPE = 0;
+  parameter MAXIMUM_LINK_WIDTH = 1;
+  parameter TX_INTERFACE = 0; 
+  wire [31:0] pw_TX_INTERFACE = TX_INTERFACE;
+  parameter DOUBLE_DATA_RATE = 0;
+  parameter RESERVED_FIELD_CHECK_ENABLE = 0;
+  wire [31:0] pw_RESERVED_FIELD_CHECK_ENABLE = RESERVED_FIELD_CHECK_ENABLE;
+  parameter VENDOR_SPECIFIC_ENCODING_ENABLE = 0;
+  wire [31:0] pw_VENDOR_SPECIFIC_ENCODING_ENABLE = VENDOR_SPECIFIC_ENCODING_ENABLE;
+  parameter HOT_PLUG_MESSAGE_ENABLE = 0;
+  wire [31:0] pw_HOT_PLUG_MESSAGE_ENABLE = HOT_PLUG_MESSAGE_ENABLE;
+  // PCI_EXPRESS_GEN2 code start
+  parameter PCI_EXPRESS_GEN2 = 0;
+  wire [31:0] pw_PCI_EXPRESS_GEN2 = PCI_EXPRESS_GEN2;
+  // PCI_EXPRESS_GEN2 code end
+
+  // Input declarations
+
+  input reset; // Global synchronous reset
+  input areset; // Global asynchronous reset
+  input level_select; // Level select signal
+  input transaction_layer_checks_disable;
+  input clk; // Transmit clock
+  input [MAXIMUM_LINK_WIDTH * 8 - 1:0] descrambled_data;
+  input [MAXIMUM_LINK_WIDTH -1:0] data_d_or_k_code;
+  input [MAXIMUM_LINK_WIDTH -1:0] data_10b_code_violation_n;
+  input [MAXIMUM_LINK_WIDTH -1:0] valid_code;
+
+  input [5:0] link_width;
+  input dll_status;
+  // Additional gen1 code start								 
+  input phy_status;
+  input [7:0] tc_mapped_to_vc_id_0;
+  input [7:0] tc_mapped_to_vc_id_1;
+  input [7:0] tc_mapped_to_vc_id_2;
+  input [7:0] tc_mapped_to_vc_id_3;
+  input [7:0] tc_mapped_to_vc_id_4;
+  input [7:0] tc_mapped_to_vc_id_5;
+  input [7:0] tc_mapped_to_vc_id_6;
+  input [7:0] tc_mapped_to_vc_id_7;
+  input [7:0] fc_init1_done;
+  // Additional gen1 code end
+  input extended_tag_field_enable;
+  input [2:0] max_payload_size;
+  input [2:0] max_read_req_size;
+  input [7:0] tc_mapped_bitmap;
+  // PCI_EXPRESS_GEN2 code start
+  input acs_translation_blocking_enable;
+  // PCI_EXPRESS_GEN2 code end
+
+  input no_check_edb;
+// Additional gen1 code start	
+  input initial_cfg_started_other_dev;
+  input [15:0] last_captured_req_id_other_dev;
+  input lock_established_other_device;
+  input lock_completed_other_device;
+// Additional gen1 code end
+
+  // Output declarations
+
+  output [1:0] tlp_packet_detected;
+  output [69:0] tlp_pkt1;
+  output [69:0] tlp_pkt2;
+  output [1:0] malformed_tlp_detected;
+
+  output [1:0] inc_tlps_with_ecrc;
+  output [1:0] inc_tlps_with_digests;
+
+// Additional gen1 code start	
+  output initial_cfg_started;
+  output [15:0] last_captured_req_id;
+  output lock_established;
+  output lock_completed;
+// Additional gen1 code end
+
+  output pm_active_state_nak_detected;
+  output pm_pme_detected;
+  output pme_turn_off_detected;
+  output pme_to_ack_detected;
+  
+
+  // Parameter declarations for TLP packet extractor
+
+  parameter ZI_TLP_INACTIVE_STATE = 0;
+  parameter ZI_TLP_IDLE_STATE = 1;
+  parameter ZI_TLP_START_STATE = 2;
+  parameter ZI_TLP_SEQ_NUM1_STATE = 3;
+  parameter ZI_TLP_SEQ_NUM2_STATE = 4;
+  parameter ZI_TLP_HEADER_STATE = 5;
+  parameter ZI_TLP_DATA_STATE = 6;
+  parameter ZI_TLP_DIGEST_STATE = 7;
+  parameter ZI_TLP_LCRC_STATE = 8;
+  parameter ZI_TLP_UNKNOWN_STATE = 9;
+
+  parameter ZI_STP = 8'hFB; // K27.7 
+  parameter ZI_END = 8'hFD; // K29.7 
+  parameter ZI_EDB = 8'hFE; // K27.7
+
+  // Parameter declarations for request types
+
+  parameter ZI_MEM_REQ = 0; // Memory requests
+  parameter ZI_MEMLK_REQ = 1; // Locked requests
+  parameter ZI_IO_REQ = 2; // IO requests
+  parameter ZI_MSGAS_REQ = 3; // Message with advance switching not supported in Gen2
+  parameter ZI_CFG0_REQ = 4; // Configuration type 0 requests 
+  parameter ZI_CFG1_REQ = 5; // Configuration type 1 requests 
+  parameter ZI_CPL = 10; // Completions 
+  parameter ZI_CPL_LK = 11; // Completions for locked requests
+
+  parameter ZI_MSG_REQ = 2;
+
+  // PCI_EXPRESS_GEN2 code start
+  parameter ZI_TCFG_REQ = 27; // Trusted config types(deprecated) requests
+  
+  // PCI_EXPRESS_GEN2 code end
+
+  // Parameter declarations for completion status
+
+  parameter ZI_SC = 0; // Succesfull completion 
+  parameter ZI_UR = 1; // Unsupported request 
+  parameter ZI_CA = 4; // Completor abort 
+  parameter ZI_CRS = 2; // Configuration request retry status 
+
+  parameter ZI_ECRC_POLYNOMIAL = 32'h4C11DB7;
+  
+  // Register declarations for TLP packet header info.
+
+  reg [1:0] fmt_posedge; // Format of TLP
+  reg [1:0] fmt_negedge;
+  reg [1:0] next_fmt;
+  reg [4:0] type_posedge; // Type of TLP
+  reg [4:0] type_negedge;
+  reg [4:0] next_type;
+  reg [2:0] tc_posedge; // Traffic class
+  reg [2:0] tc_negedge;
+  reg [2:0] next_tc;
+  reg [1:0] attr_posedge; // Attribute of TLP
+  reg [1:0] attr_negedge;
+  reg [1:0] next_attr;
+  reg td_posedge; // TLP digest bit
+  reg td_negedge;
+  reg next_td;
+  reg ep_posedge; // Poisioned TLP
+  reg ep_negedge;
+  reg next_ep;
+  // PCI_EXPRESS_GEN2 code start
+  reg [1:0] at_posedge; // Address type(AT) field of TLP
+  reg [1:0] at_negedge;
+  reg [1:0] next_at;
+  // PCI_EXPRESS_GEN2 code end
+  reg [10:0] length_posedge; // TLP length in DWs
+  reg [10:0] length_negedge;
+  reg [10:0] next_length;
+  reg [2:0] cpl_status_posedge; // Completion status
+  reg [2:0] cpl_status_negedge;
+  reg [2:0] next_cpl_status;
+  reg [63:0] address_64_bit_posedge; // 64 Bit address
+  reg [63:0] address_64_bit_negedge;
+  reg [63:0] next_address_64_bit;
+  reg [3:0] last_dw_be_posedge; // Last data word byte enable
+  reg [3:0] last_dw_be_negedge;
+  reg [3:0] next_last_dw_be;
+  reg [3:0] first_dw_be_posedge; // First data word byte enable
+  reg [3:0] first_dw_be_negedge;
+  reg [3:0] next_first_dw_be;
+  reg [15:0] requester_id_posedge; // Requester ID
+  reg [15:0] requester_id_negedge;
+  reg [15:0] next_requester_id;
+  reg [7:0] tag_posedge; // Tag
+  reg [7:0] tag_negedge;
+  reg [7:0] next_tag;
+  reg [31:0] tlp_digest_posedge; // TLP digest field
+  reg [31:0] tlp_digest_negedge;
+  reg [31:0] next_tlp_digest;
+  reg [12:0] total_length_of_tlp; // Total length of TLP in bytes.
+				  // This includes lcrc, tlp digest
+				  // header byte count, payload byte
+				  // count.
+
+  reg [15:0] next_completer_id; // Completer ID field
+  reg [15:0] completer_id_posedge;
+  reg [15:0] completer_id_negedge;
+  reg [11:0] next_cpl_byte_count;
+  reg [11:0] cpl_byte_count_posedge; // Completion byte count field
+  reg [11:0] cpl_byte_count_negedge; 
+  reg next_cpl_bcm;
+  reg cpl_bcm_posedge;      // BCM field
+  reg cpl_bcm_negedge;
+  reg [7:0] next_message_code;
+  reg [7:0] message_code_posedge; //Message code field
+  reg [7:0] message_code_negedge;
+  reg [7:0] next_cpl_lwr_address;
+  reg [7:0] cpl_lwr_address_posedge; //Lower address field of completion packets
+  reg [7:0] cpl_lwr_address_negedge;
+
+  reg [31:0] ecrc_posedge; // End to End CRC
+  reg [31:0] ecrc_negedge;
+  reg [31:0] next_ecrc;
+
+  // Additional gen1 code start
+  reg next_unsupported_request;
+  reg unsupported_request_posedge;
+  reg unsupported_request_negedge;
+  reg [15:0] last_captured_req_id_posedge; // Requester ID
+  reg [15:0] last_captured_req_id_negedge;
+  reg [15:0] next_last_captured_req_id;
+  reg initial_cfg_started_posedge; 
+  reg initial_cfg_started_negedge;
+  reg next_initial_cfg_started;
+  reg sspl_sent_posedge; 
+  reg sspl_sent_negedge;
+  reg next_sspl_sent;
+  reg lock_established_posedge; 
+  reg lock_established_negedge;
+  reg next_lock_established;
+  reg lock_completed_posedge; 
+  reg lock_completed_negedge;
+  reg next_lock_completed;
+  // Additional gen1 code end
+
+  reg [3:0] temp_tlp_current_state;
+  reg [3:0] tlp_present_state_posedge;
+  reg [3:0] tlp_present_state_negedge;
+  reg [3:0] tlp_next_state;
+
+  reg [8*8-1:0] tlp_present_state_string;
+  reg [8*8-1:0] tlp_next_state_string;
+  reg [8*8-1:0] type_string;
+
+  reg [MAXIMUM_LINK_WIDTH * 8 - 1:0] temp_descrambled_data;
+  reg [7:0] data;
+  reg d_or_k_code;
+  reg pci_10b_code_violation;
+  reg valid;
+
+  reg enable_ecrc_posedge;
+  reg enable_ecrc_negedge;
+  reg temp_enable_ecrc;
+  reg next_enable_ecrc;
+  reg [7:0] ecrc_data;
+  reg [31:0] temp_ecrc;
+
+  // Register declarations for error assertions
+
+  reg bad_tlp;
+  reg non_zero_reserved_field_error;
+
+  // Additional gen1 code start
+  reg non_zero_data_31_10_in_sspl;
+  reg byte_8_9_non_reserved_for_routing_by_id;
+  reg poisonned_tlp;
+  reg invalid_req_id;
+  reg invalid_completer_id;
+  reg completer_id_not_0_before_initial_cfg;
+  reg cpl_status_ur;
+  reg cpl_status_ca;
+  reg cpl_status_crs;
+  reg sspl_not_sent_error;
+  reg sspl_length_not_1dw; 
+  // Additional gen1 code end
+
+  // PCI_EXPRESS_GEN2 code start
+  reg deprecated_malformed_tlp; // Deprecated TLPs(TCFGWR and TCFGRD) are malformed TLPs
+  // PCI_EXPRESS_GEN2 code end
+  reg undefined_header_field;
+  reg io_req_hdr_length_error;
+  reg cfg_req_hdr_length_error;
+  reg msg_req_hdr_length_error;
+  reg cpl_header_length_error;
+  reg io_req_pci_express_end_point;
+  reg cfg_req_pci_express_end_point;
+  // PCI_EXPRESS_GEN2 code start
+  reg deprecated_req_pci_express_end_point; // Deprecated TLPs must not be issued from EP
+  reg msg_routing_error;
+  // PCI_EXPRESS_GEN2 code end
+  reg lock_req_pci_express_end_point;
+  reg cpl_lk_req_pci_express_end_point;
+  reg cfg_req_legacy_end_point;
+  // PCI_EXPRESS_GEN2 code start
+  reg deprecated_req_legacy_end_point; // Deprecated TLPs must not be issued from LEP
+  // PCI_EXPRESS_GEN2 code end
+  reg lock_req_legacy_end_point;
+  reg cpl_lk_req_root_complex;
+  reg root_complex_rcvd_cfg_req;
+  reg root_complex_rcvd_lock_or_tcfg_req;
+  reg io_req_tc_field_error;
+  reg cfg_req_tc_field_error;
+  // Additional gen1 code start       
+  reg mrdlk_req_tc_field_error;
+  reg cpllk_req_tc_field_error;
+  reg tc_with_uninitialized_vc;
+  // Additional gen1 code end   
+  reg msg_req_tc_field_error;
+  reg io_req_attr_field_error;
+  reg cfg_req_attr_field_error;
+  reg msg_req_attr_field_error;
+  // PCI_EXPRESS_GEN2 code start
+  reg io_req_at_field_error; // AT field should be 2'b00 for IO,CFG,MSG and CPL 
+  reg cfg_req_at_field_error;
+  reg msg_req_at_field_error;
+  reg cpl_at_field_error;
+  reg ep_field_without_data_error; // EP field must not be set to 1 for TLP without data
+  reg mem_req_acs_violation_error;  // MEM request must not violate ACS rule
+  // PCI_EXPRESS_GEN2 code end
+  reg io_req_length_field_error;
+  reg cfg_req_length_field_error;
+  reg msg_req_length_field_error;
+  reg msgas_req_length_field_error; // This is not be part of GEN2 as it is based on PCIe1.0
+
+  reg cpl_length_field_error;
+  reg cpl_lk_length_field_error;
+  // PCI_EXPRESS_GEN2 code start
+  reg cpl_bcm_error;
+  reg ignored_msg_routing_error; 
+  // PCI_EXPRESS_GEN2 code end
+  reg cpl_status_field_error;
+  reg first_dw_be_error_non_zero_error;
+  reg non_zero_last_dw_be;
+  reg last_dw_be_error_non_zero_error;
+  reg ecrc_error;
+  reg tag_field_error;
+  reg tlp_pkt_size_error;
+  // Additional gen1 code start
+  reg first_dw_be_error_for_more_than_2dw;
+  reg last_dw_be_error_for_more_than_2dw;
+  reg first_dw_be_error_for_2dw_non_qw_aligned;
+  reg last_dw_be_error_for_2dw_non_qw_aligned;
+  reg intx_direction_error;
+  reg intx_msg_routing_error;
+  reg pm_act_state_nak_msg_routing_error;
+  reg pm_pme_msg_routing_error;
+  reg pm_turnoff_msg_routing_error;
+  reg err_msg_routing_error;
+  reg unlock_msg_routing_error;
+  reg sspl_msg_routing_error;
+  reg pme_2ack_msg_routing_error;
+  reg hot_plug_msg_routing_error;
+  reg vendor_msg_routing_error;
+  reg intx_msg_function_num_non_reserved;
+  reg unlock_msg_function_num_non_reserved;
+  reg pm_act_state_nak_msg_function_num_non_reserved;
+  reg pme_2ack_msg_function_num_non_reserved;
+  reg cor_err_msg_direction_error;  
+  reg non_fatal_err_msg_direction_error;  
+  reg fatal_err_msg_direction_error;
+  reg sspl_msg_direction_error; 
+  reg ai_on_msg_direction_error;
+  reg ai_bl_msg_direction_error;
+  reg ai_off_msg_direction_error;
+  reg pi_on_msg_direction_error;
+  reg pi_bl_msg_direction_error;
+  reg pi_off_msg_direction_error;
+  reg at_pressed_msg_direction_error;
+  reg msg_with_routing_000_from_rc;  
+  reg msg_with_routing_011_from_ep;
+  reg cor_error_msg;
+  reg non_fatal_error_msg;
+  reg fatal_error_msg;
+  reg cpllk_received_when_lock_not_established;
+  reg unlock_message_without_lock;
+  reg other_than_unlock_n_mrdlk_when_lock_established; 
+  reg tlp_before_init_cfg;
+  // Additional gen1 code end
+  reg no_tlp_digest;
+  reg tlp_digest_detected;
+  reg tlp_xmtd;
+  reg io_req_max_pkt_size_error; 
+  reg cfg_req_max_pkt_size_error;
+  reg illegal_address_length_combination;
+  reg max_payload_size_error;
+  reg max_read_req_size_error; 
+  reg address_format_error;
+  reg intr_msg_code_error; 
+  reg pme_msg_code_error; 
+  reg err_msg_code_error; 
+  reg locked_tran_msg_code_error; 
+  reg slot_pwr_msg_code_error; 
+  reg hot_plug_msg_code_error;
+  reg ignored_message_detected; // PCIE 1.1 update
+  reg vendor_specific_msg_code_error; 
+  reg undefined_msg_code_group;
+  reg tlp_doesnot_map_to_any_vc;
+
+  // Added during the update 13th Mar 2003
+
+  reg msg_type_error;
+  reg slot_pwr_msg_type_error;
+
+  // Register declarations for internal logic
+
+  reg [13:0] tlp_byte_count_posedge;
+  reg [13:0] tlp_byte_count_negedge;
+  reg [13:0] next_tlp_byte_count;
+  reg [13:0] temp_tlp_byte_count;
+  reg [4:0] header_byte_count_posedge; // Counts the TLP header bytes 
+  reg [4:0] header_byte_count_negedge; 
+  reg [4:0] next_header_byte_count;
+  reg [4:0] temp_header_byte_count;
+  reg [2:0] lcrc_byte_count_posedge; // Counts the LCRC bytes
+  reg [2:0] lcrc_byte_count_negedge;
+  reg [2:0] next_lcrc_byte_count;
+  reg [2:0] temp_lcrc_byte_count;
+  reg [2:0] tlp_digest_byte_count_posedge; // Counts the TLP digest bytes
+  reg [2:0] tlp_digest_byte_count_negedge;
+  reg [2:0] next_tlp_digest_byte_count;
+  reg [2:0] temp_tlp_digest_byte_count;
+
+  reg [1:0] tlp_packet_detected; 
+  reg [69:0] tlp_pkt1; 
+  reg [69:0] tlp_pkt2; 
+  reg [1:0] malformed_tlp_detected;
+  reg next_malformed_tlp;
+  reg malformed_tlp_posedge;
+  reg malformed_tlp_negedge;
+
+  // Stats control signals
+
+  reg [1:0] inc_tlps_with_digests;
+  reg [1:0] inc_tlps_with_ecrc;
+
+  // Power management signals
+
+  reg pm_active_state_nak_detected;
+  reg pm_pme_detected;
+  reg pme_turn_off_detected;
+  reg pme_to_ack_detected;
+
+  // Wire declarations
+
+  wire [1:0] fmt; // TLP format
+  wire [4:0] tlp_type; // TLP type
+  wire [2:0] tc; // Traffic Class
+  wire [1:0] attr; // Attribute field
+  // PCI_EXPRESS_GEN2 code start
+  wire [1:0] at; // Address Type field
+  // PCI_EXPRESS_GEN2 code end
+  wire td; // TLP digest indicator
+  wire ep; // Prsence of ECRC
+  wire [10:0] length; // Length field
+  wire [2:0] cpl_status; // Completion status
+  wire [63:0] address_64_bit; // 64 bit address
+  wire [3:0] last_dw_be; // Last data word byte enable
+  wire [3:0] first_dw_be; // First data word byte enable
+  wire [15:0] requester_id; // Requester ID
+  wire [7:0] tag; // Tag field
+  wire [31:0] tlp_digest; // TLP digest field
+  wire enable_ecrc; // Enable ECRC calculation
+  wire [31:0] ecrc;
+  // Additional gen1 code start
+  wire unsupported_request;
+  wire sspl_sent;
+  // Additional gen1 code end
+  wire [3:0] tlp_present_state;
+
+  wire [4:0] header_byte_count;
+  wire [13:0] tlp_byte_count;
+  wire [2:0] lcrc_byte_count;
+  wire [2:0] tlp_digest_byte_count;
+  wire  valid_across_link_width; // Asserted when a 10bit symbol is received
+                               // across all lanes of the configured link
+
+  wire [15:0] completer_id;
+  wire [11:0] cpl_byte_count;
+  wire cpl_bcm;
+  wire [7:0] message_code;
+  wire [7:0] cpl_lwr_address;
+  wire malformed_tlp; 
+  wire [12:0] maximum_payload_size; // Decoded value of max_payload_size
+  wire [12:0] maximum_read_req_size; // Decoded value of max_read_req_size
+
+  // Integer declarations
+ 
+  integer i,j,k;
+
+`protected
+
+    MTI!#ax_TASIQVo$BnH@ezmAAX][Ze@ln*[C1?$4XS%^s[JFFm1R7{{=Bkn-3H57[aYQ47Q'i{[Y
+    p'Jp~wvoB;}wj]?T3I2=jQ,[<N,o]>|#aU[1<--r@_$pX(\Vei<wR?#1>7ovO2RwX!]eEULx\7eV
+    GmoY*{+P,xDIlpeXj3sr$?Zs]UB#w[Z^3evAQn!l@1<Y7ZT#zQYA=uB5S6-7?Hc21+a='!n?D}D\
+    _nK=Br;KAu?nX@$6eOKT0Yo-l->2J-+um+jX?vDAuvK~-oX,mBZ[=C,\iORkuG>WjIu]zjy'HH^|
+    x_KTI,<C>Bi}A5]!Co#G7;@!~l*aa1WAD/$aCxk+}[<o{eIZnk;z--6IO<Us'XWC;C$ORY]RsXB>
+    -{#;DK-C2{u-sK2TY@[ATO[p#WkyH<,miU*aD*QYm{ITrB[C:Vu};H[3#U\jEV~uV[oQ\eYin]us
+    n*7DV{H[GADkx2vRZ3H>k}Q-EKC~-v5__HO=l_7H@Ya$[C#72<+nO-{=jGWDApi~JCaI,gOY$[[O
+    *Q!NMxGZ+Y,[ZTT5!J78Dw*+GCD+LkT{D#H{2;pjeRV}{{jYrf~G+ja}^'k5>_p]ips5ljF;zVTT
+    ^rlC\3x[jeT]eIAxi\onU-<Jj1]M11]^l;BAc*C}ep~w*,BA2=oVOV@$l_Cp+=oU<G$!uCp*^[J{
+    CMw<5rQaV7I-+vxHxxL,noeEzBRQ]2_Uo>^E+r*[mB'xY@]\]<mg7l;zvuYZLgUEoE-6XVm@7RC5
+    J\2vlr@3[V7klEGp?57Gzlc^2~=BR,_x2u]WIaaOUX!w<oC?HplqwTQEP$?J11w{;l1+rYB;T,^n
+    7Wr1z1~eCz!Ri<'-lwX1uI@*@=#+$7w$e}?-exTuK\au<wzoU<<{W_-BBa$'a[,i@~59WUGC[<Gn
+    EEO,@Ho3$~K!sezo2z]EEC<z'[&N+Du1F;<D<WQC2g=RH{]lxzp~Bo][;V,2pXvAUW7i[-1Tlzr'
+    WRJD}lo>+pX}wHI,O_r,QU{wZIXHIAt'!Vxm[xjDJ-IXrWC{rnkX>@AxQpiT-;n*\u]Gu7ZOV!!T
+    e=AYJ$K[Ep_wal_rK]?_O~U*}<@paZ{B'@r;1>\}mEoR,7T?Hl-3aX3xBk7u=lT~1En$U]nzOkHQ
+    KOkQX-R99Hl:+n'Q#aJ~~s:U>+C+=WQ,[1xC?<-bCz!@OqQ5rs}k<2=vv[U}vp{[*G'@H}3I7Y{<
+    3v"^z?C:r*e![Ql+evmo$o?Yj_IwU[o@@<O@mVG$I<m@BY~+leBwvco'_n'+s^C=2HAT>s\O^=25
+    oV1r#YY_Uro^EHaRC+yH\5j73{Eerl;oE-}#jOu$T+p=J}YHX~2em!#,;'$e+VzV|ZH'$_1*vjwG
+    UpKI^}kYZ7#>O4s!rzRlVl0*QKu7wRne,;pmI}kj<r'nD7=Q-A*-a<-,1#HDU]7[\=$=W3Booz]P
+    ZY]UXs*U#verNvBnYEX_a}Yo?7i2^^+J<|u7@Y""is;ob~R<[(L,+~{lZJ!]x+7$Zs=T7e[\#Ukm
+    T$2\A$Dk]#D,OI_WY$,A1TT}z3vrW=7t(?$\#j~K_]+[GI:G^<E.pxDps;5,1K3rXD#v1\x]3pNj
+    1mW3pEH!HlH\e,xz']E,~E=zQYo@Vel6,n1#o@E,9vZ11[SEl@U*xmI}^TwwU=DC{Q@,eeo11'o1
+    DXp9MPkBVaHlxXyOuKalG=_D!+\:|zq}#T}BH*Gma\AKs1eCkm3(@Y@=B?Gm!IZ@R*[<4IU-QU*W
+    WR{\j2<$;l_@{'HTXBkr\u>~muY<Yia*p\Y{_kI3;VT2*;pk;nTnsY\=X).[d<eW,wH>p|7n[WoD
+    $;d+s7k[jnsf7?-JmwZD*Z;=@z'w;\!-O$paYZB-2pnXf''r^vnBJw}Uj&m_GX2ru_,]j$=<3r]r
+    ]k*?s\xK;G%bB]@'1Cw]}'e@kT3>{-_1\@2{>+W\\lvAOW=sC1-egi<m+0sa>wwTQ>C^<n5*Zv=J
+    sHrBWr]=!mQYI;u<DIe?Bp#1j1XX[GzE1BRo7W'DpskajBQia3_Zo~K{rT1Q~\E?[Arlr=,DwlLp
+    O@~r*Gx~+Kk'E-$pznQk*TxD]A=^n>5]$~Cklkk$%w[oRo>PvQr3lHODo=ji!=]uRJ${Y;@1o+Bx
+    ]~Hef~[tnA5B$+B7XTr='zD<Q0\YVw^a+,Ba+2e'UY-{Q<q+CJu~ORmo-XxR~WO[JWBIrejxTwpx
+    ~zU;$WU+zt2YEJxm3ZRir!#X<O.DJvz#+[*]v+UT>XT[kmCkeArJV]31>3e=[#Y=V3Z=Bl@[<YkG
+    m<W^^RYpBZ'k\V5s+,O3<pHH+T![GD]7}~#E=ex!GHwj?IxE]>j$iOpDEsTw*}Os]j1-8O\Ys>pY
+    o5!-ne*mWWR32'G>jQ=?#$+JRnA\Gl{{pK><C!H^UfnU^3Ks-3U}l[evHsi*X7Usi\k*A1-[RC2o
+    ^T6a*WIe_+m{VKC.EkT\baI>H~1~WAr+AI=}3r?v=Ya*G'[J$bQ\OzHD2s{N5mx*2+*=I=71GY~_
+    X>21^pT_GRCO%uOR,ruH1+AHla1GR@we'UR<]o=?{T{XBa+nmD]]-zx}YC>Tw)XeI*?-3}=e+o]?
+    HBkz3-]@ZwR2X#AD'YGi\K,zw$^$5Iz9co'Qzp>~-UD_7[2R_wU$e->{QQ'J+R-+QpmzG]#<As}U
+    QxZAjrJ<>BsaX\7uJuHHve\2Ir@!oHX$ZQ]awqV<o]^Y<{?IumO+U!X+!uTwjz7f=lx!bBo]7$ml
+    j!<~!JO;K@wjru-}JEr!vCj$U?D}]1r?'OUvzpuA5mDko5VAW2SB-BKl,x>iE#z1\T=1PH1ArmC{
+    uWOR^4I@l=z{jKC:J}nHC,CETp*i[VH>7zpKsJ17b:n^Q_R%0mjY;RvGk%s<[R'~KJo5,=(SD!23
+    m5{#GmQ~'snJ1TY="EG-o7\mez_T;DH~BHjjpT<wICx%PQ[rieGD->*Wza{R*-C_$E{u;/]s$>A'
+    jI3rau,$-W6eYm}DBQv=sI3\^H_H=_I5Z~ECG;R*@VBp{v18O<@RORr{[;<sto]~s2en!$AA,#++
+    +z*~uY_'JewmmD{E!iO53O{W$b]ks~m>[R;'HGBMO0T1s~^zW[VxT[7?'$Q[lY{{E3\w~!A'JEq<
+    Q\]_GK@}@!a+eT*KTJraol}opv*^>uU*QW1l@\7J}#RXp[,Hn!s>o+e_nU>Anxz-I,3D3m@2*,DC
+    7jaGCW=,?21vU[GI-CO@ropnIZZ%+}Gm%jB>oQ?Tj'F=,mX@am+uC*1=$k=ar-lY"+pBvVIC]fQ_
+    Q[*jxDijn\o{e*+j\~^x1k++_YnY<58{G5C'Xu;{>w#BDiB/tR'#I\'BE*v\>#1^pRo;lfa]]m,2
+    Ypb[Vkeviler6vEQw3UI5@E-A_#1EmG7Z[woaXEYm6KoGI,D@e]oBHJ=ikc#s~H<x}*V#5},MAYn
+    ^gT1\Z^CKmoTzrEsA#s?usw51-^2]7J]VK|ol~?J{H]t6p_[R?5+3je=IjG-C[)ue#,~rDvJ*KED
+    @O5@Y2@@nKrxnJX_XDYWvHZ,A=T5TJ[UXGKX6Oj\BuD[jIW!Ip!{=6+BARKUjk>e>K{{_;-aO1?5
+    T@kGv{V[Xv2^in\kORVz'\We?^,s^7o2>~Os3xwE'\'~EZzkGT]<QG}#RO\-vGVA[Zx*l-^nYQTE
+    O32RjRl7=u<n;=R]k#pkJ^s=Ap_W<mRRp,!{TszED*?1R\/5Xl?2TA*gKX7x1IDB~Qa#Q+}CImAz
+    'Vw,&*CYTUzl#'eQY&/%Y0>zxn_XVAMi*O3]ORvr*HCGDkpLY5~KUa${avehI_[w7G{@NDDzMHO@
+    @g6Qbdo{aED]H!
+`endprotected
+  // Wire assignments
+
+  assign fmt = (level_select) ? fmt_posedge : fmt_negedge;
+  assign tlp_type = (level_select) ? type_posedge : type_negedge;
+  assign tc = (level_select) ? tc_posedge : tc_negedge;
+  assign attr = (level_select) ? attr_posedge : attr_negedge;
+  // PCI_EXPRESS_GEN2 code start 
+  assign at = (level_select) ? at_posedge : at_negedge;
+  // PCI_EXPRESS_GEN2 code end
+  assign td = (level_select) ? td_posedge : td_negedge;
+  assign ep = (level_select) ? ep_posedge : ep_negedge;
+  assign length = (level_select) ? length_posedge : length_negedge;
+  assign cpl_status = (level_select) ? cpl_status_posedge : cpl_status_negedge;
+  assign address_64_bit = (level_select) ?
+			  address_64_bit_posedge : address_64_bit_negedge;
+  assign last_dw_be = (level_select) ? 
+		      last_dw_be_posedge : last_dw_be_negedge;
+  assign first_dw_be = (level_select) ?                              
+			first_dw_be_posedge : first_dw_be_negedge;
+  assign requester_id = (level_select) ? 
+			requester_id_posedge : requester_id_negedge;
+  assign tag = (level_select) ? tag_posedge : tag_negedge;
+  assign tlp_digest = (level_select) ? tlp_digest_posedge : tlp_digest_negedge;
+  assign enable_ecrc = (level_select) ? 
+		       enable_ecrc_posedge : enable_ecrc_negedge;
+  assign ecrc = (level_select) ? ecrc_posedge : ecrc_negedge;
+ 
+  // Additional gen1 code start
+  assign unsupported_request = (level_select) ?
+			       unsupported_request_posedge : unsupported_request_negedge;
+  assign last_captured_req_id = (level_select) ?
+      last_captured_req_id_posedge : last_captured_req_id_negedge;
+
+  assign initial_cfg_started = (level_select) ?
+      initial_cfg_started_posedge : initial_cfg_started_negedge;
+  assign sspl_sent = (level_select)?
+      sspl_sent_posedge : sspl_sent_negedge;
+  assign lock_established = (level_select) ?
+      lock_established_posedge : lock_established_negedge;
+  assign lock_completed = (level_select) ?
+      lock_completed_posedge : lock_completed_negedge;  
+  // Additional gen1 code end 
+  assign tlp_present_state = (level_select) ?
+			  tlp_present_state_posedge : tlp_present_state_negedge;
+  assign header_byte_count = (level_select) ?
+			  header_byte_count_posedge : header_byte_count_negedge;
+  assign tlp_byte_count = (level_select) ? 
+			  tlp_byte_count_posedge : tlp_byte_count_negedge;
+  assign lcrc_byte_count = (level_select) ?
+			  lcrc_byte_count_posedge : lcrc_byte_count_negedge;
+  assign tlp_digest_byte_count = (level_select) ?
+			  tlp_digest_byte_count_posedge :
+			  tlp_digest_byte_count_negedge;
+
+  assign completer_id = (level_select) ?
+                        completer_id_posedge : completer_id_negedge;
+
+  assign cpl_byte_count = (level_select) ?
+                        cpl_byte_count_posedge : cpl_byte_count_negedge;
+  assign cpl_bcm = (level_select) ?
+                   cpl_bcm_posedge : cpl_bcm_negedge;
+
+  assign message_code = (level_select) ? 
+                   message_code_posedge : message_code_negedge;
+  
+  assign cpl_lwr_address = (level_select) ?
+                   cpl_lwr_address_posedge : cpl_lwr_address_negedge;
+
+  assign malformed_tlp = (level_select) ?
+		   malformed_tlp_posedge : malformed_tlp_negedge;
+
+  wire [31:0] int_valid_code = valid_code;
+
+  assign valid_across_link_width = 
+		((link_width === 6'd1 && int_valid_code[0] === 1'b1) ||
+                (link_width === 6'd2 && int_valid_code[1:0] === 2'b11) ||
+                (link_width === 6'd4 && int_valid_code[3:0] === 4'hF) ||
+                (link_width === 6'd8 && int_valid_code[7:0] === 8'hFF) ||
+                (link_width === 6'd12 && int_valid_code[11:0] === 12'hFFF) ||
+                (link_width === 6'd16 && int_valid_code[15:0] === 16'hFFFF) ||
+                (link_width === 6'd32 && (&int_valid_code === 1'b1))); 
+
+  wire collect_stats = 1'b1;
+  wire [31:0] polynomial = ZI_ECRC_POLYNOMIAL;
+
+  // max_payload_size_decoder
+
+  assign maximum_payload_size[6:0] = 7'b0;
+  assign maximum_payload_size[7] = (max_payload_size === 3'b000) ? 1'b1 : 1'b0;
+  assign maximum_payload_size[8] = (max_payload_size === 3'b001) ? 1'b1 : 1'b0;
+  assign maximum_payload_size[9] = (max_payload_size === 3'b010) ? 1'b1 : 1'b0;
+  assign maximum_payload_size[10] = (max_payload_size === 3'b011) ? 1'b1 : 1'b0;
+  assign maximum_payload_size[11] = (max_payload_size === 3'b100) ? 1'b1 : 1'b0;
+  assign maximum_payload_size[12] = (max_payload_size === 3'b101) ? 1'b1 : 1'b0;
+
+  // max_read_req_size_decoder
+
+  assign maximum_read_req_size[6:0] = 7'b0;
+  assign maximum_read_req_size[7] = (max_read_req_size === 3'b000) ? 1'b1 : 1'b0;
+  assign maximum_read_req_size[8] = (max_read_req_size === 3'b001) ? 1'b1 : 1'b0;
+  assign maximum_read_req_size[9] = (max_read_req_size === 3'b010) ? 1'b1 : 1'b0;
+  assign maximum_read_req_size[10] = (max_read_req_size === 3'b011) ? 1'b1 : 1'b0;
+  assign maximum_read_req_size[11] = (max_read_req_size === 3'b100) ? 1'b1 : 1'b0;
+  assign maximum_read_req_size[12] = (max_read_req_size === 3'b101) ? 1'b1 : 1'b0;
+
+`protected
+
+    MTI!#@l<wz4G!]i\Ume-Ix^?vkG2^uIW{CoR"F^r1iTUEHFq./($xXOrvBme|\imkrWC+R*~33]v
+    sv2s{2Qo}eTn3HEjByle^p#7+?}>H_YD?myj{e3t?TJ^OY[~pRV,=!ou2Y1Gz]W^8+5-zv=-,ceA
+    X*XYlJT[u[L2Dps-j&m<!J1_,QuA-2JzQ]_U3'BA3Ru5l<pLl?[Olk5wxkUTK\s#VIVk$\m]=v]Q
+    k5puzle_z#4Dja@Q@lmv_]*-raw!DJolH_+CZ^WQJYuiXpuITaDoa>IGIi^?<*{rQ1jB#\_Pf?ea
+    A[aB;^s<Y7R+Zxanj?zHHe]B,#eR2|^p??!]V@}-D2CW2k>aI^B~+X{o=?_D1[vI*iz>zlm]ejt3
+    *wr$UXos'=2lY\U1?vDJ9^#,VL~Yv=Q>aY~'?ATAOzrA'umD$I@oCRi]{e\I{Ql7on'J^iv;K'wD
+    nB\?2O_HEU'Q\CN#axY[C[3+D73H*7Xm'YxpV}?QQ{,zll2'xuH'zwTzVij+*<$mCwAMCGE[wYax
+    %BYB;.JY7!on}$7n-xbE9+jm5}mKwMm-7=}~B{aw]~BZs@|jzn*m[Cx]B?R'K1Bk[=#Q3@wB~'^V
+    eiK{_[IFEnDs;x1$*~@[z,^CmUwlioA'U[Hu%:q+,uGKUEE,sk@U^;$xVn*^nn7e{7iliJ#IH}X%
+    OvokvBwlOKn2)D~H<,v]]'=B~1li>nV>#l3,{r{r>ao[T<7pZl_I}NtusXo\5~Zl'Y>}@pm0~]\<
+    KX'Z<11@J53sK5Wlis_=J*;n*AIonao1VaW5_WV<]+'_WU$?X7{2RYioAa*I<jl5F$#e2*}@jdY\
+    JI6v"$~+-her2'^r{a$<-7JDE<xJw*R^*]3>AGOV+O\>,CQK]EYjk!(W-T'kOp*]f+CG#E*\e"Rz
+    Rr=IG-HB?H:1jJ!0xk[?o2[W'\nX5w}vY,eCOJAr];{7\z~VOIp*n,~Htr7?_3osWY^5neIk_Wr#
+    Jjs'\r?>T8Z5,I*ews~I-+mB?}YA>Awlmn}^~nuGB*?\ji]:,~I^_WvH?}x!*OYv7UWuV*pG[wTQ
+    C}<E#[I\}{G<|i$\'XsGj&,+j}^~*v(2Y_xmr#G'lU;r=]lo'T#k>@wz{A{(/^kzWLDV>TC*IjOQ
+    {_=lH3ZLwD<+_-}+5<{{e-}i5{=Y\!U#kvOs*zn[x{JjDR2lz__oI#n1Q2WO'C-lHero]xCBap!G
+    Uhc_BAs;O?Y>w^UoXjjn*Y~?nmE<*u@ER+kR\~Cz~5Qo^!X[l]O1\!XRXn2v~\X>[*CW}_$0Y}-_
+    ;CU[f7ur#^-TkYR2BOU;lVER^rBTBC}sQEl+p0Y*^@lsY{U{jx,n!G8~Vi#R\G\wn*]'WK?g[]2s
+    -G;mH^iBI}K5e#],"A'^eByx#Q3EQ[$lN?{2!<rB-7!=vz<w<2{EG{{naAhVm>n~w>}CR,p?7oEG
+    Bv17!\Ax^35;luW6$WZoSm'vzxKJ@KT\O=2]wmGOYxweV^^z+{]?3HlapYE_jr1senQR_pC-o?57
+    BpG'HWsu!3>VQ<[ms[m>p\5k+u^R2j_52Y_'I{1u}?R__z7wJ^AY@}w{Ck{w?HG5<BwU+4$[,@v~
+    2K>=XYO{B_mGO[s*k=ppI2_5T#vH<~Xx6jAVHn5Dlv<w-Ck;QemW[_,7-=|AYU{VJCGZVIY7;-!O
+    $omPs|rXvWZ\uX[elA'z$ArTYEiO@B%e+WoCUm-?'wOHs\UBjBZ)Mg13I=olJZN#TrZN2IBixj&4
+    ,COn}1zl+['[Q\;XV!@A]IO$I{,ZSe\A}o?H^CP]J!*~7]~+GV>dV7#[3xCY!G,iH]]jDJ$Do]BB
+    :o3Xu^Q^!vDBTi$\7,-n{N=@Q]$WVW=U~vE<*1,le]hwz~?CY@@arlCYOEH}>}A=r7?;'*EW6KOA
+    RzlT'Aj]oGaQ_dr7#Y7[AU@][}-lQVRB3'/zz#2mw7,W5w>V[uOJ$K[lR+G)}>C7;'l11u-7g>vZ
+    }ju,@RZ;+r}nw)x^o!dWHQaG=m=mYn11@QnmH6>7<22*OJez2Q}-A~RG~j^=YI/,*B^=Q]i7z-T5
+    o+^r'Gu@j<!QCns7YpppmZ_"*={[D~J5BK22-^ev\O~>-ekYsp][TQu2{'Y^DpWj|lKK}ZjAj(E-
+    nm!_3*77>\T6D_ue5pR]'!}72[ZlI1@<_BRoLTAAOv-anZ1I<!}l=#oD]u[;r**KJ\^mB#V>OopC
+    !OzRAXYXeU*7@133>VnreU}DupDZ?k<GCYHG!RI_2xC,71wVlgUT[v+{{J2_!Y[eQA6]IYW\H;rQ
+    pX!Q<\j~Ei@rpQH'!,]2D5K,XI?i]T7=2IAGK'aCQQQ@+lVFsrD$sr!>WlQRGvV51Q!\;{I5]i{Y
+    S$k'2$Dj<iOu'Q[>vz~~{\3Ro+CaYDwOVCG~p\#{w+Bs#TDOnN}_pQu-\@,p,pV#Yj$;sojQW\GQ
+    n$C&Ps,V$|^jYn@RqzF3e,pO]TK[X}X7KvAl22*WOgNP~a[<.&>DB\r_I?[Di~85G+D@vp5w$klB
+    }s[P2R1@B|pmn$oJ32m_~;<,AGIp}K%*[wQ<DZ!DI_I[oVa-v]7E1V1iTeCDD=]9^3*#i'o1BdP]
+    -o{HHC>HaXKa<1}aQillDj^On3EvK[TCguej,ETpmRnJ,ckIm*\[!a45zSc'}uv'z*er,*HO{Gph
+    z>mW5\QB0\e#*w>'I}[*\Gx;TGEK]-v;YF--]Q^H$3H$C*HHKw]+EA$XEYKe'E@AnU3Do{@E3@Os
+    @jYsG{2YxlQ;]e8q'?B!Y1Xs.emve'!uz2snY?+e=pe=I}I'R*]QTIrGBe>\E7]nUJXz;.m*neF7
+    W]aG_'ph}jV[@*<>0<<{T72Czs~5BM=?*I=e'vwn^Uenla,Z@TB1pGAXx<R3wHT[#@Q;->\@u==C
+    VEiw,!VwAR(YUsmeI<<w'>X3Yw?,zEJgpxvE*Y*Ks>ZX^uBIL15rpD!pCsw{Hz}kjxoY~x;m1ZD#
+    Y\kUkQ^nlw],On<[l\}w]=D=\xr]CI1Q#qX[#D$TJ<s[^7s<r*ReXW~Dkl>Ol=Up5zk_#Om*_-+^
+    x]A,QXKHn5a\m[xj2mYB_m^Wx=G='nnY~30T5<}}lZxYeG{;pW$UOC1OCKn3_~UG=naxx~DQ>=A$
+    OxrU$-1"uDWGIxG]#E32:JQzG?U7V~UIsjUCHz7,rjRA!p2VJTs^OWvwl{pksmz-H}YCGaC7YV+z
+    Wke[7o5^B2jmZwaT3^H>Z=EVwN?{A#c,smZHp'$<x9X\w2e=Wj*J@a=\Jm,@'$}@B}Yr;BmQvx:1
+    e;#~8~H+7v$Y-U$ZuQNO,<sBaUTVssnADEKO>;?G'iXDo+zbl1_@B[D]r9QHp#wYQr*oCk]*#@JE
+    i7}rr?CYVXV$J<2V-]\@{omXVpj*n=[;RW],DCH'>wOQ*B5ion,O\a%AQX5R*vG;1x-sw,{u{wo~
+    RDZ5B*15ap2'nC#i6vCAD9Q=R\jzO$Uz]mkHXWXavj]2Bk><xkPKa-@o'-Er-VOsaQGw]*lWHA?_
+    a^[xX7Wp97$m_=w'i#sQT?XDn[#AaZQ!3:e-=DDVEm><TT<o$Zl_viZRB}v@vl-s5\]V=a),B*YI
+    ~2O[#{wazK74sQblQB__HvU@]-7E@oous>A}2RZ^]G~P*VUXZl{7[Wa@$i,_Xrju=5j1gy\u_u)G
+    Gu_,IvK]K!Bx3A3EuY{a'@vy7+]\CBE=^KGom]<E'R^@ATX^'C_'Go=+}?_5?A[@,r'Ix<Dvx<H3
+    #+E,Y-oE#nmAy*=e}{1rWr$>sHR5@zY_1h{Cu?vC{p+}5i]k-X'=TR1k'5Q$pXlm7+(;B<#KUU[i
+    xBRvi-nuE*171J7D^Z$p~B3l~*zn,rJ0'CII^IZx@xJ{B=@neOJmlwl3W'W7uT*?XamUwGYCQG1k
+    7}]-G,Ka+ln#OeoR/Y*AD+>*3'#u!>lnal83RIovR>o=EssG#*}_*TC}eL~XQ]H<o#m+_lz,?[YE
+    Ez2{UJM7H{_L!aGp[xW@'?A@e<1J{5<lJS+Va]!_$Vmam]$[T[2a=ur8_,J=o=Tve2aE;B3'aTv*
+    o+Ke[uQ@ZRU?=,ezAp<[HG'p{*BT/KTrwU_;pa*vava{Kr'@7I$Rs7XWIk-\]DlY1.m_!]j~awIa
+    !wL1+$Zpz{_VRjouDoOY~O+B_,oQYX@mA<l=k+vG{EI[K$DC~n<Ci}m5<$?jo'-pDDlIal#1i1!s
+    -eJ^>AJ2+=AHU1J:2E#rA\$YmCxJ[-j;=p#U&%An7?k[RE<'[?Yl#?O5w2l{'+7I5uHQxBG]aZ|1
+    #[JmQEa^Z!?+[j>Er3Qaj]XKT2#2oXB_>>U#<Vas+n~G_u#ySoo]2[,i*Dk>*\2*!sG;<I<;}82C
+    C[V~{ElYipw}Cs]5a#UpC!][]}]\*sI{w[9C$\T~+u!]1-]Lc;'Y+VCQ,'UVl_az_VwCp7AW;li<
+    v.x[[x-\2\9K>*elq,xHY?O~D[ZAAuso'Y[*Wjj[p#1!,Ts^j~lX>O>]O0jxD$*~J+{rXmJCH]j~
+    l-ACKX{\r?^Gn'Ip2]3p~DN9smROj@DU[-usRslEEU2$TCj-z>1jHrE7R?<pK>msi_w7K9n}u'~U
+    rDi=AvjZ\o&0EkXjH7unp->2rexDB<}HQ\pX~D$~L<e,-1_3kKI>j&]T_*$r32Tw$7!DkexkX~j2
+    <2XCH-z;RzT}Di.g!$pUw{vnABOaQ{G[$m+a3OmBCu\maoeuz([E!Ql5OC#Uxa!lnH+Drj-p@*u[
+    ErCmj)rQX--[]k?eJK>a'*AVCD~j{r{RZ}a]XQrulT;Ia-5'RC~G2}gH.*ersKzYUT'5R\5[@UCX
+    z1=;Yv;ECJsX_[UI_k'@aO~Txzr]u3<D2JNeiUK?C+@Cn3H-+spzx'I'VmJDoaI\ouW]r;JCGooG
+    ^kk|>>n2',a!][K<pWX<Ez=1]%,--29'e=+-{DCH>Ym1>D~S8jJmYr1mmJQiBne,Q="1zE^*#'UI
+    GB3'UjQBYx:ZY=J*As{E1a]$-[kS!TW'\YRz@HVv}#wD<D<RC!GoY}Cv'JV-$Y\nQ5{~N>o?B,Z'
+    mpnn'I2QHM~HzOzef*?3TYa@5AXZu!^_W--{jhuQ,R7dwV>QE;vT^1#xwrQYmIg~Bvu1>}KQr>5{
+    eO3Xo<_jm*i+Ir-r}aoH=VDtIa_uQz!T5w15E_G3*E}TWU{VlIEmhQ}$r~7*A^#Rr*nAXH{Yx?Qz
+    rRl>;I'UY6C#<}I};'rK+*wox;j#@T[w{;T\e\,V5JmoA_173[YnR2/]kw\chix<Hd-<!H@L>GQs
+    AjAvIIwD1CjTonGa1Jm=x?_]+_x{xn'R(EYjel3eu\!C]vk@eY>\e5rzJHx?$W]AZeQoI_1I2?[I
+    ;=uO3UwoA'r5'pJAEKI#KwTlKs~{'="^-<'wABm~r-G*pWQz+;CAa+}H{2wsk'r<1Dj1Dz}jJC^#
+    +[vj;mXOuI'a+\?Gk~G(><s]#-Q*nC2U[-!oB?Y@@-vX)Crr*TDDIlvK3'm,Glko;uX\T1VK-K52
+    5{{;!=iKH>[=[!IHk{D[J[=?uvGJQ\>rUu<Z[[I>n2zAOmrj'a'izl7lZG2s@\DEO{>7$|5;HR$$
+    3oHXX#CX,r#'~u1,C7Vp~2jK@zJz<5sx$'}RFYHRrfk<zalQ<{mol~VKX[LF,7~+6DH<wrl<v'(s
+    I#K$1_pfHlK[,mB+?1,-aw>p/AO~?zV$=VZG\T-3$JnO_XU^X_+UlCO,~/7<]s2r,Z?<~3&GJuK]
+    UmA#$'5l5^kJ7s\FD'JZI>lIEW,OG_x~[>@D#w;HxoK,L^aleoBHso]#$x<ConD]j,B[#B}<3k}z
+    UFm+nuYHv\es<G5DQJ=w2{Qm$Y#*GYDDJR{TrsvkE}&rj-{o4K\5@oHBR[Rw@3A<se;E=Esr?EmE
+    R?YzKzV~CCKrY~_jJD?RoW[nC[rZw.x3@OaBT$k<A+_YI{F_*Tm+]pn]+X<Gz^^+]wB}3}jTUA\u
+    OCXCmXW>Oa*x{Qj$$WZn7wQR6x#@]$Tpv=5K!A+=xfplQnCK'KO2rmH-lI\^Ws,8lCo?\RxXjo[]
+    O'\1vvAz17Q=V1IsQum2unJ]jQ{<{>Y,jO_1wlp]sm+=0a-uv,}wY@EZQ$y[rW2SDXp~VTVn]V@2
+    B$Hokx'@~>Io-[QlWXZvDQlG:r_kWw,GG&8T[k2}t}Bj!Y]13sQ!I}#T]Dl{wCDa<Krs>l~$I*;E
+    G}@Y@h?=jGDURB\;X_Pl!{ap'Vv<T]}~D+aD><\+j<-;\YWKQ\!>}EwHs2#i*xT}^{Q,n@j[^IT?
+    _*HTDR2ozY,ow]2m&,XQ$UlB?^R1G#TvU_XGCR3Wapw~A*rUmB^JrIU;CB5-w{_e{eR!#eeI>^XD
+    p)m^[]1Ok<Ilg<l-]:e?[Ua\k*c;eoOx{H'p1D5"BJ>~;]rmsC,>$\HBQv2]o'mKT13Xp,j>K[UV
+    ,r_*,EA5zR^@1@Wz,sAoG\5DHU;KID#~I,=OA'E]pwx_Gp3vTwno4^YiW@Dxn%_C_kuAWp5\?Jem
+    2-J=?$xX=3B>~1@Xaw@[*^zOe]4jK}s,kV>>>oHWhUn*YH<]D5a<reC+m*o{s.XBVnBR>_<C@\tf
+    Uoz\>,vV.*I+5OK3+!aj2hRJpl\=ms(=mWp<Owk[}-vyd$wnWmpa'S1j;e][^5ZUAI=pE53jkxl?
+    {,{n'-gAQ~X^p2lzV[E>53!!DZ}<l3,A1k2@<s1,iD@=3;*hBlJ3BiuA!rIR/xpI>sv<xQK,_==A
+    RGRH~Q2]1EJOoV<D_tkH.eUT!R[@KI1vp\;HXV$*'C\!Y@OkKQ\X1!a_rx1n@s1n3xKz30T{$,oA
+    WWTw[D]*[73e}~*W[~9@z*2~UorCrQT[1}?^;3$/?_'E-D[<T-'~7sp?$unkjBKUYY,ic"HR?l"A
+    ]aVl#I]DW2-CPH,B*WAB^w>2]}sx'*\;V>oCJ<1*+RXW}i=}WpXRO1#oj+[Kk_\3m<<G^~Y}'YJA
+    3D[U2?>U$s3X>;oH!,vHJlJTTa]Dw^=I$Bee{5-lT},nX~OW5YpiK.}ETYu.woIil!52n-5eQQY#
+    ];p*5ExA*~3;pL5o;!>$@<H>*>'p?V{]vel3,zonz;C3!GD'-YPal]Ie'_wwTB~s5{v"Orn*+IG^
+    aw$Y-(mXpk!aJ;ho\;^2\}J%B3uX7T2r(}']QrDW@DQa<,eBw><'}7Kv}t!rH'RH}T^~O1^o[]f4
+    'G-e,jB5-^_iQ,>_Wa$IkjU;xUO~EK_wXl,rYs#klmn>HHa>{\R3s+~zYx}I>-5C>_$XJx]DX-pY
+    Ou$G1,5s=][Ek,@]VDj<Y;H1B[xI8JU{zdo1_@}==~'5Ie7k~K@GC]kTDDOnop}5$E;n=Tj'#D_k
+    !OOijTC2HXRsROlOmXqDWe'-_W?R2\lYIInPJAT;:_^}T/r^OoXH+kJ-2nRm5n?wzo|CAIBYHEll
+    {^ZDQVYOUO$uvK_\Ra^BA><C3\@}-rT{VDss$-7V3}nDi_DD;Tl*Y$uTY}UGQY#c!r}J+eomx;3'
+    A=?uk+^In1}DC-]2J]F}}Z7@Aw?^\HWUzsHi]k#Iux1KIj]o*Gmos>uf$T1W?li5iVw3B?v'[5;u
+    C<<Yo+-,G-;eevn\@,K+Cz<RXeIVKvUwO}5v{7VOO5i+P_QGrBw5UM>{lkE+~<AG5=!O?QT<e?G_
+    @UcO>WE>Uu[j~RBBA\o7>AG>$Q!e$m2l^Wu_UR-a7TGEV;*2sA3<I=^nH><]aIv7CkB~7T;7+H^!
+    aa}7-1T1k-!u$Z=7OJH]W~j/]Z5;C>5a_,uOGjGTeXxC#oHHj7T*=jprlZ}x><CWX[_inT2v=mw<
+    ZpCzOXRlOYREBm+=sJ,X5=lo?HU3$s+pwwv\$#o$O-Jw}p}1C;JGzzu*xjC$z[JA@{UX+DIDn*E$
+    >sIe~x71p-!w>{sE7X*,>]Aao'7uA1J=QY'E{<Y\\ExCke?>WRD@DYlDe#GV;>{\D~lamT77l!ID
+    uBOrTeUH6=unXnexZja->3]w,Ve@B4~=E[7llO!TeDCIK]u+e?$z<\mo[[{_r=[Hx$#pV+DRRnRT
+    T[t?ww_*7JB7_uV#veBvQ;xWsj#ck,oXC>~KN{,m\2on{!Oj@Dx~KkE]7mO-W-oZauTuTl=*'i5~
+    l_EsRKB}i<B}osnjK3$\v]k>UZ*JRKH${2[^+U\U*xa{1Ua!R#VJOQi>E_v1^,T5>Zao{RjaBKB_
+    !rOXwGen7U}5-#D#eux1zGQJ1p+*'lt2q+lrA,zTr7Y}JR_JI>7vJJ\QOnB;]jm3T<^=O#}_@BY^
+    $s_\;nw@_I1av!*D^zRkDpE]L~j[1K\]2l_^\,@eD\1kr+7i'$PGEx?EsX'hZ]I@a<lT7<<OW]mB
+    _GX3O~<*G}wKvWI}s*u;x@YZxo!vBYp3M\xH\YROBmR'VB=x_0DeKp*B\kWG*5HYC'RJC\vkC=7'
+    =EVA[T;skQ0[l#YN8=J3e|HOp#1_+_l;{U4a['_EX,7#{E$o'>75]*WZ5RDBrir}@+@w_I3YmD-w
+    GT2w[T![>I^a{oD,vwRpJU;H>pis<U~:yoX~sY}A1}o#]|,Q;Oi-}U^@O2,>UBreOJP7!onLx]lT
+    O$*OQ<-ola~Q<ljaKDlG^@\?!pnR\2GkDUV'4/^JOT,aOH=KX[:.GKA3n5X$[z*jvEsrkCx>[y^X
+    *xVWxT8rzsA<Q-3#l=Xj~Z!A(reo[:)F'Jo~poHe_=p[#$e<D'Ox@v<,n=]3b&F5IWsri$G2=BGl
+    ;^*O,\O,zZ]gp~p,I@<Jnevi3OI$,G-m]+r+H>rUWTEm5l_RT{z=\2J}{_TRD52wsAz2V_JGB'Ej
+    =r~1v5vkV3E?25o,'GA!RDp@Q]x#iO>#wLU]5s8ewXT\HGk2YkxiUCz!*R{G+!;]EAxAo{ueKQDu
+    <$oqkxZT{AmBvAoe5xziR,?GIC+X5Kz~}jjjEqC;KU^zs>pwWlCWGE?,D#ba7AVaj,*[>ZA1'rp^
+    l,=dK_+ImvYU,[*aCn5UVk-<(RC![p+psDo;@[^^~@V[u@}Vn:n^AIQoK7mD@-geoX>Z$HY17G+v
+    anl*;2mxv55CQ@{sVe,-CJ@(.eJ]k%{l[u@Dv_T'=!.O5EvTj*QJDOvMj;1QCsisUD=l*iaK_B{Z
+    )kY$nw]XjIx3IV?<2]nUH~j@UjW\KFD_H~j1Vp[,]Y_x,[doX_E{^Y~Ik;3wE73^,wZaQBXvX$iZ
+    ^Z]Vi'CX'wpERZ!f8UO5r!=wZs}2;'/QVo'-wWE]JpJY5TJF,B*GHH5n[urj]=G+cQHYsAIs+naZ
+    XM=3W2+-I=1C+GT7=<G^Xz}5=ZGBAspQ>$uI+l7>~jl^oXP}OC=@ECUwVUlqMbI<*o\x7IEt{>IE
+    1m'_]2ue,+}}Ao2}|Ci<ZI$[<e;X_A_#5WIp>oQnJZlu7?vY5'+ua'mTay@n>WV~,\zD*w2\T}Er
+    -KV2}@swEH=}GJ-w+so5_XqE#;neIjaGUA-Lj[i!jnHW1$\@lOK5)!w=U^p#p)#R^+'e}u_I>WCx
+    rsz+~2Wx6z@l+pYZmljY\HYBi@n\-:E4O]<V#R\<izI^wp_73{QKxQ~?^el$[>_wL=<japA}m}I1
+    UWO{<LGCpQ>>DGDx,pX5vU)9e=CT]l{luQ+3O~v*?$_HCJ<x)+$DG$[a$D71Ou[T-<Ys1Ck~n^kE
+    iL3T];$ECumx\!p#=~A=RA+_>=>,-G2}IoQ]T,-XEsaUw-}_}}sd=s{,[\Q]V'}5n$p\rmaB>Tw'
+    UY]*BB@>,^w_*CBU$kla^v[A2]\HbG*~C?A=~a[lsGur,Tx5w~B#<Wwn@-T,a7;T3a_zz43{B>s<
+    auH_s!FYRAJ^<~aVsT@Oe#V#Bn;!$#\wEvV--WzxZp!rW3E0Ul>m@IU2r2QA1wAYQ>!?zU1v^>-E
+    =\71\HJ][^z^DKs]7<+v;${Ijk;@w^7v-To\[rm~'$5?gwr<7*ap>vjXCrv;O&YwY@$\j[Ou72l^
+    ?O[-IlQEso2OUY@rv*XlT$@&5[}w2R,<f~a*\X]z,x>5_R[<es=K*j=*#G_oa-1I~?<{]5YH{YX~
+    ~+_WOH^n}ZRH<TOzYHDx}|He}}<]=vAAV2,,QKDO_po]_Q.IDXlKE;*rwlB4@U~7^ma'5nTHRO\<
+    puVIR$_}X}XwU,-nsA@*paK#ipYWQp]@j7',?T+2R$5R?CXk1Jzl]"?HAGEv&U\-xu7G^ipJx"GD
+    V5HC~=CA]Gl}k!In;~D=^|}#^UQVW^;{CW\5JGzZuv}[V+2<W-$4eY@}5^5aBl2To-P->!=x[!W#
+    \Q[z\?JCKm$CrAoC,jkP21}ObY@G]>AAkfemuK}uI'N<5Va?{ZlVCoAD5I_'3R_riTB=[X$B5=~u
+    RiUDaG$ar;@ZGX$@sp;DGn7YoTHoOv}kpoKlC-#n{;X-YaCx:1^5n?wB53Hlj<l]l3nsp3wIUKA;
+    YvTG1K[$nCp\71}7kwH-'+$p@BmB[]=TTisT@E5V}lso?Rw~VHaEHmVJ$OpkAWen,Cn<?2}B=DvY
+    x{['{o*VRHU^KS}TD]aA{]*7zi+1$WB77EU]E5KAQ-G}$vv=E1'O}O[I\tpYXCCT!KII#^^1R[d+
+    Y2-G)/euQ*z}oi}r{D)+a@nC>;J$+DQ0CKx;_srv.aT!=QR-=z]w5v'k$tKI[au+U;p[o?e=WvW<
+    \Krv$52AjmND!~UAhY{,]jrG+B?VG>AKuJOY~j?'<{7O7o[~[RrT^cq|7~;r}k-YEiC_]wXpXG#+
+    CDAo\v{Zk+;E25][;HwprQlxr[,aJaQw{[GaZEjv<}K~,Y>{(B1ZA'xAkuHHZp"[{lui{ep+*we#
+    jzZ5BICmBkG#,R~FK+eOo5Z[H=_]:?^o3=v;vl^2nlT7kx}GrD@5JleDr){r=nE*a]RXo];jzxu_
+    ioOXv^RKp'{+(vw@<5ppWw<33Yw]a]TmE#>~==Om3=sn@vnRwQ\!2ZQn=<Bj1ujo5Ge~@@[]Zv{u
+    Q,Ea}v}#H7V*7=wnzH^akHOX\J=XH]'Hko1T=y@*G}Ci!TD#U}y"eU7KM-TCk{>aj!Bj@gURG;&W
+    7QWC+vH\^jA31IZot::>e*V\nJ+Alo=Y3CI!Y\VZUCuWE2Z\R\sn<3$A[A<[iTwXBeUcC?<QUe$+
+    IC-Z=kz!#a5I2$328K$1W}EAw'rUzxEo$Il<R~Tu*;'>}}[m#GG3rY<u+[pz@,i~QW[B{QU}^&]E
+    'zl7u~lRZ,!o<^Jxa{<5+nAn]\C'Q^_J,eCw'^YOkaanY^J5R{,BOuKr3eO5Q;@5i@FEk-'IJZ2@
+    T<XLpnpZJ\!llZDuv]>w=?u}J'zAYo,;Vjs@lWjuUs!]Hhm[eKj,[eV7#}R<YD-O'a_\EO$;,Bee
+    #nOmR3iOB@_Y_'!\ojWG~AinH5d1}*}JH-~}llUG=7\BEl@sZT~Zal3V>!OzRoC\WvlBK1GU7E7?
+    '[H[m;='ZT3|*nl#F\r{#_"1mnkUxDm,sB<B=uJHr=-H-m#]DT>OJ-]^@O#RA*[2Y[j~BujKa@R6
+    ;]k*<7Qnpn!JKXIIG{uoI-p}5H$X3>GD?x{~}H-^m<WCFISO5lKq[3)[Ze2#G],*vEoHT;l%2}R1
+    e-Q+7[,Or'5n!+>{+TZw5;72T_E\xCKjIu<7,DAs0-Y]G,TCE5wIVC[,YAj<zHx3-r_1w2-VDv#7
+    VOYo#/Ua>15{3Ir[37*1?Dn,,_<wZeBR+lkeHYn[~WBr+3_~}5n=*zs2Y+nC\O|lTv2B0BYY!,#C
+    T2C*=C>>z'AnxWl}~9n>+G'^x~@CTO[p7;xCI^e{G5m&=lCYJA5TspZYr3'rU+.,#Om5oWao3$!s
+    5oA+peTxKz$eolR=*iR"wUJD7Wu[Y7@?l]a[+OOaQJCTEEz}G52jp!EUQBuT@BOH6rj5r5Y]p\WG
+    #2pe>?nnj;pZez+,\rwC1CIHE{psZv=nFje~k[#BT;}<-rV{\uD+[Y@A-+e+nK*<]P[Uw#IQv=Cv
+    e5=RAU^5np=_!w61^Tj,Y]~OW,~aAsoG#z}!5]^+Czz)]?A*'H,[=r*lYD@#}_Tw{Bp5=;xHW}D{
+    d}3o{~1VOp#RAjs[{}G$aIjK-!r}Bjrr,a-KeRC+GaxBAl#}mjk-@3a322a,jkQx-#$mraT\Cm{'
+    =J-@=l~IIT-Y*}_a>,'G>W<z2azeH3VzCYKZ!!XZ?92Q~sw{-vV>e!i-KD<xYplk,lH}[Hr3wTEC
+    *Z',_[Yv~[Zh\7-jzM!Rk^Rsp]{7]]vvDa$5?Ro#EQ2E#$sBp+$X7Y91p+=lkH@QTV-cmQ$;w}Va
+    U1Y7;Ym]Q'\Gi'7#vJ>RzZAajv^v1I?\ZI]ADGvnQX@3RAeAEXj~k$DJpjHQ^*_Q'1zk+v^jED$H
+    &~\\^p}xA#Lv^rxsjpna\+=uHl+I~=A&I5+a,CAlDM1rRTsA\Xu7vOiUYizZ5aI}==t<}l_OrA-H
+    ,ZXz5jn\urERX{J}T{<N#w5Vk]7Rnarl~UY?57XK>xERj?WJ;+li;5}Jr!~!l_k7@7U'y*UJ^@+n
+    mj!m>KU2mbVkT2(UIQous2vnQ{xT{UXE@w!aA[J#<!jC^uG-$@]GEv^@DnEJs><ElB#$Yi}2jx\B
+    Avn7m1^anvaT<5EGxn~!Y2rr,{Y|+=mV@QKe$I2^$;DXIIV#XVmU;rY]p\lrI>;rq:5UYsd~n2*o
+    1-zApKW5{}=VpXOr[ApQ^zp[Ersa^D!fnTn,0!Dw'J7KK$={VeIl@PMn=D;px'w_,iI;,Bmo={;k
+    a]n/qpDT<[7*r&TO$>$P5jeeuzDOW<W1T_G5'n>K@+}jRX+\B-UZeijn)rCvB^W1D*2EeU,Gx7j{
+    oyAs,]5!+sK[lH^72ZG1T[Jlk7>nD1RTCQK<Xv^\,[{DonBp>2iYVe<T\VzZref'KKvk[X]-H=j0
+    VT1H#Dr@DGmvsq!Q#X~Uoo3raB:f~<pxZHnaV;Cn6RC1XDm3w5=jG{B#Tk5+'L5G<lWvon\KvToU
+    2lT[Xae?xo8*W}n&qtsJ;Jps>{:[+3k2$nnL~z7pO*Aes![?C-Xn5n}r*,VKDRnvmv{I=b5Bn<rp
+    TQARnjAA\Kby+vr#B\Ep<DD+jDB;I*[e,Z]>CY@#5AWQs;3UXEl'4K+j]&U^uJwTw=CWe3TU_TJ>
+    KI'X[>@_a>^pRn+*'~9G_#\?rkl;[mwB\T@zW{m*_m?W='WU73_S#C1D){XwnDBY2zJWCI$5jaAj
+    ^ZA<Xp]G$V>X|l_wZMY?E$-9~E@jyVGXYE+zm5Jx_FR{_;*>xR$^#Q\!$'kUOGHQC*X=]w*~eRC@
+    p}H=[=re!OxaGn_[=Q[U@s>HE$@owZa7HrYCk'{AvrORCa3TTR#v5vin'K\[~r5Azp5pw~jxIB/O
+    \,oIAe5Jw+D72'vv\kuV]jrO?@,.e;r3]'O++I,$7W1lnB[nJ'B]iNu}KT+V'^B*]UxnY;sVj=<=
+    J3*A^px?*u36CQXpC$aG(-Uw?oD!?IqwxmEO,vuS@*-_Glko%hc[yUOHY}3<?paAk%7^ZwnD,XZY
+    k,!TmIZ=Qv87A,^@[C=[h<p$n1<J{|a$GZs~G+jUB1KvrxbT]#k}U5J@r!Dm=-nO;KK#5A\_Z;oB
+    '7;lw[Bg2[$-k^Wvks\{w\+2iEwXqj!e$B*mTsOE=h7;BTE-<=V[~aGCC]2Rl1O5rC8]rBZkGmIY
+    ='[LkYHr&ZpaCpY@UrC-];woV\C^1?E!vQ~!]*H<}eO>*sE$7@z]#xZ3<s[BOVvBa,m*BzTeBOT@
+    ]57mJ^#;u,$TC=IKrM1mXGJ,2Di7COD\Hnx!+$]WOsC{GD\Jw1^QI;2T+Cop]1usUV7UWRSv_;_D
+    Tl<1#~poO-r-pwC-1T3ClVO?-ZejAueYml{~]?Y7lK_D_<Av<;?IY\jvkH]IOz'z}ID1nEr3EW;=
+    @R3GDVDOv?HED;3^#U-ojUYEv<]LxZ3I0;rirY+>\Jo,{x1Ae,_O?aTO?ZjIC^}K,AHUZQ|*x<*X
+    aC#5vQ25'=<_3<a$k2z;UOsp$mE5}$7Y+H3saK+h_B}2<xo1\W{A!-VROaZ-1!IpQ>]!^iH3CD+R
+    Lr}lAx7InIUl\n'k31u[2-I7YCvz^o'{KAw7HWsrQoTpWylBCZHa{3IxAj7a5ExA[XuDj,i5A]vo
+    $Ghk'EHJ+p1C;pr_Hm**saE2=T^B3EDC$-s1nvwv3Dluv*'7,DADj2weo5Zzrn??U+3Wx<ew&Gv<
+    'O'w}j7-aQkZWCJ{k;zOBer@TlaoB>=~k[\J1KT@lEXw-ws_ZKe*oP$TjwBTvuU{=X@{5l_7C\$>
+    wr**1e)^2D]F$5_[@nmz8<]lWzGRu_|VW2mCxE!*@,?-_+K472E!vT*_0-I*wQ5QAUt_C>p$>HUa
+    GCU2DYiYnssh]JR[zvZ<?o\*r!@p/<];_:w,WDkhKG<!,5xWCCH!n5s\x\KZGJ7-,;W2uQap-GJ=
+    yzrTzo*v1],~vZ5WZ[j23]nH~WvoJ\i$=mr@<x;RvZI>wHaCJ!E<~UY1H0^iT-kQ}3vaYX]];Zzw
+    _@B^-D+H$ZG!Gv(zK2X3T'-;{In}GWD+n+vK=IlE]oXI,K$wOjjAe3XyHHE3&p|@_T$OBZ<[$sC+
+    o~GA=YV{=K;*>pz_$o$aGDXrR}oJp<'Es_{@w;XfkDCuk11*7vR,^KCz8@Oo11nse>EWK^v+[{sz
+    wHCA~-UQ~/Szk=1|$H$x;{XvvJ*R<Y~O[U-T-8DiKoAD+ZW<2mec$^[eBo3}>QZ@-<Tei-xOwE52
+    E{\[^R[Wr=@3=7**7^<_cEIsB^#!eOT={lQCm?a]75_eW&OjXT\'{Ip[BE3U~j1vjlG$RB0<OvG:
+    vQ7vz\VlVAs{Qs_kClQp/5=sY,laB+rHj~UvweRB2xOd3]n[DEv3dkTR\+qxK2@}5*ZBr#1A{JIB
+    3*@(;$GOvKL$C1~\sx~,xC7Ogo~nsEm5#,KpuWjQ3s[YA}~sH<EW<@1UB\Dz1!sO+tWpo@$vi3IV
+    \ApnXB{^=1DVrXoUQHulkW37<-n5VGe,UWH}>_7!$s-w3k<5;11?=7?<ZR+E!I<^+=.k113l|[;B
+    RPO[p2RbB@{;v*HC-YWU2HIJ[1WVms5G*iG]OAw;zD*^aCmG1uV}O'XA^+pW.<_+BZlC[pC$3f{-
+    O1p~_I@aI>$raDIQo'kUro?wpBz%'$e]Lso6>nHJe^i<4+OB!s2W~Vj=7VG~K;OBmw]omjz7k~*e
+    lFt{5oAD#V#EHB3OnZX1#\x,<~\+T_~D$}];a]zTGA$vNRY?-VjWu\Ym>}On~>GDAJvRub@GtRzK
+    Jg]@sK2nsR?BDxnBe2z@_O1<pl8v5a7XDXHZvJ1>a7X\KprWE71Nn=Ze(CewC2{;-=xl-:=O\?T$
+    e>ks!kIz*@7VICe23@mX5{F_{3rlokKuRX'AVij!piU4JrIrrTwa1E-2p+~W^Tm}xVZxo)^YWGZT
+    Y<AEp{CI*1\iX?\@'5lClm#DEe$Oz{nnAH:1p2=cMiCsvI--=\zlE37]_mpR}Z\zR%vVDkuXaaCu
+    2}IxQElBKYv\xCB1!r5rp#B-$ox[xk1G]Oz[j;xEkA9*m=JU'e~'I'e1Ce@jWzI,w}KznvJsv*Co
+    ?xGQA^'B25$&kU5O^~@;HTX[}GEXehx5v;]{QJ95(*7R-I;K2=H~C=I=J}^Q<EU>2!n5pnVrR{GH
+    _v\3?C]zrGR[Y+B'K@AY+!B_m-$@p_w<1_D'x^3A]#]pr\IB'=$$H<HQ]jJVoj[={HTjG2<2oXA1
+    #eCK-?[7sRXU>BAZpORKI@neiPAB@VB~HVoXrup^[~o=Q\<nDYQx'loGf@nrXU1juD~o_CEWREC5
+    +GCa=1\;?e[H$1jUQA5X[j+C'_AGzxsY$oT+@_K_JBxprRBea8BTQIsY{EO^-J#w}s=~Jz<sQ,!]
+    z3~j\OUOpsAzAHkr!x;aXw1k{>o&d^[sD@IE]qjG{-=wV}s?}a=T,+YV!{XB]$~R^]VRD+Jek,lC
+    7>G*G}?>Zu_-}=pYVYJ[X!lVK7D~wv@a*DixT1j\w$zE2Z,32Gxa}3aY}WX1plj\23l_WKrp+Ax^
+    RelQRlKnYOvK+kj'>e~_'<p*m=^jl^=-2H-^7CLH}ArGO#J5epiKQ-k7U@{+HB=Ioa=;77=*,Zxa
+    $=@R}A->GIoe},DO*Varas1/B=-Y[~5e7?]C*nGQ!oEGmnsO[_7Y6;$uDCjJZD+JsAV#22Vmw@13
+    Bz1_@OxvRy7-G+!o>7hxKp^x@nw_Wj3B'^eY1VC=R>wKwG^xIE?7lY52vY$d1I!Ew[3]7EE+[}KG
+    t#T=zz7C!zCo*;T\KvsJ?o7+*_Ez2^O;=B{o3!'+2;z?@!EGI#[,il'"aRn2qH+Q]\GIZA-~^aA@
+    xIo,]gZOQZm_,~;pRmW*~2!O?ZUO+_Uw[jBUjOI}>3r[OW,;^$r,nsC[OTC\JC\!X'NSHHxRj^HC
+    ^VOB];rOf#1u!7{-QL+BrWs>@Z,*U3Klms1}Dz['zjz2xv*^?5=?vQY=HIrXw<Qm+~uo>]lvQjts
+    J^oAOWa$Kw\bv[7JBE*uoTK]EZ3H%M0IK_$aoCWB@<Cxw,pr1KXVrZu{*?z,\~AUH,,fq|7U2JbW
+    _ijO*eQA{H'cin]K$[\}m<={G]jzpsD*dVR7?pCCV_z!arZo[jp{2lAGKK\Tpu*<_K_3{_kBlY?w
+    x<$HOFO[oCE\T<O}Y-*jQ1TGvZQJ5a:ompYQTO>;z=]VvlZGez5oYEJ<TB}Qw*X,Ym2X+3CYiK>j
+    \nw\x<^Q}IjvXpC'$BX3seRY_s=lYzvKOlG_!Gk_CYO'^TJHY@e'iC{n{o^BI!2)vEG-x,_<%>*e
+    ls;rzQ$~Oju\]dQsm@s+QO@UQ\j\3H'?J+jsGuq^DiY#n1u'eH@4$Wo#OAY!v;m~Lu\wl9J-7oV}
+    ~TNtzmX!TvlvVt4V!$'Wp[<*[3#]=wOA$R-;BJVo@GUX|1Rv~lJa+'^\jr{7UYJ5GmO^1Vzr;>sk
+    sp1H=2]m5VVV2}*uw='xu@>ElY]1KRn'7a5ee1^R#]-7'assmmTR@o'CT_YGk1<wH{V}H6pJI]*\
+    sG<t6!B5T7aoY=ZX{G*$2*OGX1A_RRv#?Ij_+pu+Ro(,+2D\XGB?nR*O@C+#p^OX^?_J5]Yu1s->
+    1z#\?Gel^-DkDGaIFRwzln9QEjB@{Q}zvwz*1QE~\X]o7k\=GH#CJ=Xn,7_uleTv;o'^{lkp_$?p
+    vio(u5Z*kjCU<,Xoj~s2o[}kB{Tn_x,r5ZOJCx7R{{]zxnx*z>~B'<Yka,uAfJxV#o{r-s}\p2{I
+    {\eVrYw1osi^x\U'1EY>Eu*<?wR^{?D@K5xDw%,JQo+aH3,jIwwDBskpV${UK3lr5X!zn+MOADC)
+    7==_w$2WE_\A+EuU;Cp\+\{;p[A7eK7@H1pr_G_n2p'Zp~T!^DT_Xl}\\BxeCmB]vIHvwRH>{l,u
+    $nI<iEYisEG<]Ij2-Q\ODQ<*0!D;$Q;IO*C#xUV@^oB=D<U{aUnJCr?m'ers]\o]>5'@cAos?IY$
+    IV5GI--=xY1e;lv,GG\zn7p]~nRYiJ7s#q3IOT^^XrDpGn1cK{x]Z1n}z75?Rkp5m*B<eCo5[7*5
+    Uwz\1A5WS;1;#Vxa>_vv~rDpT}_\;IsJ2Uv;E3rn_5sCD.1*JJ{v{Ug>pvAr]jEWY[@_ZzaC?+I>
+    r5za*u{HpWoTNA-+;eZpxo}I!7A@>>EY@|oX@{?<r~JCj7|}++m*+,i'\#r=TvlOe\ABCj\CVDk7
+    7,^dzT]uEUZJOI_{Q2jKK<wn3D1]{}KwJImo7*VV.0X]Y[x>u[*aAD~'sDRe+om\]x7*IGCr,uJ5
+    We+AvZ*~}!'!V;eTzuOHoe[+\;DGY*i$QE-X5C:f=#eD[Hm#[~>e7mXn@GimA{Cs$?R?IiX#1R7\
+    Q#szv#u'AHE1_k'v^XrGQ33ZE?ux2E,Y2e1w\oEWTCZTv@wp7=lxv]A.u}GY0j<X7]zJTji$1QVO
+    R'@QvY1{+G}?J[7@R}{mpr#G-$Aaz'UxUsj$e],pw'}v2jO'ef->CC\[_,rapDIU<Uv<7[A5$CZE
+    *#$?BE5.49jR!<,o[7Q;ma*1YmIBj3oY-2pkV-*_vT;{=lreHl}vD@>E_;h=\iZ*3+>#71eJ-v7p
+    TT{{I1A~n$~DD\G'G#+m-u3K=jRK}H2QGT}?_pQ&nDmeQ^{wJlIVmOn>B{vk[#vs}VWX=e^5sxi]
+    ,>!+1+Dz3HT#Ya-Jpi@]#RpV/I\EZ\>umI*DG<BG,<OwTk'I{kIA];IjAx@]G+$ArKH*QB,$?JeZ
+    m0G#{QsTDOcvQC\9OU>rO#5[q[35nQXaD$U-59u^?z+YRz*zwry#nWsp<TE|:W+e@rKuJu|RZjT}
+    A<Y?]K<l}Q@s5^e-$s1ATro$p\w}~r<$CI<?}1;?U=G"-^,@z>UUoAw=$nYCR^{HAH;?yo[YOTE1
+    RDaz*wR$?Gw>>gU5ZEA1{<9kIQJhg_2l\W7uHW1!vYa+!s~\W2_1^7,_WQ,HGl+21[Tn,Czo!;G_
+    ~}~G-@}HvrCCks!}jwqoJpeI[InbT]E]A]HDp?Ja~_o\Wpv#m,EKu$@X8kzrBKOH+:}KA5^JE{B6
+    MTI!#Qox?J\-@@$+I56<x${:x27H?jvG,{.=#l#][i[%8]Zv}=Z+D[VWB5uY@\Z@<mRXlr*X=KO'
+    {{{Ac[kA@2GQ_5]pr^#X*v;Wn&Qk\2EXWkFtr*lYr'z2x<XJ1xGiT6*LpM4{r[aXY-~}5m~]lxTy
+    Cn+{-N73jB%XEdh6Y=#oCj["\\KB'!z573>o;D\xZ7[$vW1z*^[Owem1n]@#n=\72TZ}-5'$T*x<
+    QJ+B\xn{YGG^i}v_H_<Y7_~1->'wijAsxaeK\z7=DQ';arn@Br^E5!x+@OJ}$Xf{IB'}*<EGUpm*
+    Hm_\_,2B1W,]BK~ZrsTnXU#IT~$|>z!<RRi^l;1]<_XI#5*Aj$x?A-V;<'WD[4},;uZ<Vrv?+JX$
+    K2vCDmYn5DCHvTTa$w<oOGDxVT1EI3T[^sv<rH@s[x.jx\*cs#o#'<m+_EK3o1W;2rrG=[wjrUT7
+    O=*z'm=}1G^Qvn>-heWp@~,w;pw}^;RY;jj#,KYkJPU5p$9=2^O}Kp;kam1]$?-Dl#VOp,s.}$_5
+    oa{ViXA[,*s\LRiB<}XWvjYQB~{ez?'C]su;577vXvxJIEwnupY!R7/&wxH+vw>*CJ[\^2UE^~@z
+    [al7Fn'!^jBaR$VEipDCzz=>-VjBA#HQletm1~ekARr'u!}eH]ms?n_=K]H7z<2=*xn>AZA~7,~}
+    ,<#lN2C@RaX7xTDDo-'^k!5Z_T'+>z{1xD@Vkc,>j_e?_u-_?K*@Y!;Ee_^EHvjBXZA'U3I~~Yiw
+    oCGE@nH=7[$x;a'_YH^5k~u$OEGp7,xi=uEuDTG,k>hgRn<O,1YY_D^}pW>D?$UB]^X=x;rQJsjT
+    OO#nWQ?]@+!22[{KiDpnCZZQa=35cj?xHPS\_?@Ae~GwTEzGjpWvCUI''7Z'4E\l<V?KC,{15d]5
+    ]J]T\_iCQ]!n$Z<XDv;+^ie*u-CWZ<mT35mzD2]O+#=!TBM,BsIAvia5vAI$lY?Gv1*h<l_R=X;O
+    I@=WnCz7YU'Rx+T5W,i#{=QWQV}KiQaw52D~^CsB3IllQxXjrnUjZU@j[+~x=@YEQFreUOWvjXvW
+    ]2TVJGa-,E[m<V1@!B;A1;'BJr1l5]\Ioe*@r_HaO'CX{;H1zr%!l*{uvCR1~WkU-pxA_Jam,>jY
+    ?[*j'-[jk5Te?@2DA<5v*r{woCD^Axotns[I4?s*T8a<*ar]Zp*DipI>@1{\DvA57'Y<Dar{oTdV
+    BE^3\ojEMCs5eD,2@>7BK1C2w3>=H[i>-l~,^{^15<^#-\!>n5YH3H}-x.{XnI'HJY@=D<FsiO]&
+    D!a!;CaG2V@@rbx$@$'jpxCgYO2}eax'dEuIDG5JJ>Go)rO2U7?p'73n]=Y=!*EY["?xzTp3wv~]
+    YE52IJFzi$n>z\$Z<5G}s;VsW]Bd(D[XZo;{k1>!T1H2^t^[k3E{~*]2o{UsAJ]jx}Un<JE,@\H[
+    Ri,xk_^>{_{GTBBH,HREp$_!5zgY-w',R#C11F^m{$v<A@]w5mTs>vz$#vl*EosoCpCD#Cn+a2$j
+    ?*jN('+*@C;TuFp;O+1]U^p~T^H]Si7i\"URBzC{QrU{[DAw+~B5KR<5Y')Q@Y}oY!TvT2@YH'jd
+    ev7*]JY#&JQk13zjrEl#W}ZeZo2\Ams[Gn5?[G[JW4jUU^<rR[~>WjsAo~-XA_+Bk!YI1-FK\{x/
+    iGI<5B7*)x_2w!T~uv!K{7$~QC'x~zUTzz>7a<,!k_Qix[?]iF0A7vAGU5wwGOE*r+}Q\'@}[GT=
+    2JKj]?pAw@p75w]$he^YOdO+{]+n{\>__E}@2B-HT2BWK]oze5i$T?K_!r%f,j7wQka$W]HrojEK
+    >7{'sW{,I+1]'mV#Bsvj>pW;n$2lZAjVarWTeusZetJ}a=R^Z]1R1OQn}U=T\~Ko$;oj7GTjuT/Q
+    ]s=*el<5jTYtIE3$ZRkHv1O5=CVUQ_z[aE_!JVJ^kD~Rw_x~@r^EB<v+t]'~V__@K@*xHF!1#?'m
+    *Zt-BOZ^7mx0oITTk5~QEx><siT~JCYV<VYvHD7$/e!{-mG~?x5Vxaa2j17{~9xTTX=m~<%Nm}ZV
+    nECleJlG==n5~-EuyzvEpuTI*W}~aX7'#oov{W\YT1pr2jRU5zv7wxWRAIjAe}5Vi];_ooXjj1>\
+    xT<=!J'vkPV3738pA3ZpwGn*E1oVE,uGz7^Dr-o]*3sA+w14pUHep^r+CHJJ!X=7}HVG9:vkuZ[B
+    Xzw>rK,a*{,}>~,]eu=Jmzl=slRJ=r2eW@zNyL{x2AdZU']*2=n[@]EpT{j_kRkrxOX^OI?H[X}7
+    R#[z-_Cz3jlh7e2;i>']3OH'L/w'J}'~a~p\=x?a-@wQxaAw{XsgC*_riV*IB5Rjy5;2Y{]anJ_<
+    zB\]4,}}+YI+'DDYloQilBppJ+{@o@-2\7)=#+^7@WQ$u{@mD~\*~XrY#&RbuDDmFOe^#TO]uCVR
+    Tru;D,fe![~m,R<>__shYp#s}xUw\EQ!p21]~RVezx<1?B>@vp+x]A}mC]u\G?!Crlv+G+>Ke@_B
+    7TBjOeU++HI3;{mYlJXre_l7JsB=vXziGHv{/O++}smmrF^noEUTGA<p#\YV=]s#C3QQ7XK5{EVs
+    5[@Q2e]7mn3HEzt@_Y1G1#7**__#'H7QY,nOT_p2p~^HAx=GaOIp]aUmxr?=JT\7~-$>$1}H,Wu*
+    IlsVrD~_pw{vB2eZr\kWlO_mr\!#aH;cT-IIK1[klX@\WV~Wew*+uxZ;'rQaB_R["K=Vu3*IGv2'
+    x.t-BQ3+-KHW\ZpQZY;6<nVGBa>]COwrur*Ctk^zY3=Z7W1!GDX*G.=nu~Ds?>>BQn:]j@Gxp!\r
+    Bz{zi<_e!!T1-*QiI;OBDiXX$VX{H;2?'^{A<S=k$<Evekl+uZ#evp>z+n3_J[37an}!es7Wp=?]
+    RjkT[Y6$D*I}kT?^U,HQ$!nYaJCV~s;2lo_J5>72TWuXA<,kzY+AsL7RKpezz7X,A]s2oX]HE;-<
+    @}$8*YBC!->p%lyAV\iB$v>OxI5rs#?t\>EkZ'ACG];DJ$m+O[^DRwWA4hO#>T^7w$l.p_CICGRs
+    AjZOW7DiDd!'*U_a<r9%Yv;$\IYE4XxJ~mCB>ZrRv_'#-zie*a}i@+s3aXA${]sI_xQ~~g*}]iCn
+    ZDaxO;r=7*(TnAnAs$oG=\YUU{X5ipZ[]-rH>~YMW\w]-O=Ul\<j7RAk{Y*jN;([@G'\H\U3EOrE
+    @3A}l<HC1E'7j?H}QIGq\!A7ZzeDns~Hs>Rk^+2=Z\>Wo>D-1kX2DR3-5!T*3e5o7D=^Qua'v^3,
+    [l#=pJ,ptlEu{j+'=&0b$TqBlA+[D}\~jp+#DW?^m}]pv?',Q;D#_C-jx$=BJ\Ikn=Ko{+VTS}DK
+    ~5KQ$wj*_9oK<EEmsO{Csa=Z$1WI'7,<27oe?,El537ZvQG><*-jY+ET\E#O|G{VTQ1}ps^+>Sco
+    {$zYX<[WeHrVUDz?<[R\+npE3jEyvAJox*ro$?U+EU+QZwvp\_+ZUpsVWl@*nH[[YIw*p@YUR-n-
+    pYJZoo[-H>;K?nU^p!rX,BIvwp]Jo2oz}R_elrC+BOZ;QeD7Q,[n6]Yd$RWJ}v[#~A^'piZ3Ax\R
+    r'JIc;7eWOj$jnDYVrnE'1mxveZT2z5mTI3JU:B2EZBalHvz'pp{Jsa*eD+rV~;[JD"+]'<&pl<U
+    Qx,;*B@-_]QpB}YIVm_<\Crn(u<e@e-aK+j@?AYj]jrMWsVk7oaeG@_^;5[?LkXzu}Av5n7Y*<\x
+    X#GX$w_su?7}e#s!~WD-D?Q<>zRZ[G#=B*2jovl'aiXv=lZ\7?o'XWsYUaD^QDTn7rvZV=CS]OY$
+    _sA-rc5AKl7Xw!35Oor<$,\to=-5^~$V5Vl$R='p~Bkvw^Gpo\r1DC_Zx$[vnB@k|-<p2Hp2vGXY
+    XuO^QW{~Z$i\i{YJ~YvHwOe1]nwe?=Gz-{xX3Ze>!XB~HRnv~CWD_D;!+RE3T![Guol-XZ,YO\3K
+    Yro\Y7Y2C5#TU!6msk_<+wH;Iwnh*7Z=c_eWa7IX^vR',]o],\lowPDB3^)^-Gpj',C2HoA]z-[G
+    zKepj}7j\!<$^iT,=A5'Ea]t.o[BUg~7umpl!\1K<{z$w#c=_\2e7l^#Dj]8jC$Jp~]])i1ep^iv
+    z\}Cz=p_BIQlXE>>\2H2RYzp>9^vX?CjHOz5'*WYZZR!m#R$R=$~J<>1pE59ixQ,loD2zu'=J\7j
+    7$>DvA>l$Xu1TQ}QDQJXe<W#UAJ>'a2+Gp@*Je-;@VD~]zxD0ru3Z'RY$1UH!lQAmTo1eRew7H*n
+    Dl?]lb5'BTE2UVRZB@5s=w1$ZnRGRpQv$*Ko,r^Wp]3eazCTp*P>CvDG~j~uCKUlu,\vzA{O?O1a
+    sHz\Z@[CuuC&nOE+$GD+R_QpeH!'^!~7E*5IJV=3?n@2#\i~RXrJv-H~[XDJ%Yi=QBe@Xsi1G#}C
+    lIUTHCwrX7#U,;Q,jc5V~x+,V>G}Bv[kT}0A'ks7^[$~>3VhJ<>p7;>+x]l{wHRjinC=jE[iBi]*
+    7O5-!,^3knW!vD<AlzJD!j<@71BIAovaklJ<jsBY"8I_IuI#jw'Z7C=kWTQ*H>2t&,kR;*1lE#]E
+    ~IC'IVDpWk=WZ@z\$=EGp[u!UBz2Vn}?OD~a]IeG{E[-3v\+$QTlY7[OHDjR>+w]Y*oz^,j,TGXX
+    JluO]}R;5VYm#~}_aQ]<2z@X[\[pH$=<w71H7ZT_}?*QEh2zZCjrm]RYYezo_Ag^-=_EeXVQ9[3_
+    3qoGRZ{=Rz@VWzh[Y,25u{o^[~Tt3+@?|1Wz;aU-]R[#pC{s-6IuAl&:BB3Ui<s3<*EnTVBveK*a
+    ^svEa[zD}om>@7-voI-T2lw=G}AXaQ-2^0mpK},kB2#a@n-'DW5AZogB,,J;S,EDE2r3k~S#C[Vh
+    z5I1ZRQpI';uQo!sVYDoRl~HQkz=tP[oE{mUEiQY@anaruv_*JSsa,;v{~2e*>#~'zXw]7{smUoz
+    AAT]XVV)e}uY[K][ll{^!\-Id;1,-rUsAr[k$3w_vajp2V*!Ri'1u>eY]*;s@\}WE7;V_BzA_W[H
+    {+_2-^]Ajs~G~Cq,E*DwA,,e$zi>1X+KpVe<oKmW1}*BHvz@CxXh>nD5z!p3$e\aV?[;!_o]>LGm
+    2~B]el_Gpnlp?O]+e*[@zJB!VTr}?<I^\kk<-#\U*#zsRz*'>#'TY<DT]K$1~AyBKe?tkB+G.m_;
+    [2OEXe,xa]'_=5BCB6_ml@s![Di$I-nB-uarA[:BH}-uV~G#\^KjwC_AClscYA5?p{r+-IrGo]k!
+    5@22=He;9sp\u@A75(!np22sZ_CvC7/W\z3UExYU}+!a'w-X[^U;C{+1a!U3QHke?Q@%;G[~;*3@
+    }T;'*R*x7;Zwv@}o0_UIUzX;X-<v<UTa7-r@7alD\Gu7+A}O\R>lx?T7_FPbN=mGX2{BvtcN1TY?
+    2*A\NQDkA[+wE1<{DGr]I{,m!uTwOuj?l57Y@V,K-?o\wX1H\olGWQ#KwxIps/7U$?R@Eu|EA}}K
+    H,#CB?z2jT!z_IW!qtDDw<p;Js*#*<xuD-zl_YGZO[V1o-rUs'_[Yez;3@8Q\1[*u\Q-UlB1TXup
+    IRr\~QK5mwD-o-@I[C!dT{E[TUKo\JxI#a<?w[]H!$!I#'+#=<u\?[@s7x**v*QmOw\'_7Eu<U+n
+    ]A2EI115TN8?7su2+x=5G7~xOm7;Q]K_=,1o'A=[WvUojX1_ZZ^]TRC;e[I'HU$]2;+-D]?p[*C-
+    wA=-h;\U^*?}[Q#,nbG<B<OB@1AavDS}Vw~x!52=w<=e$5<|177Jm=~]5ADabV<xaEEs<novjk,-
+    lVT~^A_#VS]Y{w=5B[*km~qr@'HV1m3F1,nwlX}G)=A1]$u7<1yVu*xA^\EZoiYEKW*wlTr-Hoj+
+    Ew_1$2*l3^pI'+23Y=x_"=*Vaor^\"K$j[w1RnB@}x"A*Q3}WD}uVZAT<>2]OEW}_!lrx]@i}oia
+    pGk7u1Z*[^WYBIBw5-lp\XsUBs}nvzDvHB_S7#-+{1?'1,7O~5]^2pj;a]'jpUWK{s-Uil\G1wCw
+    up>_GkHz*H}Cy!T}^*?<[kl~!P#lU^OEA1j\7z$$Ruj,YoQ2uGr5V1^T]Ux(*ZZlVsB[_X\zoE5>
+    OM%9qI}pHUs2OC?nj']\o~*=},RI^]$,vk*^UO;\5AnvVP^m]iW=1$;H!,Z{]Uo7R=^YnBw}up1>
+    {oLZI<,Pf37<QDZXp7$J^i]@;I[R!}Bnzln]@~aTl<Oi*HX<#$a!A5n{1pipoDBsZal?O.2jAp&4
+    HYuCpku\Z>@n~QjlpRsZ'n$oBHdU]p{YH'e2HXj,p-H]C-lGs*xU\AxhpI=zu5jQ1*7sV'~Qnv@'
+    ZIxW76mQ<$F^we{rH]X{DD{I}W,i*{,D$Xnk{x1'z5sr\G7xCox\~;QY$]QP1Vsmsa^{a,?U$*,k
+    =Io{TL#n&lrau$<UnsiE-CU_{sHj?~}e].%v^m~Uo#~eE>Au[mBOXWvn,,eD$E=[)7+-uE*va{e$
+    wXXIplo_*]u\vU$Y<h!VTBV#}JB(O\?w@w^2/me,=j}o<wv#U_JBwYH1laAP@,zG--pB@$XO[27,
+    ZYADv}'-+\5H$=\AH$or$DWQO7X@ms#nFqVs-~3jK+AzZEI@Xu~__T$8=CwBG#!}/z5zHezT@EXn
+    !z3XG8<^!ZwY7z]*HD!TH#MY_\}o};Z3ekCBZ@1Q,5\~E,HW^rs&3Usu5I2~']p^n^,\mp~a5w'u
+    @E'>WR*ZmYxQ35je3=-r^G]wO?+mE[s^aj<O+,noDTKz?+xnjRO}2-@D7iB~IKs2vCAuoYzG@[IB
+    J<2k#=p$X_W!j@rH$k;7,OTFQ_*YzBp1**D$p1AO*U=2D~nuxxW$X}~Y}s{k~EO\Qn'$;nWE5jGI
+    e-^G=Q@Kd'=ToKVlRlwIDip+uZD-3orpw~aaD*U5sv$nQH$}R]iwe)5^KjYz^]jarmpl;Q@XA\YO
+    's'nv}o+X-OYs!}n17O-v7JXZ*V7kr53'~7(L|f,nu#rJj-#{AVTR+2e<T~D,uXOkAnjrl~Kpiap
+    7[~<AV*p^;D5;}j?xo#w-Xl]H<-\Dp#&@o3T}22rq'THB0^woBGYe*w,''HRJ}Sk},!V-2=+1k?8
+    ?*uAlp~uwB]r_yckYwBCWull?3#LV#nuGr2xTro^=DY1v^zi);5#;nYVU7G\xUo_#@{rJ1i\l!pn
+    3tmB!<Q]?,8~o[2R<@}KlAaY#Vu=2^7CC,?]'^!^2e''{olrmGuI~<D;VTzJop5K9];WkBlI]^@'
+    ={va}fw-,<[K-Jqu-@*n=-@lO#U:Q?JaqIn-~QwZ+k<Tr,;AvYBUWXB??}kI]J[J-BZO{r>,?&W5
+    +Vn^RGCD];@5xE$aUXvnH?eHgmC*lGWOzHQxa{[kWGnjrGf[7]uOXwZ\v_O[DG~]vA!37koG\<;c
+    *\]B}FJID\ZE;OfyVi7+j%]u=I<YT[BkuV9wUW'YCB;oH$3B{X2u-vxNIC>ae$@Y7\K=B,la{wQ?
+    Qz[RBAC<I@xKY^+2xw3U[1<<B=l\'@r]"1|rsk!V^]2BJXH<sY=v2Q'Wp?[E=p1}@;w=ju7K[AmR
+    n=TiTrVOTB*13!X@$71iB,?Ks];~wB,^iWe?*e<G}3kd#$UD3-@E0j_A\Y>sI$Zj=->nUsC<w?5@
+    !Eo]Vx3p-ZoAZVlnr-U5X'Xp#o2*Ima-zB3}>C~-3)jAA\eG2j=eer[/7<U-GGRe{j#A_J<]*@no
+    r~QkB$R,5.rd;Ij7"q{n[2z1;v~G-rk*Z;ln@kIwR{oneJuv33YJNW7OIie#DlwCHT1kHqRB~I[~
+    a{$]{O$C_T7'jJ1maZ]@R1I5R{s\~RK\+ejOAYZ}}ls5vV,_XaUe5u;Y=kjO{};7leYDoZ[u5'j>
+    3Jj$Q#}VD'&HS-oB[I!Dme,*'Q[AaVmJVsE~R7?3QjH$$,D$lIjz\E(>X^mZDuIsaVXn-]?~z!,A
+    QEW|Y1j=<\TTH7V{+Ao>H,_KU]n^{TDlE{y}9jn}=La]GZwBp5Rm*Vh$/[>{\*$!u:$\AufYz{U}
+    7a!f0V1oxTDzx_awu-eACOr{k3}Ia\E3#j}~x2RI$neYB\~@FjRV2T7uk)mVl=eD7_Cr]W];;*<G
+    _?,oH'*v-r$K_}$2~,g{>;Y]ZvIzUve~=?Jn}in+z}*S*\VlXQ1a.K{\vq7G]kRTBuYGaRRaYZ3=
+    U>e_;*l,TV(?EB-#Ypj*U,TQ!OORK_5^'>3^8Z[}x61Q?>RB$Q_naeD=^p'=vBlKCzlGT-CuwO$F
+    OXG@CT1C|PQ-,$5F;$DaA=^YnoACi<'-P>vj_v#nvu]z#2le~~\+$X*x}2-X]h61Y>>jGeR\<Bw7
+    B\~fRK>T5spZWBjK!sQ{H7Y~\pBujTGx7>J;koGKSYu\{OH~#j,X$BVD*~v!1B-w?{A^wes+G3wa
+    B\]K^co,*x$R!l2-JQS2nVU[z1TO;;^Jr+mL'RA7y>pU>m\GmEo$_l{E=uHJsN?Dk}oWGp8vv2\?
+    w5iFOOp<-D'}A,5{;v$~}zwQlD2Hjv2pC*AzjH;2Z>~]OU;@<Q-KIH$Gn-=;;o[5f*D3\'zXO>Q{
+    @=5j;w{Z>4*VH+B1\iDGkBykTJw{7T3ovs[V2]m%vTQ2\QZxmv\o^1#,}<A!Ce^7knK]ITUp1H1H
+    Bs=I;>>C\VmrWQ!z\~-Z&"R-R'+va!-7Z*s62HoIOGvWrX+v_OZk-x},{HT2,Y\*7L,~\<>I{IMo
+    lkr.QDApE3]J(,AKpYH\p,3$HjDwOO<Gur?VpyU_Q}rm;,sWZTZ{!CB;C-r2XO1gB5Gxj3<kIx[3
+    H[wx2lAm{+Z_@Bs5+\5plI@oaEE'xR{~]^RRV3r$RRozCW,vRGv$='C@WoR~_(-QEuo{lp?r_j1>
+    Ru$sV;B_1x)on[@x!*j_}={WsYoq%YGwD'?E>1A@Hu5'DEx]$lpR7ae5{['~I>jl!ioW[~oH]oW7
+    j1&q[]-w^Oa'e''+U$xuG]A2(Ou\zP[$i~}V5x\i$-v<V+b%M?<{wTrB#[C[\Eix<^B#_G$YO=*[
+    C3XU]r{{=t+{Ts%~YB#nRjGm7kB}]W$PRue5>pmU^~Y\E=V$HB-xw+-O]!<-$TUGiI@@j"f7mX;Q
+    B[3i[woyWOKvZr_WuU~^;X7Ri$]$]+}Z:A}wQ}?^i@A$GZxA?B'@[,!T@~7[mTjo--xx<Oo]ZsA5
+    +/D=!j=n\rUr7wlR#j'@IrrK_Uo**AOxk!*%TzY?QoiT&GYew?}u
+`endprotected
+
+  //--------------------------------------------------------------------------
+  // OVL SVA Assertions are included here
+  //--------------------------------------------------------------------------
+
+`include "qvl_pci_express_transaction_layer_pkt_monitor_assertions.inc"
+
+`ifdef ZI_INLINED_PSL
+`include "0in_ac_inline_for_mod_zi_cw_pci_express_transaction_layer_pkt_monitor.inc"
+`endif
+`ifdef ZI_INLINED_CHX
+`include "zi_cw_pci_express_transaction_layer_pkt_monitor.zi_chx.inc"
+`else
+`ifdef ZI_INLINED_CHX_zi_cw_pci_express_transaction_layer_pkt_monitor
+`include "zi_cw_pci_express_transaction_layer_pkt_monitor.zi_chx.inc"
+`endif
+`endif
+
+`qvlendmodule // End of module qvl_pci_express_transaction_layer_pkt_monitor

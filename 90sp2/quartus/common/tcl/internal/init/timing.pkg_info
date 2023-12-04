@@ -1,0 +1,20 @@
+# Add ::quartus::timing to the table of packages
+lappend quartus(package_table) {timing quartus_tan generic}
+
+if {[lsearch -exact [list quartus_tan] $quartus(nameofexecutable)] != -1} {
+
+    # Make ::quartus::timing available to load
+    set qpkg_script_auto [file join [file dirname [info script]] timing.tcl]
+    if {[file exist $qpkg_script_auto]} {
+       source $qpkg_script_auto
+    }
+    unset qpkg_script_auto
+
+}
+
+if {[lsearch -exact [list quartus_tan] $quartus(nameofexecutable)] != -1} {
+
+    # Load ::quartus::timing by default
+    package require ::quartus::timing
+
+}

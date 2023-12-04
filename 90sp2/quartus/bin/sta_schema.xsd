@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified">
+	<!-- Main netlist element -->
+	<xs:element name="netlist">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="global" />
+				<xs:element name="partitions" minOccurs="0">
+					<xs:complexType>
+						<xs:sequence maxOccurs="unbounded">
+							<xs:element ref="partition" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="ports" minOccurs="0">
+					<xs:complexType>
+						<xs:sequence maxOccurs="unbounded">
+							<xs:element ref="port" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="cells">
+					<xs:complexType>
+						<xs:sequence maxOccurs="unbounded">
+							<xs:element ref="cell" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="re_hops" minOccurs="0">
+					<xs:complexType>
+						<xs:sequence maxOccurs="unbounded" minOccurs="0">
+							<xs:element ref="re_hop" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="nets">
+					<xs:complexType>
+						<xs:sequence maxOccurs="unbounded">
+							<xs:element ref="net" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="delays">
+					<xs:complexType>
+						<xs:choice maxOccurs="unbounded">
+							<xs:element ref="delay" />
+							<xs:element ref="micro_parameters" />
+							<xs:element ref="clock_rate" />
+						</xs:choice>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="pll_clock_info" minOccurs="0">
+					<xs:complexType>
+						<xs:sequence maxOccurs="unbounded" minOccurs="0">
+							<xs:element ref="pll" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="jitter_info" minOccurs="0">
+					<xs:complexType>
+						<xs:sequence maxOccurs="unbounded" minOccurs="0">
+							<xs:element ref="jitter" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="global">
+		<xs:complexType>
+			<xs:all>
+				<xs:element name="name" type="xs:string" />
+				<xs:element name="device" type="xs:string" />
+				<xs:element name="family" type="xs:string" />
+				<xs:element name="default_delay_type" type="xs:string" />
+			</xs:all>
+		</xs:complexType>
+	</xs:element>
+	<!-- Base type for all nodes, including cells -->
+	<xs:complexType name="nodeType">
+		<xs:attribute name="name" type="xs:string" use="required" />
+		<xs:attribute name="id" type="xs:int" use="required" />
+	</xs:complexType>
+	<!-- Abstract node type (not for cells) -->
+	<xs:element name="node" type="nodeType" abstract="true" />
+	<!-- Partitions -->
+	<xs:element name="partition">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="nodeType">
+					<xs:attribute name="short_hpath" type="xs:string" use="required" />
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<!-- Cell type -->
+	<xs:element name="cell">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="nodeType">
+					<xs:sequence maxOccurs="unbounded">
+						<xs:element ref="node" />
+					</xs:sequence>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<!-- Re Hop -->
+	<xs:element name="re_hop">
+		<xs:complexType>
+			<xs:attribute name="gid" type="xs:string" use="required" />
+			<xs:attribute name="max_rise" type="xs:int" use="required" />
+			<xs:attribute name="max_fall" type="xs:int" use="required" />
+			<xs:attribute name="min_rise" type="xs:int" use="required" />
+			<xs:attribute name="min_fall" type="xs:int" use="required" />
+			<xs:attribute name="fanin_gid" type="xs:string" use="required" />
+		</xs:complexType>
+	</xs:element>
+	<!-- Various buried types -->
+	<xs:element name="ipin" type="nodeType" substitutionGroup="node" />
+	<xs:element name="reg" type="nodeType" substitutionGroup="node" />
+	<xs:element name="latch" type="nodeType" substitutionGroup="node" />
+	<xs:element name="buried" type="nodeType" substitutionGroup="node" />
+	<xs:element name="opin" substitutionGroup="node">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="nodeType">
+					<xs:attribute name="net_name" type="xs:string" use="required" />
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="port" substitutionGroup="node">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="nodeType">
+					<xs:attribute name="direction" type="xs:string" use="required" />
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<!-- Nets - JGOVIG: need default type? -->
+	<xs:element name="net">
+		<xs:complexType>
+			<xs:attribute name="id" type="xs:int" use="required" />
+			<xs:attribute name="src" type="xs:int" use="required" />
+			<xs:attribute name="dst" type="xs:int" use="required" />
+			<xs:attribute name="type" type="xs:string" />
+			<xs:attribute name="re_hop_gid" type="xs:string" />
+		</xs:complexType>
+	</xs:element>
+	<!-- Basic type for all delays.  Type is "cell|ic" -->
+	<xs:complexType name="delayType">
+		<xs:attribute name="net" type="xs:int" use="required" />
+		<xs:attribute name="type" type="xs:string" use="required" />
+	</xs:complexType>
+	<!-- Abstract delay type -->
+	<xs:element name="delay" type="delayType" abstract="true" />
+	<!--
+		Basic RF_UNATE delay, storing {unate {RR FR RF FF}}
+		It is design this way such that the pos/neg/unk elements help
+		enforce pre-checking of the data using the schema checker
+	-->
+	<xs:complexType name="posType">
+		<xs:all>
+			<xs:element name="rr" type="xs:int" />
+			<xs:element name="ff" type="xs:int" />
+		</xs:all>
+	</xs:complexType>
+	<xs:complexType name="negType">
+		<xs:all>
+			<xs:element name="fr" type="xs:int" />
+			<xs:element name="rf" type="xs:int" />
+		</xs:all>
+	</xs:complexType>
+	<xs:complexType name="unkType">
+		<xs:all>
+			<xs:element name="rr" type="xs:int" />
+			<xs:element name="fr" type="xs:int" />
+			<xs:element name="rf" type="xs:int" />
+			<xs:element name="ff" type="xs:int" />
+		</xs:all>
+	</xs:complexType>
+	<xs:element name="rf_unate" substitutionGroup="delay">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="delayType">
+					<xs:choice>
+						<xs:element name="pos" type="posType" />
+						<xs:element name="neg" type="negType" />
+						<xs:element name="unk" type="unkType" />
+					</xs:choice>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="rf_minmax_unate" substitutionGroup="delay">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="delayType">
+					<xs:choice>
+						<xs:element name="pos">
+							<xs:complexType>
+								<xs:all>
+									<xs:element name="min" type="posType" />
+									<xs:element name="max" type="posType" />
+								</xs:all>
+							</xs:complexType>
+						</xs:element>
+						<xs:element name="neg">
+							<xs:complexType>
+								<xs:all>
+									<xs:element name="min" type="negType" />
+									<xs:element name="max" type="negType" />
+								</xs:all>
+							</xs:complexType>
+						</xs:element>
+						<xs:element name="unk">
+							<xs:complexType>
+								<xs:all>
+									<xs:element name="min" type="unkType" />
+									<xs:element name="max" type="unkType" />
+								</xs:all>
+							</xs:complexType>
+						</xs:element>
+					</xs:choice>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<!-- Register micro parameters. -->
+	<xs:element name="micro_parameters">
+		<xs:complexType>
+			<xs:all>
+				<xs:element name="tco" type="xs:int" />
+				<xs:element name="tsu" type="xs:int" />
+				<xs:element name="th" type="xs:int" />
+				<xs:element name="tch" type="xs:int" />
+				<xs:element name="tcl" type="xs:int" />
+				<xs:element name="tmin" type="xs:int" minOccurs="0" />
+			</xs:all>
+			<xs:attribute name="node" type="xs:int" use="required" />
+		</xs:complexType>
+	</xs:element>
+	<!-- Clock Rate for IO Nodes -->
+	<xs:element name="clock_rate">
+		<xs:complexType>
+			<xs:attribute name="node" type="xs:int" use="required" />
+			<xs:attribute name="rate" type="xs:int" use="required" />
+		</xs:complexType>
+	</xs:element>
+	<!-- PLL Info -->
+	<xs:element name="pll">
+		<xs:complexType>
+			<xs:sequence maxOccurs="unbounded" minOccurs="0">
+				<xs:element ref="pll_clock" />
+			</xs:sequence>
+			<xs:attribute name="node_id" type="xs:int" use="required" />
+			<xs:attribute name="delay" type="xs:int" use="required" />
+			<xs:attribute name="atom_id" type="xs:int" use="required" />
+			<xs:attribute name="multiply_period_by" type="xs:int" use="required" />
+			<xs:attribute name="divide_period_by" type="xs:int" use="required" />
+			<xs:attribute name="duty_cycle" type="xs:int" use="required" />
+			<xs:attribute name="phase_offset_by" type="xs:double" use="required" />
+			<xs:attribute name="offset_base_by" type="xs:int" use="required" />
+			<xs:attribute name="min_lock_period" type="xs:int" use="required" />
+			<xs:attribute name="max_lock_period" type="xs:int" use="required" />
+			<xs:attribute name="data_width" type="xs:int" />
+			<xs:attribute name="soft_cdr" type="xs:int" />
+			<xs:attribute name="soft_cdr_uncertainty_divide_base_clk_by" type="xs:int" />
+			<xs:attribute name="are_input_and_output_pll_clocks_cut" type="xs:int" />
+		</xs:complexType>
+	</xs:element>
+	<!-- PLL Clock Info -->
+	<xs:element name="pll_clock">
+		<xs:complexType>
+			<xs:attribute name="node_id" type="xs:int" use="required" />
+			<xs:attribute name="edge_src_node_id" type="xs:int" use="required" />
+			<xs:attribute name="edge_dst_node_id" type="xs:int" use="required" />
+			<xs:attribute name="in_clk_period" type="xs:int" use="required" />
+		</xs:complexType>
+	</xs:element>
+	<!-- Jitter Info -->
+	<xs:element name="jitter">
+		<xs:complexType>
+			<xs:attribute name="node_id" type="xs:int" use="required" />
+			<xs:attribute name="jitter_name" type="xs:string" use="required" />
+			<xs:attribute name="jitter_type" type="xs:string" use="required" />
+			<xs:attribute name="jitter_max" type="xs:int" use="required" />
+			<xs:attribute name="jitter_min" type="xs:int" use="required" />
+		</xs:complexType>
+	</xs:element>
+</xs:schema>

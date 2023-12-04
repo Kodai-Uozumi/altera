@@ -1,0 +1,303 @@
+--------------------------------------------------------------------
+--
+--	PARALLEL_ADD Parameterized Megafunction
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 2.0
+--
+--------------------------------------------------------------------
+--==========================================================--
+-- Design Name:	par_add										--	
+-- Function: 	par_add adds SIZE number of unsigned/signed	--
+--				numbers of width WIDTH, with each input 	--
+--				i (i = 1, 2, ..., SIZE-1) shifted by SHIFT  --
+--				bits to the left with respect to input i-1. --
+--				The adder can be piplined by assigning a 	--
+--				non-zero value to the PIPELINE parameter 	--
+--				and connecting clock (and, optionally, 		--
+--				aclr) ports. This adder design employs a 	--
+--				parallel addition scheme using a tree 		--
+--				structure for FLEX/FAST and all pipelined 	--
+--				cases, and uses Carry-Save adders (CSAs) 	--
+--				for the	remaining ones.						-- 
+--															--
+--	Note:		The recommended value for WIDTHR parameter,	--
+--				the width of addition result, for full		--
+--				precision is:								--
+--															--
+--	           		   ((2^WIDTH)-1) * (2^(SIZE*SHIFT)-1)	--
+-- WIDTHR = CEIL(LOG2(-----------------------------------))	--
+--						        (2^SHIFT)-1             	--
+--															--
+--				where CEIL(X) is the smallest integer 		--
+--				greater or equal to X.						--
+--															--
+--				For AHDL designs (only), one can invoke 	--
+--				the macro 									--
+--					CALC_PADD_WIDTHR(WIDTH, SIZE, SHIFT)	--
+--				upon instantiation to calculate WIDTHR.		--
+-- 				For larger values of WIDTHR, the result		--
+--				will be sign extended. For values smaller	--
+--				than the above value, only the WIDTHR upper	--
+--				bits of the result will be taken.			-- 
+--==========================================================--
+OPTIONS NAME_SUBSTITUTION = ON;
+
+INCLUDE "pcpa_add";
+INCLUDE "csa_add";
+INCLUDE "altshift";
+
+
+PARAMETERS 
+(
+	WIDTH,							-- Width of input data (in bits)			
+	SIZE,							-- Number of input numbers
+	WIDTHR,							-- Desired width of result (see note above)
+	SHIFT = 0,						-- relative shift of data vectors
+	REPRESENTATION = "UNSIGNED",	-- SIGNED/UNSIGNED addition
+	PIPELINE = 0,					-- Latency of pipelined adder
+	MSW_SUBTRACT = "NO",
+	DEVICE_FAMILY,
+	CARRY_CHAIN = "MANUAL",
+	CBXI_PARAMETER = "NOTHING"
+);
+
+FUNCTION @CBXI_PARAMETER ( data[SIZE * WIDTH - 1..0], clock, clken, aclr) WITH (WIDTH, SIZE, WIDTHR, SHIFT, REPRESENTATION, PIPELINE, MSW_SUBTRACT, DEVICE_FAMILY,CARRY_CHAIN) RETURNS (result[WIDTHR - 1..0] );
+
+INCLUDE "aglobal90.inc";	% device definitions %
+
+CONSTANT LATENCY = PIPELINE;
+-- a useful function
+DEFINE MIN(a, b) = (a < b) ? a : b;
+
+-- Height of the CPA_based paraller adder.
+CONSTANT CPA_LEVELS 	= (SIZE == 1) ? 1 : CEIL(LOG2(SIZE));
+CONSTANT TOT_LEVELS 	= CPA_LEVELS;
+
+-- Determine the full width (full significant) of output (sum)
+CONSTANT FULL_WIDTHR 	= (SIZE == 1) ? WIDTH :
+						  (SHIFT == 0) ? CEIL(LOG2(((2^WIDTH)-1) * SIZE)) :
+						  CEIL(LOG2(((2^WIDTH)-1) * (2^(SIZE*SHIFT)-1) /
+						  ((2^SHIFT)-1)));
+
+-- For non-pipelined and single-level cases, internal latency is simply 0,
+-- For pipelined cases, it's the maximum usable latency attainable from 
+-- adder tree. 						   
+CONSTANT INT_LATENCY	= LATENCY == 0 ? 0 : (MIN(TOT_LEVELS-1, LATENCY));
+
+-- The remaing part of latency is attained through use of external registers	
+CONSTANT EXT_LAT_DEPTH 	= (LATENCY <= TOT_LEVELS-1) ? 0 : (LATENCY - TOT_LEVELS + 1);
+CONSTANT EXT_LAT_WIDTH 	= (WIDTHR >= FULL_WIDTHR)? FULL_WIDTHR : WIDTHR;
+	
+				   
+SUBDESIGN parallel_add
+( 
+	data[SIZE - 1..0][WIDTH-1..0]	: INPUT = GND;
+	clock							: INPUT = GND;
+	clken							: INPUT = VCC;
+	aclr							: INPUT = GND;
+ 	result[WIDTHR-1..0] 			: OUTPUT;
+)
+
+
+VARIABLE 	
+	IF CBXI_PARAMETER == "NOTHING" GENERATE
+		-- Instantiate a parallel adder structure. For non-pipelined FLEX/NORMAL and
+		-- MAX cases, will use a CSA-based adder tree to reduce propagation delays,
+		-- but will use a CPA-based adder for all other cases. 
+		IF !USED(clock) & !((FAMILY_FLEX() == 1) & 
+			USE_CARRY_CHAINS()) & ((REPRESENTATION == "SIGNED" & SHIFT <= 1) # 
+										 REPRESENTATION == "UNSIGNED") GENERATE
+										 
+			-- Note! CSA adder has its size and width parameters swapped.
+			IF (MSW_SUBTRACT == "NO") GENERATE
+					padder	: csa_add WITH (SIZE = FULL_WIDTHR, WIDTH = SIZE, END_ADDER = 1);
+			ELSE GENERATE
+				padder	: csa_add WITH (SIZE = FULL_WIDTHR, WIDTH = SIZE+1, END_ADDER = 1);
+			END GENERATE;
+
+		ELSE GENERATE
+			padder	: pcpa_add WITH (SIZE = SIZE, WIDTH = WIDTH, 
+									TOT_LEVELS=TOT_LEVELS, STAGE=0, LATENCY=INT_LATENCY, 
+									SHIFT=SHIFT, REPRESENTATION=REPRESENTATION,
+									MSW_SUBTRACT = MSW_SUBTRACT);
+		END GENERATE;
+
+		-- If external latency is non-zero, then we need extra registers.
+		IF EXT_LAT_WIDTH > 0 GENERATE
+			external_latency_ffs	: altshift WITH (WIDTH = EXT_LAT_WIDTH, 
+													 DEPTH = EXT_LAT_DEPTH);	
+		END GENERATE;
+	ELSE GENERATE
+		auto_generated : @CBXI_PARAMETER WITH (CBXI_PARAMETER = "NOTHING");
+	END GENERATE;
+
+BEGIN
+
+ 	ASSERT REPORT "WIDTH = %, SIZE = %, WIDTHR = %, FULL_WIDTHR = %" 
+		 	 WIDTH,  SIZE,  WIDTHR, FULL_WIDTHR SEVERITY DEBUG; 
+		 	 
+ 	ASSERT (REPRESENTATION == "SIGNED" # REPRESENTATION == "UNSIGNED")
+			REPORT "Illegal value for REPRESENTATION parameter (""%"") -- value must be ""SIGNED"" or ""UNSIGNED""" 
+				REPRESENTATION
+			SEVERITY ERROR
+			HELP_ID PAR_ADD_REPRESENTATION;
+
+	ASSERT (WIDTH > 0)
+                        REPORT "Value of WIDTH parameter must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID PAR_ADD_WIDTH;
+
+	ASSERT (USED(clock) ? LATENCY > 0 : LATENCY == 0)
+			REPORT "Value of PIPELINE parameter must be greater than 0 if clock input is used and vice versa"
+			SEVERITY ERROR
+			HELP_ID PAR_ADD_CLOCK_WITHOUT_LATENCY;
+
+	ASSERT (LATENCY <= TOT_LEVELS)
+			REPORT "Value of PIPELINE parameter (%) should be lower -- use % for best performance/utilization" LATENCY, INT_LATENCY
+			SEVERITY INFO
+			HELP_ID PAR_ADD_CLOCK_LATENCY_VALUE;
+
+ 	ASSERT (SHIFT < WIDTH)
+            REPORT "Value of WIDTH parameter must be greater than SHIFT"
+			SEVERITY ERROR
+			HELP_ID PAR_ADD_WIDTH_SHIFT;
+
+ 	ASSERT (!(MSW_SUBTRACT == "YES" & REPRESENTATION == "UNSIGNED")) 
+			REPORT "Illegal value for MSW_SUBTRACT parameter -- MSW_SUBTRACT cannot be set to ""YES"" if the REPRESENTATION parameter is set to ""UNSIGNED"""
+			SEVERITY ERROR
+			HELP_ID PAR_ADD_MSW_SUBTRACT;
+
+	ASSERT (FAMILY_IS_KNOWN() == 1)
+		REPORT "Megafunction parallel_add does not recognize the current device family (%) -- ensure that you are using the newest version of the megafunction"
+			DEVICE_FAMILY
+		SEVERITY WARNING
+		HELP_ID PARALLEL_ADD_FAMILY_UNKNOWN;
+	IF CBXI_PARAMETER == "NOTHING" GENERATE
+		IF 	!USED(clock) & !((FAMILY_FLEX() == 1) & USE_CARRY_CHAINS()) & 
+			((REPRESENTATION == "SIGNED" & SHIFT <= 1) # 
+			REPRESENTATION == "UNSIGNED") GENERATE
+
+			-- Connect inputs to the CSA-based adder
+			-- The first input is not shifted
+			padder.data[0][WIDTH-1..0] = data[0][];
+
+			IF SIZE > 1 GENERATE	
+				-- If more than one input, sign extend the first input
+				IF REPRESENTATION == "UNSIGNED" GENERATE	
+					padder.data[0][FULL_WIDTHR-1..WIDTH] = GND;
+				ELSE GENERATE
+					padder.data[0][FULL_WIDTHR-1..WIDTH] = data[0][WIDTH-1];
+				END GENERATE;
+
+				IF SIZE > 2 GENERATE
+					FOR I IN 1 TO SIZE-2 GENERATE
+						IF SHIFT > 0 GENERATE
+							padder.data[I][I*SHIFT-1..0] = GND;
+						END GENERATE;
+						padder.data[I][I*SHIFT+WIDTH-1..I*SHIFT] = data[I][];
+
+						IF REPRESENTATION == "UNSIGNED" GENERATE	
+							padder.data[I][FULL_WIDTHR-1..I*SHIFT+WIDTH] = GND;
+						ELSE GENERATE
+							padder.data[I][FULL_WIDTHR-1..I*SHIFT+WIDTH] = data[I][WIDTH-1];
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+
+				IF SHIFT > 0 GENERATE
+					padder.data[SIZE-1][(SIZE-1)*SHIFT-1..0] = GND;
+				END GENERATE;
+
+				IF (MSW_SUBTRACT == "NO") GENERATE
+					padder.data[SIZE-1][(SIZE-1)*SHIFT+WIDTH-1..(SIZE-1)*SHIFT] = data[SIZE-1][];
+					padder.data[SIZE-1][FULL_WIDTHR-1..(SIZE-1)*SHIFT+WIDTH] = data[SIZE-1][WIDTH-1];
+				ELSE GENERATE	
+					padder.data[SIZE-1][(SIZE-1)*SHIFT+WIDTH-1..(SIZE-1)*SHIFT] = !data[SIZE-1][];
+					padder.data[SIZE-1][FULL_WIDTHR-1..(SIZE-1)*SHIFT+WIDTH] = !data[SIZE-1][WIDTH-1];
+					IF (SHIFT > 0) GENERATE
+						padder.data[SIZE][(SIZE-1)*SHIFT-1..0] = GND;
+					END GENERATE;
+					padder.data[SIZE][(SIZE-1)*SHIFT] = VCC;
+					padder.data[SIZE][FULL_WIDTHR-1..(SIZE-1)*SHIFT+1] = GND;
+				END GENERATE;
+				
+			END GENERATE;
+
+		ELSE GENERATE
+			-- In this case, the pcpa adder will take care of internal shifts
+			-- so simply connect the input data to the adder.
+			padder.data[0][] = data[0][];
+			IF SIZE > 1 GENERATE
+				IF SIZE > 2 GENERATE
+					padder.data[SIZE-2..1][] = data[SIZE-2..1][];
+				END GENERATE;
+
+				IF (MSW_SUBTRACT == "NO") GENERATE
+					padder.data[SIZE-1][] = data[SIZE-1][];
+				ELSE GENERATE
+					padder.data[SIZE-1][] = !data[SIZE-1][];
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+
+		-- Connections to external latency FFs.
+		IF WIDTHR <= FULL_WIDTHR GENERATE
+			-- when fewer result bits are desired.
+			external_latency_ffs.data[] = padder.result[FULL_WIDTHR-1..FULL_WIDTHR-WIDTHR];
+			result[] = external_latency_ffs.result[];
+			
+		ELSE GENERATE 			
+			-- When extension of result bits to the left is needed 
+			external_latency_ffs.data[] = padder.result[FULL_WIDTHR-1..0];
+			result[FULL_WIDTHR-1..0] = external_latency_ffs.result[];
+
+			-- Perform sign extension of the output
+			IF REPRESENTATION == "UNSIGNED" GENERATE
+				result[WIDTHR-1..FULL_WIDTHR] = GND;
+			ELSE GENERATE
+				result[WIDTHR-1..FULL_WIDTHR] = external_latency_ffs.result[FULL_WIDTHR-1];
+			END GENERATE;
+		END GENERATE;
+
+		-- parallel adder clock connections
+		IF USED(clock) GENERATE
+			padder.(clock, aclr) = (clock, aclr);	
+		END GENERATE;
+						
+		-- External latency FFs clock connections
+		IF EXT_LAT_DEPTH > 0 GENERATE
+			external_latency_ffs.(clock, aclr) = (clock, aclr);
+		END GENERATE;
+	ELSE GENERATE
+		auto_generated.data[] = data[][];
+		IF USED(clock) GENERATE
+			auto_generated.clock = clock;
+		END GENERATE;
+		IF USED(clken) GENERATE
+			auto_generated.clken = clken;
+		END GENERATE;
+		IF USED(aclr) GENERATE
+			auto_generated.aclr = aclr;
+		END GENERATE;
+		result[] = auto_generated.result[];
+	END GENERATE;
+	IF !USED(result) GENERATE
+		result[] = GND;
+	END GENERATE;
+END;

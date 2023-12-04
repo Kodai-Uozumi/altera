@@ -1,0 +1,177 @@
+--------------------------------------------------------------------
+--
+--	LPM_DFF Parameterized Megafunction
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 2.0
+--
+--------------------------------------------------------------------
+
+INCLUDE "lpm_constant.inc";
+INCLUDE "dffeea.inc";
+
+PARAMETERS
+(
+	LPM_WIDTH,
+	LPM_AVALUE = 0,
+	LPM_SVALUE = 0,
+	DEVICE_FAMILY
+);
+
+INCLUDE "aglobal90.inc";
+
+DEFINE ASYNC_COUNT() =
+	  (USED(aconst) ? 1 : 0)
+	+ (USED(aclr) ? 1 : 0)
+	+ (USED(aset) ? 1 : 0);
+
+SUBDESIGN lpm_dff
+(
+	data[LPM_WIDTH-1..0]		: INPUT = GND;
+	clock						: INPUT;
+	enable						: INPUT = VCC;
+	shiftin						: INPUT = VCC;
+	shiften						: INPUT = GND;
+	aclr, aset, aconst			: INPUT = GND;
+	sclr, sset, sconst			: INPUT = GND;
+	q[LPM_WIDTH-1..0]			: OUTPUT;
+	shiftout					: OUTPUT;
+)
+
+VARIABLE
+	IF (FAMILY_HAS_PRESET() == 0 & ASYNC_COUNT() > 1) GENERATE
+		dffs[LPM_WIDTH-1..0]	: dffeea;
+	ELSE GENERATE
+		dffs[LPM_WIDTH-1..0]	: DFFE;
+	END GENERATE;
+
+	IF (USED(LPM_AVALUE)) GENERATE
+		ac	: lpm_constant with (LPM_WIDTH=LPM_WIDTH, LPM_CVALUE=LPM_AVALUE);
+	END GENERATE;
+	IF (USED(LPM_SVALUE)) GENERATE
+		sc	: lpm_constant with (LPM_WIDTH=LPM_WIDTH, LPM_CVALUE=LPM_SVALUE);
+	END GENERATE;
+
+	% Nodes that define DFFE inputs when shifting %
+	shnode[LPM_WIDTH-1..0]	: node;
+
+BEGIN
+
+	ASSERT (LPM_WIDTH > 0)
+			REPORT "Value of LPM_WIDTH parameter must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID LPM_DFF_WIDTH;
+
+	ASSERT (USED(aconst) == 0 # USED(LPM_AVALUE))
+			REPORT "Value of LPM_AVALUE parameter must be assigned if aconst port is used"
+			SEVERITY ERROR
+			HELP_ID LPM_DFF_ACONST;
+
+	ASSERT (USED(aconst) == 0 # LPM_AVALUE < 2^LPM_WIDTH)
+			REPORT "Value of LPM_AVALUE parameter must be less than 2^LPM_WIDTH if aconst port is used -- using % instead"
+				LPM_AVALUE mod 2^LPM_WIDTH
+			SEVERITY WARNING
+			HELP_ID LPM_DFF_ACONST_BIG;
+
+	ASSERT (USED(aconst) # USED(aset) # USED(LPM_AVALUE) == 0)
+			REPORT "Ignored LPM_AVALUE parameter because neither the aconst or aset port is used"
+			SEVERITY WARNING
+			HELP_ID LPM_DFF_AVALUE;
+
+	ASSERT (USED(aconst) == 0 # (USED(aclr) == 0 & USED(aset) == 0))
+			REPORT "Can't use aconst port if the aclr or aset port is used"
+			SEVERITY ERROR
+			HELP_ID LPM_DFF_ACONFLICT;
+
+	ASSERT (USED(sconst) == 0 # USED(LPM_SVALUE))
+			REPORT "Value of LPM_SVALUE parameter must be assigned if sconst port is used"
+			SEVERITY ERROR
+			HELP_ID LPM_DFF_SCONST;
+
+	ASSERT (USED(sconst) == 0 # LPM_SVALUE < 2^LPM_WIDTH)
+			REPORT "Value of LPM_SVALUE parameter must be less than 2^LPM_WIDTH if sconst port is used -- using % instead"
+				LPM_SVALUE mod 2^LPM_WIDTH
+			SEVERITY WARNING
+			HELP_ID LPM_DFF_SCONST_BIG;
+
+	ASSERT (USED(sconst) # USED(sset) # USED(LPM_SVALUE) == 0)
+			REPORT "Ignored LPM_SVALUE parameter because neither the sconst or sset port is used"
+			SEVERITY WARNING
+			HELP_ID LPM_DFF_SVALUE;
+
+	ASSERT (USED(sconst) == 0 # (USED(sclr) == 0 & USED(sset) == 0))
+			REPORT "Can't use sconst port if the sclr or sset port is used"
+			SEVERITY ERROR
+			HELP_ID LPM_DFF_SCONFLICT;
+
+
+	% common ports %
+	dffs[].ena = enable;
+	dffs[].clk = clock;
+
+	% Asynchronous control logic %
+	IF (USED(aconst)) GENERATE
+		dffs[].clrn = !aconst # ac.result[];
+		dffs[].prn  = !aconst # !ac.result[];
+	ELSE GENERATE
+		IF (USED(LPM_AVALUE)) GENERATE
+			dffs[].clrn = !aclr & (!aset # ac.result[]);
+			dffs[].prn  = aclr # !aset # !ac.result[];
+		ELSE GENERATE
+			IF (USED(aclr)) GENERATE
+				dffs[].clrn = !aclr;
+			END GENERATE;
+			IF (USED(aset)) GENERATE
+				dffs[].prn = aclr # !aset;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+
+	% shift-loaded nodes %
+	IF (LPM_WIDTH > 1) GENERATE
+		shnode[] = (dffs[LPM_WIDTH-2..0].q, shiftin);
+	ELSE GENERATE
+		shnode[] = shiftin;
+	END GENERATE;
+
+	% Synchronous input logic %
+	IF (USED(sconst)) GENERATE
+		dffs[].d = sconst & sc.result[]
+				 # !sconst & ( shiften & shnode[]
+				 			   # !shiften & data[]);
+	ELSE GENERATE
+		IF (USED(LPM_SVALUE)) GENERATE
+			dffs[].d = !sclr & (  sset & sc.result[]
+								# !sset & ( shiften & shnode[]
+										  # !shiften & data[]));
+		ELSE GENERATE
+			dffs[].d = !sclr & (sset # ( shiften & shnode[]
+										# !shiften & data[]));
+		END GENERATE;
+	END GENERATE;
+
+	% Connect outputs %
+	q[] = dffs[].q;
+	shiftout = dffs[LPM_WIDTH-1].q;
+	IF !USED(q) GENERATE
+		q[] = GND;
+	END GENERATE;
+	IF !USED(shiftout) GENERATE
+		shiftout = GND;
+	END GENERATE;
+END;

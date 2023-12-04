@@ -1,0 +1,165 @@
+--------------------------------------------------------------------
+--
+--	LPM_OR Parameterized Megafunction
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 3.0
+--
+--------------------------------------------------------------------
+INCLUDE "aglobal90.inc";	% device definitions %
+
+
+PARAMETERS
+(
+	LPM_WIDTH,
+	LPM_SIZE,
+	CARRY_CHAIN_LENGTH = 32,
+	CARRY_CHAIN = "MANUAL",
+	CASCADE_CHAIN = "MANUAL",
+	DEVICE_FAMILY
+);
+
+CONSTANT INPUTS_PER_LCELL = (LPM_SIZE <= 8) ? 4 : 2;
+CONSTANT TOT_LCELL_NUM = CEIL(LPM_SIZE DIV INPUTS_PER_LCELL);
+CONSTANT REM_BITS = (LPM_SIZE MOD INPUTS_PER_LCELL);
+CONSTANT FULL_SIZE = TOT_LCELL_NUM*INPUTS_PER_LCELL;
+CONSTANT USE_CHAIN = (FAMILY_FLEX() == 1) & 
+					 ((LPM_SIZE > 4 & LPM_SIZE <= 8 & USE_CASCADE_CHAINS()) #
+					  (LPM_SIZE > 8 & USE_CARRY_CHAINS())) ? 1 : 0;
+DEFINE NO_CARRY_BREAK(I) = (I < (CARRY_CHAIN_LENGTH-1)) ? 1 :
+					((I-(CARRY_CHAIN_LENGTH-1)) MOD (CARRY_CHAIN_LENGTH-2) > 0 ? 1 : 0);
+					
+SUBDESIGN lpm_or
+(
+	data[LPM_SIZE-1..0][LPM_WIDTH-1..0]	: INPUT;
+	result[LPM_WIDTH-1..0]				: OUTPUT;
+)
+
+VARIABLE
+	IF (LPM_SIZE > 1) GENERATE
+		IF (USE_CHAIN == 1) & (FAMILY_STRATIX() != 1) GENERATE
+			full_inp_array[LPM_WIDTH-1..0][FULL_SIZE-1..0]	: NODE;
+
+			IF (LPM_SIZE <= 8) GENERATE
+				or_node[LPM_WIDTH-1..0][0] : CASCADE;
+			ELSE GENERATE
+				or_node[LPM_WIDTH-1..0][TOT_LCELL_NUM-2..0] : CARRY;
+			END GENERATE;
+			
+			last_node[LPM_WIDTH-1..0]					: NODE;	
+		ELSE GENERATE
+			or_node[LPM_WIDTH-1..0][LPM_SIZE-1..0]		: NODE;	
+ 		END GENERATE;
+	END GENERATE;
+
+BEGIN
+
+	ASSERT (LPM_WIDTH > 0)
+			REPORT "Value of LPM_WIDTH parameter must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID LPM_OR_WIDTH;
+
+	ASSERT (LPM_SIZE > 0)
+			REPORT "Value of LPM_SIZE parameter must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID LPM_OR_SIZE;
+
+	IF (LPM_SIZE > 1) GENERATE
+		IF (USE_CHAIN == 1) & (FAMILY_STRATIX() != 1) GENERATE
+			------------------------------------
+			--		Flex/Fast cases
+			------------------------------------
+			FOR I IN 0 TO LPM_SIZE-1 GENERATE
+				full_inp_array[][I] = data[I][];
+			END GENERATE;
+			
+			IF (FULL_SIZE > LPM_SIZE) GENERATE
+				full_inp_array[][FULL_SIZE-1..LPM_SIZE] = GND;
+			END GENERATE;
+			
+			IF (LPM_SIZE <= 8) GENERATE
+				-- Note that NEED_CHAIN has already limited LPM_SIZE to > 4,
+				-- so we do need 2 cells
+				-- First cell
+				or_node[][0] =  full_inp_array[][0] # full_inp_array[][1] # 
+								full_inp_array[][2] # full_inp_array[][3];
+			
+				-- Last cell
+				last_node[] = full_inp_array[][4] # full_inp_array[][5] # 
+							  full_inp_array[][6] # full_inp_array[][7] #
+							  or_node[][0];
+			ELSE GENERATE
+				-- First cell
+				or_node[][0] = full_inp_array[][0] # full_inp_array[][1];
+					
+				-- Middle cells
+				IF (TOT_LCELL_NUM > 2) GENERATE
+					FOR each_cell IN 1 TO TOT_LCELL_NUM-2 GENERATE
+						IF (NO_CARRY_BREAK(each_cell)) GENERATE
+							or_node[][each_cell] =  full_inp_array[][each_cell*2]   # 
+													full_inp_array[][each_cell*2+1] #
+													or_node[][each_cell-1];
+						ELSE GENERATE
+							-- Break the carry chain by inserting an LCELL
+							-- when exceeding the chain-length limit
+							or_node[][each_cell] = CARRY_SUM(GND, 
+										CARRY_SUM(full_inp_array[][each_cell*2]  #
+												  full_inp_array[][each_cell*2+1]# 
+												  or_node[][each_cell-1],
+												  full_inp_array[][each_cell*2]  #
+												  full_inp_array[][each_cell*2+1]# 
+												  or_node[][each_cell-1])
+										RETURNS (.sout)) 
+													RETURNS (.cout);
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+					
+				-- Last cell
+				last_node[] = full_inp_array[][(TOT_LCELL_NUM-1)*2]   # 
+							  full_inp_array[][(TOT_LCELL_NUM-1)*2+1] #
+							  or_node[][TOT_LCELL_NUM-2];
+
+			END GENERATE;
+			
+			result[] = last_node[];
+		
+		ELSE GENERATE
+			------------------------------------------
+			--		Non-Flex/Fast and short cases
+			------------------------------------------
+			FOR each_bit IN 0 TO LPM_SIZE-1 GENERATE
+				IF (each_bit == 0) GENERATE
+					-- First bit starts chain
+					or_node[][0] = data[0][];
+				ELSE GENERATE
+					-- rest of the chain
+					or_node[][each_bit] =
+						data[each_bit][] # or_node[][each_bit-1];
+				END GENERATE;
+			END GENERATE;
+			
+			result[] = or_node[][LPM_SIZE-1];
+		END GENERATE;
+	ELSE GENERATE
+		result[] = data[0][];
+	END GENERATE;
+	IF !USED(result) GENERATE
+		result[] = GND;
+	END GENERATE;
+END;

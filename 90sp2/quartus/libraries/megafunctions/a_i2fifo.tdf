@@ -1,0 +1,253 @@
+-- **************************************************************************
+--	Interleaved-Memory Custom FIFO Parameterized Megafunction - A_I2FIFO
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 1.0
+--
+------------------------------
+--
+-- For a description of the parameters and ports, see SCFIFO
+--
+-- Altera recommends not to use this design directly, if possible.
+-- Use SCFIFO instead, with a FLEX10K and USE_EAB="ON"
+--
+-- **************************************************************************
+
+include "a_imfifo";
+include "a_f2fifo";
+include "a_fefifo";
+
+parameters
+(
+	LPM_WIDTH,
+	LPM_NUMWORDS,	-- at least 8
+
+	LPM_SHOWAHEAD = "OFF",
+	UNDERFLOW_CHECKING = "ON",
+	OVERFLOW_CHECKING = "ON",
+	ALLOW_RWCYCLE_WHEN_FULL = "OFF"
+);
+
+-------------------------------------------------------------------------------
+constant IMF_INPUT_PIPELINE = 1;
+constant IMF_OUTPUT_PIPELINE = 1;
+constant FFDEPTH = 2+IMF_INPUT_PIPELINE+IMF_OUTPUT_PIPELINE;
+constant IMDEPTH = LPM_NUMWORDS-FFDEPTH;
+constant WIDTHAD = LPM_NUMWORDS>2 ? ceil(log2(LPM_NUMWORDS)) : 2;
+
+-------------------------------------------------------------------------------
+subdesign A_I2FIFO
+(
+	data[LPM_WIDTH-1..0]:  input;
+	q   [LPM_WIDTH-1..0]: output;
+	wreq, rreq			:  input;
+	aclr, sclr			:  input = gnd;
+
+	empty, full			: output;
+	clock				:  input;
+	UsedW[WIDTHAD-1..0]	: output;		-- # of words in the FIFO
+)
+
+-------------------------------------------------------------------------------
+variable
+	imfrreq, imfwreq, ff1rreq, ff1wreq, ff2rreq, ff2wreq: node;
+--	uwi[ceil(log2(IMDEPTH))-1..0], uw1[ceil(log2(FFDEPTH))-1..0], uw2[ceil(log2(FFDEPTH))-1..0]: output;
+	
+	IMF: A_IMFIFO with( LPM_WIDTH=LPM_WIDTH, LPM_NUMWORDS=IMDEPTH, INPUT_PIPELINE=IMF_INPUT_PIPELINE, OUTPUT_PIPELINE=IMF_OUTPUT_PIPELINE, LPM_SHOWAHEAD="OFF", 
+						UNDERFLOW_CHECKING="ON", OVERFLOW_CHECKING=OVERFLOW_CHECKING, ALLOW_RWCYCLE_WHEN_FULL=ALLOW_RWCYCLE_WHEN_FULL );
+	FF1,FF2: A_F2FIFO with( LPM_WIDTH=LPM_WIDTH, LPM_NUMWORDS=FFDEPTH, LPM_SHOWAHEAD="ON", UNDERFLOW_CHECKING=UNDERFLOW_CHECKING, OVERFLOW_CHECKING="ON", ALLOW_RWCYCLE_WHEN_FULL="ON" );
+	FEF: A_FEFIFO with( LPM_WIDTHAD=WIDTHAD, LPM_NUMWORDS=LPM_NUMWORDS, UNDERFLOW_CHECKING=UNDERFLOW_CHECKING, OVERFLOW_CHECKING=OVERFLOW_CHECKING, ALLOW_RWCYCLE_WHEN_FULL=ALLOW_RWCYCLE_WHEN_FULL );
+	FF1d[LPM_WIDTH-1..0], FF2d[LPM_WIDTH-1..0]: lcell;
+
+	IM_FEEDS_WHO: machine of bits( b_im_mux, b_im_feeds )
+					with states(
+					im_feeds_ff1	= B"00",
+					im_feeds_ff1_da	= B"10",
+					im_feeds_ff2	= B"01",
+					im_feeds_ff2_da	= B"11");
+
+	READ_WHERE: machine of bits( b_readside )
+					with states(
+					read_ff1		= B"0",
+					read_ff2		= B"1");
+
+	WRITE_WHERE: machine of bits( b_writeside )
+					with states(
+					write_ff1		= B"0",
+					write_ff2		= B"1");
+
+	valid_rreq, valid_wreq, start_im1, start_im2: node;
+	ff1_goes_empty, ff2_goes_empty, imf_goes_empty: node;
+
+	if LPM_SHOWAHEAD=="OFF" generate
+		rd_out[LPM_WIDTH-1..0]: dffe;
+	end generate;
+
+-------------------------------------------------------------------------------
+begin
+	assert (LPM_WIDTH>=1)
+			report "Value of LPM_WIDTH parameter must be at least 1"
+			severity error
+			help_id I2FIFO_WIDTH;
+
+	assert (LPM_NUMWORDS>=8)
+			report "Value of LPM_NUMWORDS parameter must be at least 8"
+			severity error
+			help_id I2FIFO_NUMWORDS;
+
+--------------------------------------------------------------------
+	assert (LPM_SHOWAHEAD=="ON") or (LPM_SHOWAHEAD=="OFF")
+			report "Assign either ""ON"" or ""OFF"" to LPM_SHOWAHEAD"
+			severity error
+			help_id I2FIFO_SHOWAHEAD;
+
+	assert (UNDERFLOW_CHECKING=="ON") or (UNDERFLOW_CHECKING=="OFF")
+			report "Assign either ""ON"" or ""OFF"" to UNDERFLOW_CHECKING"
+			severity error
+			help_id I2FIFO_UNDERFLOW_CHECKING;
+
+	assert (OVERFLOW_CHECKING=="ON") or (OVERFLOW_CHECKING=="OFF")
+			report "Assign either ""ON"" or ""OFF"" to OVERFLOW_CHECKING"
+			severity error
+			help_id I2FIFO_OVERFLOW_CHECKING;
+
+	assert (ALLOW_RWCYCLE_WHEN_FULL=="ON") or (ALLOW_RWCYCLE_WHEN_FULL=="OFF")
+			report "Assign either ""ON"" or ""OFF"" to ALLOW_RWCYCLE_WHEN_FULL"
+			severity error
+			help_id I2FIFO_ALLOW_RWCYCLE_WHEN_FULL;
+
+-------------------------------------------------------------------------------
+	if UNDERFLOW_CHECKING=="OFF" generate
+		valid_rreq = rreq;
+	else generate
+		valid_rreq = rreq and !empty;
+	end generate; 
+
+	if OVERFLOW_CHECKING=="OFF" generate
+		valid_wreq = wreq;
+	else generate 
+		if ALLOW_RWCYCLE_WHEN_FULL=="ON" generate
+			valid_wreq = wreq and (!full or rreq);
+		else generate
+			valid_wreq = wreq and !full;
+		end generate; 
+	end generate;
+
+	start_im1 = FF1.Full and !b_writeside and valid_wreq and (!rreq or  b_readside);
+	start_im2 = FF2.Full and  b_writeside and valid_wreq and (!rreq or !b_readside);
+	ff1_goes_empty = %(FF1.UsedW[]==1)% FF1.usedw_eq[0] and !FF1.usedw_eq[1] and rreq and !IMF.q_avail;
+	ff2_goes_empty = %(FF2.UsedW[]==1)% FF2.usedw_eq[0] and !FF2.usedw_eq[1] and rreq and !IMF.q_avail;
+	imf_goes_empty = (IMF.UsedW[]==1) and imfrreq and !imfwreq;
+
+	(IM_FEEDS_WHO, READ_WHERE, WRITE_WHERE).clk = clock;
+	(IM_FEEDS_WHO, READ_WHERE, WRITE_WHERE).reset = aclr;
+
+	case IM_FEEDS_WHO is
+		when im_feeds_ff1 =>
+			if !IMF.Empty and !sclr then
+				IM_FEEDS_WHO = im_feeds_ff1_da;
+			end if;
+		when im_feeds_ff1_da =>
+			if sclr then
+				IM_FEEDS_WHO = im_feeds_ff1;
+			elsif !IMF.q_avail and IMF.outpipe_empty and IMF.Empty then
+				IM_FEEDS_WHO = im_feeds_ff2;
+			end if;
+		when im_feeds_ff2 =>
+			if sclr then
+				IM_FEEDS_WHO = im_feeds_ff1;
+			elsif !IMF.Empty then
+				IM_FEEDS_WHO = im_feeds_ff2_da;
+			end if;
+		when im_feeds_ff2_da =>
+			if (!IMF.q_avail and IMF.outpipe_empty and IMF.Empty) or sclr then
+				IM_FEEDS_WHO = im_feeds_ff1;
+			end if;
+	end case;
+
+	case READ_WHERE is
+		when read_ff1 =>
+			if ff1_goes_empty and b_writeside and !sclr then
+				READ_WHERE = read_ff2;
+			end if;
+		when read_ff2 =>
+			if (ff2_goes_empty and !b_writeside) or sclr then
+				READ_WHERE = read_ff1;
+			end if;
+	end case;
+
+	case WRITE_WHERE is
+		when write_ff1 =>
+			if imf_goes_empty and !sclr then
+				WRITE_WHERE = write_ff2;
+			end if;
+		when write_ff2 =>
+			if imf_goes_empty or sclr then
+				WRITE_WHERE = write_ff1;
+			end if;
+	end case;
+
+	imfrreq = rreq and (b_writeside==b_readside);
+	imfwreq = (!IMF.empty and valid_wreq) or start_im1 or start_im2;
+
+	ff1rreq = lcell(rreq and !b_readside);
+	ff2rreq = lcell(rreq and  b_readside);
+
+	ff1wreq = lcell((IMF.q_avail and !b_im_feeds) or (wreq and !b_writeside and !start_im1 and IMF.empty));
+	ff2wreq = lcell((IMF.q_avail and  b_im_feeds) or (wreq and  b_writeside and !start_im2 and IMF.empty));
+
+	IMF.(clock, wreq, rreq, aclr, sclr) = (clock, imfwreq, imfrreq, aclr, sclr);
+	FF1.(clock, wreq, rreq, aclr, sclr) = (clock, ff1wreq, ff1rreq, aclr, sclr);
+	FF2.(clock, wreq, rreq, aclr, sclr) = (clock, ff2wreq, ff2rreq, aclr, sclr);
+
+	IMF.data[] = data[];
+	if (IMF.q_avail and !b_im_feeds) then FF1d[]=IMF.q[]; else FF1d[]=data[]; end if;
+	if (IMF.q_avail and  b_im_feeds) then FF2d[]=IMF.q[]; else FF2d[]=data[]; end if;
+	FF1.data[] = FF1d[];
+	FF2.data[] = FF2d[];
+	
+--	if !DFFE(.d=b_readside, .clk=clock, .ena=valid_rreq) then q[]=FF1.q[]; else q[]=FF2.q[]; end if;
+	if LPM_SHOWAHEAD=="OFF" generate
+		if !b_readside then rd_out[]=FF1.q[]; else rd_out[]=FF2.q[]; end if;
+		rd_out[].ena= valid_rreq;
+		q[]			= rd_out[];
+
+		rd_out[].clk = clock;
+		rd_out[].clrn= !aclr;
+	else generate
+		if !b_readside then q[]=FF1.q[]; else q[]=FF2.q[]; end if;
+		empty = valid_rreq and gnd;	-- get rid of the warning regarding valid_rreq
+	end generate;
+	
+--	(uwi[], uw1[], uw2[]) = (IMF.UsedW[], FF1.UsedW[], FF2.UsedW[]);
+	(usedw[], empty, full) = FEF.(usedw_out[], empty, full);
+	FEF.(clock, wreq, rreq, aclr, sclr) = (clock, wreq, rreq, aclr, sclr);
+	IF !USED(q) GENERATE
+		q[] = GND;
+	END GENERATE;
+	IF !USED(UsedW) GENERATE
+		UsedW[] = GND;
+	END GENERATE;
+	IF !USED(empty) GENERATE
+		empty = GND;
+	END GENERATE;
+	IF !USED(full) GENERATE
+		full = GND;
+	END GENERATE;
+end;
+

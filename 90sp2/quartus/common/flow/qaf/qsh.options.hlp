@@ -1,0 +1,955 @@
+<DSE_MODE>
+THE ALTERA DESIGN SPACE EXPLORER (DSE)
+
+   The Design Space Explorer (DSE) is a tool for exploring the 
+   complex flow parameters in the Quartus(R) II software. DSE takes 
+   the guess work out of selecting parameter values and helps you
+   determine the optimal Quartus II software settings for a design.
+
+
+VERSION
+
+   9.0
+
+
+SYNOPSIS
+
+   ------
+   Usage:
+   ------
+   
+   quartus_sh --dse [options]
+
+   Options:
+      -archive
+      -concurrent-compiles [0..6]
+      -custom-file <filename>
+      -decision-column <"column name">
+      -exploration-space <"space">
+      -ignore-failed-base
+      -llr-restructuring
+      -lower-priority
+      -lsf-queue <queue name>
+      -nogui
+      -optimization-goal <"goal">
+      -project <project name>
+      -report-all-resource-usage
+      -revision <revision name>
+      -run-power
+      -search-method <"method">
+      -seeds <seed list>
+      -skip-base
+      -slaves <"slave list">
+      -stop-after-time <dd:hh:mm>
+      -stop-after-zero-failing-paths
+      -use-lsf
+   
+   Note: To use DSE in command-line mode, specify the "-nogui" 
+   option. If you do not specify this option, the DSE graphical 
+   user interface (GUI) starts, regardless of the other 
+   command-line options used.
+
+   
+   quartus_sh --dse
+      This command launches the DSE GUI.
+    
+   quartus_sh --dse -nogui -project main
+      This command starts a default command-line exploration. The
+      default seeds are used along with the default exploration
+      space, optimization goal, and search method.
+    
+   quartus_sh --dse -nogui -project main -seeds 2,4,8-10  
+              -exploration-space "Extra Effort Search"
+
+      This command starts a command-line exploration of an
+      "Extra Effort Search" space using the seeds 2, 4, 8 
+      through 10, the default optimization goal, and the default 
+      search method.
+
+
+OPTIONS
+
+   -archive
+
+      Instructs DSE to archive all points during exploration. Without this
+      option turned on, DSE archives only the best compilation. Archives are
+      stored below the design directory in the sub-folder dse/result. In
+      addition to the archive files, a set of *-dse-result.xml files  
+      hold the results for each compilation DSE performs on the design. 
+      These XML result files are for the internal use of DSE only.
+      
+
+  -concurrent-compiles [0..6]
+
+      Changes the number of current compilations performed by DSE on your
+      local system. By default DSE performs one compile at a time on your 
+      local system; increasing the number of concurrent local compilations
+      can reduce the time it takes to explore a design space but requires 
+      additional computing resources and Quartus II licenses. Setting this 
+      option to zero prevents DSE from using your local system when running 
+      in distributed mode. When running DSE in standalone mode, setting this
+      option to zero has the same effect as setting this option to one.
+   
+   
+   -custom-file <filename>
+
+      Loads the exploration space from a file instead of using a predefined
+      exploration space. See the chapter entitled "Design Space Explorer"
+      in the Quartus II Handbook for more information on custom exploration
+      spaces. This option must be used with the following option:
+
+         -exploration-space "Custom Space"
+ 
+      If you do not use this option, the custom space file is ignored.
+
+      
+   -decision-column <"column name">
+   
+      Instructs DSE to use an the <column name> column from the DSE result
+      table when it looks for values to make better/worse decisions. The
+      default column is "Worst-case Slack".
+      
+
+   -exploration-space <"space">
+   
+      Changes the exploration space used by DSE. The default exploration
+      space is "Seed Sweep". To see a list of available exploration spaces,
+      enter an invalid exploration space name (like "foo") or check the
+      list of exploration spaces for your project on the "Advanced" tab
+      in the DSE graphical user interface.
+      
+
+   -ignore-failed-base
+   
+      Instructs DSE to continue exploring the space even if the base
+      compilation fails. This is useful if the design does not fit into a
+      device, and you want to use DSE to explore area-reducing options
+      in the Quartus II software.
+
+      
+   -llr-restructuring
+      
+      Instructs DSE to try softening and even removing LogicLock regions
+      from the design before exploring the space in an effort to maximize
+      the effectiveness of Quartus II synthesis and fitting options.
+      
+      
+   -lower-priority
+   
+      Lowers the priority of any thread spawned by DSE to compile a point in
+      your design. This can reduce the impact DSE has on CPU resources while
+      it is exploring a design space.
+
+
+   -lsf-queue <queue name>
+   
+      Instructs DSE to use a non-default LSF queue at your site when
+      distributing the search of the exploration space. For detailed
+      information on using LSF to distribute the search of an exploration
+      space, please see the chapter entitled "Design Space Explorer" in the 
+      Quartus II Handbook.
+
+
+   -nogui
+   
+      Instructs DSE to operate in command-line mode instead of graphical user
+      interface mode.
+
+
+   -optimization-goal <"goal">
+   
+      Changes the optimization goal used by DSE. The default optimization 
+      goal is "Optimize for Speed". To see a list of available optimization 
+      goals, enter an invalid optimization goal name (like "foo") or check 
+      the list of optimization goals for your project on the "Advanced" tab
+      in the DSE graphical user interface.
+      
+
+   -project <project name>
+
+      The name of the Quartus II project to use while exploring a space.
+
+      
+   -report-all-resource-usage
+
+      Instructs DSE to extract all the resouce usage information from your
+      project and report it in the DSE report tables. If this option is not
+      used DSE reports very few resource usage statistics in its tables.
+
+
+   -revision <revision name>
+   
+      The name of the project revision to use while exploring a space. If
+      left unspecified, DSE will use the default revision in the project.
+
+
+   -run-power
+   
+      Runs the Quartus II PowerPlay Power Analyzer during exploration to
+      produce power dissipation estimates for the project on every point 
+      in the design space. Ensuring that accurate signal activity and 
+      operating conditions have been specified for your project is 
+      essential to obtaining accurate power estimates for a design. For 
+      more information on specifying signal activity and operating 
+      conditions please see the chapter entitled "PowerPlay Power 
+      Analyzer" in the Quartus II Handbook.
+
+
+   -search-method <method>
+   
+      Change the search method used by DSE. The default search method is
+      "Accelerated Seach of Exploration Space". The available search
+      methods are:
+      
+         "Exhaustive Search of Exploration Space"
+ 
+            This method performs an exhaustive search of all combinations of
+    all Quartus II settings in a design space to find the best
+    combination for your project.
+    
+         "Accelerated Search of Exploration Space"
+ 
+            This method performs intelligent pruning of an exploration
+    space to arrive at the optimal combination of Quartus II
+    settings for your project using fewer compiles.
+
+
+   -seeds <seed list>
+   
+      A list of seeds to sweep as part of the exploration space. DSE
+      accepts a comma separated list and hyphenated ranges of integer
+      seed values. For example:
+
+         -seeds 1,2,8-10
+
+      would sweep seeds 1 and 2, and seeds 8, 9, and 10.
+      
+
+   -skip-base
+   
+      Instructs DSE to test your base project before trying to analyze
+      or compile the specified revision. If the revision has already been
+      compiled successfully, DSE will skip its own compilation of the base
+      project. If DSE cannot determine if the base compilation can be
+      skipped, it will issue a warning and proceed to compile the revision
+      for you.
+      
+
+   -slaves <slave list>
+   
+      A list of computers on the local area network to distribute DSE compiles
+      to and search the exploration space. Provide a comma-separate list of
+      host names and/or IP addresses of computers that are running Quartus II
+      qSlave instances. For more information on distributed DSE compiles,
+      please see the "Design Space Explorer" chapter in the Quartus II
+      Handbook.
+      
+
+   -stop-after-time <dd:hh:mm>
+   
+      Instructs DSE to stop exploring the space after a specified time
+      has elapsed. The time value is specified in format "dd:hh:mm".
+      Where "dd" is the number of days, "hh" is the number of hours and
+      "mm" is the number of minutes to allow before the search is halted.
+
+
+   -stop-after-zero-failing-paths
+   
+      Instructs DSE to stop exploring the space after it encounters any
+      point, including the base point, that has zero failing paths. DSE
+      uses the failing path count reported in the 'All Failing Paths'
+      report column to make this decision.
+
+
+   -use-lsf
+   
+      Instructs DSE to use the LSF resources available at your site when
+      performing a distributed search of an exploration space. Specifying
+      that DSE should use LSF resources automatically enters DSE into
+      distributed search mode. For more information on distributed DSE
+      compiles, please see the chapter entitled "Design Space Explorer" in
+      the Quartus II Handbook.
+
+   
+APPLYING DSE OPTIMIZATIONS
+
+   After you run Design Space Explorer, it writes its recommended optimization
+   settings in a table to both the screen and to the <projectname>.dse.rpt
+   output file. The recommended optimization settings are of the form:
+   
+   +-----------------------------------------+------------------+
+   | Setting                                 | Value            |
+   +-----------------------------------------+------------------+
+   | ASSIGNMENT_NAME                         | ASSIGNMENT_VALUE |
+   +-----------------------------------------+------------------+
+   
+   To implement the recommended optimizations when working in command-line
+   mode, enter each optimization at the command prompt in a Tcl window in
+   the form:
+   
+      set_global_assignment -name ASSIGNMENT_NAME ASSIGNMENT_VALUE
+   
+   Where:
+   
+      <set_global_assignment> is the name of a Tcl command
+      
+      <-name ASSIGNMENT_NAME> is the name of an assignment setting
+      
+      <ASSIGNMENT_VALUE> is a valid value for the specified 
+      assignment setting
+   
+   ---------
+   Examples:
+   ---------
+   
+      set_global_assignment -name STRATIX_OPTIMIZATION_TECHNIQUE SPEED
+      set_global_assignment -name ADV_NETLIST_OPT_SYNTH_GATE_RETIME ON
+      set_global_assignment -name ADV_NETLIST_OPT_SYNTH_WYSIWYG_REMAP ON
+      set_global_assignment -name AUTO_PACKED_REGISTERS_STRATIX OFF
+      set_global_assignment -name PHYSICAL_SYNTHESIS_COMBO_LOGIC ON
+      set_global_assignment -name PHYSICAL_SYNTHESIS_REGISTER_DUPLICATION OFF
+      set_global_assignment -name PHYSICAL_SYNTHESIS_REGISTER_RETIMING OFF
+      set_global_assignment -name PHYSICAL_SYNTHESIS_EFFORT NORMAL
+      set_global_assignment -name INNER_NUM 5
+   
+   Note:
+   
+      PHYSICAL_SYNTHESIS_EFFORT and INNER_NUM can only be applied
+      through the Tcl window.
+      
+      PHYSICAL_SYNTHESIS_EFFORT makes the physical synthesis 
+      algorithms try harder.
+      
+      INNER_NUM controls the Fitter effort level.
+
+
+SEE ALSO
+
+   For more information please see the Design Space Explorer book
+   in the Quartus II Help. Press the <F1> key to access this help
+   from the DSE graphical user interface.
+
+   Additional information is also available in the "Design Space Explorer" 
+   chapter in the Quartus II Handbook, which is available at the Literature 
+   section of the Altera website (http://www.altera.com).
+
+   
+LICENSING
+
+   This script is copyrighted by Altera Corporation and provided
+   subject to the rights granted by the Altera Legal Notice found
+   in the file: quartus/common/tcl/apps/dse/dse.tcl.
+</DSE_MODE>
+
+<SIMLIB_COMP>
+Launches the Altera Simulation Library Compiler to compile Verilog and VHDL simulation 
+libraries for all supported third-party simulators. Make sure the appropriate 
+simulation tools are already installed and paths to the tools are either specified
+in the Quartus II software in the EDA Tool Options page of the Options
+dialog box, or are in the search path.
+
+
+VERSION
+
+   8.1 
+
+
+SYNOPSIS
+
+   ------
+   Usage:
+   ------
+   
+   quartus_sh --simlib_comp [options]
+
+   Options:
+      -family
+      -tool <simulation tool name>
+      -language <language>
+      -directory  <directory>
+      -log <filename>
+      -suppress_messages
+  -gui
+   
+OPTIONS
+
+   -family
+
+      Required option.
+      Specifies the device family for which you are compiling libraries.
+      This will result in the compilation of all libraries required for RTL and
+      gate-level simulations.
+      Note: The family name should be specified in all lowercase, with no spaces.
+      
+
+  -tool <simulation tool name>
+
+	Required option.
+      Specify one of the following tool names:
+      modelsim
+      vcs
+      vcsmx
+      ncsim
+      activehdl
+      rivierapro
+
+      Note: No libraries are generated for VCS. Instead a VCS options file, 
+      simlib_comp.vcs, is generated that specifies the library source files.
+
+      Note: Global libraries are created for for Active HDL, but not for Riviera-PRO
+
+
+   -language <language>
+
+      Required option.
+      
+      This must be either verilog or vhdl.
+
+   -directory <directory>
+
+      Not a required option.
+      
+      The directory in which to create the compiled library directories. 
+      If not specified the default is the current directory ( ./ )
+
+      The libraries are compiled into a single directory (verilog_libs or vhdl_libs)
+      containing subdirectories for each of the compiled libraries. The subdirectory
+      names for Verilog libraries are always suffixed with _ver, whereas the VHDL
+      library directories have no suffix. 
+      
+      For example, the Verilog version of the altera_mf library would be:
+      <directory>/verilog_libs/altera_mf_ver 
+      and the VHDL version would be:
+      <directory>/vhdl_libs/altera_mf
+
+
+   -log <filename>
+
+      Not a required option.
+      Specifies the file to store all messages issued during the compilation that
+      were not suppressed using the -suppress_messages option. If this option 
+      is not specified then no log file is used.
+
+   -suppress_messages
+
+      Not a required option. 
+      Specifies whether or not to suppress simulator specific information and warning
+      messages issued during compilation. This option does not apply to tool specific
+      error messages.
+      Messages that are suppressed do not appear in a log file, if one was specified.
+      If this option is not specified then no messages are suppressed.
+      
+
+   -gui
+
+  Not a required option.
+  
+  This will launch the simlib_comp graphical user interface (GUI) regardless of 
+  the other command-line options used.
+
+SEE ALSO
+
+   For more information please see the EDA simulation tool specfic chapters of the
+   verification volume in Quartus II Handbook which is available in the Literature section
+   of the Altera website (http://www.altera.com).
+
+LICENSING
+
+   This script is copyrighted by Altera Corporation and provided
+   subject to the rights granted by the Altera Legal Notice found
+   in the file: quartus/common/tcl/internal/simlib_comp.tcl.
+</SIMLIB_COMP>
+
+<QSLAVE_MODE>
+THE QUARTUS DISTRIBUTED SLAVE UTILITY
+
+   A utility to start the Distributed Master/Slave Toolkit's slave 
+   daemon on the slave host. The slave daemon must be started on 
+   each slave host in order to listen for job requests from the 
+   master host.
+
+VERSION
+   1.0
+
+SYNOPSIS
+
+   ------
+   Usage:
+   ------
+   quartus_sh --qslave [<port_number> <jobs_limit_number> <working_directory>]
+    
+   Options [optional]:
+      port=<port_number> defaults to 1977
+      jobslimit=<jobs_limit_number> defaults to 1
+      workdir=<working_directory> defaults to current directory     
+
+   ---------
+   Examples:
+   ---------
+
+   quartus_sh --qslave
+      This command starts the Distributed Master/Slave Toolkit's 
+      slave daemon in command-line mode.
+
+   quartus_sh --qslave port=1977
+      This command starts the Distributed Master/Slave Toolkit's 
+      slave daemon to listen at port 1977.
+   
+   quartus_sh --qslave jobslimit=1
+      This command starts the Distributed Master/Slave Toolkit's 
+      slave daemon to listen by setting the jobs limit to 1. This 
+      means the maximum number of jobs this slave host can accept 
+      is one. If this slave host receives more than one job, the 
+      second job is rejected.
+
+  quartus_sh --qslave workdir="d:/slave"
+      This command starts the Distributed Master/Slave Toolkit's 
+      slave daemon and set the working directory to "d:/slave". 
+      The working directory stores the temporary directories that
+      are used by the slave while running the jobs. These temporary 
+      directories are deleted when the jobs are released 
+      successfully. If the jobs fail to be released for some
+      reasons, you may need to delete these temporary directories 
+      manually to save disk space.
+
+LICENSING
+
+   This script is copyrighted by Altera Corporation and provided
+   subject to the rights granted by the Altera Legal Notice found
+   in the file quartus/common/tcl/apps/qslave/qslave.tcl.
+</QSLAVE_MODE>
+
+<FLOW_MODE>
+Option to open a project and execute the specified flow.
+
+------
+Usage:
+------
+quartus_sh --flow <flow_name> <project> [-c <revision>]
+
+Where <flow_name> is one of the following:
+    
+    compile
+    compile_and_simulate
+    signalprobe
+    hardcopy_full_compile
+    migrate_to_hardcopy
+    functional_simulation_netlist_generation
+    export_database
+    import_database
+    early_timing_estimate
+    early_timing_estimate_with_synthesis
+
+---------
+Examples:
+---------
+
+    # Basic compilation
+    quartus_sh --flow compile top
+    quartus_sh --flow compile top -c rev1
+
+    # Compile FPGA project, migrate to HardCopy, and 
+    # compile HardCopy project
+    quartus_sh --flow hardcopy_full_compile top
+
+    # You can do the same manually (assuming migration 
+    # creates top_hardcopy_optimization)
+    quartus_sh --flow compile top
+    quartus_sh --flow migrate_to_hardcopy
+    cd top_hardcopy_optimization
+    quartus_sh --flow compile top
+    
+    # Get an early timing estimate by running fast synthesis, 
+    # followed by early timing estimate and timing analysis
+    quartus_sh --flow early_timing_estimate_with_synthesis top
+    
+    # If synthesis has been run before you can run 
+    # early timing estimate and timing analysis alone
+    quartus_sh --flow early_timing_estimate top
+</FLOW_MODE>
+
+<PREPARE_MODE>
+Option to create or open a project and make some assignments 
+in order to prepare the project for compilation.
+
+This option is intended to set up a project before compilation 
+with the "--flow" option.
+
+------
+Usage:
+------
+
+quartus_sh --prepare [<options>] <project_name>
+
+Use "quartus_sh --prepare -?" for help on the available options.
+
+---------
+Examples:
+---------
+
+    # Set project and compile for Stratix
+    quartus_sh --prepare -f Stratix top
+    quartus_sh --flow compile top
+
+    # Set project and compile for Stratix using a revision
+    quartus_sh --prepare -r rev1 -f Stratix top
+    quartus_sh --flow compile top -c rev1
+
+    # Set project to compile a specified top-level entity
+    quartus_sh --prepare -t MyTopEntity top
+    quartus_sh --flow compile top
+</PREPARE_MODE>
+
+<INSTALL_MODE>
+Option to install Quartus II Device Archive (.qda) file(s).
+Quartus II Device Archive files can be downloaded from
+www.altera.com.
+
+------
+Usage:
+------
+
+quartus_sh --qinstall -qda <value>
+
+------------------
+Available options:
+------------------
+
+-qda <value>:              Specify the Quartus II Device Archive file to 
+						   install. You may specify one or more -qda options.
+---------
+Examples:
+---------
+
+   # Install stratixii.qda and hardcopyii.qda
+   quartus_sh --qinstall -qda stratixii.qda -qda hardcopyii.qda
+</INSTALL_MODE>
+
+<QBOARD_MODE>
+QBoard is a Tk based Graphical User Interface (GUI) that
+allows the user create project templates based on DevKits.
+
+LICENSING
+
+   This script is copyrighted by Altera Corporation and provided
+   subject to the rights granted by the Altera Legal Notice found
+   in the file quartus/common/tcl/apps/qboard/qboard_script.tcl
+</QBOARD_MODE>
+
+<QHELP_MODE>
+Option to call a predefined Tk script with a simple Graphical User
+Interface (GUI) that can be used to browse command-line executable and
+Tcl API help.
+
+LICENSING
+
+   This script is copyrighted by Altera Corporation and provided
+   subject to the rights granted by the Altera Legal Notice found
+   in the file quartus/common/tcl/apps/qflow/qhelp.tcl
+</QHELP_MODE>
+
+<SMART_MODE>
+Option to open a project and determine the smart action 
+jump.
+
+------
+Usage:
+------
+
+quartus_sh --determine_smart_action <project> [-c <revision>]
+
+The smart action is defined as the earliest module in the 
+Compiler flow that needs to be run based on current 
+assignment files.
+
+This option writes out a .chg file depending on what has 
+changed in the source files. For a given quartus_<exe_name>,
+the associated .chg file name has the format <exe_name>.chg. 
+For example, if quartus_map needs to be rerun, a file named 
+map.chg is created.
+
+If a timing requirement is changed, one of the
+following files is created or updated:
+
+    fit.chg if timing-driven compilation is turned ON,
+       which means that the Fitter subsequent modules
+       need to be rerun
+    tan.chg if timing-driven compilation is turned OFF
+       and only the Timing Analyzer needs to be rerun
+
+This option can be used to write a makefile that jumps 
+to the correct module based on changed assignments. For 
+example, the following makefile rules can be used:
+
+    qsh.log: project.qpf project.qsf ($SOURCE_FILES)
+      quartus_sh --determine_smart_action project > qsh.log
+
+    project.fit.rpt: fit.chg project.map.rpt
+      quartus_fit project
+
+    project.map.rpt: map.chg
+      quartus_map project
+</SMART_MODE>
+
+<QAR>
+Option to generate a Quartus II Archive File (.qar)
+for your project that contains specific sets of files.
+
+------
+Usage:
+------
+
+quartus_sh --archive [<options>] <project name>
+
+------------------
+Available options:
+------------------
+
+-use_file_set <value>      Specify the archive file set ID to use.
+                           By default, the "basic" file set ID is used.
+                           Use the -list_file_sets option to view the 
+                           list of possible file sets.
+
+-list_file_sets            List available archive file sets.
+
+-list_files                List files to be archived. If not specified,
+                           a Quartus II Archive file is generated.
+
+-ascii <file name>         When combined with -list_files, this option
+                           generates the specified <file name> containing
+                           a newline-delimited list of files to be archived.
+
+-no_discover               Option not to run Analysis & Elaboration. By
+                           default, Analysis & Elaboration is run unless the
+                           compiler database already exists for the revision.
+
+-force                     Forces the archiver to run Analysis & Elaboration
+                           and overwrite the compiler database for the
+                           revision.
+
+-include_export            Include version-compatible database files.
+
+-export                    Export version-compatible database and
+                           include it in the archive file.
+
+-include_output            Include full compilation database and output files.
+
+-output <value>            Specify the output file name. By default,
+                           <revision name>.qar is used. If the file
+                           already exists, it is overwritten.
+
+-input <value>             Specify the input file name containing a new-line
+                           delimited list of files to archive. This option can
+                           only be combined with the -output option.
+
+-readme                    Display the readme file.
+
+-self_test                 Run a short test on the Quartus II Archive
+                           (.qar) file after it is created. The test
+                           ensures that the .qar file contains a valid,
+                           complete and compilable design.
+
+-fix_qsf                   Modify the <revision>.qsf file to include all 
+                           the necessary files in order to properly archive,
+                           restore and compile the design.
+                           A <revision>.archive.qip file is generated
+                           and specified in the <revision>.qsf file.
+
+-all_revisions             Create an archive (named <revision>.qar)
+                           for each revision in the project.
+
+-revision <value>          Specify the revision name. By default, the
+                           current project revision is archived.
+
+<project name>             Specify the project name.
+
+-------------------------------
+How to use the -fix_qsf option:
+-------------------------------
+
+     # The -fix_qsf option does the following:
+     #  1) Performs Analysis & Elaboration if necessary
+     #  2) Adds all files discovered or required by the compiler
+     #     into your <revision>.qsf file
+   quartus_sh --archive -fix_qsf top
+
+     # You do not need to use the -fix_qsf option again unless 
+     # you modify the design and add more design files.
+     # The .qsf file is now complete with all the required design
+     # files. Unless you add new files to the project, you
+     # can ask the archive project to always skip
+     # Analysis & Elaboration by passing the -no_discover option:
+   quartus_sh --archive -no_discover top
+
+---------
+Examples:
+---------
+
+     # Generate top.qar 
+   quartus_sh --archive top
+
+     # Export the version-compatible database files
+     # and include them in the top.qar archive
+   quartus_sh --archive -export -output top.qar top
+
+     # Generate my_files.qar containing the files listed in my_files.txt
+   quartus_sh --archive -input my_files.txt -output my_files.qar
+
+     # Generate top.qar and run a short test to make sure
+     # top.qar contains a valid, complete and compilable design.
+   quartus_sh --archive -self_test top
+
+     # Generate top.txt containing a list of files to 
+     # archive for the 'top' design.
+   quartus_sh --archive -ascii top.txt -list_files top
+</QAR>
+
+<UNQAR>
+Option to restore the specified Quartus II Archive File (.qar).
+
+------
+Usage:
+------
+
+quartus_sh --restore [<options>] <.qar file name>
+
+------------------
+Available options:
+------------------
+
+-content                   List the contents of the specified Quartus II
+                           Archive file.
+
+-ascii <file name>         When combined with the -content option, this 
+                           option generates the specified <file name> 
+                           containing a newline-delimited list of files 
+                           contained in the specified Quartus II Archive 
+                           file.
+
+-output <value>            Specify the output directory. By default, the
+                           Quartus II Archive File is restored to the 
+                           current directory.
+
+-ui                        Option to open the project from the Quartus II
+                           software after restoring the specified
+                           Quartus II Archive file.
+
+<.qar file name>           Specify the Quartus II Archive File name.
+
+---------
+Examples:
+---------
+
+     # Only display the content of top.qar; don't restore yet.
+   quartus_sh --restore -content top.qar
+
+     # Create top.txt listing the content of top.qar; don't restore yet.
+   quartus_sh --restore -content -ascii top.txt top.qar
+
+     # Restore top.qar
+   quartus_sh --restore top.qar
+
+     # Restore top.qar into the top_restored/ directory
+   quartus_sh --restore -output top_restored top.qar
+</UNQAR>
+
+<SET_QSF>
+Option to call a predefined Tcl command to set or remove a 
+given QSF assignment.
+
+This command opens an existing revision, make or remove an 
+assignment, and close the revision.
+
+------
+Usage:
+------
+
+quartus_sh --set [options] <name>[=<value>] <project_name>
+
+------------------
+Available options:
+------------------
+
+-rev <revision_name>   : Revision name
+-remove                : Remove Assignment
+
+---------
+Examples:
+---------
+
+    # Make SMART_RECOMPILE=ON assignment
+    quartus_sh --set SMART_RECOMPILE=ON top
+    # Same as above but on revision rev1
+    quartus_sh --set -rev rev1 SMART_RECOMPILE=ON top
+    # Remove CUT_CLEAR_AND_PRESET assignment
+    quartus_sh --set -remove CUT_CLEAR_AND_PRESET top
+
+</SET_QSF>
+
+<DTW_MODE>
+Option to call a predefined Tcl/Tk script with a simple 
+Graphical User Interface (GUI) wizard that can be used to define
+timing requirements for a DDR/DDR2-SDRAM memory interface.
+
+------
+Usage:
+------
+
+quartus_sh --dtw [<options>]
+
+Use "quartus_sh --dtw -h" for help on the available options.
+
+--------
+Example:
+--------
+
+	# Run the wizard. The wizard will query the user for the
+	# project and all necessary parameters, then apply the necessary
+	# timing requirements for the memory interface to the project.
+	quartus_sh --dtw
+
+LICENSING
+
+   This script is copyrighted by Altera Corporation and provided
+   subject to the rights granted by the Altera Legal Notice found
+   in the file quartus/common/tcl/apps/gui/dtw/dtw.tcl
+</DTW_MODE>
+
+<RELCON_MODE>
+Option to call a predefined Tcl script that can be used to place
+logic registers relative to user-defined pin locations.
+One application of this script is to optimize timing margins for
+DDR/DDR2-SDRAM memory interfaces on Stratix II.
+
+------
+Usage:
+------
+
+quartus_sh --relcon [<options>]
+
+Use "quartus_sh --relcon -?" for help on the available options.
+
+--------
+Example:
+--------
+        # This example optimizes the read postamble and read resynchronization
+        # margins for the DDR/DDR2-SDRAM High Performance Controller IP on
+        # Stratix II.  It assumes that the DQ and DQS pins already have
+        # pin location assignments on the top/bottom of the device.
+
+        # Place the read postamble registers in the LABs adjacent to the
+        # DQS pins to optimize read postamble setup margin.
+        quartus_sh --relcon -project top -pin_name "mem_dqs[*]" -reg_name "*|postamble_en_pos_2x[*]" -row_offset 1 -apply
+
+        # Place the read resync registers in the LABs adjacent to
+        # the DQ pins to optimize read resync setup and hold margins.
+        quartus_sh --relcon -project top -pin_name "mem_dq[*]" -reg_name "*|rdata_p_ams[*]" -row_offset 1 -apply
+        quartus_sh --relcon -project top -pin_name "mem_dq[*]" -reg_name "*|rdata_n_ams[*]" -row_offset 1 -apply
+
+LICENSING
+
+   This script is copyrighted by Altera Corporation and provided
+   subject to the rights granted by the Altera Legal Notice found
+   in the file quartus/common/tcl/apps/relcon/relative_constraint.tcl
+</RELCON_MODE>
+

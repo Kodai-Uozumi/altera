@@ -1,0 +1,123 @@
+--------------------------------------------------------------------
+--
+--	LPM_LATCH Parameterized Megafunction
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 2.0
+--
+--------------------------------------------------------------------
+
+INCLUDE "lpm_constant.inc";
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+
+PARAMETERS
+(
+	LPM_WIDTH,
+	LPM_AVALUE = "UNUSED"
+);
+
+DEFINE ASYNC_USED() = USED(aconst) # USED(aclr) # USED(aset);
+
+SUBDESIGN lpm_latch
+(
+	data[LPM_WIDTH-1..0]		: INPUT = GND;
+	gate						: INPUT;
+	aclr						: INPUT = GND;
+	aset						: INPUT = GND;
+	aconst						: INPUT = GND;
+	q[LPM_WIDTH-1..0]			: OUTPUT;
+)
+
+VARIABLE
+	IF (ASYNC_USED()) GENERATE
+		IF (USED(LPM_AVALUE)) GENERATE
+			const	: lpm_constant WITH (LPM_WIDTH=LPM_WIDTH, LPM_CVALUE=LPM_AVALUE);
+		END GENERATE;
+		latches[LPM_WIDTH-1..0]		: DLATCH;
+	ELSE GENERATE
+		latches[LPM_WIDTH-1..0]		: LATCH;	-- gate input
+	END GENERATE;
+
+BEGIN
+
+	ASSERT (LPM_WIDTH > 0)
+			REPORT "Value of LPM_WIDTH parameter must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID LPM_LATCH_WIDTH;
+
+	ASSERT (USED(aconst) == 0 # USED(LPM_AVALUE))
+			REPORT "Value of LPM_AVALUE parameter must be assigned if aconst port is used"
+			SEVERITY ERROR
+			HELP_ID LPM_LATCH_ACONST;
+
+	IF USED(LPM_AVALUE) GENERATE
+	ASSERT (USED(aconst) == 0 # LPM_AVALUE < 2^LPM_WIDTH)
+			REPORT "Value of LPM_AVALUE parameter must be less than 2^LPM_WIDTH if aconst port is used -- using % instead"
+				LPM_AVALUE mod 2^LPM_WIDTH
+			SEVERITY WARNING
+			HELP_ID LPM_LATCH_ACONST_BIG;
+	END GENERATE;
+
+	ASSERT (USED(aconst) # USED(aset) # USED(LPM_AVALUE) == 0)
+			REPORT "Ignored LPM_AVALUE parameter because neither the aconst or aset port is used"
+			SEVERITY WARNING
+			HELP_ID LPM_LATCH_AVALUE;
+
+	ASSERT (USED(aconst) == 0 # (USED(aclr) == 0 & USED(aset) == 0))
+			REPORT "Can't use aconst port if aclr or aset port is used"
+			SEVERITY ERROR
+			HELP_ID LPM_LATCH_ACONFLICT;
+
+	IF (ASYNC_USED()) GENERATE
+		q[] = latches[].q;
+		latches[].d = data[];
+		latches[].ena = gate;
+		IF USED(aconst) GENERATE
+			latches[].clrn = !aconst # const.result[];
+			latches[].prn = !aconst # !const.result[];
+		ELSE GENERATE
+			IF USED(LPM_AVALUE) GENERATE
+				IF USED(aclr) GENERATE
+					latches[].clrn = !aclr & (!aset # const.result[]);
+					latches[].prn = aclr # (!aset # !const.result[]);
+				ELSE GENERATE
+					latches[].clrn = !aset # const.result[];
+					latches[].prn = !aset # !const.result[];
+				END GENERATE;
+			ELSE GENERATE
+				IF USED(aclr) GENERATE
+					latches[].clrn = !aclr;
+				END GENERATE;
+				IF USED(aset) GENERATE
+					latches[].prn = !aset;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;				
+	ELSE GENERATE
+		% real latches %
+		latches[].d = data[];
+		latches[].ena = gate;
+
+		% Connect outputs %
+		q[] = latches[].q;
+	END GENERATE;
+
+	IF !USED(q) GENERATE
+		q[] = GND;
+	END GENERATE;
+END;

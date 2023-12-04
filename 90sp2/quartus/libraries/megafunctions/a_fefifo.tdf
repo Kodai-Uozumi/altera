@@ -1,0 +1,386 @@
+--------------------------------------------------------------------
+--
+--	Full/Empty/Threshold outputs for FIFO Parameterized Megafunction
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 2.0
+--
+--------------------------------------------------------------------
+
+OPTIONS NAME_SUBSTITUTION = ON;
+
+include "lpm_counter";
+include "lpm_compare";
+
+parameters
+(
+	LPM_WIDTHAD, 
+	LPM_NUMWORDS, 
+	ALLOW_RWCYCLE_WHEN_FULL = "OFF",
+	UNDERFLOW_CHECKING, 
+	OVERFLOW_CHECKING,
+	USEDW_IN_DELAY = 0,
+	CBXI_PARAMETER = "NOTHING"
+);
+FUNCTION @CBXI_PARAMETER (usedw_in[LPM_WIDTHAD-1..0], wreq, rreq, threshlevel[LPM_WIDTHAD-1..0], clock, aclr, sclr) RETURNS (usedw_out[LPM_WIDTHAD-1..0], empty, full, threshold);
+
+constant ALMOSTFULL1 = LPM_NUMWORDS-1;
+constant ALMOSTFULL2 = LPM_NUMWORDS-2;
+constant ALMOSTFULL3 = LPM_NUMWORDS>3 ? LPM_NUMWORDS-3 : 0;
+
+--------------------------------------------------------------------
+subdesign a_fefifo
+(
+	usedw_in[LPM_WIDTHAD-1..0]		: INPUT = VCC;
+	usedw_out[LPM_WIDTHAD-1..0]		: OUTPUT;
+
+	wreq, rreq						: INPUT = GND;
+	empty							: OUTPUT;
+	full							: OUTPUT;
+
+	threshlevel[LPM_WIDTHAD-1..0]	: INPUT = GND;
+	threshold						: OUTPUT;
+
+	clock							: INPUT;
+	aclr, sclr						: INPUT = GND;
+	usedw_is_1						: INPUT = GND;
+)
+
+--------------------------------------------------------------------
+variable
+	IF (CBXI_PARAMETER == "NOTHING") GENERATE
+		usedw[LPM_WIDTHAD-1..0]		: node;
+
+		if not used(usedw_in) generate
+			valid_wreq, valid_rreq: NODE;
+		end generate;
+		
+		if used(rreq) and used(wreq) generate				-- singe-clock FIFO
+		
+			is_almost_empty	: NODE;
+			is_almost_empty_compare : lpm_compare WITH	(
+															LPM_WIDTH = LPM_WIDTHAD,
+															ONE_INPUT_IS_CONSTANT = "YES"
+														);
+			is_almost_full	: NODE;
+			is_almost_full_compare : lpm_compare WITH	(
+															LPM_WIDTH = LPM_WIDTHAD,
+															ONE_INPUT_IS_CONSTANT = "YES"
+														);
+			
+			sm_emptyfull: MACHINE OF BITS( b_full, b_non_empty )
+						  WITH STATES(
+								state_empty		= B"00",
+								state_middle	= B"01",
+								state_full		= B"11");
+
+		else generate										-- dual-clock FIFO
+		
+			if used(rreq) generate								-- read-side
+
+				if USEDW_IN_DELAY==0 generate
+					sm_empty : machine of bits( b_non_empty )
+									 with states(
+										state_empty		= B"0",
+										state_non_empty	= B"1");
+				else generate
+					sm_empty : machine of bits( b_one, b_non_empty )
+									 with states(
+										state_empty		= B"00",
+										state_emptywait	= B"10",
+										state_non_empty	= B"01");
+
+					lrreq: dff;
+					valid_rreq: node;
+					usedw_greater_than_1 : NODE;
+				end generate;
+
+			else generate										-- write-side
+
+				if USEDW_IN_DELAY==0 generate
+					sm_empty : machine of bits( b_non_empty )
+									 with states(
+										state_empty		= B"0",
+										state_non_empty	= B"1");
+				else generate
+					sm_empty : machine of bits( b_one, b_non_empty )
+									 with states(
+										state_empty		= B"00",
+										state_one		= B"01",
+										state_non_empty	= B"11");
+				end generate;
+			end generate;
+		end generate;
+	ELSE GENERATE
+		auto_generated : @CBXI_PARAMETER WITH (CBXI_PARAMETER = "NOTHING");
+	END GENERATE;
+
+--------------------------------------------------------------------
+begin
+	IF CBXI_PARAMETER == "NOTHING" GENERATE
+		assert (UNDERFLOW_CHECKING=="ON") or (UNDERFLOW_CHECKING=="OFF")
+				report "UNDERFLOW_CHECKING must be either equal to ON or OFF"
+				severity error;
+
+		assert (OVERFLOW_CHECKING=="ON") or (OVERFLOW_CHECKING=="OFF")
+				report "OVERFLOW_CHECKING must be either equal to ON or OFF"
+				severity error;
+
+		assert (ALLOW_RWCYCLE_WHEN_FULL=="ON") or (ALLOW_RWCYCLE_WHEN_FULL=="OFF")
+				report "ALLOW_RWCYCLE_WHEN_FULL must be either equal to ON or OFF"
+				severity error;
+
+	--------------------------------------------------------------------
+		usedw_out[]	= usedw[];
+		if used(usedw_in) generate
+			usedw[] = usedw_in[];
+		else generate
+
+			if UNDERFLOW_CHECKING=="OFF" generate
+				valid_rreq = rreq;
+			else generate
+				valid_rreq = rreq and !empty;
+			end generate; 
+		
+			if OVERFLOW_CHECKING=="OFF" generate
+				valid_wreq = wreq;
+			else generate 
+				if ALLOW_RWCYCLE_WHEN_FULL=="ON" generate
+					valid_wreq = wreq and (!full or rreq);
+				else generate
+					valid_wreq = wreq and !full;
+				end generate; 
+			end generate;
+		
+			usedw[] = lpm_counter(.clock = clock, 
+								  .updown = valid_wreq, 
+								  .cnt_en = valid_wreq xor valid_rreq, 
+								  .aclr = aclr, 
+								  .sclr = sclr )
+					  with( LPM_WIDTH=LPM_WIDTHAD )
+					  returns( .q[] );
+		end generate;
+
+	--------------------------------------------------------------------
+		if used(rreq) and used(wreq) generate
+		
+			is_almost_empty_compare.dataa[] = usedw[];
+			is_almost_empty_compare.datab[] = GND;
+			is_almost_empty_compare.datab[0] = VCC;
+			is_almost_empty	= is_almost_empty_compare.aeb;
+			is_almost_full_compare.dataa[] = usedw[];
+			IF (LPM_WIDTHAD > 1) GENERATE
+				is_almost_full_compare.datab[] = ALMOSTFULL1;			
+			ELSE GENERATE
+				IF LPM_NUMWORDS > 1 GENERATE
+					is_almost_full_compare.datab[] = VCC;
+				ELSE GENERATE
+					is_almost_full_compare.datab[] = GND;				
+				END GENERATE;
+			END GENERATE;
+			is_almost_full	= is_almost_full_compare.aeb;
+
+			case sm_emptyfull IS
+				when state_empty =>	if wreq and !sclr then
+										sm_emptyfull = state_middle;
+									end if;
+				when state_middle=> if (is_almost_empty and rreq and !wreq) or sclr then
+										sm_emptyfull = state_empty;
+									end if;
+									if (is_almost_full and wreq and !rreq) and !sclr then
+										sm_emptyfull = state_full;
+									end if;
+				when state_full	 =>	
+					if ALLOW_RWCYCLE_WHEN_FULL=="OFF" generate
+									if sclr then
+										sm_emptyfull = state_empty;
+									elsif rreq then
+										sm_emptyfull = state_middle;
+									end if;
+					else generate
+									if sclr then
+										sm_emptyfull = state_empty;
+									elsif rreq and !wreq then
+										sm_emptyfull = state_middle;
+									end if;
+					end generate;
+			end case;
+
+			empty = !b_non_empty;
+			full = b_full;
+			sm_emptyfull.(clk, reset) = (clock, aclr);
+
+		else generate if used(rreq) generate				-- read-side
+
+			if USEDW_IN_DELAY==0 generate
+
+				case sm_empty is
+				when state_empty=>		if (usedw[]!=0) then
+											sm_empty = state_non_empty;
+										end if;
+		
+				when state_non_empty=>	if (usedw[]==1 and rreq) or usedw[]==0 then
+											sm_empty = state_empty;
+										end if;
+				end case;
+			
+			else generate
+
+				if UNDERFLOW_CHECKING=="OFF" generate
+					valid_rreq = rreq;
+				else generate
+					valid_rreq = rreq and !empty;
+				end generate; 
+
+				lrreq.(d, clk, clrn) = (valid_rreq, clock, !aclr);
+
+				IF LPM_WIDTHAD > 1 GENERATE
+					usedw_greater_than_1 = usedw[] > 1;
+				ELSE GENERATE
+					usedw_greater_than_1 = GND;
+				END GENERATE;
+
+				case sm_empty is
+				when state_empty=>		if (usedw[]!=0) then
+											sm_empty = state_non_empty;
+										end if;
+		
+				when state_non_empty=>	if (usedw_is_1 and rreq) then --or usedw_is_0 then
+											sm_empty = state_emptywait;
+										end if;
+
+				when state_emptywait=>	if usedw_greater_than_1 then
+											sm_empty = state_non_empty;
+										else
+											sm_empty = state_empty;
+										end if;
+				end case;
+
+			end generate;
+
+			empty = !b_non_empty;
+			sm_empty.(clk, reset) = (clock, aclr);
+
+			full = dff(	.d	 = lpm_compare( .dataa[]=usedw[], .datab[]=ALMOSTFULL3 ) with(LPM_WIDTH=LPM_WIDTHAD,ONE_INPUT_IS_CONSTANT="ON") returns(.ageb), 
+						.clk = clock, 
+						.clrn= !aclr
+					  );
+
+		else generate										-- write-side
+
+			full = dff(	.d	 = lpm_compare( .dataa[]=usedw[], .datab[]=ALMOSTFULL3 ) with(LPM_WIDTH=LPM_WIDTHAD,ONE_INPUT_IS_CONSTANT="ON") returns(.ageb), 
+						.clk = clock, 
+						.clrn= !aclr
+					  );
+
+			if USEDW_IN_DELAY==0 generate
+
+				case sm_empty is
+				when state_empty	 =>	if (usedw[]!=0) then		
+											sm_empty=state_non_empty;			
+										end if;
+		
+				when state_non_empty =>	if (usedw[]==0) and !wreq then
+											sm_empty=state_empty;
+										end if;
+				end case;
+
+			else generate
+		
+				case sm_empty is
+				when state_empty	 =>	if wreq then		
+											sm_empty = state_one;			
+										end if;
+		
+				when state_one		 =>	if !wreq then
+											sm_empty = state_non_empty;
+										end if;
+		
+				when state_non_empty =>	if wreq then
+											sm_empty = state_one;
+										elsif (usedw[]==0) then
+											sm_empty = state_empty;
+										end if;
+				end case;
+
+			end generate;
+			
+			empty = !b_non_empty;
+			sm_empty.(clk, reset) = (clock, aclr);
+
+		end generate;	end generate;
+
+	--------------------------------------------------------------------
+	-- Threshhold output is: (full) # (usedw>=threshlevel)
+	--
+		threshold = full; 
+
+		if used(threshlevel) generate
+			threshold = lpm_compare( .dataa[]=usedw[], .datab[]=threshlevel[] )
+						with( LPM_WIDTH=LPM_WIDTHAD )
+						returns( .ageb );
+		end generate;
+	ELSE GENERATE
+		IF USED(usedw_in) GENERATE
+			auto_generated.usedw_in[] = usedw_in[];
+		END GENERATE;
+		IF USED(wreq) GENERATE
+			auto_generated.wreq = wreq;
+		END GENERATE;
+		IF USED(rreq) GENERATE
+			auto_generated.rreq = rreq;
+		END GENERATE;
+		IF USED(threshlevel) GENERATE
+			auto_generated.threshlevel[] = threshlevel[];
+		END GENERATE;
+		IF USED(clock) GENERATE
+			auto_generated.clock = clock;
+		END GENERATE;
+		IF USED(aclr) GENERATE
+			auto_generated.aclr = aclr;
+		END GENERATE;
+		IF USED(sclr) GENERATE
+			auto_generated.sclr = sclr;
+		END GENERATE;
+		IF USED(usedw_out) GENERATE
+			usedw_out[] = auto_generated.usedw_out[];
+		END GENERATE;
+		IF USED(empty) GENERATE
+			empty = auto_generated.empty;
+		END GENERATE;
+		IF USED(full) GENERATE
+			full = auto_generated.full;
+		END GENERATE;
+		IF USED(threshold) GENERATE
+			threshold = auto_generated.threshold;
+		END GENERATE;
+	END GENERATE;
+	IF !USED(usedw_out) GENERATE
+		usedw_out[] = GND;
+	END GENERATE;
+	IF !USED(threshold) GENERATE
+		threshold = GND;
+	END GENERATE;
+	IF !USED(empty) GENERATE
+		empty = GND;
+	END GENERATE;
+	IF !USED(full) GENERATE
+		full = GND;
+	END GENERATE;
+end;
+

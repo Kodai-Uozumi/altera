@@ -1,0 +1,984 @@
+-- ALTACCUMULATE_STRATIX PARAMETRIZED MEGA FUNCTION
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+
+
+include "stratix_lcell"; 
+
+
+CONSTANT ADD_LUT_MASK 		= 	"96E8";
+CONSTANT CARRY_SUM_OUT		=	"F0F0"; 
+CONSTANT DATA_CARRY_OUT 	=	"00CC";
+CONSTANT NORMAL_ADD_LUT_MASK = 	"9696";
+
+PARAMETERS
+(
+	USE_WYS = "ON",
+	WIDTH_IN,
+	WIDTH_OUT,
+	CARRY_CHAIN = "MANUAL",
+	CARRY_CHAIN_LENGTH = 32,
+	LPM_REPRESENTATION = "UNSIGNED",
+	EXTRA_LATENCY = 0
+);
+
+-- carry chain break point
+DEFINE BREAKPOINT(i) = (i mod CARRY_CHAIN_LENGTH == 0);
+-- number of breaks in the full carry chain (non pipelined case)
+DEFINE EXTRA_CELL() = FLOOR (WIDTH_OUT / CARRY_CHAIN_LENGTH);
+-- number of breaks inside a pipeline segment
+DEFINE EXTRA_CELL_PIPELINE_1() = FLOOR (LENGTH_PER_SEGMENT() / CARRY_CHAIN_LENGTH);
+DEFINE EXTRA_CELL_PIPELINE() = EXTRA_CELL_PIPELINE_1() * CARRY_CHAIN_LENGTH == LENGTH_PER_SEGMENT() ? EXTRA_CELL_PIPELINE_1()-1 : EXTRA_CELL_PIPELINE_1();
+-- normalized position inside a pipeline segment
+DEFINE NORMALIZE(i) = i - PIPELINE_SEGMENT(i) * LENGTH_PER_SEGMENT();
+-- id of the break
+DEFINE POSITION(i)	= i / CARRY_CHAIN_LENGTH - 1;
+-- length per pipeline segment
+DEFINE LENGTH_PER_SEGMENT() = CEIL(WIDTH_OUT / (EXTRA_LATENCY + 1));
+-- the segment to which a cell belongs to
+DEFINE PIPELINE_SEGMENT(i) = FLOOR (i / LENGTH_PER_SEGMENT());
+-- first element of the pipeline segment
+DEFINE FIRST_ELEMENT(i) = (i MOD LENGTH_PER_SEGMENT()) == 0;
+-- last element of the segment
+DEFINE LAST_ELEMENT(i) = ((i+1) MOD LENGTH_PER_SEGMENT()) == 0;
+-- operation mode
+DEFINE OPERATION_MODE(i) = (i == WIDTH_OUT-1 ? (USED(cout) # (USED(overflow)& (LPM_REPRESENTATION == "UNSIGNED" # USED(sign_data))) ? "ARITHMETIC" : "NORMAL" ): "ARITHMETIC");
+--lutmask
+DEFINE LUT_MASK(i)	= (i == WIDTH_OUT-1 ? (USED(cout)# (USED(overflow)& (LPM_REPRESENTATION == "UNSIGNED" # USED(sign_data))) ? ADD_LUT_MASK : NORMAL_ADD_LUT_MASK) : ADD_LUT_MASK);
+
+DEFINE EXTRA_CELL_LATENCY() = CEIL ( WIDTH_OUT / LENGTH_PER_SEGMENT()) - 2;
+
+DEFINE SUM_LUTC_INPUT(i) = (i == 0 ? (USED(add_sub) # USED(cin) ? "CIN" : "CIN" ) :"CIN");
+
+DEFINE EXTRA_OVERFLOW_BUFFER() = EXTRA_LATENCY-PIPELINE_SEGMENT(WIDTH_OUT-1)-1 > 1 ? EXTRA_LATENCY - PIPELINE_SEGMENT(WIDTH_OUT-1)-1 : 1;
+DEFINE EXTRA_COUT_BUFFER() = EXTRA_OVERFLOW_BUFFER();
+
+SUBDESIGN altaccumulate_stratix
+(
+	data[WIDTH_IN-1..0]			:	 INPUT;
+	clock 						:	 INPUT;
+	cin							:	 INPUT;
+	clken 						:	 INPUT = VCC;
+	sload 						:	 INPUT = GND;
+	aclr 						: 	 INPUT = GND;
+	add_sub 					: 	 INPUT = VCC;
+	sign_data 					:	 INPUT = GND;
+	result[WIDTH_OUT-1..0]		: 	 OUTPUT;
+	cout						:	 OUTPUT;
+	overflow					:	 OUTPUT;
+)
+
+VARIABLE
+	IF !((WIDTH_OUT == 1) & USED(add_sub) & !USED(cin) & !USED(cout) & (!USED(overflow) # (USED(overflow) & !USED(sign_data) & LPM_REPRESENTATION == "SIGNED"))) GENERATE
+	-- base add_sub cell 
+	acc_cell[WIDTH_OUT-1..0]		:	
+				FOR i IN WIDTH_OUT-1 TO 0 GENERATE
+										stratix_lcell WITH (OPERATION_MODE = OPERATION_MODE(i),
+															SYNCH_MODE = "ON",
+															SUM_LUTC_INPUT = SUM_LUTC_INPUT(i),
+															LUT_MASK = LUT_MASK(i))
+				END GENERATE;
+	
+	-- extra buffers and sload regr used to  break the chain
+	IF EXTRA_LATENCY > 0 GENERATE
+		extra_buffers[EXTRA_LATENCY..0][WIDTH_OUT-1..0]	: 	DFFE;
+
+		IF WIDTH_OUT > EXTRA_LATENCY GENERATE
+			IF EXTRA_LATENCY * LENGTH_PER_SEGMENT() >= WIDTH_OUT GENERATE
+				cout_out_cell[EXTRA_CELL_LATENCY()..0]					:	stratix_lcell WITH (OPERATION_MODE = "NORMAL",
+																							LUT_MASK = CARRY_SUM_OUT);
+				cout_in_cell[EXTRA_CELL_LATENCY()..0]					:	stratix_lcell WITH (OPERATION_MODE = "ARITHMETIC",
+																							LUT_MASK = DATA_CARRY_OUT);
+			ELSE GENERATE
+				cout_out_cell[EXTRA_LATENCY-1..0]					:	stratix_lcell WITH (OPERATION_MODE = "NORMAL",
+																							LUT_MASK = CARRY_SUM_OUT);
+				cout_in_cell[EXTRA_LATENCY-1..0]					:	stratix_lcell WITH (OPERATION_MODE = "ARITHMETIC",
+																							LUT_MASK = DATA_CARRY_OUT);
+			END GENERATE;
+			sload_regr[EXTRA_LATENCY-1..0]						:	DFFE;
+			IF USED(add_sub) GENERATE
+				add_sub_regr[EXTRA_LATENCY-1..0]				:	DFFE;		
+			END GENERATE;
+		END GENERATE;																						
+	END GENERATE;							
+
+	IF USED(cout) GENERATE
+		tmp_cout 	: SOFT;								
+		-- extra buffer used to store the cout
+		IF EXTRA_LATENCY > 0 & WIDTH_OUT <= EXTRA_LATENCY GENERATE
+			cout_regr[EXTRA_LATENCY-1..0]	:	DFFE;
+		END GENERATE;
+		-- extra cout buffer used to store cout when last of the pipeline segment is empty, i.e, when width is 4 and latency is 2, length 
+		-- per segment is 2 and so the third segment is empty, cout needs to be clocked
+		IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY & ( EXTRA_LATENCY * LENGTH_PER_SEGMENT() >= WIDTH_OUT) GENERATE
+			cout_buffer[EXTRA_COUT_BUFFER()..0]		:	DFFE;
+		END GENERATE;
+	END GENERATE;
+	
+	-- overflow buffers
+	IF USED(overflow) GENERATE
+		tmp_overflow					:	SOFT;
+		-- extra overflow buffer
+		IF EXTRA_LATENCY > 0 & WIDTH_OUT <= EXTRA_LATENCY GENERATE
+			ovrflw_buffer[EXTRA_LATENCY-1..0]	:	DFFE;
+		END GENERATE;
+		-- extra overflow buffer used to store cout when last of the pipeline segment is empty		
+		IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY & ( EXTRA_LATENCY * LENGTH_PER_SEGMENT() >= WIDTH_OUT) GENERATE
+			overflow_buffer[EXTRA_OVERFLOW_BUFFER()..0]		:	DFFE;
+		END GENERATE;
+
+		IF USED(sign_data) # LPM_REPRESENTATION == "SIGNED" GENERATE
+		-- data storage buffer
+			data_a_regr						:	DFFE;
+		-- exor storage buffer
+			res_regr						:	DFFE;
+		END GENERATE;
+		IF USED(sign_data) # LPM_REPRESENTATION != "SIGNED" GENERATE
+			cout_node 				: SOFT;
+			unsign_ovrflw_regr 	: DFFE;
+		END GENERATE;
+		IF USED(sign_data) GENERATE
+			tmp_sign_overflow 	: SOFT;
+			tmp_unsign_overflow : SOFT;	
+		END GENERATE;
+		IF USED(sign_data) GENERATE
+			sign_data_regr[EXTRA_LATENCY..0]	:	DFFE;			
+		END GENERATE;
+	END GENERATE;		
+	
+	-- cells used to break the carry chain
+	IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY GENERATE
+		-- breaking the pipelined carry chain
+		IF (LENGTH_PER_SEGMENT() > CARRY_CHAIN_LENGTH) GENERATE
+			break_cin_cell[EXTRA_LATENCY..0][EXTRA_CELL_PIPELINE()-1..0] 	:	stratix_lcell WITH (OPERATION_MODE = "NORMAL",
+																									LUT_MASK = CARRY_SUM_OUT);			
+			break_cout_cell[EXTRA_LATENCY..0][EXTRA_CELL_PIPELINE()-1..0] 	:	stratix_lcell WITH (OPERATION_MODE = "ARITHMETIC",
+																									LUT_MASK = DATA_CARRY_OUT);			
+		END GENERATE;
+	ELSE GENERATE
+		-- full carry chain
+		IF (WIDTH_OUT > CARRY_CHAIN_LENGTH) GENERATE
+			cin_sum_cell[EXTRA_CELL()-1..0]		:	stratix_lcell WITH (OPERATION_MODE = "NORMAL",
+																		LUT_MASK = CARRY_SUM_OUT);
+			data_cout_cell[EXTRA_CELL()-1..0]	:	stratix_lcell WITH (OPERATION_MODE = "ARITHMETIC",
+																		LUT_MASK = DATA_CARRY_OUT);
+		END GENERATE;
+	END GENERATE;
+	ELSE GENERATE
+		acc_cell	:	DFFE;
+		IF EXTRA_LATENCY > 0 GENERATE
+			extra_cell[EXTRA_LATENCY-1..0]	:	DFFE;
+		END GENERATE;
+		IF USED(overflow) GENERATE
+			tmp_overflow 	:	SOFT;
+			data_a_regr		:	DFFE;
+			res_regr		:	DFFE;
+			IF EXTRA_LATENCY > 0 GENERATE
+				overflow_regr[EXTRA_LATENCY-1..0]	:	DFFE;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+
+BEGIN
+
+	IF (WIDTH_OUT == 1) & USED(add_sub) & !USED(cin) & !USED(cout) & (!USED(overflow) # (USED(overflow) & !USED(sign_data) & LPM_REPRESENTATION == "SIGNED")) GENERATE
+		acc_cell.clk = clock;
+		IF USED(clken) GENERATE
+			acc_cell.ena = clken;
+		END GENERATE;
+		IF USED(aclr) GENERATE
+			acc_cell.clrn = !aclr;
+		END GENERATE;
+		IF EXTRA_LATENCY > 0 GENERATE
+			extra_cell[].clk = clock;
+			IF USED(clken) GENERATE
+				extra_cell[].ena = clken;
+			END GENERATE;
+			IF USED(aclr) GENERATE
+				extra_cell[].clrn = !aclr;
+			END GENERATE;
+			
+			extra_cell[0].d = acc_cell.q;
+			IF EXTRA_LATENCY > 1 GENERATE
+				FOR i IN 1 TO EXTRA_LATENCY-1 GENERATE
+					extra_cell[i].d = extra_cell[i-1].q;	
+				END GENERATE;			
+			END GENERATE;
+			result[0] = extra_cell[EXTRA_LATENCY-1].q;
+		ELSE GENERATE
+			result[0] = acc_cell.q;
+		END GENERATE;
+		acc_cell.d = data[0] & sload # !sload & (acc_cell.q $ data[0]);
+		IF USED(overflow) GENERATE
+			res_regr.clk = clock;
+			data_a_regr.clk = clock;
+			IF USED(clken) GENERATE
+				res_regr.ena = clken;
+				data_a_regr.ena = clken;
+			END GENERATE;		
+			IF USED(aclr) GENERATE
+				res_regr.clrn = !aclr;
+				data_a_regr.clrn = !aclr;
+			END GENERATE;		
+			res_regr.d =  (!(data[0] $ acc_cell.q) $ !add_sub )& !sload;
+			data_a_regr.d = acc_cell.q;
+			tmp_overflow = (res_regr.q) & (data_a_regr.q $ acc_cell.q);
+			IF EXTRA_LATENCY == 0 GENERATE
+				overflow = tmp_overflow;		
+			ELSE GENERATE
+				overflow_regr[].clk = clock;
+				IF USED(clken) GENERATE
+					overflow_regr[].ena = clken;
+				END GENERATE;		
+				IF USED(aclr) GENERATE
+					overflow_regr[].clrn = !aclr;
+				END GENERATE;		
+				overflow_regr[0].d = tmp_overflow;
+				IF EXTRA_LATENCY > 1 GENERATE
+					FOR i IN 1 TO EXTRA_LATENCY-1 GENERATE
+						overflow_regr[i].d = overflow_regr[i-1].q;
+					END GENERATE;
+				END GENERATE;
+				overflow = overflow_regr[EXTRA_LATENCY-1].q;
+			END GENERATE;		
+		END GENERATE;
+	ELSE GENERATE	
+	-- width of inputis less than width of output then sign extend or pad zeros
+	IF WIDTH_IN < WIDTH_OUT GENERATE
+		FOR i IN 0 TO WIDTH_IN-1 GENERATE
+			-- for the first pipeline segment feed data directly, else feed into the buffer cells
+			IF PIPELINE_SEGMENT(i) == 0 GENERATE
+				acc_cell[i].dataa = data[i];
+				acc_cell[i].datac = data[i];
+			ELSE GENERATE
+				IF WIDTH_OUT > EXTRA_LATENCY GENERATE			
+					extra_buffers[0][i].d = data[i];
+				ELSE GENERATE
+					acc_cell[i].dataa = data[i];
+					acc_cell[i].datac = data[i];
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+		-- for the unspecified bits, sign extend or pad zeros	
+		FOR i IN WIDTH_IN TO WIDTH_OUT-1 GENERATE
+			IF USED(sign_data) GENERATE
+				IF PIPELINE_SEGMENT(i) == 0 GENERATE
+					acc_cell[i].dataa = sign_data & data[WIDTH_IN-1];
+					acc_cell[i].datac = sign_data &data[WIDTH_IN-1];
+				ELSE GENERATE
+					IF WIDTH_OUT > EXTRA_LATENCY GENERATE
+						extra_buffers[0][i].d = sign_data & data[WIDTH_IN-1];
+					ELSE GENERATE
+						acc_cell[i].dataa = sign_data & data[WIDTH_IN-1];
+						acc_cell[i].datac = sign_data & data[WIDTH_IN-1];
+					END GENERATE;
+				END GENERATE;
+			ELSE GENERATE
+				IF LPM_REPRESENTATION == "SIGNED" GENERATE
+					IF PIPELINE_SEGMENT(i) == 0 GENERATE
+						acc_cell[i].dataa = data[WIDTH_IN-1];
+						acc_cell[i].datac = data[WIDTH_IN-1];
+					ELSE GENERATE
+						IF WIDTH_OUT > EXTRA_LATENCY GENERATE
+							extra_buffers[0][i].d = data[WIDTH_IN-1];
+						ELSE GENERATE
+							acc_cell[i].dataa = data[WIDTH_IN-1];
+							acc_cell[i].datac = data[WIDTH_IN-1];
+						END GENERATE;
+					END GENERATE;
+				ELSE GENERATE
+					IF PIPELINE_SEGMENT(i) == 0 GENERATE
+						acc_cell[i].dataa = GND;
+						acc_cell[i].datac = GND;
+					ELSE GENERATE
+						IF WIDTH_OUT > EXTRA_LATENCY GENERATE
+							extra_buffers[0][i].d = GND;
+						ELSE GENERATE
+							acc_cell[i].dataa = GND;
+							acc_cell[i].datac = GND;
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+	ELSE GENERATE
+		-- width_in == width_out
+		FOR i IN 0 TO WIDTH_IN-1 GENERATE
+			IF PIPELINE_SEGMENT(i) == 0 GENERATE
+				acc_cell[i].dataa = data[i];
+				acc_cell[i].datac = data[i];
+			ELSE GENERATE
+				IF WIDTH_OUT > EXTRA_LATENCY GENERATE
+					extra_buffers[0][i].d = data[i];	
+				ELSE GENERATE
+					acc_cell[i].dataa = data[i];
+					acc_cell[i].datac = data[i];
+				END GENERATE;			
+			END GENERATE;
+		END GENERATE;	
+	END GENERATE;
+
+	-- feed the feedback data 
+	IF EXTRA_LATENCY == 0 GENERATE
+		acc_cell[].datab = acc_cell[].regout;	
+		acc_cell[].sload = sload;
+	ELSE GENERATE
+	-- in case of pipeline, feed the data back based on the appropriate registered sload
+		IF WIDTH_OUT > EXTRA_LATENCY GENERATE
+			FOR i IN 0 TO WIDTH_OUT-1 GENERATE
+				IF PIPELINE_SEGMENT(i) == 0 GENERATE
+					acc_cell[i].datab = acc_cell[i].regout;	
+					acc_cell[i].sload = sload;
+				ELSE GENERATE
+					acc_cell[i].datab = acc_cell[i].regout;	
+					acc_cell[i].sload = sload_regr[PIPELINE_SEGMENT(i)-1].q; 
+				END GENERATE;
+			END GENERATE;
+			sload_regr[0].d = sload;
+			IF USED(add_sub) GENERATE
+				add_sub_regr[0].d = !add_sub;
+			END GENERATE;
+			IF EXTRA_LATENCY > 1 GENERATE
+				FOR i IN 1 TO EXTRA_LATENCY-1 GENERATE
+					sload_regr[i].d = sload_regr[i-1].q;
+					IF USED(add_sub) GENERATE
+						add_sub_regr[i].d = add_sub_regr[i-1].q;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+		ELSE GENERATE -- width_out < extra_latency
+			acc_cell[].datab = acc_cell[].regout;	
+			acc_cell[].sload = sload;
+		END GENERATE;
+	END GENERATE;
+		
+	-- feed the addsub signal	
+	IF USED(add_sub) GENERATE
+		IF EXTRA_LATENCY == 0 # EXTRA_LATENCY > 0 & WIDTH_OUT <= EXTRA_LATENCY GENERATE
+			acc_cell[].inverta = !add_sub;
+		ELSE GENERATE
+			FOR i IN 0 TO WIDTH_OUT-1 GENERATE
+				IF PIPELINE_SEGMENT(i) == 0 GENERATE
+					acc_cell[i].inverta = !add_sub;
+				ELSE GENERATE
+					acc_cell[i].inverta = add_sub_regr[PIPELINE_SEGMENT(i)-1].q;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+	
+	-- feed the cin signal
+	IF USED(cin) GENERATE	
+		IF USED(add_sub) GENERATE
+			acc_cell[0].cin = cin;--!sload & cin # sload & !add_sub;
+		ELSE GENERATE
+			acc_cell[0].cin = cin;--!sload & cin;
+		END GENERATE;
+	ELSE GENERATE
+		IF !USED(add_sub) GENERATE
+			acc_cell[0].cin = GND;
+		END GENERATE; 
+	END GENERATE;
+	
+	-- connect the carry chain breaking it if needed
+	IF EXTRA_LATENCY == 0 GENERATE
+		IF WIDTH_OUT > 1 GENERATE
+			FOR i IN 1 TO WIDTH_OUT-1 GENERATE
+				IF BREAKPOINT(i) GENERATE
+					cin_sum_cell[POSITION(i)].cin = acc_cell[i-1].cout;
+					data_cout_cell[POSITION(i)].datab = cin_sum_cell[POSITION(i)].combout;
+					IF USED(add_sub) GENERATE
+						IF i < WIDTH_IN GENERATE
+							cin_sum_cell[POSITION(i)].dataa = data[i];
+							data_cout_cell[POSITION(i)].dataa = data[i];
+						ELSE GENERATE
+							IF USED(sign_data) GENERATE
+								cin_sum_cell[POSITION(i)].dataa = sign_data & data[WIDTH_IN-1];
+								data_cout_cell[POSITION(i)].dataa = sign_data & data[WIDTH_IN-1];	
+							ELSE GENERATE
+								IF LPM_REPRESENTATION == "SIGNED" GENERATE
+									cin_sum_cell[POSITION(i)].dataa = data[WIDTH_IN-1];
+									data_cout_cell[POSITION(i)].dataa = data[WIDTH_IN-1];									
+								ELSE GENERATE
+									cin_sum_cell[POSITION(i)].dataa = GND;
+									data_cout_cell[POSITION(i)].dataa = GND;									
+								END GENERATE;
+							END GENERATE;
+						END GENERATE;
+						cin_sum_cell[POSITION(i)].inverta = !add_sub;	
+						data_cout_cell[POSITION(i)].inverta = !add_sub;
+					END GENERATE;					
+					acc_cell[i].cin = data_cout_cell[POSITION(i)].cout;
+				ELSE GENERATE
+					acc_cell[i].cin = acc_cell[i-1].cout;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+		result[] = acc_cell[].regout;
+	ELSE GENERATE
+		IF WIDTH_OUT > EXTRA_LATENCY GENERATE
+			-- if length_per_segemnt is 1 , the cell is the first as well as the last element
+			IF LENGTH_PER_SEGMENT() == 1 GENERATE
+				FOR i IN 0 TO WIDTH_OUT-1 GENERATE
+					IF i != 0 GENERATE
+						acc_cell[i].cin = cout_in_cell[PIPELINE_SEGMENT(i)-1].cout;
+					END GENERATE;						
+					IF i != WIDTH_OUT-1 GENERATE
+						cout_out_cell[PIPELINE_SEGMENT(i)].cin = acc_cell[i].cout;
+						cout_in_cell[PIPELINE_SEGMENT(i)].datab = cout_out_cell[PIPELINE_SEGMENT(i)].regout;	
+						IF USED(add_sub) GENERATE
+							cout_in_cell[PIPELINE_SEGMENT(i)].dataa = extra_buffers[PIPELINE_SEGMENT(i)][i+1].q;
+							cout_in_cell[PIPELINE_SEGMENT(i)].inverta = add_sub_regr[PIPELINE_SEGMENT(i)].q;
+							IF PIPELINE_SEGMENT(i) == 0 GENERATE
+								IF i < WIDTH_IN GENERATE
+									cout_out_cell[PIPELINE_SEGMENT(i)].dataa = data[i];
+								ELSE GENERATE
+									IF USED(sign_data) GENERATE
+										cout_out_cell[PIPELINE_SEGMENT(i)].dataa = sign_data & data[WIDTH_IN-1];
+									ELSE GENERATE
+										IF LPM_REPRESENTATION == "SIGNED" GENERATE
+											cout_out_cell[PIPELINE_SEGMENT(i)].dataa = data[WIDTH_IN-1];
+										ELSE GENERATE
+											cout_out_cell[PIPELINE_SEGMENT(i)].dataa = GND;
+										END GENERATE;
+									END GENERATE;
+								END GENERATE;									
+								cout_out_cell[PIPELINE_SEGMENT(i)].inverta = !add_sub;
+							ELSE GENERATE
+								cout_out_cell[PIPELINE_SEGMENT(i)].dataa = extra_buffers[PIPELINE_SEGMENT(i)-1][i].q;
+								cout_out_cell[PIPELINE_SEGMENT(i)].inverta = add_sub_regr[PIPELINE_SEGMENT(i)-1].q;						
+							END GENERATE;				
+						END GENERATE;						
+					END GENERATE;
+				END GENERATE;
+			ELSE GENERATE
+			FOR i IN 1 TO WIDTH_OUT-1 GENERATE
+				-- if cell is last element send cout to regr 
+				IF LAST_ELEMENT(i) GENERATE
+					IF BREAKPOINT(NORMALIZE(i)) GENERATE
+						break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = acc_cell[i-1].cout;
+						break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].datab = break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].combout;
+						IF USED(add_sub) GENERATE
+							IF PIPELINE_SEGMENT(i) == 0 GENERATE
+								IF i < WIDTH_IN-1 GENERATE
+									break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].dataa = data[i];
+									break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].dataa = data[i];
+								ELSE GENERATE
+									IF USED(sign_data) GENERATE
+										break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].dataa = sign_data & data[WIDTH_IN-1];										
+										break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].dataa = sign_data & data[WIDTH_IN-1];	
+									ELSE GENERATE
+										IF LPM_REPRESENTATION == "SIGNED" GENERATE
+											break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].dataa = data[WIDTH_IN-1];									
+											break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].dataa = data[WIDTH_IN-1];									
+										ELSE GENERATE
+											break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].dataa = GND;									
+											break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].dataa = GND;									
+										END GENERATE;
+									END GENERATE;
+								END GENERATE;
+								break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].inverta = !add_sub;								
+								break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].inverta = !add_sub;
+							ELSE GENERATE
+								break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].dataa = extra_buffers[PIPELINE_SEGMENT(i)-1][i].q;
+								break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].inverta = add_sub_regr[PIPELINE_SEGMENT(i)-1].q;
+								break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].dataa = extra_buffers[PIPELINE_SEGMENT(i)-1][i].q;
+								break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].inverta = add_sub_regr[PIPELINE_SEGMENT(i)-1].q;
+							END GENERATE;
+						END GENERATE;					
+						acc_cell[i].cin = break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout;
+					ELSE GENERATE
+						acc_cell[i].cin = acc_cell[i-1].cout;
+					END GENERATE;
+					IF i != WIDTH_OUT-1 GENERATE
+						cout_out_cell[PIPELINE_SEGMENT(i)].cin = acc_cell[i].cout;
+						cout_in_cell[PIPELINE_SEGMENT(i)].datab = cout_out_cell[PIPELINE_SEGMENT(i)].regout;	
+						IF USED(add_sub) GENERATE
+							cout_in_cell[PIPELINE_SEGMENT(i)].dataa = extra_buffers[PIPELINE_SEGMENT(i)][i+1].q;
+							cout_in_cell[PIPELINE_SEGMENT(i)].inverta = add_sub_regr[PIPELINE_SEGMENT(i)].q;
+							IF PIPELINE_SEGMENT(i) == 0 GENERATE
+								IF i < WIDTH_IN GENERATE
+									cout_out_cell[PIPELINE_SEGMENT(i)].dataa = data[i];
+								ELSE GENERATE
+									IF USED(sign_data) GENERATE
+										cout_out_cell[PIPELINE_SEGMENT(i)].dataa = sign_data & data[WIDTH_IN-1];
+									ELSE GENERATE
+										IF LPM_REPRESENTATION == "SIGNED" GENERATE
+											cout_out_cell[PIPELINE_SEGMENT(i)].dataa = data[WIDTH_IN-1];
+										ELSE GENERATE
+											cout_out_cell[PIPELINE_SEGMENT(i)].dataa = GND;
+										END GENERATE;
+									END GENERATE;
+								END GENERATE;									
+								cout_out_cell[PIPELINE_SEGMENT(i)].inverta = !add_sub;
+							ELSE GENERATE
+								cout_out_cell[PIPELINE_SEGMENT(i)].dataa = extra_buffers[PIPELINE_SEGMENT(i)-1][i].q;
+								cout_out_cell[PIPELINE_SEGMENT(i)].inverta = add_sub_regr[PIPELINE_SEGMENT(i)-1].q;
+							END GENERATE;
+						END GENERATE;						
+					END GENERATE;					
+				ELSE GENERATE
+					-- if cell is first element receive cin from regr
+					IF FIRST_ELEMENT(i) GENERATE
+						acc_cell[i].cin = cout_in_cell[PIPELINE_SEGMENT(i)-1].cout;
+					ELSE GENERATE
+						-- !first and !last, connect carry chain breaking if needed
+						IF BREAKPOINT(NORMALIZE(i)) GENERATE
+							break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cin = acc_cell[i-1].cout;
+							break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].datab = break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].combout;
+							IF USED(add_sub) GENERATE
+								IF PIPELINE_SEGMENT(i) == 0 GENERATE
+									IF i < WIDTH_IN GENERATE
+										break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].dataa = data[i];
+										break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].dataa = data[i];
+									ELSE GENERATE
+										IF USED(sign_data) GENERATE
+											break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].dataa = sign_data & data[WIDTH_IN-1];	
+											break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].dataa = sign_data & data[WIDTH_IN-1];	
+										ELSE GENERATE
+											IF LPM_REPRESENTATION == "SIGNED" GENERATE
+												break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].dataa = data[WIDTH_IN-1];									
+												break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].dataa = data[WIDTH_IN-1];									
+											ELSE GENERATE
+												break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].dataa = GND;									
+												break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].dataa = GND;									
+											END GENERATE;
+										END GENERATE;
+									END GENERATE;
+									break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].inverta = !add_sub;
+									break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].inverta = !add_sub;
+								ELSE GENERATE
+									break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].dataa = extra_buffers[PIPELINE_SEGMENT(i)-1][i].q;
+									break_cin_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].inverta = add_sub_regr[PIPELINE_SEGMENT(i)-1].q;
+									break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].dataa = extra_buffers[PIPELINE_SEGMENT(i)-1][i].q;
+									break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].inverta = add_sub_regr[PIPELINE_SEGMENT(i)-1].q;
+								END GENERATE;
+							END GENERATE;					
+							acc_cell[i].cin = break_cout_cell[PIPELINE_SEGMENT(i)][POSITION(NORMALIZE(i))].cout;
+						ELSE GENERATE
+							acc_cell[i].cin = acc_cell[i-1].cout;
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+			END GENERATE; -- length_per_segment > 1
+			-- connect data chains, between the buffers and acc_cells
+			FOR i IN 0 TO WIDTH_OUT-1 GENERATE
+				IF PIPELINE_SEGMENT(i) != 0 GENERATE
+					acc_cell[i].dataa = extra_buffers[PIPELINE_SEGMENT(i)-1][i].q;
+					acc_cell[i].datac = extra_buffers[PIPELINE_SEGMENT(i)-1][i].q;
+				END GENERATE;
+				IF PIPELINE_SEGMENT(i) != EXTRA_LATENCY GENERATE
+					result[i] = extra_buffers[EXTRA_LATENCY-1][i].q;
+					extra_buffers[PIPELINE_SEGMENT(i)][i].d = acc_cell[i].regout;
+				ELSE GENERATE
+					result[i] = acc_cell[i].regout;	
+				END GENERATE;
+				FOR j IN 1 TO EXTRA_LATENCY GENERATE
+					IF j != PIPELINE_SEGMENT(i) GENERATE
+						extra_buffers[j][i].d = extra_buffers[j-1][i].q;
+					END GENERATE;
+				END GENERATE; 
+			END GENERATE;
+			-- regr cout
+			IF USED(cout) GENERATE
+				IF ( EXTRA_LATENCY * LENGTH_PER_SEGMENT() >= WIDTH_OUT) GENERATE
+					cout_buffer[0].d = acc_cell[WIDTH_OUT-1].cout;
+					IF EXTRA_LATENCY - PIPELINE_SEGMENT(WIDTH_OUT-1)-1 >= 1 GENERATE
+						FOR i IN 1 TO EXTRA_COUT_BUFFER() GENERATE
+							cout_buffer[i].d = cout_buffer[i-1].q;
+						END GENERATE;
+						IF USED(add_sub) GENERATE
+							cout = cout_buffer[EXTRA_COUT_BUFFER()].q & !sload_regr[EXTRA_LATENCY-1].q # add_sub_regr[EXTRA_LATENCY-1].q & sload_regr[EXTRA_LATENCY-1].q;				
+						ELSE GENERATE
+							cout = cout_buffer[EXTRA_COUT_BUFFER()].q & !sload_regr[EXTRA_LATENCY-1].q ;
+						END GENERATE;
+					ELSE GENERATE
+						IF USED(add_sub) GENERATE
+							cout = cout_buffer[0].q & !sload_regr[EXTRA_LATENCY-1].q # add_sub_regr[EXTRA_LATENCY-1].q & sload_regr[EXTRA_LATENCY-1].q;				
+						ELSE GENERATE
+							cout = cout_buffer[0].q & !sload_regr[EXTRA_LATENCY-1].q ;
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE; 
+			-- regr overflow for special cases
+			IF USED(overflow) GENERATE
+				IF (EXTRA_LATENCY * LENGTH_PER_SEGMENT() >= WIDTH_OUT) GENERATE
+					overflow_buffer[0].d = tmp_overflow;
+					IF EXTRA_LATENCY - PIPELINE_SEGMENT(WIDTH_OUT-1)-1 >= 1 GENERATE
+						FOR i IN 1 TO EXTRA_OVERFLOW_BUFFER() GENERATE
+							overflow_buffer[i].d = overflow_buffer[i-1].q;
+						END GENERATE;
+						IF LPM_REPRESENTATION == "SIGNED" GENERATE
+							overflow = overflow_buffer[EXTRA_OVERFLOW_BUFFER()].q;
+						ELSE GENERATE
+							overflow = overflow_buffer[EXTRA_OVERFLOW_BUFFER()].q;
+						END GENERATE;
+					ELSE GENERATE
+						overflow =overflow_buffer[0].q;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+
+		ELSE GENERATE -- width < latency
+			IF WIDTH_OUT > 1 GENERATE		
+				-- connect carry chain
+				FOR i IN 1 TO WIDTH_OUT-1 GENERATE
+					IF BREAKPOINT(i) GENERATE
+						cin_sum_cell[POSITION(i)].cin = acc_cell[i-1].cout;
+						data_cout_cell[POSITION(i)].datab = cin_sum_cell[POSITION(i)].combout;
+						IF USED(add_sub) GENERATE
+							IF i < WIDTH_IN GENERATE
+								cin_sum_cell[POSITION(i)].dataa = data[i];
+								data_cout_cell[POSITION(i)].dataa = data[i];
+							ELSE GENERATE
+								IF USED(sign_data) GENERATE
+									cin_sum_cell[POSITION(i)].dataa = sign_data & data[WIDTH_IN-1];	
+									data_cout_cell[POSITION(i)].dataa = sign_data & data[WIDTH_IN-1];	
+								ELSE GENERATE
+									IF LPM_REPRESENTATION == "SIGNED" GENERATE
+										cin_sum_cell[POSITION(i)].dataa = data[WIDTH_IN-1];									
+										data_cout_cell[POSITION(i)].dataa = data[WIDTH_IN-1];									
+									ELSE GENERATE
+										cin_sum_cell[POSITION(i)].dataa = GND;									
+										data_cout_cell[POSITION(i)].dataa = GND;									
+									END GENERATE;
+								END GENERATE;
+							END GENERATE;
+							cin_sum_cell[POSITION(i)].inverta = !add_sub;
+							data_cout_cell[POSITION(i)].inverta = !add_sub;
+						END GENERATE;					
+						acc_cell[i].cin = data_cout_cell[POSITION(i)].cout;
+					ELSE GENERATE
+						acc_cell[i].cin = acc_cell[i-1].cout;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+			-- extra data, cout and overflow buffers
+			extra_buffers[0][].d = acc_cell[].regout;
+			IF USED(overflow) GENERATE
+				ovrflw_buffer[0].d = tmp_overflow;
+			END GENERATE;
+			IF USED(cout) GENERATE
+				cout_regr[0].d = tmp_cout;
+				cout = cout_regr[EXTRA_LATENCY-1].q;
+			END GENERATE;
+			IF EXTRA_LATENCY > 1 GENERATE
+				FOR i IN 1 TO EXTRA_LATENCY-1 GENERATE
+					extra_buffers[i][].d = extra_buffers[i-1][].q;
+					IF USED(overflow) GENERATE
+						ovrflw_buffer[i].d = ovrflw_buffer[i-1].q;
+					END GENERATE;
+					IF USED(cout) GENERATE
+						cout_regr[i].d = cout_regr[i-1].q;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+			result[] = extra_buffers[EXTRA_LATENCY-1][].q;
+			IF USED(overflow) GENERATE
+				overflow = ovrflw_buffer[EXTRA_LATENCY-1].q;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;	
+	
+
+	IF USED(aclr) GENERATE
+		acc_cell[].aclr = aclr;		
+		IF EXTRA_LATENCY > 0 GENERATE
+			extra_buffers[][].clrn = !aclr;
+			IF WIDTH_OUT > EXTRA_LATENCY GENERATE
+				cout_out_cell[].aclr = aclr;
+				sload_regr[].clrn = !aclr;
+				IF USED(add_sub) GENERATE
+					add_sub_regr[].clrn = !aclr;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+		IF USED(overflow) GENERATE
+			IF EXTRA_LATENCY > 0 & WIDTH_OUT <= EXTRA_LATENCY GENERATE
+				ovrflw_buffer[].clrn = !aclr;
+			END GENERATE;
+			IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY & ( EXTRA_LATENCY * LENGTH_PER_SEGMENT() >= WIDTH_OUT) GENERATE
+				overflow_buffer[].clrn = !aclr;
+			END GENERATE;
+			IF USED(sign_data) # LPM_REPRESENTATION == "SIGNED" GENERATE
+				data_a_regr.clrn = !aclr;
+				res_regr.clrn = !aclr;
+			END GENERATE;
+			IF LPM_REPRESENTATION != "SIGNED" # USED(sign_data) GENERATE
+				unsign_ovrflw_regr.clrn = !aclr;
+			END GENERATE;
+			IF USED(sign_data) GENERATE
+				sign_data_regr[].clrn = !aclr;
+			END GENERATE;
+		END GENERATE;
+		IF USED(cout) GENERATE
+			IF EXTRA_LATENCY > 0 & WIDTH_OUT <= EXTRA_LATENCY GENERATE
+				cout_regr[].clrn = !aclr;
+			END GENERATE;
+			IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY & ( EXTRA_LATENCY * LENGTH_PER_SEGMENT() >= WIDTH_OUT) GENERATE
+				cout_buffer[].clrn = !aclr;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+	
+	IF USED(clock) GENERATE
+		acc_cell[].clk = clock;
+		IF EXTRA_LATENCY > 0 GENERATE
+			extra_buffers[][].clk = clock;
+			IF WIDTH_OUT > EXTRA_LATENCY GENERATE
+				cout_out_cell[].clk = clock;
+				sload_regr[].clk = clock;
+				IF USED(add_sub) GENERATE
+					add_sub_regr[].clk = clock;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+		IF USED(overflow) GENERATE
+			IF EXTRA_LATENCY > 0 & WIDTH_OUT <= EXTRA_LATENCY GENERATE
+				ovrflw_buffer[].clk = clock;
+			END GENERATE;
+			IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY & ( EXTRA_LATENCY * LENGTH_PER_SEGMENT() >= WIDTH_OUT) GENERATE
+				overflow_buffer[].clk = clock;
+			END GENERATE;
+			IF USED(sign_data) # LPM_REPRESENTATION == "SIGNED" GENERATE
+				data_a_regr.clk = clock;
+				res_regr.clk = clock;
+			END GENERATE;
+			IF LPM_REPRESENTATION != "SIGNED" # USED(sign_data) GENERATE
+				unsign_ovrflw_regr.clk = clock;
+			END GENERATE;
+			IF USED(sign_data) GENERATE
+				sign_data_regr[].clk = clock;
+			END GENERATE;
+		END GENERATE;
+		IF USED(cout) GENERATE
+			IF EXTRA_LATENCY > 0 & WIDTH_OUT <= EXTRA_LATENCY GENERATE
+				cout_regr[].clk = clock;
+			END GENERATE;
+			IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY & ( EXTRA_LATENCY * LENGTH_PER_SEGMENT() >= WIDTH_OUT) GENERATE
+				cout_buffer[].clk = clock;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+	
+	IF USED(clken) GENERATE
+		acc_cell[].ena = clken;
+		IF EXTRA_LATENCY > 0 GENERATE
+			extra_buffers[][].ena = clken;
+			IF WIDTH_OUT > EXTRA_LATENCY GENERATE
+				cout_out_cell[].ena = clken;
+				sload_regr[].ena = clken;
+				IF USED(add_sub) GENERATE
+					add_sub_regr[].ena = clken;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+		IF USED(overflow) GENERATE
+			IF EXTRA_LATENCY > 0 & WIDTH_OUT <= EXTRA_LATENCY GENERATE
+				ovrflw_buffer[].ena = clken;
+			END GENERATE;
+			IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY & ( EXTRA_LATENCY * LENGTH_PER_SEGMENT() >= WIDTH_OUT) GENERATE
+				overflow_buffer[].ena = clken;
+			END GENERATE;
+			IF USED(sign_data) # LPM_REPRESENTATION == "SIGNED" GENERATE
+				data_a_regr.ena = clken;
+				res_regr.ena = clken;
+			END GENERATE;
+			IF LPM_REPRESENTATION != "SIGNED" # USED(sign_data) GENERATE
+				unsign_ovrflw_regr.ena = clken;
+			END GENERATE;
+			IF USED(sign_data) GENERATE
+				sign_data_regr[].ena = clken;
+			END GENERATE;
+		END GENERATE;
+		IF USED(cout) GENERATE
+			IF EXTRA_LATENCY > 0 & WIDTH_OUT <= EXTRA_LATENCY GENERATE
+				cout_regr[].ena = clken;
+			END GENERATE;
+			IF EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY & ( EXTRA_LATENCY * LENGTH_PER_SEGMENT() >= WIDTH_OUT) GENERATE
+				cout_buffer[].ena = clken;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+
+	-- overflow
+	IF USED(overflow) GENERATE
+		IF USED(sign_data) GENERATE
+			sign_data_regr[0].d = sign_data;
+			IF EXTRA_LATENCY > 0 GENERATE
+				FOR i IN 1 TO EXTRA_LATENCY GENERATE
+					sign_data_regr[i].d = sign_data_regr[i-1].q;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+		IF EXTRA_LATENCY == 0  # WIDTH_OUT <= EXTRA_LATENCY GENERATE
+			IF USED(sign_data) GENERATE
+				IF USED(add_sub) GENERATE
+					res_regr.d =  (!(data[WIDTH_IN-1] $ acc_cell[WIDTH_OUT-1].regout) $ !add_sub )& !sload;
+				ELSE GENERATE
+					res_regr.d =  (!(data[WIDTH_IN-1] $ acc_cell[WIDTH_OUT-1].regout)) & !sload;
+				END GENERATE;		
+				data_a_regr.d = acc_cell[WIDTH_OUT-1].regout;
+				tmp_sign_overflow = (res_regr.q) & (data_a_regr.q $ acc_cell[WIDTH_OUT-1].regout);				
+				cout_node = acc_cell[WIDTH_OUT-1].cout;
+				IF USED(add_sub) GENERATE
+					unsign_ovrflw_regr.d = (!add_sub $ cout_node) & !sload;			
+				ELSE GENERATE
+					unsign_ovrflw_regr.d = cout_node & !sload;
+				END GENERATE;
+				tmp_unsign_overflow = unsign_ovrflw_regr.q;
+				tmp_overflow = tmp_sign_overflow & sign_data_regr[0].q # tmp_unsign_overflow & !sign_data_regr[0].q;
+			ELSE GENERATE
+				IF LPM_REPRESENTATION == "SIGNED" GENERATE
+					-- store the output of previous stage which is also the input and the data input
+					IF USED(add_sub) GENERATE
+						res_regr.d =  (!(data[WIDTH_IN-1] $ acc_cell[WIDTH_OUT-1].regout) $ !add_sub )& !sload;
+					ELSE GENERATE
+						res_regr.d =  (!(data[WIDTH_IN-1] $ acc_cell[WIDTH_OUT-1].regout)) & !sload;
+					END GENERATE;		
+					data_a_regr.d = acc_cell[WIDTH_OUT-1].regout;
+					tmp_overflow = (res_regr.q) & (data_a_regr.q $ acc_cell[WIDTH_OUT-1].regout);
+				ELSE GENERATE
+					cout_node = acc_cell[WIDTH_OUT-1].cout;
+					IF USED(add_sub) GENERATE
+						unsign_ovrflw_regr.d = (!add_sub $ cout_node) & !sload;			
+					ELSE GENERATE
+						unsign_ovrflw_regr.d = cout_node & !sload;
+					END GENERATE;
+					tmp_overflow = unsign_ovrflw_regr.q;
+				END GENERATE;
+			END GENERATE;
+			IF EXTRA_LATENCY == 0 GENERATE
+				overflow = tmp_overflow;
+			END GENERATE;
+		ELSE GENERATE
+			IF (EXTRA_LATENCY * LENGTH_PER_SEGMENT() >= WIDTH_OUT) GENERATE
+				IF USED(sign_data) GENERATE
+					IF USED(add_sub) GENERATE
+						res_regr.d =  (!(extra_buffers[PIPELINE_SEGMENT(WIDTH_OUT-1)-1][WIDTH_OUT-1].q $ acc_cell[WIDTH_OUT-1].regout) $ add_sub_regr[PIPELINE_SEGMENT(WIDTH_OUT-1)-1].q ) & !sload_regr[PIPELINE_SEGMENT(WIDTH_OUT-1)-1].q;
+					ELSE GENERATE
+						res_regr.d =  (!(extra_buffers[PIPELINE_SEGMENT(WIDTH_OUT-1)-1][WIDTH_OUT-1].q $ acc_cell[WIDTH_OUT-1].regout)) & !sload_regr[PIPELINE_SEGMENT(WIDTH_OUT-1)-1].q;
+					END GENERATE;		
+					data_a_regr.d = acc_cell[WIDTH_OUT-1].regout;
+					tmp_sign_overflow = (res_regr.q) & (data_a_regr.q $ acc_cell[WIDTH_OUT-1].regout);					
+					cout_node = acc_cell[WIDTH_OUT-1].cout;
+					IF USED(add_sub) GENERATE
+						unsign_ovrflw_regr.d = (add_sub_regr[PIPELINE_SEGMENT(WIDTH_OUT-1)-1].q $ cout_node) & !sload_regr[PIPELINE_SEGMENT(WIDTH_OUT-1)-1].q;			
+					ELSE GENERATE
+						unsign_ovrflw_regr.d = cout_node & !sload_regr[PIPELINE_SEGMENT(WIDTH_OUT-1)-1].q;
+					END GENERATE;
+					tmp_unsign_overflow = unsign_ovrflw_regr.q;
+					tmp_overflow = tmp_sign_overflow & sign_data_regr[PIPELINE_SEGMENT(WIDTH_OUT-1)].q # tmp_unsign_overflow & !sign_data_regr[PIPELINE_SEGMENT(WIDTH_OUT-1)].q;
+				ELSE GENERATE
+					IF LPM_REPRESENTATION == "SIGNED" GENERATE
+						IF USED(add_sub) GENERATE
+							res_regr.d =  (!(extra_buffers[PIPELINE_SEGMENT(WIDTH_OUT-1)-1][WIDTH_OUT-1].q $ acc_cell[WIDTH_OUT-1].regout) $ add_sub_regr[PIPELINE_SEGMENT(WIDTH_OUT-1)-1].q ) & !sload_regr[PIPELINE_SEGMENT(WIDTH_OUT-1)-1].q;
+						ELSE GENERATE
+							res_regr.d =  (!(extra_buffers[PIPELINE_SEGMENT(WIDTH_OUT-1)-1][WIDTH_OUT-1].q $ acc_cell[WIDTH_OUT-1].regout)) & !sload_regr[PIPELINE_SEGMENT(WIDTH_OUT-1)-1].q;
+						END GENERATE;		
+						data_a_regr.d = acc_cell[WIDTH_OUT-1].regout;
+						tmp_overflow = (res_regr.q) & (data_a_regr.q $ acc_cell[WIDTH_OUT-1].regout);
+					ELSE GENERATE
+						cout_node = acc_cell[WIDTH_OUT-1].cout;
+						IF USED(add_sub) GENERATE
+							unsign_ovrflw_regr.d = (add_sub_regr[PIPELINE_SEGMENT(WIDTH_OUT-1)-1].q $ cout_node) & !sload_regr[PIPELINE_SEGMENT(WIDTH_OUT-1)-1].q;			
+						ELSE GENERATE
+							unsign_ovrflw_regr.d = cout_node & !sload_regr[PIPELINE_SEGMENT(WIDTH_OUT-1)-1].q;
+						END GENERATE;
+						tmp_overflow = unsign_ovrflw_regr.q;
+					END GENERATE;	
+				END GENERATE;
+			ELSE GENERATE
+				IF USED(sign_data) GENERATE
+					IF USED(add_sub) GENERATE
+						res_regr.d =  (!(extra_buffers[EXTRA_LATENCY-1][WIDTH_OUT-1].q $ acc_cell[WIDTH_OUT-1].regout) $ add_sub_regr[EXTRA_LATENCY-1].q ) & !sload_regr[EXTRA_LATENCY-1].q;
+					ELSE GENERATE
+						res_regr.d =  (!(extra_buffers[EXTRA_LATENCY-1][WIDTH_OUT-1].q $ acc_cell[WIDTH_OUT-1].regout)) & !sload_regr[EXTRA_LATENCY-1].q;
+					END GENERATE;		
+					data_a_regr.d = acc_cell[WIDTH_OUT-1].regout;
+					tmp_sign_overflow = (res_regr.q) & (data_a_regr.q $ acc_cell[WIDTH_OUT-1].regout);
+					cout_node = acc_cell[WIDTH_OUT-1].cout;
+					IF USED(add_sub) GENERATE
+						unsign_ovrflw_regr.d = (add_sub_regr[EXTRA_LATENCY-1].q $ cout_node) & !sload_regr[EXTRA_LATENCY-1].q;			
+					ELSE GENERATE
+						unsign_ovrflw_regr.d = cout_node & !sload_regr[EXTRA_LATENCY-1].q;
+					END GENERATE;
+					tmp_unsign_overflow = unsign_ovrflw_regr.q;
+					tmp_overflow = tmp_sign_overflow & sign_data_regr[EXTRA_LATENCY].q # tmp_unsign_overflow & !sign_data_regr[EXTRA_LATENCY].q;													
+				ELSE GENERATE
+					IF LPM_REPRESENTATION == "SIGNED" GENERATE
+						IF USED(add_sub) GENERATE
+							res_regr.d =  (!(extra_buffers[EXTRA_LATENCY-1][WIDTH_OUT-1].q $ acc_cell[WIDTH_OUT-1].regout) $ add_sub_regr[EXTRA_LATENCY-1].q ) & !sload_regr[EXTRA_LATENCY-1].q;
+						ELSE GENERATE
+							res_regr.d =  (!(extra_buffers[EXTRA_LATENCY-1][WIDTH_OUT-1].q $ acc_cell[WIDTH_OUT-1].regout)) & !sload_regr[EXTRA_LATENCY-1].q;
+						END GENERATE;		
+						data_a_regr.d = acc_cell[WIDTH_OUT-1].regout;
+						tmp_overflow = (res_regr.q) & (data_a_regr.q $ acc_cell[WIDTH_OUT-1].regout);
+					ELSE GENERATE
+						cout_node = acc_cell[WIDTH_OUT-1].cout;
+						IF USED(add_sub) GENERATE
+							unsign_ovrflw_regr.d = (add_sub_regr[EXTRA_LATENCY-1].q $ cout_node) & !sload_regr[EXTRA_LATENCY-1].q;			
+						ELSE GENERATE
+							unsign_ovrflw_regr.d = cout_node & !sload_regr[EXTRA_LATENCY-1].q;
+						END GENERATE;
+						tmp_overflow = unsign_ovrflw_regr.q;
+					END GENERATE;	
+				END GENERATE;
+				overflow = tmp_overflow;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+
+	-- cout 
+	IF USED(cout) GENERATE
+		IF EXTRA_LATENCY == 0 # EXTRA_LATENCY > 0 & WIDTH_OUT <= EXTRA_LATENCY GENERATE
+			IF USED(add_sub) GENERATE
+				tmp_cout = !sload & acc_cell[WIDTH_OUT-1].cout # !add_sub & sload;
+			ELSE GENERATE
+				tmp_cout = !sload & acc_cell[WIDTH_OUT-1].cout;
+			END GENERATE;	
+		ELSE GENERATE
+			IF USED(add_sub) GENERATE
+				tmp_cout = !sload_regr[EXTRA_LATENCY-1].q & acc_cell[WIDTH_OUT-1].cout # add_sub_regr[EXTRA_LATENCY-1].q & sload_regr[EXTRA_LATENCY-1].q;
+			ELSE GENERATE
+				tmp_cout = !sload_regr[EXTRA_LATENCY-1].q & acc_cell[WIDTH_OUT-1].cout;
+			END GENERATE;	
+		END GENERATE;
+		IF EXTRA_LATENCY == 0 # EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY GENERATE
+			IF !(EXTRA_LATENCY > 0 & WIDTH_OUT > EXTRA_LATENCY & ( EXTRA_LATENCY * LENGTH_PER_SEGMENT() >= WIDTH_OUT)) GENERATE
+				cout = tmp_cout;
+			END GENERATE;
+			IF EXTRA_LATENCY == 0 GENERATE
+				cout = tmp_cout;
+			END GENERATE;
+		END GENERATE;		
+	END GENERATE;
+	END GENERATE; -- special case for width = 1 and add_sub = 1
+
+	IF !USED(cout) GENERATE
+		cout = GND;
+	END GENERATE;
+	IF !USED(overflow) GENERATE
+		overflow = GND;
+	END GENERATE;
+	IF !USED(result) GENERATE
+		result[] = GND;
+	END GENERATE;
+END;
+

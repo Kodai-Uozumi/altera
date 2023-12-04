@@ -1,0 +1,23 @@
+#!/bin/sh
+dc_shell <<!
+read apex20k-3.db
+update_lib apex20k-3 asyn_rom_256x15.lib
+/* write_lib apex20k-3 -o apex20k-3.db */
+hdlin_translate_off_skip_text=true
+
+edifout_netlist_only = true
+edifout_power_and_ground_representation = net
+edifout_power_net_name = "VDD"
+edifout_ground_net_name = "GND"
+edifout_no_array = false
+compile_fix_multiple_port_nets = true
+bus_naming_style = "%s<%d>"
+bus_dimension_separator_style = "><"
+bus_inference_style = "%s<%d>"
+
+read -f vhdl tstrom.vhd
+compile
+report_timing >asyn_rom_256x15.timing
+write -f edif -hierarchy -o tstrom.edf
+quit
+!

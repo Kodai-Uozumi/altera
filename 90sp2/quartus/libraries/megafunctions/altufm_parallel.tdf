@@ -1,0 +1,104 @@
+------------------------------------------------------------------
+-- altufm_parallel parameterized megafunction
+-- Generated with 'clearbox' loader - do not edit
+------------------------------------------------------------------
+
+
+-- Copyright (C) 1991-2009 Altera Corporation
+--  Your use of Altera Corporation's design tools, logic functions 
+--  and other software and tools, and its AMPP partner logic 
+--  functions, and any output files from any of the foregoing 
+--  (including device programming or simulation files), and any 
+--  associated documentation or information are expressly subject 
+--  to the terms and conditions of the Altera Program License 
+--  Subscription Agreement, Altera MegaCore Function License 
+--  Agreement, or other applicable license agreement, including, 
+--  without limitation, that your use is for the sole purpose of 
+--  programming logic devices manufactured by Altera and sold by 
+--  Altera or its authorized distributors.  Please refer to the 
+--  applicable agreement for further details.
+
+--  Version 9.0 Build 235 06/17/2009
+
+OPTIONS NAME_SUBSTITUTION = ON;
+
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+
+PARAMETERS
+(
+	ACCESS_MODE,
+	ERASE_TIME = 500000000,
+	LPM_FILE = "UNUSED",
+	OSC_FREQUENCY = 180000,
+	PROGRAM_TIME = 1600000,
+	WIDTH_ADDRESS = 9,
+	WIDTH_DATA = 16,
+	WIDTH_UFM_ADDRESS = 9,
+	CBXI_PARAMETER = "NOTHING"
+);
+FUNCTION @CBXI_PARAMETER (addr[WIDTH_ADDRESS-1..0], datain[WIDTH_DATA-1..0], nerase, nread, nwrite, oscena)
+RETURNS (data_valid, dataout[WIDTH_DATA-1..0], nbusy, osc);
+
+
+SUBDESIGN altufm_parallel
+(
+	addr[WIDTH_ADDRESS-1..0]		:	INPUT;
+	data_valid		:	OUTPUT;
+	datain[WIDTH_DATA-1..0]		:	INPUT = GND;
+	dataout[WIDTH_DATA-1..0]		:	OUTPUT;
+	nbusy		:	OUTPUT;
+	nerase		:	INPUT = VCC;
+	nread		:	INPUT;
+	nwrite		:	INPUT = VCC;
+	osc		:	OUTPUT;
+	oscena		:	INPUT = VCC;
+)
+VARIABLE
+	IF CBXI_PARAMETER != "NOTHING" GENERATE
+		auto_generated : @CBXI_PARAMETER WITH ( CBXI_PARAMETER = "NOTHING" );
+	END GENERATE;
+BEGIN
+	ASSERT (CBXI_PARAMETER != "NOTHING")
+	REPORT "Valid clear box generator not found or Errors encountered during clear box generation"
+	SEVERITY ERROR;
+	IF (CBXI_PARAMETER != "NOTHING") GENERATE
+		IF USED(addr) GENERATE
+			auto_generated.addr[] = addr[];
+		END GENERATE;
+		IF USED(data_valid) GENERATE
+			data_valid = auto_generated.data_valid;
+		ELSE GENERATE
+			data_valid = GND;
+		END GENERATE;
+		IF USED(datain) GENERATE
+			auto_generated.datain[] = datain[];
+		END GENERATE;
+		IF USED(dataout) GENERATE
+			dataout[] = auto_generated.dataout[];
+		ELSE GENERATE
+			dataout[] = GND;
+		END GENERATE;
+		IF USED(nbusy) GENERATE
+			nbusy = auto_generated.nbusy;
+		ELSE GENERATE
+			nbusy = GND;
+		END GENERATE;
+		IF USED(nerase) GENERATE
+			auto_generated.nerase = nerase;
+		END GENERATE;
+		IF USED(nread) GENERATE
+			auto_generated.nread = nread;
+		END GENERATE;
+		IF USED(nwrite) GENERATE
+			auto_generated.nwrite = nwrite;
+		END GENERATE;
+		IF USED(osc) GENERATE
+			osc = auto_generated.osc;
+		ELSE GENERATE
+			osc = GND;
+		END GENERATE;
+		IF USED(oscena) GENERATE
+			auto_generated.oscena = oscena;
+		END GENERATE;
+	END GENERATE;
+END;

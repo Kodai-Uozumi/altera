@@ -1,0 +1,143 @@
+-- **************************************************************************
+--	(zero or) one level deep FIFO - A_REGFIFO
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 1.0
+--
+-- **************************************************************************
+
+parameters
+(
+	LPM_WIDTH,
+	LPM_NUMWORDS,		-- 0 or 1 only
+
+	LPM_SHOWAHEAD = "OFF",
+	UNDERFLOW_CHECKING = "ON",
+	OVERFLOW_CHECKING = "ON",
+	ALLOW_RWCYCLE_WHEN_FULL = "OFF"
+);
+
+-------------------------------------------------------------------------------
+subdesign a_regfifo
+(
+	data[LPM_WIDTH-1..0]	: input;
+	q[LPM_WIDTH-1..0]		: output;
+
+	wreq, rreq				: input;
+	clock					: input;
+	aclr, sclr				: input = gnd;
+
+	empty, full, usedw[0]	: output;
+)
+
+-------------------------------------------------------------------------------
+variable
+	valid_wreq, valid_rreq: node;
+	if LPM_NUMWORDS==1 generate
+		dff_fifo[LPM_WIDTH-1..0]: DFFE;
+		dff_full: DFF;
+		if LPM_SHOWAHEAD=="OFF" generate dff_ra[LPM_WIDTH-1..0]:DFFE; end generate;
+	end generate;
+
+-------------------------------------------------------------------------------
+begin
+	assert (LPM_WIDTH>=1)
+			report "Value of LPM_WIDTH parameter must be at least 1"
+			severity error
+			help_id REGFIFO_WIDTH;
+
+	assert (LPM_NUMWORDS<2) 
+			report "The value of LPM_NUMWORDS parameter must be 0 or 1"
+			severity error
+			help_id REGFIFO_NUMWORDS;
+
+--------------------------------------------------------------------
+	assert (LPM_SHOWAHEAD=="ON") or (LPM_SHOWAHEAD=="OFF")
+			report "Assign either ""ON"" or ""OFF"" to LPM_SHOWAHEAD"
+			severity error
+			help_id REGFIFO_SHOWAHEAD;
+
+	assert (UNDERFLOW_CHECKING=="ON") or (UNDERFLOW_CHECKING=="OFF")
+			report "Assign either ""ON"" or ""OFF"" to UNDERFLOW_CHECKING"
+			severity error
+			help_id REGFIFO_UNDERFLOW_CHECKING;
+
+	assert (OVERFLOW_CHECKING=="ON") or (OVERFLOW_CHECKING=="OFF")
+			report "Assign either ""ON"" or ""OFF"" to OVERFLOW_CHECKING"
+			severity error
+			help_id REGFIFO_OVERFLOW_CHECKING;
+
+	assert (ALLOW_RWCYCLE_WHEN_FULL=="ON") or (ALLOW_RWCYCLE_WHEN_FULL=="OFF")
+			report "Assign either ""ON"" or ""OFF"" to ALLOW_RWCYCLE_WHEN_FULL"
+			severity error
+			help_id REGFIFO_ALLOW_RWCYCLE_WHEN_FULL;
+
+-- **************************************************************************
+--
+	if UNDERFLOW_CHECKING=="OFF" generate
+		valid_rreq = rreq;
+	else generate
+		valid_rreq = rreq and !empty;
+	end generate; 
+
+	if OVERFLOW_CHECKING=="OFF" generate
+		valid_wreq = wreq;
+	else generate
+		if ALLOW_RWCYCLE_WHEN_FULL=="ON" generate
+			valid_wreq = wreq and (!full or rreq);
+		else generate
+			valid_wreq = wreq and !full;
+		end generate; 
+	end generate;
+
+	if LPM_NUMWORDS==0 generate
+		q[] = data[];
+		empty = VCC;
+		full = GND;
+		UsedW[] = GND;
+	else generate
+		if LPM_SHOWAHEAD=="OFF" generate 
+			dff_fifo[] = data[];
+			dff_ra[] = dff_fifo[];
+			dff_ra[].(clk, ena, clrn) = (clock, valid_rreq, !aclr);
+			q[] = dff_ra[];
+		else generate
+			dff_fifo[] = data[] and !sclr;
+			q[] = dff_fifo[];
+		end generate;
+		dff_fifo[].(clk, ena, clrn) = (clock, valid_wreq, !aclr);
+		
+		if !dff_full then
+			dff_full = valid_wreq and !sclr;
+		else
+			dff_full = (valid_wreq or !valid_rreq) and !sclr;
+		end if;
+		dff_full.(clk, clrn) = (clock, !aclr);
+		
+		empty	= !dff_full;
+		full	=  dff_full;
+		UsedW[]	=  dff_full;
+	end generate;
+	IF !USED(usedw) GENERATE
+		usedw[] = GND;
+	END GENERATE;
+	IF !USED(q) GENERATE
+		q[] = GND;
+	END GENERATE;
+end;
+

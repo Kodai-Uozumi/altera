@@ -1,0 +1,200 @@
+#!/bin/sh
+#
+# init-config, the configuration script for sysvinit, derived from
+# RedHat iu-config for cygwin
+#
+# This file is part of the Cygwin port of system V init process.
+
+# set -x
+
+# Subdirectory where the new package is being installed
+PREFIX=/usr
+
+# Directory where the config files are stored
+SYSCONFDIR=/etc
+
+progname=$0
+auto_answer=""
+
+request()
+{
+  if [ "${auto_answer}" = "yes" ]
+  then
+    return 0
+  elif [ "${auto_answer}" = "no" ]
+  then
+    return 1
+  fi
+
+  answer=""
+  while [ "X${answer}" != "Xyes" -a "X${answer}" != "Xno" ]
+  do
+    echo -n "$1 (yes/no) "
+    read answer
+  done
+  if [ "X${answer}" = "Xyes" ]
+  then
+    return 0
+  else
+    return 1
+  fi
+}
+
+# Check how the script has been started.  If it has been started by
+# giving the full path and that path is /etc/postinstall, set
+# auto_answer to "no".  This allows automatic creation of the
+# config files in /etc w/o overwriting them if they already exist.
+# Also copy the script to /usr/bin for later use.
+progdir=`dirname $0`
+if [ "$progdir" = "/etc/postinstall" ]
+then
+  auto_answer="no"
+  echo "Creating ${PREFIX}/bin/init-config"
+  cp ${progname} ${PREFIX}/bin/init-config
+  if [ ! -d /var/run ] ; then \
+     mkdir -p /var/run ;
+  fi
+  if [ ! -d /var/log ] ; then \
+     mkdir -p /var/log ;
+  fi
+  if [ ! -f /var/run/utmp ] ; then \
+     touch /var/run/utmp ;
+  fi
+  if [ ! -f /var/log/wtmp ] ; then \
+     touch /var/log/wtmp ;
+  fi
+fi
+
+# Check options
+
+while :
+do
+  case $# in
+  0)
+    break
+    ;;
+  esac
+
+  option=$1
+  shift
+
+  case "$option" in
+  -d | --debug )
+    set -x
+    ;;
+
+  -y | --yes )
+    auto_answer=yes
+    ;;
+
+  -n | --no )
+    auto_answer=no
+    ;;
+  *)
+    echo "usage: ${progname} [OPTION]..."
+    echo
+    echo "This script creates an sysvinit host configuration."
+    echo
+    echo "Options:"
+    echo "    --debug  -d     Enable shell's debug output."
+    echo "    --yes    -y     Answer all questions with \"yes\" automatically."
+    echo "    --no     -n     Answer all questions with \"no\" automatically."
+    echo
+    exit 1
+    ;;
+
+  esac
+done
+
+# Check for ${SYSCONFDIR} directory
+
+if [ -e "${SYSCONFDIR}" -a ! -d "${SYSCONFDIR}" ]
+then
+  echo
+  echo "${SYSCONFDIR} is existant but not a directory."
+  echo "Cannot create global configuration files."
+  echo
+  exit 1
+fi
+
+# Create it if necessary
+
+if [ ! -e "${SYSCONFDIR}" ]
+then
+  mkdir "${SYSCONFDIR}"
+  if [ ! -e "${SYSCONFDIR}" ]
+  then
+    echo
+    echo "Creating ${SYSCONFDIR} directory failed"
+    echo
+    exit 1
+  fi
+fi
+
+# Check if inittab exists. If yes, ask for overwriting
+
+if [ -f "${SYSCONFDIR}/inittab" ]
+then
+  if request "Overwrite existing ${SYSCONFDIR}/inittab file (answer \"no\" if you have initscripts installed)?"
+  then
+    rm -f "${SYSCONFDIR}/inittab"
+    if [ -f "${SYSCONFDIR}/inittab" ]
+    then
+      echo "Can't overwrite. ${SYSCONFDIR}/inittab is write protected."
+    fi
+  fi
+fi
+
+if [ ! -f "${SYSCONFDIR}/inittab" ]
+then
+  echo "Creating default ${SYSCONFDIR}/inittab file"
+  cat > ${SYSCONFDIR}/inittab << EOF
+# id:runlevels:action:process
+id:3:initdefault:
+rc::bootwait:/etc/rc
+#S0:2345:respawn:/sbin/agetty -L -T vt100 -n ttyS0 9600 ttyS0
+EOF
+fi
+
+# Check if rc exists. If yes, ask for overwriting
+
+if [ -f "${SYSCONFDIR}/rc" ]
+then
+  if request "Overwrite existing ${SYSCONFDIR}/rc file?"
+  then
+    rm -f "${SYSCONFDIR}/rc"
+    if [ -f "${SYSCONFDIR}/rc" ]
+    then
+      echo "Can't overwrite. ${SYSCONFDIR}/rc is write protected."
+    fi
+  fi
+fi
+
+if [ ! -f "${SYSCONFDIR}/rc" ]
+then
+  echo "Creating default ${SYSCONFDIR}/rc file"
+  cat > ${SYSCONFDIR}/rc << EOF
+#!/bin/sh
+# Clean up utmp database
+>/var/run/utmp
+#rm -rf /tmp/*
+EOF
+fi
+
+# Check if running on NT
+_sys="`uname -a`"
+_nt=`expr "$_sys" : "CYGWIN_NT"`
+
+if [ $_nt -gt 0 ]
+then
+  if request "Do you want to set up init to run as NT service?"
+  then
+    chown system.system /etc/inittab
+    chown system.system /etc/rc
+    /bin/cygrunsrv -I init -p /sbin/init -a -i -s INT
+    net start init
+  fi
+fi
+
+echo
+echo "Configuration finished. Have fun!"

@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<ROOT>
+	<INCLUDE FILE="altpll_reconfig_rules.xml" />
+	<WIZARD_DATA>
+		<WIZARD_MAP NAME="ALTPLL_RECONFIG" WIZARD_NAME="ALTPLL_RECONFIG" MODULE_NAME="altpll_reconfig" >
+			<PARAMETER NAME="CHAIN_TYPE" CNX_TYPE="PRIVATE" TYPE="INTEGER" >
+				<FORCE_VALUE TO="mfam_family_base_stratix ? (scan_chain == LONG ? 0 : 1) : (pll_type == ENHANCED ? 0 : 1)" />
+			</PARAMETER>
+			<PARAMETER NAME="INIT_FILE_NAME" CNX_TYPE="PRIVATE" TYPE="STRING" VALUE="scan_init_file" />
+			<PARAMETER NAME="USE_INIT_FILE" CNX_TYPE="PRIVATE" TYPE="STRING" >
+				<FORCE_VALUE TO="scan_init_file == UNUSED ? 0 : 1" />
+			</PARAMETER>
+			<!-- The following port is always added just to get rid of the starting popup -->
+			<PORT NAME="pll_areset" CNX_TYPE="USED_PORT" TYPE="OUTPUT" />
+		</WIZARD_MAP>
+	</WIZARD_DATA>
+</ROOT>

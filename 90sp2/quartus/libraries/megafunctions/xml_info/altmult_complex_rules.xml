@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<ROOT>
+	<INCLUDE FILE="mfam_family_macros.xml"/>
+
+	<MACROS>
+  		<MACRO NAME="canonical_is_supported"  DEFINITION="!(mfam_family_stratixiii || (mfam_family_has_dsp_block and (WIDTH_A gt 17 || WIDTH_B gt 17)))" />
+		<MACRO NAME="conventional_base_latency"  DEFINITION="3" />
+		<MACRO NAME="canonical_base_latency"  DEFINITION="4" />
+		<MACRO NAME="conventional_max_latency"  DEFINITION="conventional_base_latency + 8" />
+		<MACRO NAME="canonical_max_latency"  DEFINITION="canonical_base_latency + 10" />
+ 	</MACROS>
+
+	<PARAMETER_RULES>
+		<PARAMETER NAME="WIDTH_A" TYPE="INTEGER">
+			<FORCE_RANGE MIN="1" MAX="256"/>
+		</PARAMETER>
+		<PARAMETER NAME="WIDTH_B" TYPE="INTEGER">
+			<FORCE_RANGE MIN="1" MAX="256"/>
+		</PARAMETER>
+		<PARAMETER NAME="WIDTH_RESULT" TYPE="INTEGER">
+			<FORCE_RANGE MIN="1" MAX="256"/>
+		</PARAMETER>
+		<PARAMETER NAME="IMPLEMENTATION_STYLE">
+			<FORCE_VALUE TO="AUTO" WHEN="!canonical_is_supported"/>
+		</PARAMETER>
+		<PARAMETER NAME="PIPELINE" TYPE="INTEGER">	
+			<FORCE_RANGE MAX="conventional_max_latency" MIN="0" WHEN="(!canonical_is_supported || IMPLEMENTATION_STYLE == CONVENTIONAL || (mfam_family_stratixiii))" /> 
+			<FORCE_RANGE MAX="canonical_max_latency" MIN="0" WHEN="((canonical_is_supported and IMPLEMENTATION_STYLE != CONVENTIONAL) and (!mfam_family_stratixiii))" /> 
+		</PARAMETER>                 	
+	</PARAMETER_RULES>
+	<PORT_RULES>
+		<PORT NAME="clock" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="PIPELINE == 0"/>
+			<STATE TO="USED" WHEN="PIPELINE != 0"/>
+		</PORT>
+		<PORT NAME="ena" USAGE="VARIABLE" HIGH_PROBABILITY="95" INITIAL_VEC_STATE="1">
+			<STATE TO="UNUSED" WHEN="PIPELINE == 0"/>
+			<STATE TO="USED" WHEN="PIPELINE != 0"/>
+		</PORT>
+		<PORT NAME="aclr" USAGE="VARIABLE" HIGH_PROBABILITY="5">
+			<STATE TO="UNUSED" WHEN="PIPELINE == 0"/>
+			<STATE TO="USED" WHEN="PIPELINE != 0"/>
+		</PORT>
+	</PORT_RULES>
+
+</ROOT>

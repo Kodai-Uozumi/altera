@@ -1,0 +1,20 @@
+INCLUDE "dec_f.inc";
+SUBDESIGN f_dec_carry 
+(
+     BI, IN1 : INPUT = GND;
+     DEC        : OUTPUT;
+     BO        : OUTPUT;
+)
+VARIABLE
+     	ufdec:dec_f with ( IGNORE_SOFT_BUFFERS = "OFF" );
+		csum: CARRY_SUM;
+begin
+
+	ufdec.in1 = IN1;
+	ufdec.bi = BI;
+	csum.sin = ufdec.dec;	
+	csum.cin = BI#(!IN1);
+
+	DEC = csum.sout;
+	BO = csum.cout;
+end;

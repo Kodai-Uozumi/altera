@@ -1,0 +1,3 @@
+FUNCTION lpm_inv(data[LPM_WIDTH-1..0])
+	WITH (LPM_WIDTH)
+	RETURNS (result[LPM_WIDTH-1..0]);

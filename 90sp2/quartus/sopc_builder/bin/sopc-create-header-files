@@ -1,0 +1,141 @@
+#!/bin/bash
+#
+# Exit with 0 on success, 1 on failure.
+# Errors and warnings sent to stderr.
+# Normal messages sent to stdout.
+
+PN="sopc-create-header-files"
+
+# Globals
+sopc_arg=
+sopc_design_file=
+swinfo_tmp_fname=/tmp/${PN}.$$.tmp.swinfo
+
+[[ -x /bin/cygpath ]] && {
+    # Use cygpath to convert tmp to a windows path.
+    swinfo_tmp_fname=$(cygpath -w $swinfo_tmp_fname)
+}
+
+# Routine to display error messages to stderr.
+err() {
+    echo "$*" 1>&2
+}
+
+usage() {
+    echo
+    echo "Usage: $PN [<sopc>] [OPTION]..."
+    echo
+    echo "This utility creates C-header files for your SOPC Builder system."
+    echo
+    echo "Options:"
+    echo "  <sopc>      Path to SOPC Builder .sopcinfo file or its directory."
+    echo "              If omitted, <sopc> defaults to the current directory."
+    echo "              If a directory is specified for <sopc>, there must be one"
+    echo "              .sopcinfo file in the directory."
+    echo "              If you don't have a .sopcinfo file for your SOPC Builder system,"
+    echo "              re-generate your system in SOPC Builder (version 8.0 or later)"
+    echo "              to create one." 
+    echo
+
+    # Now display usage from swinfo2header command.
+    swinfo2header --help-wrapper-stdout
+}
+
+# Called when exiting for any reason.
+# Makes sure .swinfo temporary file isn't left lying around.
+cleanup() {
+    rm -f "$swinfo_tmp_fname"
+}
+
+# Call cleanup routine when exiting for any reason.
+trap cleanup EXIT
+
+# Return path of SOPC Builder design file.
+# Must be called with the sopc_arg as a parameter.
+# Sets the global sopc_design_file as the return value.
+set_sopc_design_file() {
+    local sopc_design_dir
+
+    if [[ -f "$1" ]]; then
+        # User specified an SOPC Builder design file so just use it.
+        sopc_design_file="$1"
+    
+        [[ -r $sopc_design_file ]] || {
+            err "$PN: Can't read SOPC design file $sopc_design_file"
+            exit 1
+        }
+    else
+        # Default to PWD if no directory name specified.
+        sopc_design_dir="."
+    
+        [[ "$1" ]] && {
+            # Interpret sopc argument as a directory name.
+            sopc_design_dir="$1"
+    
+            [[ -d "$sopc_design_dir" ]] || {
+                err "$PN: SOPC design argument $1 isn't a directory or a file"
+                exit 1
+            }
+        }
+    
+        # Find the .sopcinfo files in the sopc design dir.
+        local sopcinfo_files=$(ls $sopc_design_dir/*.sopcinfo 2>/dev/null)
+        [[ -n "$sopcinfo_files" ]] && {
+            for arg in $sopcinfo_files; do
+                [[ "$sopc_design_file" ]] && {
+                    err "$PN: Found multiple .sopcinfo files in $sopc_design_dir directory."
+                    err "$PN: Specify desired .sopcinfo file on the command line."
+                    exit 1
+                }
+        
+                sopc_design_file="$arg"
+            done
+        
+            echo "$PN: Using SOPC design file $sopc_design_file found in $sopc_design_dir"
+            return
+        }
+
+        err "$PN: Can't find SOPC design file in $sopc_design_dir directory."
+        err "    Looking for .sopcinfo files."
+        err "    If you only have a .sopc file, re-generate your SOPC Builder"
+        err "    system in version 8.0 or later to create a .sopcinfo file."
+        err "    Specify SOPC design file or directory on the command line."
+        exit 1
+    fi
+}
+
+[[ $1 = "--help" ]] && { 
+    usage
+    exit 0
+}
+
+[[ "$QUARTUS_ROOTDIR" ]] || {
+    err "Environment variable QUARTUS_ROOTDIR is empty. Do you have Quartus II installed?"
+    exit 1
+}
+
+# Optionally get sopc argument.
+case "$1" in
+--*)
+    ;;
+*)   sopc_arg=$1; shift
+    ;;
+esac
+
+set_sopc_design_file $sopc_arg
+
+rm -f "$swinfo_tmp_fname"
+
+cmd="sopcinfo2swinfo --input=$sopc_design_file --output=$swinfo_tmp_fname"
+$cmd || {
+    echo "$PN: $cmd failed"
+    exit 1
+}
+
+cmd="swinfo2header --swinfo $swinfo_tmp_fname --sopc $sopc_design_file $@"
+$cmd || {
+    echo "$PN: $cmd failed"
+    exit 1
+}
+
+exit 0

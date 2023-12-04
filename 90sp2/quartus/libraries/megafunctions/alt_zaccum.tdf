@@ -1,0 +1,125 @@
+------------------------------------------------------------------
+-- alt_zaccum parameterized megafunction
+-- Generated with 'clearbox' loader - do not edit
+------------------------------------------------------------------
+
+
+-- Copyright (C) 1991-2009 Altera Corporation
+--  Your use of Altera Corporation's design tools, logic functions 
+--  and other software and tools, and its AMPP partner logic 
+--  functions, and any output files from any of the foregoing 
+--  (including device programming or simulation files), and any 
+--  associated documentation or information are expressly subject 
+--  to the terms and conditions of the Altera Program License 
+--  Subscription Agreement, Altera MegaCore Function License 
+--  Agreement, or other applicable license agreement, including, 
+--  without limitation, that your use is for the sole purpose of 
+--  programming logic devices manufactured by Altera and sold by 
+--  Altera or its authorized distributors.  Please refer to the 
+--  applicable agreement for further details.
+
+--  Version 9.0 Build 235 06/17/2009
+
+OPTIONS NAME_SUBSTITUTION = ON;
+
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+
+PARAMETERS
+(
+	EXTRA_LATENCY = 0,
+	LPM_REPRESENTATION = "UNSIGNED",
+	ROUND_FRACTION_WIDTH = 15,
+	ROUNDING = "NO",
+	SATURATION = "NO",
+	SATURATION_FRACTION_WIDTH = 31,
+	WIDTH_FRACTION = 15,
+	WIDTH_IN,
+	WIDTH_OUT,
+	CBXI_PARAMETER = "NOTHING"
+);
+FUNCTION @CBXI_PARAMETER (aclr, add_sub, cin, clken, clock, data[WIDTH_IN-1..0], load_data[WIDTH_OUT-1..0], round, saturate, sign_data, zero_accum)
+RETURNS (cout, overflow, result[WIDTH_OUT-1..0], saturate_overflow);
+
+
+SUBDESIGN alt_zaccum
+(
+	aclr		:	INPUT = GND;
+	add_sub		:	INPUT = VCC;
+	cin		:	INPUT = GND;
+	clken		:	INPUT = VCC;
+	clock		:	INPUT;
+	cout		:	OUTPUT;
+	data[WIDTH_IN-1..0]		:	INPUT;
+	load_data[WIDTH_OUT-1..0]		:	INPUT = GND;
+	overflow		:	OUTPUT;
+	result[WIDTH_OUT-1..0]		:	OUTPUT;
+	round		:	INPUT = GND;
+	saturate		:	INPUT = GND;
+	saturate_overflow		:	OUTPUT;
+	sign_data		:	INPUT = GND;
+	zero_accum		:	INPUT = GND;
+)
+VARIABLE
+	IF CBXI_PARAMETER != "NOTHING" GENERATE
+		auto_generated : @CBXI_PARAMETER WITH ( CBXI_PARAMETER = "NOTHING" );
+	END GENERATE;
+BEGIN
+	ASSERT (CBXI_PARAMETER != "NOTHING")
+	REPORT "Valid clear box generator not found or Errors encountered during clear box generation"
+	SEVERITY ERROR;
+	IF (CBXI_PARAMETER != "NOTHING") GENERATE
+		IF USED(aclr) GENERATE
+			auto_generated.aclr = aclr;
+		END GENERATE;
+		IF USED(add_sub) GENERATE
+			auto_generated.add_sub = add_sub;
+		END GENERATE;
+		IF USED(cin) GENERATE
+			auto_generated.cin = cin;
+		END GENERATE;
+		IF USED(clken) GENERATE
+			auto_generated.clken = clken;
+		END GENERATE;
+		IF USED(clock) GENERATE
+			auto_generated.clock = clock;
+		END GENERATE;
+		IF USED(cout) GENERATE
+			cout = auto_generated.cout;
+		ELSE GENERATE
+			cout = GND;
+		END GENERATE;
+		IF USED(data) GENERATE
+			auto_generated.data[] = data[];
+		END GENERATE;
+		IF USED(load_data) GENERATE
+			auto_generated.load_data[] = load_data[];
+		END GENERATE;
+		IF USED(overflow) GENERATE
+			overflow = auto_generated.overflow;
+		ELSE GENERATE
+			overflow = GND;
+		END GENERATE;
+		IF USED(result) GENERATE
+			result[] = auto_generated.result[];
+		ELSE GENERATE
+			result[] = GND;
+		END GENERATE;
+		IF USED(round) GENERATE
+			auto_generated.round = round;
+		END GENERATE;
+		IF USED(saturate) GENERATE
+			auto_generated.saturate = saturate;
+		END GENERATE;
+		IF USED(saturate_overflow) GENERATE
+			saturate_overflow = auto_generated.saturate_overflow;
+		ELSE GENERATE
+			saturate_overflow = GND;
+		END GENERATE;
+		IF USED(sign_data) GENERATE
+			auto_generated.sign_data = sign_data;
+		END GENERATE;
+		IF USED(zero_accum) GENERATE
+			auto_generated.zero_accum = zero_accum;
+		END GENERATE;
+	END GENERATE;
+END;

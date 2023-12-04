@@ -1,0 +1,20 @@
+# Add ::quartus::timing_assignment to the table of packages
+lappend quartus(package_table) {timing_assignment quartus_sh generic}
+
+if {[lsearch -exact [list quartus quartus_cdb quartus_eqc quartus_sh quartus_sim quartus_stp quartus_tan] $quartus(nameofexecutable)] != -1} {
+
+    # Make ::quartus::timing_assignment available to load
+    set qpkg_script_auto [file join [file dirname [info script]] timing_assignment.tcl]
+    if {[file exist $qpkg_script_auto]} {
+       source $qpkg_script_auto
+    }
+    unset qpkg_script_auto
+
+}
+
+if {[lsearch -exact [list quartus quartus_cdb quartus_eqc quartus_sh quartus_sim quartus_stp quartus_tan] $quartus(nameofexecutable)] != -1} {
+
+    # Load ::quartus::timing_assignment by default
+    package require ::quartus::timing_assignment
+
+}

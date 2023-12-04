@@ -1,0 +1,816 @@
+--------------------------------------------------------------------
+--
+--	ALTDDIO_BIDIR Parameterized Megafunction
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 1.0
+--
+--------------------------------------------------------------------
+INCLUDE "aglobal90.inc";
+INCLUDE "mercury_ddio.inc";
+INCLUDE "apexii_ddio.inc";
+INCLUDE "stratix_ddio.inc";
+INCLUDE "cyclone_ddio.inc";
+INCLUDE "lpm_mux.inc";
+INCLUDE "stratix_lcell.inc";
+
+OPTIONS NAME_SUBSTITUTION = ON;
+OPTIONS ALTERA_INTERNAL_OPTION="ADV_NETLIST_OPT_ALLOWED=""NEVER_ALLOW""; {-to output_cell_L} PRESERVE_REGISTER=ON; {-to output_cell_L} DDIO_OUTPUT_REGISTER=LOW; {-to mux} DDIO_OUTPUT_REGISTER=HIGH; {-to input_cell_L} DDIO_INPUT_REGISTER=LOW; {-to input_cell_H} DDIO_INPUT_REGISTER=HIGH";
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+OPTIONS	ALTERA_INTERNAL_OPTION = "suppress_da_rule_internal=D101";		
+OPTIONS	ALTERA_INTERNAL_OPTION = "suppress_da_rule_internal=D103";		
+OPTIONS	ALTERA_INTERNAL_OPTION = "suppress_da_rule_internal=C104";		
+OPTIONS	ALTERA_INTERNAL_OPTION = "suppress_da_rule_internal=C106";		
+OPTIONS	ALTERA_INTERNAL_OPTION = "suppress_da_rule_internal=D102";
+
+PARAMETERS
+(
+	WIDTH,
+	POWER_UP_HIGH = "OFF",					-- "ON" or "OFF"
+	OE_REG = "UNUSED", 						-- "REGISTERED" or "UNREGISTERED", with "UNREGISTERED" as internal default
+	EXTEND_OE_DISABLE = "UNUSED",			-- "ON" or "OFF", with "OFF" as internal default
+	IMPLEMENT_INPUT_IN_LCELL = "UNUSED",	-- "ON" or "OFF", with "OFF" as internal default
+	INTENDED_DEVICE_FAMILY = "MERCURY",
+	DEVICE_FAMILY,
+	CBXI_PARAMETER = "NOTHING"
+);
+
+
+CONSTANT INT_DEVICE_FAMILY = USED(INTENDED_DEVICE_FAMILY) ? 
+									INTENDED_DEVICE_FAMILY : DEVICE_FAMILY;
+
+DEFINE MERCURY_STYLE() = FAMILY_MERCURY();		-- Mercury type of ddio?
+DEFINE APEXII_STYLE() = FAMILY_APEXII();		-- APEX II type of ddio?
+
+DEFINE VALID_FAMILY() =  FAMILY_MERCURY() # FAMILY_APEXII() # FAMILY_STRATIX() # FAMILY_Cyclone();-- Mercury ,APEX II  and Stratix families only
+
+DEFINE INT_ARESET_MODE() = USED(aset) ? "preset" : (USED(aclr) ? "clear" : "none");
+DEFINE INT_POWER_UP() = !(USED(aset) # USED(aclr)) ? (POWER_UP_HIGH == "OFF" ? "low" : "high") : 
+							(USED(aset) ? "high" : "low");
+							
+DEFINE DEF_OE_REGMODE() = (OE_REG == "UNUSED" # !USED(OE_REG)) ? "UNREGISTERED" : OE_REG;
+DEFINE APEXII_OE_REGMODE() = (DEF_OE_REGMODE() == "REGISTERED") ? "register" : "none";
+
+DEFINE APEXII_OE_RESET() = (APEXII_OE_REGMODE() == "none") ? "none" : INT_ARESET_MODE();
+DEFINE APEXII_OE_POWERUP() = (APEXII_OE_REGMODE() == "none") ? "low" : INT_POWER_UP();
+
+DEFINE DEF_EXTEND_OE_DISABLE() = (EXTEND_OE_DISABLE == "UNUSED" # !USED(EXTEND_OE_DISABLE)) ?
+										"OFF" : EXTEND_OE_DISABLE;
+DEFINE APEXII_EXTEND_OE_DISABLE() = (APEXII_OE_REGMODE() == "none") ? "false" :
+									(DEF_EXTEND_OE_DISABLE() == "OFF") ? "false" : "true";
+DEFINE APEXII_IMPL_IN_LCELL() = (IMPLEMENT_INPUT_IN_LCELL == "UNUSED" # !USED(IMPLEMENT_INPUT_IN_LCELL)) ?
+										"OFF" : IMPLEMENT_INPUT_IN_LCELL;
+
+DEFINE SAME_DEVICE_FAMILY()	=	family_is_same() # 
+								(((family_base_stratix_member(INT_DEVICE_FAMILY) == 1) & (family_base_stratix_member(DEVICE_FAMILY) == 1)) ? 1 : 0) #
+								(((family_base_stratixii_member(INT_DEVICE_FAMILY) == 1) & (family_base_stratixii_member(DEVICE_FAMILY) == 1)) ? 1 : 0) #
+								(((family_base_stratixiii_member(INT_DEVICE_FAMILY) == 1) & (family_base_stratixiii_member(DEVICE_FAMILY) == 1)) ? 1 : 0) #
+								(((family_base_cyclone_member(INT_DEVICE_FAMILY) == 1) & (family_base_cyclone_member(DEVICE_FAMILY) == 1)) ? 1 : 0) #
+								(((family_base_cycloneii_member(INT_DEVICE_FAMILY) == 1) & (family_base_cycloneii_member(DEVICE_FAMILY) == 1)) ? 1 : 0) #
+								(((family_base_cycloneiii_member(INT_DEVICE_FAMILY) == 1) & (family_base_cycloneiii_member(DEVICE_FAMILY) == 1)) ? 1 : 0);
+
+DEFINE CBX_FAMILY_STRATIX() = (FAMILY_STRATIX() == 1 & (USED(sclr) # USED(sset))) ? 1 : 0;
+DEFINE CBX_FAMILY() = (CBX_FAMILY_STRATIX() == 1 # FAMILY_CYCLONEII() == 1 # FAMILY_STRATIXII() == 1) ? 1 : 0;
+
+FUNCTION @CBXI_PARAMETER(datain_h[(WIDTH) - (1)..0], datain_l[(WIDTH) - (1)..0], inclock, inclocken, outclock, outclocken, oe, aclr, aset, sclr, sset)
+	RETURNS (dataout_h[(WIDTH) - (1)..0], dataout_l[(WIDTH) - (1)..0], oe_out[(WIDTH) - (1)..0], combout[(WIDTH) - (1)..0], padio[(WIDTH) - (1)..0]);
+									
+
+SUBDESIGN altddio_bidir
+(
+	datain_h[WIDTH-1..0]	: INPUT;
+	datain_l[WIDTH-1..0]	: INPUT;
+	inclock					: INPUT= GND;	
+	inclocken				: INPUT = VCC;	
+	outclock				: INPUT= GND;	
+	outclocken				: INPUT = VCC;
+	aclr					: INPUT = GND;	
+	aset					: INPUT = GND;
+	oe						: INPUT = VCC;	
+	sclr					: INPUT = GND;	
+	sset					: INPUT = GND;
+	
+	dataout_h[WIDTH-1..0]	: OUTPUT;
+	dataout_l[WIDTH-1..0]	: OUTPUT;
+	combout[WIDTH-1..0]		: OUTPUT;
+	dqsundelayedout[WIDTH-1..0] : OUTPUT;
+	padio[WIDTH-1..0]		: BIDIR;
+	oe_out[WIDTH-1..0]	: OUTPUT;
+)
+
+
+VARIABLE
+	IF (CBX_FAMILY() == 1 & !USED(dqsundelayedout)) GENERATE
+		IF (CBXI_PARAMETER != "NOTHING") GENERATE
+			auto_generated: @CBXI_PARAMETER WITH (CBXI_PARAMETER = "NOTHING");
+		END GENERATE;
+	ELSE GENERATE
+	IF (VALID_FAMILY() == 1) GENERATE
+		IF (MERCURY_STYLE() == 1) GENERATE
+			-- Mercury DDIO bidir mode
+			IF (USED(aclr) # USED(aset)) GENERATE
+				ddio_out[WIDTH-1..0]	: mercury_ddio_bidir WITH 
+											(areset_mode = INT_ARESET_MODE(),
+											 power_up_mode = INT_POWER_UP());
+			ELSE GENERATE
+				ddio_out[WIDTH-1..0]	: mercury_ddio_bidir_no_areset WITH 
+											(areset_mode = INT_ARESET_MODE(),
+											 power_up_mode = INT_POWER_UP());
+			END GENERATE;
+					
+			input_cell_H[WIDTH-1..0] 	: DFFE;
+			input_latch_L[WIDTH-1..0] 	: DFFE;
+			input_cell_L[WIDTH-1..0] 	: DFFE;
+			
+		ELSE GENERATE
+			IF (APEXII_STYLE() == 1) GENERATE
+				IF (APEXII_IMPL_IN_LCELL() == "OFF") & !USED(combout) & (USED(dataout_h) # USED(dataout_l)) GENERATE
+					-- APEX II native DDIO bidir mode
+					IF (USED(aclr) # USED(aset)) GENERATE
+						ddio_bidir[WIDTH-1..0]	: apexii_ddio_bidir WITH 
+													(areset_mode = INT_ARESET_MODE(),
+													 power_up_mode = INT_POWER_UP(),
+													 oe_register_mode = APEXII_OE_REGMODE(),
+													 oe_reset = APEXII_OE_RESET(),
+													 oe_power_up = APEXII_OE_POWERUP(),
+													 extend_oe_disable = APEXII_EXTEND_OE_DISABLE());
+					ELSE GENERATE
+						ddio_bidir[WIDTH-1..0]	: apexii_ddio_bidir_no_areset WITH 
+													(areset_mode = INT_ARESET_MODE(),
+													 power_up_mode = INT_POWER_UP(),
+													 oe_register_mode = APEXII_OE_REGMODE(),
+													 oe_reset = APEXII_OE_RESET(),
+													 oe_power_up = APEXII_OE_POWERUP(),
+													 extend_oe_disable = APEXII_EXTEND_OE_DISABLE());
+					END GENERATE;
+
+				ELSE GENERATE
+					-- APEX II Mercury style implementation DDIO bidir mode 
+					-- (input channel implementated in LCells)
+					IF (USED(aclr) # USED(aset)) GENERATE
+						ddio_out[WIDTH-1..0]	: apexii_ddio_bidir_out WITH 
+													(areset_mode = INT_ARESET_MODE(),
+													 power_up_mode = INT_POWER_UP(),
+													 oe_register_mode = APEXII_OE_REGMODE(),
+													 oe_reset = APEXII_OE_RESET(),
+													 oe_power_up = APEXII_OE_POWERUP(),
+													 extend_oe_disable = APEXII_EXTEND_OE_DISABLE());
+					ELSE GENERATE
+						ddio_out[WIDTH-1..0]	: apexii_ddio_bidir_out_no_areset WITH 
+													(areset_mode = INT_ARESET_MODE(),
+													 power_up_mode = INT_POWER_UP(),
+													 oe_register_mode = APEXII_OE_REGMODE(),
+													 oe_reset = APEXII_OE_RESET(),
+													 oe_power_up = APEXII_OE_POWERUP(),
+													 extend_oe_disable = APEXII_EXTEND_OE_DISABLE());
+					END GENERATE;
+					
+					input_cell_H[WIDTH-1..0] 	: DFFE;
+					input_latch_L[WIDTH-1..0] 	: DFFE;
+					input_cell_L[WIDTH-1..0] 	: DFFE;
+				END GENERATE;	
+			ELSE GENERATE
+				IF FAMILY_Cyclone() == 1 GENERATE -- Cyclone
+						ddio_bidir[WIDTH-1..0] :  cyclone_ddio_bidir WITH
+													( extend_oe_disable = APEXII_EXTEND_OE_DISABLE());
+						input_cell_H[WIDTH-1..0] 	: DFFE;
+						input_cell_L[WIDTH-1..0] 	: DFFE;
+						output_cell_L[WIDTH-1..0] 	: DFFE;
+--						output_cell_H[WIDTH-1..0] 	: DFFE;
+						input_latch_L[WIDTH-1..0]	: DFFE;
+						IF USED(oe) & OE_REG == "REGISTERED" GENERATE
+							oe_cell_1	:	DFFE;
+							IF (EXTEND_OE_DISABLE == "ON") GENERATE
+								oe_cell_2	:	DFFE;
+								oe_input	:	LCELL;
+							END GENERATE;
+						END GENERATE;
+	--					mux[WIDTH-1..0]		:	LCELL;
+						mux[WIDTH-1..0]		: stratix_lcell WITH (
+											OPERATION_MODE = "NORMAL",
+											SYNCH_MODE = "ON",
+											LUT_MASK = "F5A0",
+											SUM_LUTC_INPUT = "qfbk");
+				ELSE GENERATE -- regular stratix
+
+				IF FAMILY_STRATIX() == 1 GENERATE
+					IF (APEXII_IMPL_IN_LCELL() == "OFF") & !USED(combout) & (USED(dataout_h) # USED(dataout_l)) GENERATE
+						IF (USED(aclr) # USED(aset)) GENERATE
+							ddio_bidir[WIDTH-1..0]	: stratix_ddio_bidir WITH 
+														(areset_mode = INT_ARESET_MODE(),
+														 power_up_mode = INT_POWER_UP(),
+														 oe_register_mode = APEXII_OE_REGMODE(),
+														 oe_async_reset = APEXII_OE_RESET(),
+														 oe_power_up = APEXII_OE_POWERUP(),
+														 extend_oe_disable = APEXII_EXTEND_OE_DISABLE());
+						ELSE GENERATE
+							ddio_bidir[WIDTH-1..0]	: stratix_ddio_bidir_no_areset WITH 
+														(areset_mode = INT_ARESET_MODE(),
+														 power_up_mode = INT_POWER_UP(),
+														 oe_register_mode = APEXII_OE_REGMODE(),
+														 oe_async_reset = APEXII_OE_RESET(),
+														 oe_power_up = APEXII_OE_POWERUP(),
+														 extend_oe_disable = APEXII_EXTEND_OE_DISABLE());
+						END GENERATE;
+					ELSE GENERATE
+						IF (USED(aclr) # USED(aset)) GENERATE
+							ddio_out[WIDTH-1..0]	: stratix_ddio_bidir_out WITH 
+														(areset_mode = INT_ARESET_MODE(),
+														 power_up_mode = INT_POWER_UP(),
+														 oe_register_mode = APEXII_OE_REGMODE(),
+														 oe_async_reset = APEXII_OE_RESET(),
+														 oe_power_up = APEXII_OE_POWERUP(),
+														 extend_oe_disable = APEXII_EXTEND_OE_DISABLE());
+						ELSE GENERATE
+							ddio_out[WIDTH-1..0]	: stratix_ddio_bidir_out_no_areset WITH 
+														(areset_mode = INT_ARESET_MODE(),
+														 power_up_mode = INT_POWER_UP(),
+														 oe_register_mode = APEXII_OE_REGMODE(),
+														 oe_async_reset = APEXII_OE_RESET(),
+														 oe_power_up = APEXII_OE_POWERUP(),
+														 extend_oe_disable = APEXII_EXTEND_OE_DISABLE());
+						END GENERATE;
+					
+						IF USED(dataout_h) # USED(dataout_l) GENERATE
+							input_cell_H[WIDTH-1..0] 	: DFFE;
+							input_latch_L[WIDTH-1..0] 	: DFFE;
+							input_cell_L[WIDTH-1..0] 	: DFFE;
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+	END GENERATE; -- !Stratix II
+	-- Temporary nodes created to avoid issues with invalid assignments
+	IF (FAMILY_CYCLONE() != 1) GENERATE
+		temp : NODE;
+		output_cell_L : NODE;
+		mux : NODE;
+	END GENERATE;
+
+BEGIN
+	-- ------------------------------------------
+	--      Error checkings and assertions
+	-- ------------------------------------------
+	-- Cause: The user has assigned zero or a negative value to this parameter 
+	-- Action: Choose a positive integer for this parameter
+	ASSERT (WIDTH > 0)
+			REPORT "Value of WIDTH parameter must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID ALTDDIO_BIDIR_WIDTH;
+
+	-- Cause: The user has connected both the aclr and aset input ports. Simultaneous
+	--			connection of these ports are not supported
+	-- Action: Disconnect either one or both of the aset or aclr input port connections. 
+	ASSERT (!(USED(aclr) & USED(aset)))
+			REPORT "Both aset and aclr input ports may not be simultaneously connected" 
+			SEVERITY ERROR
+			HELP_ID ALTDDIO_BIDIR_ASET_ACLR;
+
+	-- Cause: The user has connected both the sclr and sset input ports. Simultaneous
+	--			connection of these ports are not supported
+	-- Action: Disconnect either one or both of the sset or sclr input port connections. 
+	ASSERT (!(USED(sclr) & USED(sset)))
+			REPORT "Both sset and sclr input ports may not be simultaneously connected" 
+			SEVERITY ERROR
+			HELP_ID ALTDDIO_BIDIR_SSET_SCLR;
+
+	-- Cause: In spite of having a bi-directional behavior, the user has not connected 
+	-- 		the oe input port. The resulting behavior will be dependent on the logic family
+	-- Action: Disconnect either one or both of the aset or aclr input port connections. 
+	ASSERT (USED(oe))
+			REPORT "oe input port is not connected" 
+			SEVERITY WARNING
+			HELP_ID ALTDDIO_BIDIR_OE_UNCONNECTED;
+			
+	-- Cause: The user has assigned an invalid value to the POWER_UP_HIGH parameter 
+	-- Action: Choose "ON" (for power-up to a high output) or "OFF" (for power-up to a low output)			
+	ASSERT (POWER_UP_HIGH == "ON" # POWER_UP_HIGH == "OFF")
+			REPORT "Illegal value for POWER_UP_HIGH parameter (%) -- value must be ON or OFF (the default)"
+				POWER_UP_HIGH
+			SEVERITY ERROR
+			HELP_ID ALTDDIO_BIDIR_POWER_UP_HIGH_VALUE;
+
+	-- Cause: The user has assigned an invalid value to the OE_REG parameter 
+	-- Action: Choose "UNREGISTERED", "REGISTERED", or "UNUSED"			
+	ASSERT (!(APEXII_STYLE() == 1 & !(OE_REG == "UNREGISTERED" # OE_REG == "REGISTERED" # OE_REG == "UNUSED")))
+			REPORT "Illegal value for OE_REG parameter (%) -- value must be UNREGISTERED (the default), REGISTERED, or UNUSED"
+				OE_REG
+			SEVERITY ERROR
+			HELP_ID ALTDDIO_BIDIR_OE_REG_VALUE;
+
+	-- Cause: The user has assigned an invalid value to the EXTEND_OE_DISABLE parameter 
+	-- Action: Choose "OFF" or "ON"			
+	ASSERT (!(APEXII_STYLE() == 1 & !(EXTEND_OE_DISABLE == "ON" # EXTEND_OE_DISABLE == "OFF" # EXTEND_OE_DISABLE == "UNUSED")))
+			REPORT "Illegal value for EXTEND_OE_DISABLE parameter (%) -- value must be OFF (the default) or ON"
+				EXTEND_OE_DISABLE
+			SEVERITY ERROR
+			HELP_ID ALTDDIO_BIDIR_EXTEND_OE_DISABLE_VALUE;
+
+	-- Cause: The user has assigned an invalid value to the IMPLEMENT_INPUT_IN_LCELL parameter 
+	-- Action: Choose "UNUSED", "ON", or "OFF"			
+	ASSERT (!(APEXII_STYLE() == 1 & !(IMPLEMENT_INPUT_IN_LCELL == "ON" # IMPLEMENT_INPUT_IN_LCELL == "OFF" # 
+				IMPLEMENT_INPUT_IN_LCELL == "UNUSED")))
+			REPORT "Illegal value for IMPLEMENT_INPUT_IN_LCELL parameter (%) -- value must be OFF (the default), ON, or UNUSED"
+				IMPLEMENT_INPUT_IN_LCELL
+			SEVERITY ERROR
+			HELP_ID ALTDDIO_BIDIR_IMPLEMENT_INPUT_IN_LCELL_VALUE;
+
+	-- Cause: Use of OE_REG parameter is not supported in a non-APEX II logic family device
+	-- Action: Do not use this parameter for non-APEX II logic families. Otherwise, it will be ignored
+	ASSERT (!(MERCURY_STYLE() == 1 & USED(OE_REG)))
+    	    REPORT "OE_REG parameter is not supported in the Mercury logic device family. The parameter is ignored"
+        	SEVERITY WARNING
+        	HELP_ID ALTDDIO_BIDIR_OE_REG;
+
+	-- Cause: Use of EXTEND_OE_DISABLE parameter is not supported in a non-APEX II logic family device
+	-- Action: Do not use this parameter for non-APEX II logic families. Otherwise, it will be ignored
+	ASSERT (!(MERCURY_STYLE() == 1 & USED(EXTEND_OE_DISABLE)))
+    	    REPORT "EXTEND_OE_DISABLE parameter is not supported in the Mercury logic device family. The parameter is ignored"
+        	SEVERITY WARNING
+        	HELP_ID ALTDDIO_BIDIR_EXTEND_OE_DISABLE;
+
+	-- Cause: Use of IMPLEMENT_INPUT_IN_LCELL parameter is not supported in a non-APEX II logic family device
+	-- Action: Do not use this parameter for non-APEX II logic families. Otherwise, it will be ignored
+	ASSERT (!(MERCURY_STYLE() == 1 & USED(IMPLEMENT_INPUT_IN_LCELL)))
+    	    REPORT "IMPLEMENT_INPUT_IN_LCELL parameter is not supported in the Mercury and Stratix logic device family. The parameter is ignored"
+        	SEVERITY WARNING
+        	HELP_ID ALTDDIO_BIDIR_IMPLEMENT_INPUT_IN_LCELL;
+
+	-- Cause: EXTEND_OE_DISABLE parameter in APEX II logic family device may be set to "ON" only if
+	--			the oe input port is registered
+	-- Action: Set the OE_REG parameter to "REGISTERED" to use the EXTEND_OE_DISABLE parameter
+	ASSERT (!(APEXII_STYLE() == 1 & DEF_OE_REGMODE() == "UNREGISTERED" & EXTEND_OE_DISABLE == "ON"))
+    	    REPORT "EXTEND_OE_DISABLE parameter is set to ON but the oe input port is not registered"
+        	SEVERITY ERROR
+        	HELP_ID ALTDDIO_BIDIR_OE_REG_DISABLE;
+
+	-- Cause: The user has specified a non-Mercury logic family for this megafunction.
+	--		  ALTDDIO_BIDIR is currently supported only in Mercury logic family.
+	-- Action: Change the logic family setting to Mercury
+	ASSERT (VALID_FAMILY() == 1)
+			REPORT "Megafunction altddio_bidir is not supported in %" DEVICE_FAMILY
+			SEVERITY ERROR
+			HELP_ID ALTDDIO_BIDIR_INVALID_FAMILY;
+
+	-- Cause: The user has specified a logic family for this megafunction different
+	--		  from the intended one.
+	-- Action: Change the logic family setting to the intended logic family
+	-- ASSERT (SAME_DEVICE_FAMILY())
+	-- 		REPORT "Megafunction altddio_bidir is expecting device logic family % but is being compiled for %"
+	--			INTENDED_DEVICE_FAMILY, DEVICE_FAMILY
+	--		SEVERITY WARNING
+	--		HELP_ID ALTDDIO_BIDIR_INTENDED_FAMILY;
+
+	ASSERT (USED(dqsundelayedout) & FAMILY_STRATIX() == 1 & FAMILY_Cyclone() != 1 # !USED(dqsundelayedout))
+			REPORT "Port dqsundelayedout cannot be used for % device family" DEVICE_FAMILY
+			SEVERITY ERROR
+			HELP_ID ALTDDIO_BIDIR_DQS_STX;
+
+	IF (FAMILY_STRATIX() == 1 & FAMILY_Cyclone() != 1) GENERATE
+		ASSERT (USED(dqsundelayedout) & USED(combout) # !USED(dqsundelayedout))
+				REPORT "Port dqsundelayedout can be used only if combout port is used" 
+				SEVERITY ERROR
+				HELP_ID ALTDDIO_BIDIR_DQS_STX_PORT_USAGE;
+	END GENERATE;
+
+	IF (CBX_FAMILY() == 1 & !USED(dqsundelayedout)) GENERATE
+	IF (CBXI_PARAMETER != "NOTHING") GENERATE
+		IF USED(aclr) GENERATE
+			auto_generated.aclr = aclr;
+		END GENERATE;
+		IF USED(aset) GENERATE
+			auto_generated.aset = aset;
+		END GENERATE;
+		IF USED(sclr) GENERATE
+			auto_generated.sclr = sclr;
+		END GENERATE;
+		IF USED(sset) GENERATE
+			auto_generated.sset = sset;
+		END GENERATE;
+		IF USED(combout) GENERATE
+			combout[] = auto_generated.combout[];
+		END GENERATE;
+		IF USED(datain_h) GENERATE
+			auto_generated.datain_h[] = datain_h[];
+		END GENERATE;
+		IF USED(datain_l) GENERATE
+			auto_generated.datain_l[] = datain_l[];
+		END GENERATE;
+		IF USED(dataout_h) GENERATE
+			dataout_h[] = auto_generated.dataout_h[];
+		END GENERATE;
+		IF USED(dataout_l) GENERATE
+			dataout_l[] = auto_generated.dataout_l[];
+		END GENERATE;
+		IF USED(inclock) GENERATE
+			auto_generated.inclock = inclock;
+		END GENERATE;
+		IF USED(inclocken) GENERATE
+			auto_generated.inclocken = inclocken;
+		END GENERATE;
+		IF USED(oe) GENERATE
+			auto_generated.oe = oe;
+		END GENERATE;
+		IF USED(outclock) GENERATE
+			auto_generated.outclock = outclock;
+		END GENERATE;
+		IF USED(outclocken) GENERATE
+			auto_generated.outclocken = outclocken;
+		END GENERATE;
+		IF USED(oe_out) GENERATE
+			oe_out[] = auto_generated.oe_out[];
+		END GENERATE;
+		IF USED(padio) GENERATE
+			padio[] = auto_generated.padio[];
+		END GENERATE;
+	ELSE GENERATE
+		ASSERT (0)
+		REPORT "The current megafunction is configured for use with the clear box feature and cannot be used when the clear box feature is disabled"
+		SEVERITY ERROR
+		HELP_ID MF_CBX_ONLY_SUPPORT;
+	END GENERATE;
+	
+	ELSE GENERATE
+	-- ------------------------------------------
+	--     	Sub-module Connections
+	-- ------------------------------------------
+	IF (VALID_FAMILY() == 1) GENERATE
+		IF (MERCURY_STYLE() == 1) GENERATE
+			-- Output channel connections
+			ddio_out[].datain_h = datain_h[];
+			ddio_out[].datain_l = datain_l[];
+			ddio_out[].clk = outclock;
+			ddio_out[].clkena = outclocken;
+			ddio_out[].oe = oe;
+			padio[] = ddio_out[].padio;
+				
+			input_cell_H[].clk = inclock;
+			input_cell_H[].ena = inclocken;
+			input_latch_L[].clk = !inclock;
+			input_latch_L[].ena = inclocken;
+			input_cell_L[].clk = inclock;
+			input_cell_L[].ena = inclocken;
+		
+			IF (USED(aset) # USED(aclr)) GENERATE
+				-- Input connections				
+				input_cell_H[].d = ddio_out[].combout;
+				input_latch_L[].d = ddio_out[].combout;
+				input_cell_L[].d = input_latch_L[].q;
+			
+				-- Output connections
+				dataout_h[] = input_cell_H[].q;
+				dataout_l[] = input_cell_L[].q;
+
+				IF USED(aset) GENERATE
+					ddio_out[].areset = aset;
+					input_cell_H[].prn = !aset;
+					input_latch_L[].prn = !aset;
+					input_cell_L[].prn = !aset;	
+				END GENERATE;
+				
+				IF USED(aclr) GENERATE
+					ddio_out[].areset = aclr;
+					input_cell_H[].clrn = !aclr;
+					input_latch_L[].clrn = !aclr;
+					input_cell_L[].clrn = !aclr;
+				END GENERATE;
+
+			ELSE GENERATE
+				IF (POWER_UP_HIGH == "ON") GENERATE
+					-- Need to do not-gate-pushback for powerup state
+					-- Input connections
+					input_cell_H[].d = !ddio_out[].combout;
+					input_latch_L[].d = !ddio_out[].combout;
+					input_cell_L[].d = input_latch_L[].q;
+			
+					-- Output connections
+					dataout_h[] = !input_cell_H[].q;
+					dataout_l[] = !input_cell_L[].q;
+				ELSE GENERATE
+					-- Input connections
+					input_cell_H[].d = ddio_out[].combout;
+					input_latch_L[].d = ddio_out[].combout;
+					input_cell_L[].d = input_latch_L[].q;
+			
+					-- Output connections
+					dataout_h[] = input_cell_H[].q;
+					dataout_l[] = input_cell_L[].q;
+				END GENERATE;
+			END GENERATE;
+		ELSE GENERATE
+			IF FAMILY_Cyclone() == 1 GENERATE
+					padio[] = ddio_bidir[].padio;
+					IF USED(combout) GENERATE
+						combout[] = ddio_bidir[].dataout;
+					END GENERATE;
+						
+					-- read side
+					input_cell_H[].clk = inclock;
+					input_cell_H[].ena = inclocken;
+					input_cell_L[].clk = !inclock;
+					input_cell_L[].ena = inclocken;
+					input_latch_L[].clk = inclock;
+					input_latch_L[].ena = inclocken;
+					-- write side
+--					output_cell_H[].clk = outclock;
+					output_cell_L[].clk = outclock;
+--					output_cell_H[].ena = outclocken;
+					output_cell_L[].ena = outclocken;
+					mux[].clk = outclock;
+					mux[].ena = outclocken;
+					IF USED(oe) & OE_REG == "REGISTERED" GENERATE
+						oe_cell_1.clk = outclock;
+						oe_cell_1.ena = outclocken;						
+						IF (EXTEND_OE_DISABLE == "ON") GENERATE
+							oe_cell_2.clk = !outclock;
+							oe_cell_2.ena = outclocken;
+						END GENERATE;
+					END GENERATE;
+					IF USED(oe) GENERATE
+						IF (OE_REG == "REGISTERED") GENERATE
+							oe_cell_1.d = oe;
+							IF (EXTEND_OE_DISABLE == "ON") GENERATE
+								oe_cell_2.d = oe_cell_1.q;
+								oe_input = oe_cell_1.q & oe_cell_2.q;													
+								ddio_bidir[].oe = oe_input;								
+							ELSE GENERATE
+								ddio_bidir[].oe = oe_cell_1.q;						
+							END GENERATE;
+						ELSE GENERATE
+							ddio_bidir[].oe = oe;
+						END GENERATE;
+					ELSE GENERATE
+						ddio_bidir[].oe = VCC;
+					END GENERATE;
+					IF (USED(aset) # USED(aclr)) GENERATE
+						-- read side
+						-- Input connections				
+						input_cell_H[].d = ddio_bidir[].dataout;
+						input_cell_L[].d = ddio_bidir[].dataout;
+						input_latch_L[].d = input_cell_L[].q;
+			
+						-- Output connections
+						dataout_h[] = input_cell_H[].q;
+						dataout_l[] = input_latch_L[].q;
+
+						IF USED(aset) GENERATE
+							input_cell_H[].prn = !aset;
+							input_cell_L[].prn = !aset;	
+							input_latch_L[].prn = !aset;
+							output_cell_L[].prn = !aset;
+--							output_cell_H[].prn = !aset;
+							IF USED(oe) & OE_REG == "REGISTERED" GENERATE
+								oe_cell_1.prn = !aset;
+								IF (EXTEND_OE_DISABLE == "ON") GENERATE
+									oe_cell_2.prn = !aset;
+								END GENERATE;
+							END GENERATE;
+							mux[].datac = !datain_h[];
+							mux[].aclr = aset;
+							mux[].sload = VCC;		
+							mux[].datad = !output_cell_L[].q;
+							mux[].dataa = outclock;
+							ddio_bidir[].datain = !mux[].combout;
+						END GENERATE;
+						IF USED(aclr) GENERATE
+							input_cell_H[].clrn = !aclr;
+							input_cell_L[].clrn = !aclr;
+							input_latch_L[].clrn = !aclr;
+							output_cell_L[].clrn = !aclr;
+	--						output_cell_H[].clrn = !aclr;
+							IF USED(oe) & OE_REG == "REGISTERED" GENERATE
+								oe_cell_1.clrn = !aclr;
+								IF (EXTEND_OE_DISABLE == "ON") GENERATE
+									oe_cell_2.clrn = !aclr;
+								END GENERATE;
+							END GENERATE;
+						mux[].datac = datain_h[];
+						mux[].aclr = aclr;
+						mux[].sload = VCC;		
+						mux[].datad = output_cell_L[].q;
+						mux[].dataa = outclock;
+						ddio_bidir[].datain = mux[].combout;
+							
+						END GENERATE;
+					
+						-- write side
+		--				output_cell_H[].d = datain_h[];
+						output_cell_L[].d = datain_l[];
+						
+%						mux.data[0][] = output_cell_L[].q;
+						mux.data[1][] = output_cell_H[].q;
+						mux.sel[0] = outclock;
+						ddio_bidir[].datain = mux.result[];%
+			--			mux[] = (output_cell_L[].q & !outclock # output_cell_H[].q & outclock);
+				--		ddio_bidir[].datain = mux[];
+
+					ELSE GENERATE
+						IF (POWER_UP_HIGH == "ON") GENERATE
+							-- Need to do not-gate-pushback for powerup state
+							-- Input connections
+							input_cell_H[].d = !ddio_bidir[].dataout;
+							input_cell_L[].d = !ddio_bidir[].dataout;
+			
+							-- Output connections
+							dataout_h[] = !input_cell_H[].q;
+							dataout_l[] = !input_cell_L[].q;
+							
+--							output_cell_H[].d = !datain_h[];
+							output_cell_L[].d = !datain_l[];
+						
+%							mux.data[0][] = !output_cell_L[].q;
+							mux.data[1][] = !output_cell_H[].q;
+							mux.sel[0] = outclock;
+							ddio_bidir[].datain = mux.result[];%
+--							mux[] = (!output_cell_L[].q & !outclock # !output_cell_H[].q & outclock);
+--							ddio_bidir[].datain = mux[];
+							mux[].datac = !datain_h[];
+							mux[].sload = VCC;		
+							mux[].datad = output_cell_L[].q;
+							mux[].dataa = outclock;
+							ddio_bidir[].datain = !mux[].combout;
+
+
+						ELSE GENERATE
+							-- Input connections
+							input_cell_H[].d = ddio_bidir[].dataout;
+							input_cell_L[].d = ddio_bidir[].dataout;
+			
+							-- Output connections
+							dataout_h[] = input_cell_H[].q;
+							dataout_l[] = input_cell_L[].q;
+			
+--							output_cell_H[].d = datain_h[];
+							output_cell_L[].d = datain_l[];
+						
+%							mux.data[0][] = output_cell_L[].q;
+							mux.data[1][] = output_cell_H[].q;
+							mux.sel[0] = outclock;
+							ddio_bidir[].datain = mux.result[];%
+--							mux[] = (output_cell_L[].q & !outclock # output_cell_H[].q & outclock);
+--							ddio_bidir[].datain = mux[];
+	
+							mux[].datac = datain_h[];
+							mux[].sload = VCC;		
+							mux[].datad = output_cell_L[].q;
+							mux[].dataa = outclock;
+							ddio_bidir[].datain = mux[].combout;
+							
+						END GENERATE;
+					END GENERATE;
+			ELSE GENERATE -- Stratix	
+			IF (APEXII_STYLE() == 1) # (FAMILY_STRATIX() == 1) GENERATE
+				IF (APEXII_IMPL_IN_LCELL() == "OFF") & !USED(combout) & (USED(dataout_h) # USED(dataout_l)) GENERATE	-- Native APEX II implementation
+					-- Input connections
+					ddio_bidir[].datain_h = datain_h[];
+					ddio_bidir[].datain_l = datain_l[];
+					ddio_bidir[].inclk = inclock;
+					ddio_bidir[].inclkena = inclocken;
+					ddio_bidir[].outclk = outclock;
+					ddio_bidir[].outclkena = outclocken;				
+					ddio_bidir[].oe = oe;
+							
+					IF USED(aclr) GENERATE
+						ddio_bidir[].areset = aclr;
+					END GENERATE;
+					
+					IF USED(aset) GENERATE
+						ddio_bidir[].areset = aset;
+					END GENERATE;
+					
+					-- Output connections
+					padio[] = ddio_bidir[].padio;
+					dataout_l[] = ddio_bidir[].dataout_l;
+					dataout_h[] = ddio_bidir[].dataout_h;
+					IF (USED(dqsundelayedout)) GENERATE
+						dqsundelayedout[] = ddio_bidir[].dqsundelayedout;
+					END GENERATE;
+					
+				ELSE GENERATE	-- Mercury style implementation and when combout is connected
+					-- Output channel connections
+					ddio_out[].datain_h = datain_h[];
+					ddio_out[].datain_l = datain_l[];
+					ddio_out[].clk = outclock;
+					ddio_out[].clkena = outclocken;
+					ddio_out[].oe = oe;
+					padio[] = ddio_out[].padio;
+					
+					IF USED(aclr) GENERATE
+						ddio_out[].areset = aclr;
+					END GENERATE;
+					
+					IF USED(aset) GENERATE
+						ddio_out[].areset = aset;
+					END GENERATE;
+					IF USED(combout) GENERATE
+						combout[] = ddio_out[].combout;
+					END GENERATE;
+					IF (USED(dqsundelayedout)) GENERATE
+						dqsundelayedout[] = ddio_out[].dqsundelayedout;
+					END GENERATE;
+					IF USED(dataout_h) # USED(dataout_l) GENERATE					
+					-- Input LCELL implementation	
+					input_cell_H[].clk = inclock;
+					input_cell_H[].ena = inclocken;
+					input_latch_L[].clk = !inclock;
+					input_latch_L[].ena = inclocken;
+					input_cell_L[].clk = inclock;
+					input_cell_L[].ena = inclocken;
+					IF (USED(aset) # USED(aclr)) GENERATE
+						-- Input connections				
+						input_cell_H[].d = ddio_out[].combout;
+						input_latch_L[].d = ddio_out[].combout;
+						input_cell_L[].d = input_latch_L[].q;
+					
+						-- Output connections
+						IF USED(dataout_h) # USED(dataout_l) GENERATE
+							dataout_h[] = input_cell_H[].q;
+							dataout_l[] = input_cell_L[].q;
+						END GENERATE;
+
+						IF USED(aset) GENERATE
+							input_cell_H[].prn = !aset;
+							input_latch_L[].prn = !aset;
+							input_cell_L[].prn = !aset;	
+						END GENERATE;
+						
+						IF USED(aclr) GENERATE
+							input_cell_H[].clrn = !aclr;
+							input_latch_L[].clrn = !aclr;
+							input_cell_L[].clrn = !aclr;
+						END GENERATE;
+
+					ELSE GENERATE
+						IF (POWER_UP_HIGH == "ON") GENERATE
+							-- Need to do not-gate-pushback for powerup state
+							-- Input connections
+							input_cell_H[].d = !ddio_out[].combout;
+							input_latch_L[].d = !ddio_out[].combout;
+							input_cell_L[].d = input_latch_L[].q;
+					
+							-- Output connections
+							IF USED(dataout_h) # USED(dataout_l) GENERATE
+								dataout_h[] = !input_cell_H[].q;
+								dataout_l[] = !input_cell_L[].q;
+							END GENERATE;
+						ELSE GENERATE
+							-- Input connections
+							input_cell_H[].d = ddio_out[].combout;
+							input_latch_L[].d = ddio_out[].combout;
+							input_cell_L[].d = input_latch_L[].q;
+					
+							-- Output connections
+							IF USED(dataout_h) # USED(dataout_l) GENERATE							
+								dataout_h[] = input_cell_H[].q;
+								dataout_l[] = input_cell_L[].q;
+							END GENERATE;
+						END GENERATE;
+					END GENERATE;
+					END GENERATE; -- use dataout ports
+				END GENERATE;
+			END GENERATE;
+			END GENERATE;
+		END GENERATE;	
+	END GENERATE;
+	END GENERATE; -- !Stratix II
+	-- Temporary nodes created to avoid issues with invalid assignments
+	IF (FAMILY_CYCLONE() != 1) GENERATE
+		output_cell_L = VCC;
+		mux = VCC;
+		temp = output_cell_L & mux;
+	END GENERATE;
+	IF !USED(dataout_h) GENERATE
+		dataout_h[] = GND;
+	END GENERATE;
+	IF !USED(dataout_l) GENERATE
+		dataout_l[] = GND;
+	END GENERATE;
+	IF !USED(dqsundelayedout) GENERATE
+		dqsundelayedout[] = GND;
+	END GENERATE;
+	IF !USED(combout) GENERATE
+		combout[] = GND;
+	END GENERATE;
+	IF !USED(oe_out) GENERATE
+		oe_out[] = GND;
+	END GENERATE;
+END;
+

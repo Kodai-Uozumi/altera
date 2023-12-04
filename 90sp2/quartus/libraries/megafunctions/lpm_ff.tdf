@@ -1,0 +1,272 @@
+--------------------------------------------------------------------
+--
+--	LPM_FF Parameterized Megafunction
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 2.0
+--
+--------------------------------------------------------------------
+
+INCLUDE "lpm_constant.inc";
+
+OPTIONS NAME_SUBSTITUTION = ON;
+PARAMETERS
+(
+	LPM_WIDTH,
+	LPM_AVALUE = "UNUSED",
+	LPM_SVALUE = "UNUSED",
+	LPM_FFTYPE = "DFF",
+	DEVICE_FAMILY,
+	CBXI_PARAMETER = "NOTHING"
+);
+
+-- Get device definitions
+INCLUDE "aglobal90.inc";
+
+-- Checks to see if external async control is needed
+DEFINE NEED_EXT_ASYNC_LOAD() = (FAMILY_HAS_PRESET() == 0)
+								AND (USED(aload) # (USED(aclr) & USED(aset)));
+
+FUNCTION @CBXI_PARAMETER (aclr, aload, aset, clock, data[LPM_WIDTH-1..0], enable, sclr, sload, sset)
+RETURNS (q[LPM_WIDTH-1..0]);
+
+SUBDESIGN lpm_ff
+(
+	data[LPM_WIDTH-1..0]		: INPUT = GND;
+	clock						: INPUT;
+	enable						: INPUT = VCC;
+	aclr, aset, aload			: INPUT = GND;
+	sclr, sset, sload			: INPUT = GND;
+	q[LPM_WIDTH-1..0]			: OUTPUT;
+)
+
+VARIABLE
+	IF CBXI_PARAMETER != "NOTHING" GENERATE
+		auto_generated : @CBXI_PARAMETER WITH ( CBXI_PARAMETER = "NOTHING" );
+	ELSE GENERATE
+		dffs[LPM_WIDTH-1..0] : dffeas;
+		din[LPM_WIDTH-1..0]			: NODE;
+		IF USED(sload) # USED(sset) # USED(aload) GENERATE
+			asdata[LPM_WIDTH-1..0] : NODE;
+		END GENERATE;
+		IF USED(sload) # USED(sset) GENERATE
+			sctrl	:	NODE;			
+		END GENERATE;
+		IF (USED(LPM_AVALUE)) GENERATE
+			ac	: lpm_constant WITH (LPM_WIDTH=LPM_WIDTH, LPM_CVALUE=LPM_AVALUE);
+		END GENERATE;
+		IF (USED(LPM_SVALUE)) GENERATE
+			sc	: lpm_constant WITH (LPM_WIDTH=LPM_WIDTH, LPM_CVALUE=LPM_SVALUE);
+		END GENERATE;
+	END GENERATE; 
+	
+BEGIN
+
+	ASSERT (LPM_WIDTH > 0)
+			REPORT "Value of LPM_WIDTH parameter value must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID LPM_FF_WIDTH;
+
+	ASSERT (LPM_FFTYPE == "DFF" # LPM_FFTYPE == "TFF")
+			REPORT "Illegal value for LPM_FFTYPE parameter (%) -- value must be DFF or TFF"
+				LPM_FFTYPE
+			SEVERITY ERROR
+			HELP_ID LPM_FF_TYPE;
+
+	ASSERT (USED(aset) # USED(LPM_AVALUE) == 0)
+			REPORT "Ignored LPM_AVALUE parameter because the aset port is not used"
+			SEVERITY WARNING
+			HELP_ID LPM_FF_AVALUE;
+
+	ASSERT (USED(sset) # USED(LPM_SVALUE) == 0)
+			REPORT "Ignored LPM_SVALUE parameter because the sset port is not used"
+			SEVERITY WARNING
+			HELP_ID LPM_FF_SVALUE;
+
+	ASSERT (FAMILY_IS_KNOWN() == 1)
+			REPORT "Megafunction lpm_ff does not recognize the current device family (%) -- ensure that you are using the newest version of the megafunction"
+				DEVICE_FAMILY
+			SEVERITY WARNING
+			HELP_ID LPM_FF_FAMILY_UNKNOWN;
+
+	IF CBXI_PARAMETER != "NOTHING" GENERATE
+		IF USED(aclr) GENERATE
+			auto_generated.aclr = aclr;
+		END GENERATE;
+		IF USED(aload) GENERATE
+			auto_generated.aload = aload;
+		END GENERATE;
+		IF USED(aset) GENERATE
+			auto_generated.aset = aset;
+		END GENERATE;
+		IF USED(clock) GENERATE
+			auto_generated.clock = clock;
+		END GENERATE;
+		IF USED(data) GENERATE
+			auto_generated.data[] = data[];
+		END GENERATE;
+		IF USED(enable) GENERATE
+			auto_generated.enable = enable;
+		END GENERATE;
+		IF USED(q) GENERATE
+			q[] = auto_generated.q[];
+		END GENERATE;
+		IF USED(sclr) GENERATE
+			auto_generated.sclr = sclr;
+		END GENERATE;
+		IF USED(sload) GENERATE
+			auto_generated.sload = sload;
+		END GENERATE;
+		IF USED(sset) GENERATE
+			auto_generated.sset = sset;
+		END GENERATE;
+	ELSE GENERATE
+		% common ports %
+		dffs[].ena = enable;
+		dffs[].clk = clock;
+
+		% Normal value to be loaded into the DFFE's .d port is din[] %
+		IF (LPM_FFTYPE == "DFF") GENERATE
+			din[] = data[];
+		ELSE GENERATE
+			IF USED(data) GENERATE
+				din[] = data[] $ dffs[].q;
+			ELSE GENERATE
+				din[] = !dffs[].q;
+			END GENERATE;
+		END GENERATE;
+
+
+		IF USED(sclr) GENERATE
+			dffs[].sclr = sclr;
+		END GENERATE;
+		IF USED(aclr) # USED(aset) GENERATE
+			IF USED(LPM_AVALUE) & USED(aset) GENERATE
+				IF USED(aclr) GENERATE
+					dffs[].clrn = !aclr & (!aset # ac.result[]);
+					dffs[].prn = aclr # (!aset # !ac.result[]);
+				ELSE GENERATE
+					dffs[].clrn = !aset # ac.result[];
+					dffs[].prn = !aset # !ac.result[];
+				END GENERATE;
+			ELSE GENERATE
+				IF USED(aclr) GENERATE
+					dffs[].clrn = !aclr;
+				END GENERATE;
+				IF USED(aset) GENERATE
+					dffs[].prn = !aset;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+		
+		IF (LPM_FFTYPE == "DFF") GENERATE
+			IF USED(aload) GENERATE
+				IF USED(sset) GENERATE
+					IF USED(LPM_SVALUE) GENERATE
+						asdata[] = data[] # !aload & sset & sc.result[];
+					ELSE GENERATE
+						asdata[] = data[] # !aload & sset;
+					END GENERATE;
+				ELSE GENERATE
+					asdata[] = data[];
+				END GENERATE;
+			ELSE GENERATE
+				IF USED(sload) GENERATE
+					IF USED(sset) GENERATE
+						IF USED(LPM_SVALUE) GENERATE
+							asdata[] = sset & sc.result[] # !sset & sload & data[];
+						ELSE GENERATE
+							asdata[] = sset # !sset  & sload & data[];			
+						END GENERATE;
+					ELSE GENERATE
+						asdata[] = data[];
+					END GENERATE;
+				ELSE GENERATE
+					IF USED(sset) GENERATE
+						IF USED(LPM_SVALUE) GENERATE
+							asdata[] = sset & sc.result[];
+						ELSE GENERATE
+							asdata[] = sset;			
+						END GENERATE;
+					END GENERATE;			
+				END GENERATE;
+			END GENERATE;
+			
+			IF USED(sload) GENERATE
+				IF USED(sset) GENERATE
+					sctrl = sset # !sset & sload;
+				ELSE GENERATE
+					sctrl = sload;
+				END GENERATE;
+			ELSE GENERATE
+				IF USED(sset) GENERATE
+					sctrl = sset;
+				END GENERATE;
+			END GENERATE;
+
+			IF USED(aload) # USED(sload) # USED(sset) GENERATE
+				dffs[].asdata = asdata[];
+				IF USED(aload) GENERATE
+					dffs[].aload = aload;
+				END GENERATE;
+				IF USED(sload) # USED(sset) GENERATE
+					dffs[].sload = sctrl;
+				END GENERATE;
+			END GENERATE;
+			dffs[].d = din[];			
+		ELSE GENERATE
+			IF USED(sload) GENERATE
+				IF USED(sset) GENERATE
+					IF USED(LPM_SVALUE) GENERATE
+						asdata[] = sset & sc.result[] # !sset & sload & data[];
+					ELSE GENERATE
+						asdata[] = sset # !sset  & sload & data[];			
+					END GENERATE;
+					sctrl = sload & !sset # sset;
+				ELSE GENERATE
+					asdata[] = sload & data[];
+					sctrl = sload;				
+				END GENERATE;
+			ELSE GENERATE
+				IF USED(sset) GENERATE
+					IF USED(LPM_SVALUE) GENERATE
+						asdata[] = sset & sc.result[];
+					ELSE GENERATE
+						asdata[] = sset;			
+					END GENERATE;
+					sctrl = sset;				
+				END GENERATE;
+			END GENERATE;
+			
+			IF USED(aload) GENERATE
+				dffs[].aload = aload;
+				dffs[].asdata = data[];
+			END GENERATE; 
+			
+			IF USED(sload) # USED(sset) GENERATE
+				dffs[].d = din[] & !sctrl # sctrl & asdata[];
+			ELSE GENERATE
+				dffs[].d = din[];
+			END GENERATE; 
+		END GENERATE;
+		q[] = dffs[].q;	
+	END GENERATE; -- CBXI
+	IF !USED(q) GENERATE
+		q[] = GND;
+	END GENERATE;
+END;

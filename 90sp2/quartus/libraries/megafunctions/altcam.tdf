@@ -1,0 +1,1769 @@
+--------------------------------------------------------------------
+--
+--	ALTCAM Parameterized Megafunction
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 2.0
+--
+--------------------------------------------------------------------
+INCLUDE "aglobal90.inc";
+INCLUDE "lpm_and.inc";
+INCLUDE "lpm_or.inc";
+INCLUDE "lpm_decode.inc";
+INCLUDE "a_encoder";
+INCLUDE "parallel_add.inc";
+INCLUDE "a_priority_encoder.inc";
+INCLUDE "apex20ke_cam_slice.inc";
+INCLUDE "mercury_cam_slice.inc";
+INCLUDE "alt_cam_encoder";
+
+PARAMETERS
+(
+	WIDTH,						-- Width of the input pattern
+	WIDTHAD,					-- Width of the address port
+	NUMWORDS = 2^WIDTHAD,		-- Number of CAM words
+	LPM_FILE = "UNUSED",		-- Initial CAM contents .mif or .hex file
+	LPM_FILEX = "UNUSED",		-- Initila CAM "don't care" file for .hex files
+	MATCH_MODE = "MULTIPLE",	-- Operation mode: "SINGLE"/"MULTIPLE"/"FAST_MULTIPLE"
+	OUTPUT_REG = "UNREGISTERED",-- Outputs reg options: "UNREGISTERED"/"INCLOCK"/"OUTCLOCK"
+	OUTPUT_ACLR = "ON",			-- Outputs reg async clear options: "ON"/"OFF" 
+	PATTERN_REG = "INCLOCK",	-- Pattern inputs reg options: "UNREGISTERED"/"INCLOCK"
+	PATTERN_ACLR = "ON",		-- Pattern inputs async clear options: "ON"/"OFF"
+	WRADDRESS_ACLR = "ON",		-- Write address reg async clear options: "ON"/"OFF"	
+	WRX_REG = "INCLOCK",		-- wrx and wrxused reg options: "UNREGISTERED"/"INCLOCK"
+	WRX_ACLR = "ON",			-- wrx and wrxused reg async options: "ON"/"OFF"
+	WRCONTROL_ACLR = "ON",		-- wen reg async clear options: "ON"/"OFF"
+	REGISTER_ODD_MATCH = "OFF", -- Should reg odd match bits behind the encoder? "ON"/"OFF"
+	USE_EAB = "ON",				-- Use ESBs (vs. LCells) to implement CAM? "ON"/"OFF" 
+	CARRY_CHAIN_LENGTH,
+	CARRY_CHAIN_SIZE = CARRY_CHAIN_LENGTH,
+	DEVICE_FAMILY,
+	USE_WYSIWYG = "ON"
+);
+
+
+-- For compatibility with our VHDL convention
+CONSTANT INT_NUMWORDS = (NUMWORDS == 0) ? 2^WIDTHAD : NUMWORDS;
+
+-- Intrinsic properties of a CAM slice
+CONSTANT CAM_SLICE_INTR_WIDTH = 32;	-- Intrinsic CAM slice width
+CONSTANT CAM_SLICE_INTR_DEPTH = 32;	-- Intrinsic CAM slice depth (a power of 2)
+CONSTANT CAM_SLICE_LOGICAL_NAME = "MEGA_ALTCAM";
+
+-- Must switch from single to a multiple mode if the requested 
+-- input width is > CAM_SLICE_INTR_WIDTH
+CONSTANT INT_MATCH_MODE = ((MATCH_MODE == "SINGLE") & (WIDTH > CAM_SLICE_INTR_WIDTH)) ? 
+									"FAST_MULTIPLE" : MATCH_MODE;
+
+-- A CAM slice will have different useful matchout port widths: in SINGLE
+-- mode, only LSB encoded outputs are valid, while in the two multiple
+-- cases, all of the bits are valid unencoded flags
+CONSTANT CAM_SLICE_INTR_ADR_BITS = CEIl(LOG2(CAM_SLICE_INTR_DEPTH));
+CONSTANT CAM_UNENCODED_OUT = CAM_SLICE_INTR_DEPTH DIV 2;
+CONSTANT CAM_SLICE_MATCHOUT_WIDTH = (INT_MATCH_MODE == "SINGLE") ? 
+								CAM_SLICE_INTR_ADR_BITS : CAM_UNENCODED_OUT;
+
+-- Effective depth of a CAM slice. This corresponds to the logical view of
+-- a CAM slice as presented by the WYSIWYG to higher level modules. 
+CONSTANT CAM_SLICE_EFF_DEPTH = (INT_MATCH_MODE == "FAST_MULTIPLE") ? 
+						   	   (CAM_SLICE_INTR_DEPTH DIV 2) : CAM_SLICE_INTR_DEPTH;
+CONSTANT CAM_SLICE_EFF_ADR_BITS = CEIl(LOG2(CAM_SLICE_EFF_DEPTH));
+
+-- Needed number of CAM slice columns (# of CAM modules to create the 
+-- required number of CAM words) 
+CONSTANT REQ_ADDRESS_WIDTH = CEIL(LOG2(INT_NUMWORDS));
+CONSTANT CAM_SLICE_NUM = CEIL(INT_NUMWORDS DIV CAM_SLICE_EFF_DEPTH);
+CONSTANT FULL_CAM_SLICE_NUM = FLOOR(INT_NUMWORDS DIV CAM_SLICE_EFF_DEPTH);
+CONSTANT PART_CAM_SLICE_DEPTH = INT_NUMWORDS - (FULL_CAM_SLICE_NUM*CAM_SLICE_EFF_DEPTH);
+
+CONSTANT PART_CAM_SLICE_ADR_BITS = (PART_CAM_SLICE_DEPTH > 1) ? 
+							CEIl(LOG2(PART_CAM_SLICE_DEPTH)) : PART_CAM_SLICE_DEPTH;
+										
+-- Logical CAM slice width as seen from upper-level designs
+CONSTANT CAM_SLICE_WIDTH = (INT_MATCH_MODE == "SINGLE")   ? CAM_SLICE_INTR_WIDTH :
+						  ((INT_MATCH_MODE == "MULTIPLE") ? (CAM_SLICE_INTR_WIDTH-1) :
+															CAM_SLICE_INTR_WIDTH);
+
+-- Number of match flag (unencoded outputs) registers needed in each mode													
+CONSTANT CAM_MFLAG_REG_NUM = (INT_MATCH_MODE == "SINGLE")   ? 0 :
+					  		((INT_MATCH_MODE == "MULTIPLE") ? 2*CAM_SLICE_NUM :
+												    	  	  CAM_SLICE_NUM);
+												
+-- Number of CAM rows (number of CAm slices needed to create the
+-- requested full CAM width
+CONSTANT CAM_ROW_NUM = CEIL(WIDTH DIV CAM_SLICE_WIDTH);
+
+-- Translations of values from altcam parameters to WYSIWYG parameters
+-- Check for hierarchy problems for this one!!!
+CONSTANT CAM_SLICE_FILE = !USED(LPM_FILE) ? "none" : LPM_FILE;
+CONSTANT CAM_SLICE_FILEX = !USED(LPM_FILEX) ? "none" : LPM_FILEX;
+
+-- We do this because multiple-depth conditional string constant 
+-- assignments are not supported
+CONSTANT CAM_MULTIPLE_OP_MODE = (INT_MATCH_MODE == "MULTIPLE") ? 
+									((FAMILY_MERCURY() == 1) ?
+										"multiple_match" : "unencoded_32_address") : 
+									((FAMILY_MERCURY() == 1) ?
+										"fast_multiple_match" : "unencoded_16_address");
+
+CONSTANT CAM_SLICE_OP_MODE = (INT_MATCH_MODE == "SINGLE") ?
+						((FAMILY_MERCURY() == 1) ? "single_match" : "encoded_address") : 
+						 CAM_MULTIPLE_OP_MODE;
+			
+CONSTANT CAM_SLICE_LOGICAL_DEPTH = CAM_SLICE_NUM*CAM_SLICE_EFF_DEPTH;
+													
+CONSTANT CAM_SLICE_WADDR_CLEAR = (WRADDRESS_ACLR == "ON") ? "clear0" : "none";
+CONSTANT CAM_SLICE_WRENA_CLEAR = (WRCONTROL_ACLR == "ON" #
+								  WRADDRESS_ACLR == "OFF") ? "clear0" : "none";
+
+CONSTANT MCOUNT_REG_WIDTH = (INT_MATCH_MODE == "SINGLE") ? 1 : WIDTHAD;
+
+-- Should the output registers internal to a CAM slice be used
+-- instead of adding extrenal regs? 
+DEFINE   USE_INTERNAL_OUTPUT_REGS() = (INT_MATCH_MODE == "SINGLE" # 
+						(INT_MATCH_MODE == "FAST_MULTIPLE" & !USED(mnext))) ? 1 : 0;
+
+CONSTANT CAM_SLICE_REG_OUTCLK_SEL = (OUTPUT_REG == "INCLOCK") ? "clock0" : "clock1";
+CONSTANT CAM_SLICE_REG_OUTCLK_SEL_NO_INTERN = (OUTPUT_REG == "UNREGISTERED") ? 
+												"none" : CAM_SLICE_REG_OUTCLK_SEL;											
+CONSTANT CAM_SLICE_REG_CLR_SEL = (CAM_SLICE_REG_OUTCLK_SEL == "clock0") ? 
+										"clear0" : "clear1";
+																				
+CONSTANT CAM_NO_INACLR_NEEDED = ((PATTERN_REG == "UNREGISTERED" # PATTERN_ACLR == "OFF") &
+								(WRX_REG == "UNREGISTERED" # WRX_ACLR == "OFF") &
+								(WRADDRESS_ACLR == "OFF" & WRCONTROL_ACLR == "OFF") &
+								(OUTPUT_REG != "INCLOCK" # OUTPUT_ACLR == "OFF")) == 0 ? 0 : 1;
+																
+CONSTANT CAM_NO_OUTACLR_NEEDED = (OUTPUT_REG != "OUTCLOCK" # OUTPUT_ACLR == "OFF") == 0 ? 0 : 1;
+
+-- Some useful macros
+DEFINE FLOOR_INT_HALF(i) = FLOOR(i DIV 2);
+DEFINE CEIL_INT_HALF(i) = CEIL(i DIV 2);
+DEFINE MAX_VAL(i, j) = (i > j) ? i : j;
+DEFINE MIN_VAL(i, j) = (i < j) ? i : j;
+
+-- Macros for translating 1D linear buses to their 2D counterparts
+DEFINE GET_LINEAR_INDEX_HIGH(i, j, W) = (i*CAM_ROW_NUM*W + (j+1)*W - 1);
+DEFINE GET_LINEAR_INDEX_LOW(i, j, W) = (i*CAM_ROW_NUM*W + j*W);
+DEFINE GET_LINEAR_INDEX(i, j, k, W) = (GET_LINEAR_INDEX_LOW(i, j, W) + k);
+
+DEFINE CAM_SLICE_ADDR_WIDTH(i) = (FULL_CAM_SLICE_NUM > 0 & 
+								  i <= (FULL_CAM_SLICE_NUM-1)) ? CAM_SLICE_EFF_ADR_BITS :
+														 		 PART_CAM_SLICE_ADR_BITS;
+
+DEFINE SLICE_FIRST_ADDRESS(i) = (i*CAM_SLICE_EFF_DEPTH);
+DEFINE SLICE_LAST_ADDRESS(i) = SLICE_FIRST_ADDRESS(i) + 
+							((FULL_CAM_SLICE_NUM > 0 & 
+							  i <= (FULL_CAM_SLICE_NUM-1)) ? (CAM_SLICE_EFF_DEPTH-1) : 
+															(PART_CAM_SLICE_DEPTH-1));
+
+DEFINE SLICE_FIRST_PATTERN_BIT(j) = j*CAM_SLICE_WIDTH;
+DEFINE SLICE_WIDTH(j, w) = (w > (j+1)*CAM_SLICE_WIDTH) ? CAM_SLICE_WIDTH :
+														 (w - j*CAM_SLICE_WIDTH);
+
+DEFINE GET_LINEAR_WIDTH_INDEX_LOW(j) = GET_LINEAR_INDEX_LOW(0, j, CAM_SLICE_WIDTH);
+DEFINE GET_LINEAR_WIDTH_INDEX_HIGH(j) = (j == (CAM_ROW_NUM-1)) ? 
+						MIN_VAL(WIDTH-1, GET_LINEAR_INDEX_HIGH(0, j, CAM_SLICE_WIDTH)) :  
+						GET_LINEAR_INDEX_HIGH(0, j, CAM_SLICE_WIDTH);
+
+DEFINE NO_CARRY_BREAK(I) = (I < (CARRY_CHAIN_SIZE-1)) ? 1 :
+					((I-(CARRY_CHAIN_SIZE-1)) MOD (CARRY_CHAIN_SIZE-2) > 0 ? 1 : 0);
+								
+
+SUBDESIGN altcam
+(
+	pattern[WIDTH-1..0]			: INPUT;
+	wrx[WIDTH-1..0]				: INPUT = GND;
+	wrxused						: INPUT = VCC;
+	wrdelete					: INPUT = GND;
+	wraddress[WIDTHAD-1..0]		: INPUT = GND;
+	wren						: INPUT = GND;
+	inclock						: INPUT;
+	inclocken					: INPUT = VCC;
+	inaclr						: INPUT = GND;
+	outclock					: INPUT = GND;
+	outclocken					: INPUT = VCC;
+	outaclr						: INPUT = GND;
+	mstart						: INPUT = GND;
+	mnext						: INPUT = GND;
+		
+	maddress[WIDTHAD-1..0]		: OUTPUT;
+	mbits[INT_NUMWORDS-1..0]	: OUTPUT;
+	mfound						: OUTPUT;
+	mcount[WIDTHAD-1..0]		: OUTPUT;
+	rdbusy						: OUTPUT;
+	wrbusy						: OUTPUT;
+)
+
+VARIABLE
+	wrinvert, wrdata, wrb_node	: NODE;
+	datain_node, wrinvert_node 	: NODE;
+	masked_pattern_node[WIDTH-1..0] : NODE; 
+
+	IF (PATTERN_REG == "UNREGISTERED") GENERATE
+		pattern_reg_node[WIDTH-1..0] : NODE;
+	ELSE GENERATE
+		pattern_reg_node[WIDTH-1..0] : DFFE;
+	END GENERATE;	
+	
+	IF USED(wrx) GENERATE
+		IF USED(wrdelete) GENERATE
+			wsm	: MACHINE WITH STATES (WS0, WS1D, WS2D, WS1W, WS2W, WS3W, WS4W, WS5W);
+		ELSE GENERATE
+			wsm	: MACHINE WITH STATES (WS0, WS1W, WS2W, WS3W, WS4W, WS5W);	
+		END GENERATE;
+		
+		ormask 	: NODE;
+		ext_wren_reg_node : DFFE;
+
+		IF (WRX_REG == "UNREGISTERED") GENERATE
+			wrx_reg_node[WIDTH-1..0] : NODE;
+			ext_wrxused_reg_node	 : NODE;
+		ELSE GENERATE
+			wrx_reg_node[WIDTH-1..0] : DFFE;
+			IF USED(wrxused) GENERATE
+				ext_wrxused_reg_node : DFFE;
+			ELSE GENERATE
+				ext_wrxused_reg_node : NODE;		
+			END GENERATE;
+		END GENERATE;
+	ELSE GENERATE
+		IF USED(wrdelete) GENERATE
+			wsm	: MACHINE WITH STATES (WS0, WS1D, WS1W, WS2);
+		ELSE GENERATE
+			wsm	: MACHINE WITH STATES (WS0, WS1W, WS2);	
+		END GENERATE;
+	END GENERATE;
+	
+
+	IF (REQ_ADDRESS_WIDTH > CAM_SLICE_EFF_ADR_BITS) GENERATE
+		wen_decoder : lpm_decode WITH (LPM_WIDTH = (REQ_ADDRESS_WIDTH - CAM_SLICE_EFF_ADR_BITS),
+									   LPM_DECODES = CAM_SLICE_NUM,
+										CASCADE_CHAIN	= "IGNORE");
+	END GENERATE;
+
+ 	waddr_node[CAM_SLICE_EFF_ADR_BITS-1..0] 	: NODE;
+ 	matchout_node[(CAM_SLICE_NUM*CAM_ROW_NUM*CAM_SLICE_MATCHOUT_WIDTH)-1..0]: NODE;
+
+	clk0_node 	: NODE;
+	ena0_node 	: NODE;
+	clr0_node	: NODE;
+		
+	we_node[CAM_SLICE_NUM-1..0]	: NODE;
+
+
+	IF (INT_MATCH_MODE == "SINGLE")	GENERATE					
+		-- ================================================
+		-- 				Single Match Mode
+		-- ================================================
+		IF USED(mbits) GENERATE
+			mbits_decoder : lpm_decode WITH (LPM_WIDTH = REQ_ADDRESS_WIDTH,
+											 LPM_DECODES = INT_NUMWORDS,
+											 CASCADE_CHAIN = "IGNORE");
+											
+			mbits_reg_node[INT_NUMWORDS-1..0] 	: NODE;
+		END GENERATE;
+				
+		mfound_reg_node 	: NODE;
+		mcount_reg_node[MCOUNT_REG_WIDTH-1..0]	: NODE;
+		matchfound_node[CAM_SLICE_NUM-1..0][CAM_ROW_NUM-1..0] : NODE;
+
+		IF (REQ_ADDRESS_WIDTH > CAM_SLICE_EFF_ADR_BITS) GENERATE
+			address_node[CAM_SLICE_MATCHOUT_WIDTH-1..0][CAM_SLICE_NUM-1..0] : NODE;
+			maddress_reg_node[REQ_ADDRESS_WIDTH-1..0] 	: NODE;
+			
+			mfounds_encoder : a_encoder WITH (WIDTH = CAM_SLICE_NUM);
+		ELSE GENERATE
+			maddress_reg_node[REQ_ADDRESS_WIDTH-1..0] 	: NODE;
+		END GENERATE;
+
+		IF (OUTPUT_REG == "OUTCLOCK") GENERATE
+			clk1_node 	: NODE;
+			clr1_node 	: NODE;
+			ena1_node 	: NODE;
+		END GENERATE;
+		
+	ELSE GENERATE
+		-- ================================================
+		-- 			Multiple Match Modes
+		-- ================================================
+		mfound_gate		: NODE;
+		mnext_gate		: NODE;
+		IF (INT_MATCH_MODE == "MULTIPLE" # USED(mnext)) GENERATE
+			mstart_load		: NODE;
+		END GENERATE;
+			
+		IF (INT_MATCH_MODE == "MULTIPLE") GENERATE
+			mflag_regs_even[CEIL_INT_HALF(INT_NUMWORDS)-1..0] 	: DFFE;
+
+			IF (REGISTER_ODD_MATCH == "OFF") GENERATE
+				mflag_regs_odd[FLOOR_INT_HALF(INT_NUMWORDS)-1..0]	: NODE;	
+			ELSE GENERATE
+				mflag_regs_odd[FLOOR_INT_HALF(INT_NUMWORDS)-1..0]	: DFFE;
+			END GENERATE;
+
+			rsm	: MACHINE WITH STATES (RS0, RS1, RS2, RS3, RS4, RS5);
+			rdmux, rdb_node 	: NODE;
+			outputselect_node	: NODE;
+			
+			IF USED(wren) GENERATE
+				wren_node		: DFFE;
+			ELSE GENERATE
+				wren_node		: NODE;		
+			END GENERATE;
+			
+			IF USED(wrdelete) GENERATE
+				wrdelete_node	: DFFE;
+			ELSE GENERATE
+				wrdelete_node 	: NODE;
+			END GENERATE;
+			
+			wraddress0_node		: DFFE;
+			even_ena, odd_ena 	: NODE;
+		ELSE GENERATE
+			IF (INT_MATCH_MODE == "FAST_MULTIPLE") GENERATE
+				IF USED(mnext) GENERATE
+					rsm	: MACHINE WITH STATES (RS0, RS1, RS2, RS3);
+				END GENERATE;
+				
+				IF (OUTPUT_REG == "OUTCLOCK") GENERATE
+					clk1_node 	: NODE;
+					clr1_node 	: NODE;
+					ena1_node 	: NODE;
+				END GENERATE;
+			END GENERATE;		
+		END GENERATE;
+
+		IF (OUTPUT_REG == "UNREGISTERED" # (USE_INTERNAL_OUTPUT_REGS() == 1)) GENERATE
+			mfound_reg_node 							: NODE;
+			maddress_reg_node[REQ_ADDRESS_WIDTH-1..0] 	: NODE;
+			mbits_reg_node[INT_NUMWORDS-1..0] 			: NODE;
+		ELSE GENERATE
+			mfound_reg_node 							: DFFE;
+			maddress_reg_node[REQ_ADDRESS_WIDTH-1..0] 	: DFFE;
+			mbits_reg_node[INT_NUMWORDS-1..0] 			: DFFE;
+			
+			out_clock 	: NODE;
+			out_clocken : NODE;
+			out_aclr 	: NODE;
+		END GENERATE;	
+		
+		mbits_unreg_node[INT_NUMWORDS-1..0]	: NODE;
+		mstart_node		: NODE;
+		mnext_node		: NODE;
+
+		IF USED(mcount) GENERATE
+			IF (OUTPUT_REG == "UNREGISTERED") GENERATE
+				mcount_reg_node[WIDTHAD-1..0]	: NODE;
+			ELSE GENERATE
+				mcount_reg_node[WIDTHAD-1..0]	: DFFE;		
+			END GENERATE;
+		END GENERATE;
+
+		2D_flag_ander : lpm_and WITH (LPM_SIZE = CAM_ROW_NUM,
+									  LPM_WIDTH = CAM_SLICE_NUM*CAM_SLICE_MATCHOUT_WIDTH);
+
+		IF USED(mcount) GENERATE
+			mcount_par_adder : parallel_add WITH (WIDTH = 1, SIZE = INT_NUMWORDS,
+												  WIDTHR = REQ_ADDRESS_WIDTH,
+				RESULT_ALIGNMENT = "LSB");
+		END GENERATE;
+
+		-- maddress generator section
+		IF USED(maddress) GENERATE
+			priority_encoder : a_priority_encoder WITH (WIDTH = INT_NUMWORDS,
+														LSB_PRIORITY = "YES");
+
+			IF USED(mnext) GENERATE
+				IF USE_WYSIWYG == "OFF" GENERATE
+					csb_carry_node[INT_NUMWORDS-1..1]		: NODE;
+					bar_decoded_nodes[INT_NUMWORDS-1..0]	: NODE;
+					csb[INT_NUMWORDS-1..0] 					: CARRY_SUM;
+					csb_reg[INT_NUMWORDS-1..0] 				: DFFE;
+				ELSE GENERATE
+					-- wysiwyg option for using a lookahead
+					bar_decoded_nodes[INT_NUMWORDS-1..0] : NODE;
+					cam_encoder : alt_cam_encoder WITH ( WIDTH = INT_NUMWORDS);
+				END GENERATE;
+			END GENERATE;
+		ELSE GENERATE
+			match_flags_orer : lpm_or WITH (LPM_SIZE = INT_NUMWORDS, LPM_WIDTH = 1);
+		END GENERATE;
+
+	END GENERATE;
+
+							
+BEGIN
+	-- ------------------------------------------
+	--      Error checkings and assertions
+	-- ------------------------------------------
+	-- Cause: The user has entered an illegal value for the USE_WYSIWYG parameter
+	-- Action: Legal values are "ON" and "OFF"
+	ASSERT (USE_WYSIWYG == "ON") # (USE_WYSIWYG == "OFF")
+	REPORT "The value for USE_WYSIWYG(%) is illegal.  Legal values are ""ON"" and ""OFF""" USE_WYSIWYG
+	SEVERITY ERROR
+	HELP_ID ALTCAM_USE_WYSIWYG_CHECK;
+
+	-- Cause: The user has assigned zero or a negative value to this parameter 
+	-- Action: Choose a positive integer for this parameter
+	ASSERT (WIDTH > 0)
+			REPORT "Value of WIDTH parameter must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID ALTCAM_WIDTH;
+
+	-- Cause: The user has assigned zero or a negative value to this parameter 
+	-- Action: Choose a positive integer for this parameter
+	ASSERT (WIDTHAD > 0)
+			REPORT "Value of WIDTHAD parameter must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID ALTCAM_WIDTHAD;
+
+	-- Cause: The user has assigned a value to NUMWORDS that is too small or too 
+	--		  large for the assigned value for the WIDTHAD parameter 
+	-- Action: Choose a value for NUMWORDS that satisfies the equation:
+	--				   2^(WIDTHAD-1) < NUMWORDS <= 2^WIDTHAD
+	--			Conversely, assign a value to WIDTHAD equal to CEIL(LOG2(NUMWORDS))
+	ASSERT (NUMWORDS > 2^(WIDTHAD-1) & NUMWORDS <= 2^WIDTHAD)
+			REPORT "Value of NUMWORDS parameter requires % address lines, but WIDTHAD value, which defines the number of address lines, is %"
+				CEIL(LOG2(NUMWORDS)), 
+				WIDTHAD
+			SEVERITY ERROR
+			HELP_ID ALTCAM_NUMWORDS;
+
+	-- Cause: The user has assigned an invalid mode of CAM operation. 
+	-- Action: Choose "SINGLE" (for single-match mode), "MULTIPLE" (for multiple-match mode), 
+	--		   or "FAST_MULTIPLE" (for fast read multiple-match mode)
+	ASSERT (MATCH_MODE == "SINGLE" # MATCH_MODE == "MULTIPLE" # MATCH_MODE == "FAST_MULTIPLE")
+			REPORT "Illegal value for MATCH_MODE parameter (%) -- value must be SINGLE, MULTIPLE (the default), or FAST_MULTIPLE"
+				MATCH_MODE
+			SEVERITY ERROR
+			HELP_ID ALTCAM_MATCH_MODE;
+
+	-- Cause: The user has assigned an invalid value to the OUTPUT_REG parameter 
+	-- Action: Choose "UNREGISTERED" (for unregistered outputs), "INCLOCK" (for 
+	--		   registered outputs using the "inclock" clock input), or 
+	--		   "OUTCLOCK" (for registered outputs using the "outclock" input)			
+	ASSERT (OUTPUT_REG == "UNREGISTERED" # OUTPUT_REG == "INCLOCK" # OUTPUT_REG == "OUTCLOCK")
+			REPORT "Illegal value for OUTPUT_REG parameter (%) -- value must be UNREGISTERED (the default), INCLOCK, or OUTCLOCK"
+				OUTPUT_REG
+			SEVERITY ERROR
+			HELP_ID ALTCAM_OUTPUT_REG;
+
+	-- Cause: The user has assigned an invalid value to the OUTPUT_ACLR parameter
+	-- Action: Use either "ON" (to use the asynchronous clear control) or "OFF", otherwise.  
+	ASSERT (OUTPUT_ACLR == "ON" # OUTPUT_ACLR == "OFF")
+			REPORT "Illegal value for OUTPUT_ACLR parameter (%) -- value must be ON (the default), or OFF"
+				OUTPUT_ACLR
+			SEVERITY ERROR
+			HELP_ID ALTCAM_OUTPUT_ACLR;
+
+	-- Cause: The user has an invalid value to the PATTERN_REG parameter
+	-- Action: Choose either "UNREGISTERED" (for unregistered pattern inputs) or
+	--		   "INCLOCK" (for registered pattern puts using the "inclock" clock input) 
+	ASSERT (PATTERN_REG == "UNREGISTERED" # PATTERN_REG == "INCLOCK")
+			REPORT "Illegal value for PATTERN_REG parameter (%) -- value must be UNREGISTERED (the default), or INCLOCK"
+				PATTERN_REG
+			SEVERITY ERROR
+			HELP_ID ALTCAM_PATTERN_REG;
+			
+	-- Cause: The user has assigned an invalid value to the PATTERN_ACLR parameter
+	-- Action: Use either "ON" (to use the asynchronous clear control) or "OFF", otherwise.  
+	ASSERT (PATTERN_ACLR == "ON" # PATTERN_ACLR == "OFF")
+			REPORT "Illegal value for PATTERN_ACLR parameter (%) -- value must be ON (the default), or OFF"
+				PATTERN_ACLR
+			SEVERITY ERROR
+			HELP_ID ALTCAM_PATTERN_ACLR;
+
+	-- Cause: The user has an invalid value to the WRX_REG parameter
+	-- Action: Choose either "UNREGISTERED" (for unregistered wrx inputs) or
+	--		   "INCLOCK" (for registered wrx puts using the "inclock" clock input)
+	ASSERT (WRX_REG == "UNREGISTERED" # WRX_REG == "INCLOCK")
+			REPORT "Illegal value for WRX_REG parameter (%) -- value must be UNREGISTERED (the default), or INCLOCK"
+				WRX_REG
+			SEVERITY ERROR
+			HELP_ID ALTCAM_WRX_REG;
+			
+	-- Cause: The user has assigned an invalid value to the WRX_ACLR parameter
+	-- Action: Use either "ON" (to use the asynchronous clear control) or "OFF", otherwise. 
+	ASSERT (WRX_ACLR == "ON" # WRX_ACLR == "OFF")
+			REPORT "Illegal value for WRX_ACLR parameter (%) -- value must be ON (the default), or OFF"
+				WRX_ACLR
+			SEVERITY ERROR
+			HELP_ID ALTCAM_WRX_ACLR;
+		
+	-- Cause: The user has assigned an invalid value to the WRCONTROL_ACLR parameter
+	-- Action: Use either "ON" (to use the asynchronous clear control) or "OFF", otherwise. 
+	ASSERT (WRCONTROL_ACLR == "ON" # WRCONTROL_ACLR == "OFF")
+			REPORT "Illegal value for WRCONTROL_ACLR parameter (%) -- value must be ON (the default), or OFF"
+				WRCONTROL_ACLR
+			SEVERITY ERROR
+			HELP_ID ALTCAM_WRCONTROL_ACLR;
+	
+	-- Cause: The user has assigned an invalid value to the WRADDRESS_ACLR parameter
+	-- Action: Use either "ON" (to use the asynchronous clear control) or "OFF", otherwise. 
+	ASSERT (WRADDRESS_ACLR == "ON" # WRADDRESS_ACLR == "OFF")
+			REPORT "Illegal value for WRADDRESS_ACLR parameter (%) -- value must be ON (the default), or OFF"
+				WRADDRESS_ACLR
+			SEVERITY ERROR
+			HELP_ID ALTCAM_WRADDRESS_ACLR;
+		
+	-- Cause: This assertion has yet to be finalized. Please ignore this for now.
+	ASSERT (REGISTER_ODD_MATCH == "OFF" # REGISTER_ODD_MATCH == "ON")
+			REPORT "Illegal value for REGISTER_ODD_MATCH parameter (%) -- value must be OFF (the default), or ON"
+				REGISTER_ODD_MATCH
+			SEVERITY ERROR
+			HELP_ID ALTCAM_REGISTER_ODD_MATCH;
+			
+	-- Cause: The user has asked for registered outputs using the "outclock" input,
+	--			but has not connected "outclock" input port.
+	-- Action: Connect the the outclock port. 
+	ASSERT (!((OUTPUT_REG == "OUTCLOCK" & !USED(outclock)) # 
+			  (OUTPUT_REG != "OUTCLOCK" & USED(outclock))))
+			REPORT "Value of OUTPUT_REG (%) is not consistent with the use of the outclock port"
+				OUTPUT_REG
+			SEVERITY ERROR
+			HELP_ID ALTCAM_OUTPUT_CLOCK_CON;
+
+	-- Cause: The user has asked for no inaclr effect but has connected the "inaclr" 
+	--			input port.
+	-- Action: Disonnect the the inaclr port.
+	ASSERT (!(CAM_NO_INACLR_NEEDED == 1 & USED(inaclr)))
+			REPORT "Values of xxx_ACLR parameters are not consistent with the use of the inaclr port"
+			SEVERITY ERROR
+			HELP_ID ALTCAM_NO_INACLR_CON;
+			
+	-- Cause: The user has asked for no outaclr effect but has connected the "inaclr" 
+	--			input port.
+	-- Action: Disonnect the the outaclr port.
+	ASSERT (!(CAM_NO_OUTACLR_NEEDED == 1 & USED(outaclr)))
+			REPORT "Values of OUTPUT_REG (%) and PUT_ACLR (%) are not consistent with the use of the outaclr port"
+				OUTPUT_REG, OUTPUT_ACLR
+			SEVERITY ERROR
+			HELP_ID ALTCAM_NO_OUTACLR_CON;
+
+	-- Cause: The user has asked for registered outputs using the "outclock" input
+	--			with asynchronous clear control but has not connected the "outaclr" 
+	--			input port.
+	-- Action: Connect the the outaclr port.
+	ASSERT (!((OUTPUT_REG == "OUTCLOCK" & OUTPUT_ACLR == "ON" & !USED(outaclr)) #
+			  (OUTPUT_REG != "OUTCLOCK" & USED(outaclr))))
+			REPORT "Values of OUTPUT_REG (%) and OUTPUT_ACLR (%) are not consistent with the use of the outaclr port"
+				OUTPUT_REG, OUTPUT_ACLR
+			SEVERITY ERROR
+			HELP_ID ALTCAM_OUTPUT_ACLR_CON;
+
+	-- Cause: The user has asked for using the "inaclr" asynchronous clear control 
+	--			input for the pattern input port but the "inaclr" input port is
+	--			not connected.
+	-- Action: Connect the the inaclr port.
+	ASSERT (!(PATTERN_REG == "INCLOCK" & PATTERN_ACLR == "ON" & !USED(inaclr)))
+			REPORT "Values of PATTERN_REG (%) and PATTERN_ACLR (%) are not consistent with the use of the inaclr port"
+				PATTERN_REG, PATTERN_ACLR
+			SEVERITY ERROR
+			HELP_ID ALTCAM_PATT_ACLR_CON;
+
+	-- Cause: The user has asked for using the "inaclr" asynchronous clear control 
+	--			input for the wrx input port but the "inaclr" input port is
+	--			not connected.
+	-- Action: Connect the the inaclr port.
+	ASSERT (!(WRX_REG == "INCLOCK" & WRX_ACLR == "ON" & USED(WRX) & !USED(inaclr)))
+			REPORT "Values of WRX_REG (%) and WRX_ACLR (%) are not consistent with the use of the inaclr port"
+				WRX_REG, WRX_ACLR
+			SEVERITY ERROR
+			HELP_ID ALTCAM_WRX_ACLR_CON;
+
+	-- Cause: The user has asked for using the "inaclr" asynchronous clear control 
+	--			input for the either the "wren" and/or "wraddress" input ports but
+	--			the "inaclr" input port is not connected.
+	-- Action: Connect the the inaclr port.
+	ASSERT (!((WRCONTROL_ACLR == "ON" # WRADDRESS_ACLR == "ON") & !USED(inaclr)))
+			REPORT "Values of WRCONTROL_ACLR (%) and/or WRADDRESS_ACLR (%) are not consistent with the use of the inaclr port"
+				WRCONTROL_ACLR, WRADDRESS_ACLR
+			SEVERITY ERROR
+			HELP_ID ALTCAM_CNTRL_ACLR_CON;
+
+	-- Cause: The user has requested WIDTH > 32, but has specified the single-match mode 
+	-- Action: Change the CAM operation mode to either multiple- or fast multiple-match.
+	ASSERT (!((MATCH_MODE == "SINGLE") & (WIDTH > CAM_SLICE_INTR_WIDTH)))
+			REPORT "The specified width (%) cannot be implemented in the single-match operation mode. CAM mode will be automatically changed to fast multiple-match"
+				WIDTH
+			SEVERITY WARNING
+			HELP_ID ALTCAM_WIDE_SINGLE;
+
+	-- Cause: The user has specified a single-match CAM operation mode but has
+	--			connected either the "mstart" or "mnext" input ports. 
+	-- Action: Do not connect the "mstart" and "mnext" input ports in the 
+	--			single-match mode of CAM operation.
+	ASSERT (!(INT_MATCH_MODE == "SINGLE" & (USED(mstart) # USED(mnext))))
+			REPORT "The mstart and/or mnext input ports should not be connected for the single-match CAM operation mode"
+			SEVERITY ERROR
+			HELP_ID ALTCAM_SINGLE_MSTART_CON;
+
+	-- Cause: The user has specified a multiple-match CAM operation mode but
+	--			the the "mstart" input port is not connected.
+	-- Action: Connect the "mstart" input ports
+	ASSERT (!(INT_MATCH_MODE == "MULTIPLE" & !USED(mstart)))
+			REPORT "The mstart input port must be connected for the multiple-match CAM operation mode"
+			SEVERITY ERROR
+			HELP_ID ALTCAM_MULTIPLE_MSTART_CON;
+
+	-- Cause: The user has specified a fast multi_match CAM operation mode but has
+	--			connected either "mstart" or "mnext" input port without connecting the other.
+	-- Action: Connect both of the "mstart" and "mnext" input ports, or neither, in the 
+	--			fast multiple-match mode of CAM operation..
+	ASSERT (!(INT_MATCH_MODE == "FAST_MULTIPLE" & (USED(mnext) $ USED(mstart))))
+			REPORT "The mstart and mnext input ports should be either both connected or unused for the fast multiple-match CAM operation mode"
+			SEVERITY ERROR
+			HELP_ID ALTCAM_FAST_MULTIPLE_MSTART_CON;
+
+	-- Cause: The user has connected the wrx_used input port but the "wrx" input
+	--			port is not connected.
+	-- Action: "wrx" port must be connected if "wrxued" is connected.
+	ASSERT (!(USED(wrxused) & !USED(wrx)))
+			REPORT "wrx port must be connected when wrxused port is used"
+			SEVERITY ERROR
+			HELP_ID ALTCAM_WRXUSED_CON;
+
+	-- Cause: The user has assigned an invalid value to the USE_EAB parameter
+	-- Action: This is a reserved parameter. Do not use this parameter. 
+	--			Future versions of this megafunction may support implementation 
+	--			in logic cells.
+	ASSERT (USE_EAB == "ON")
+			REPORT "Non ESB-based CAM implementations are currently not supported"
+			SEVERITY ERROR
+			HELP_ID ALTCAM_USE_EAB;
+
+	-- Cause: The user has specified an unknown logic family for this megafunction
+	-- Action: Specify a value corresponding to a valid logic family  
+	ASSERT (FAMILY_IS_KNOWN() == 1)
+			REPORT "Megafunction altcam does not recognize the current device family (%) -- ensure that you are using the newest version of the megafunction"
+				DEVICE_FAMILY
+			SEVERITY ERROR
+			HELP_ID ALTCAM_FAMILY_UNKNOWN;
+
+	-- Cause: The user has specified a non-APEX20KE logic family for this megafunction.
+	--			ALTCAM is currently supported only in the APEX20KE logic family.
+	-- Action: Change the logic family setting to APEX20KE
+	ASSERT ((FAMILY_APEX20KE() == 1) # (FAMILY_MERCURY() == 1) # (FAMILY_APEXII() == 1))
+			REPORT "Megafunction altcam is supported only in APEX20KE, APEX II, and Mercury logic families"
+			SEVERITY ERROR
+			HELP_ID ALTCAM_FAMILY_NOT_APEX20KE;
+
+
+	-- ================================================
+	-- 	CAM slice & ports placeholders instantiation
+	-- ================================================
+	-- As we have to specify FIRST_ADDRESS, LAST_ADDRESS, etc. on a 
+	-- CAM slice basis (within a general array of such slices), we could 
+	-- not simply declare a CAM slice array in the VARIABLE section as the
+	-- above parameters depend on the location of each slice within the 
+	-- array. Since FOR GENERATES are not supported in the VARIABLE section
+	-- of an AHDL design, the solution was to declare a collection of nodes
+	-- acting as "placeholders" for the ports of these CAM slices, and declare 
+	-- and connect the slices to these nodes with an in-line statement in 
+	-- the BEGIN/END section. This solution requires 3D buses which are 
+	-- currently not supported in AHDL. To avoid resorting to a subdesign 
+	-- to reduce one of the dimensions (as introducing hierarchies increases
+	-- memory use and synthesis inefficiency) we have used 2D-array to 
+	-- 1D-array mappings (using GET_LINEAR_INDEX_HIGH(), etc. macros) instead.
+	IF (FAMILY_MERCURY() == 1) GENERATE
+		-- ============================================================ --
+		--				MERCURY CAM WYSIWYG declaraions/connections		--
+		-- ============================================================ --
+		IF (INT_MATCH_MODE == "SINGLE")	GENERATE
+			FOR I IN 0 TO CAM_SLICE_NUM-1 GENERATE		
+				FOR J IN 0 TO CAM_ROW_NUM-1 GENERATE
+					IF (OUTPUT_REG == "OUTCLOCK") GENERATE
+						(matchfound_node[I][J], matchout_node[GET_LINEAR_INDEX_HIGH(I, J, CAM_SLICE_MATCHOUT_WIDTH)..
+														  	  GET_LINEAR_INDEX_LOW(I, J, CAM_SLICE_MATCHOUT_WIDTH)]) = 
+						mercury_cam_slice(
+							.lit[] = masked_pattern_node[GET_LINEAR_WIDTH_INDEX_HIGH(J)..
+												  		 GET_LINEAR_WIDTH_INDEX_LOW(J)],
+							.clk0 = clk0_node,
+							.clk1 = clk1_node,
+							.clr0 = clr0_node,
+							.clr1 = clr1_node,
+							.ena0 = ena0_node,
+							.ena1 = ena1_node,
+							.wrinvert = wrinvert_node,
+							.datain = datain_node,
+						  	.waddr[] = waddr_node[CAM_SLICE_ADDR_WIDTH(I)-1..0],
+							.we = we_node[I]
+						)
+						WITH (
+							OPERATION_MODE = CAM_SLICE_OP_MODE,
+							LOGICAL_CAM_NAME = CAM_SLICE_LOGICAL_NAME,
+							LOGICAL_CAM_DEPTH = INT_NUMWORDS,
+							LOGICAL_CAM_WIDTH = WIDTH,
+							ADDRESS_WIDTH = CAM_SLICE_ADDR_WIDTH(I),
+							WADDR_CLEAR = CAM_SLICE_WADDR_CLEAR,
+							WRITE_ENABLE_CLEAR = CAM_SLICE_WRENA_CLEAR,
+							WRITE_LOGIC_CLOCK = "none",	-- always unregistered
+							WRITE_LOGIC_CLEAR = "none",	-- always unregistered
+							OUTPUT_CLOCK = CAM_SLICE_REG_OUTCLK_SEL_NO_INTERN,
+							OUTPUT_CLEAR = CAM_SLICE_REG_CLR_SEL,
+							INIT_FILE = CAM_SLICE_FILE,
+							INIT_FILEX = CAM_SLICE_FILEX,
+							FIRST_ADDRESS = SLICE_FIRST_ADDRESS(I),
+							LAST_ADDRESS = SLICE_LAST_ADDRESS(I),
+							FIRST_PATTERN_BIT = SLICE_FIRST_PATTERN_BIT(J),
+							PATTERN_WIDTH = SLICE_WIDTH(J, WIDTH)
+						)
+						RETURNS (
+							.matchfound,
+							.matchout[CAM_SLICE_MATCHOUT_WIDTH-1..0]
+						);
+					ELSE GENERATE	
+						(matchfound_node[I][J], matchout_node[GET_LINEAR_INDEX_HIGH(I, J, CAM_SLICE_MATCHOUT_WIDTH)..
+															  GET_LINEAR_INDEX_LOW(I, J, CAM_SLICE_MATCHOUT_WIDTH)]) = 
+							mercury_cam_slice(
+								.lit[] = masked_pattern_node[GET_LINEAR_WIDTH_INDEX_HIGH(J)..
+													  		 GET_LINEAR_WIDTH_INDEX_LOW(J)],
+								.clk0 = clk0_node,
+								.clr0 = clr0_node,
+								.ena0 = ena0_node,
+								.wrinvert = wrinvert_node,
+								.datain = datain_node,
+							  	.waddr[] = waddr_node[CAM_SLICE_ADDR_WIDTH(I)-1..0],
+								.we = we_node[I]
+							)
+							WITH (
+								OPERATION_MODE = CAM_SLICE_OP_MODE,
+								LOGICAL_CAM_NAME = CAM_SLICE_LOGICAL_NAME,
+								LOGICAL_CAM_DEPTH = INT_NUMWORDS,
+								LOGICAL_CAM_WIDTH = WIDTH,
+								ADDRESS_WIDTH = CAM_SLICE_ADDR_WIDTH(I),
+								WADDR_CLEAR = CAM_SLICE_WADDR_CLEAR,
+								WRITE_ENABLE_CLEAR = CAM_SLICE_WRENA_CLEAR,
+								WRITE_LOGIC_CLOCK = "none",	-- always unregistered
+								WRITE_LOGIC_CLEAR = "none",	-- always unregistered
+								OUTPUT_CLOCK = CAM_SLICE_REG_OUTCLK_SEL_NO_INTERN,
+								OUTPUT_CLEAR = (OUTPUT_REG == "INCLOCK" ? "clear0" : "none"),
+								INIT_FILE = CAM_SLICE_FILE,
+								INIT_FILEX = CAM_SLICE_FILEX,
+								FIRST_ADDRESS = SLICE_FIRST_ADDRESS(I),
+								LAST_ADDRESS = SLICE_LAST_ADDRESS(I),
+								FIRST_PATTERN_BIT = SLICE_FIRST_PATTERN_BIT(J),
+								PATTERN_WIDTH = SLICE_WIDTH(J, WIDTH)
+							)
+							RETURNS (
+								.matchfound,
+								.matchout[CAM_SLICE_MATCHOUT_WIDTH-1..0]
+							);
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+		ELSE GENERATE
+			IF (INT_MATCH_MODE == "MULTIPLE") GENERATE
+				FOR I IN 0 TO CAM_SLICE_NUM-1 GENERATE
+					FOR J IN 0 TO CAM_ROW_NUM-1 GENERATE
+						(matchout_node[GET_LINEAR_INDEX_HIGH(I, J, CAM_SLICE_MATCHOUT_WIDTH)..
+									   GET_LINEAR_INDEX_LOW(I, J, CAM_SLICE_MATCHOUT_WIDTH)]) = 
+						mercury_cam_slice(
+							.lit[] = masked_pattern_node[GET_LINEAR_WIDTH_INDEX_HIGH(J)..
+												  		 GET_LINEAR_WIDTH_INDEX_LOW(J)],
+							.clk0 = clk0_node,
+							.clr0 = clr0_node,
+							.ena0 = ena0_node,
+							.outputselect = outputselect_node,
+							.wrinvert = wrinvert_node,
+							.datain = datain_node,
+						  	.waddr[] = waddr_node[CAM_SLICE_ADDR_WIDTH(I)-1..0],
+							.we = we_node[I]
+						)
+						WITH (
+							OPERATION_MODE = CAM_SLICE_OP_MODE,
+							LOGICAL_CAM_NAME = CAM_SLICE_LOGICAL_NAME,
+							LOGICAL_CAM_DEPTH = INT_NUMWORDS,
+							LOGICAL_CAM_WIDTH = WIDTH,
+							ADDRESS_WIDTH = CAM_SLICE_ADDR_WIDTH(I),
+							WADDR_CLEAR = CAM_SLICE_WADDR_CLEAR,
+							WRITE_ENABLE_CLEAR = CAM_SLICE_WRENA_CLEAR,
+							WRITE_LOGIC_CLOCK = "none",	-- always unregistered
+							WRITE_LOGIC_CLEAR = "none",	-- always unregistered
+							OUTPUT_CLOCK = "none",
+							OUTPUT_CLEAR = "none",
+							INIT_FILE = CAM_SLICE_FILE,
+							INIT_FILEX = CAM_SLICE_FILEX,
+							FIRST_ADDRESS = SLICE_FIRST_ADDRESS(I),
+							LAST_ADDRESS = SLICE_LAST_ADDRESS(I),
+							FIRST_PATTERN_BIT = SLICE_FIRST_PATTERN_BIT(J),
+							PATTERN_WIDTH = SLICE_WIDTH(J, WIDTH)
+						)
+						RETURNS (
+							.matchout[CAM_SLICE_MATCHOUT_WIDTH-1..0]
+						);
+					END GENERATE;
+				END GENERATE;
+			ELSE GENERATE
+				IF (INT_MATCH_MODE == "FAST_MULTIPLE") GENERATE
+					FOR I IN 0 TO CAM_SLICE_NUM-1 GENERATE
+						FOR J IN 0 TO CAM_ROW_NUM-1 GENERATE
+							IF (!USED(mnext) & OUTPUT_REG == "OUTCLOCK") GENERATE	
+								(matchout_node[GET_LINEAR_INDEX_HIGH(I, J, CAM_SLICE_MATCHOUT_WIDTH)..
+											   GET_LINEAR_INDEX_LOW(I, J, CAM_SLICE_MATCHOUT_WIDTH)]) = 
+								mercury_cam_slice(
+									.lit[] = masked_pattern_node[GET_LINEAR_WIDTH_INDEX_HIGH(J)..
+														  		 GET_LINEAR_WIDTH_INDEX_LOW(J)],
+									.clk0 = clk0_node,
+									.clk1 = clk1_node,
+									.clr0 = clr0_node,
+									.clr1 = clr1_node,
+									.ena0 = ena0_node,
+									.ena1 = ena1_node,
+									.wrinvert = wrinvert_node,
+									.datain = datain_node,
+								  	.waddr[] = waddr_node[CAM_SLICE_ADDR_WIDTH(I)-1..0],
+									.we = we_node[I]
+								)
+								WITH (
+									OPERATION_MODE = CAM_SLICE_OP_MODE,
+									LOGICAL_CAM_NAME = CAM_SLICE_LOGICAL_NAME,
+									LOGICAL_CAM_DEPTH = INT_NUMWORDS,
+									LOGICAL_CAM_WIDTH = WIDTH,
+									ADDRESS_WIDTH = CAM_SLICE_ADDR_WIDTH(I),
+									WADDR_CLEAR = CAM_SLICE_WADDR_CLEAR,
+									WRITE_ENABLE_CLEAR = CAM_SLICE_WRENA_CLEAR,
+									WRITE_LOGIC_CLOCK = "none",	-- always unregistered
+									WRITE_LOGIC_CLEAR = "none",	-- always unregistered
+									OUTPUT_CLOCK = CAM_SLICE_REG_OUTCLK_SEL_NO_INTERN,
+									OUTPUT_CLEAR = CAM_SLICE_REG_CLR_SEL, 
+									INIT_FILE = CAM_SLICE_FILE,
+									INIT_FILEX = CAM_SLICE_FILEX,
+									FIRST_ADDRESS = SLICE_FIRST_ADDRESS(I),
+									LAST_ADDRESS = SLICE_LAST_ADDRESS(I),
+									FIRST_PATTERN_BIT = SLICE_FIRST_PATTERN_BIT(J),
+									PATTERN_WIDTH = SLICE_WIDTH(J, WIDTH)
+								)
+								RETURNS (
+									.matchout[CAM_SLICE_MATCHOUT_WIDTH-1..0]
+								);
+							ELSE GENERATE
+								(matchout_node[GET_LINEAR_INDEX_HIGH(I, J, CAM_SLICE_MATCHOUT_WIDTH)..
+											   GET_LINEAR_INDEX_LOW(I, J, CAM_SLICE_MATCHOUT_WIDTH)]) = 
+								mercury_cam_slice(
+									.lit[] = masked_pattern_node[GET_LINEAR_WIDTH_INDEX_HIGH(J)..
+														  		 GET_LINEAR_WIDTH_INDEX_LOW(J)],
+									.clk0 = clk0_node,
+									.clr0 = clr0_node,
+									.ena0 = ena0_node,
+									.wrinvert = wrinvert_node,
+									.datain = datain_node,
+								  	.waddr[] = waddr_node[CAM_SLICE_ADDR_WIDTH(I)-1..0],
+									.we = we_node[I]
+								)
+								WITH (
+									OPERATION_MODE = CAM_SLICE_OP_MODE,
+									LOGICAL_CAM_NAME = CAM_SLICE_LOGICAL_NAME,
+									LOGICAL_CAM_DEPTH = INT_NUMWORDS,
+									LOGICAL_CAM_WIDTH = WIDTH,
+									ADDRESS_WIDTH = CAM_SLICE_ADDR_WIDTH(I),
+									WADDR_CLEAR = CAM_SLICE_WADDR_CLEAR,
+									WRITE_ENABLE_CLEAR = CAM_SLICE_WRENA_CLEAR,
+									WRITE_LOGIC_CLOCK = "none",	-- always unregistered
+									WRITE_LOGIC_CLEAR = "none",	-- always unregistered
+									OUTPUT_CLOCK = !USED(mnext) & OUTPUT_REG == "INCLOCK" ? 
+												    "clock0" : "none",
+									OUTPUT_CLEAR = !USED(mnext) & OUTPUT_REG == "INCLOCK" ?
+													"clear0" : "none",
+									INIT_FILE = CAM_SLICE_FILE,
+									INIT_FILEX = CAM_SLICE_FILEX,
+									FIRST_ADDRESS = SLICE_FIRST_ADDRESS(I),
+									LAST_ADDRESS = SLICE_LAST_ADDRESS(I),
+									FIRST_PATTERN_BIT = SLICE_FIRST_PATTERN_BIT(J),
+									PATTERN_WIDTH = SLICE_WIDTH(J, WIDTH)
+								)
+								RETURNS (
+									.matchout[CAM_SLICE_MATCHOUT_WIDTH-1..0]
+								);
+							END GENERATE;
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+		
+	ELSE GENERATE
+		-- ============================================================ --
+		--				APEX CAM WYSIWYG declaraions/connections		--
+		-- ============================================================ --
+		IF (INT_MATCH_MODE == "SINGLE")	GENERATE
+			FOR I IN 0 TO CAM_SLICE_NUM-1 GENERATE		
+				FOR J IN 0 TO CAM_ROW_NUM-1 GENERATE
+					IF (OUTPUT_REG == "OUTCLOCK") GENERATE
+						(matchfound_node[I][J], matchout_node[GET_LINEAR_INDEX_HIGH(I, J, CAM_SLICE_MATCHOUT_WIDTH)..
+														  	  GET_LINEAR_INDEX_LOW(I, J, CAM_SLICE_MATCHOUT_WIDTH)]) = 
+						apex20ke_cam_slice(
+							.lit[] = masked_pattern_node[GET_LINEAR_WIDTH_INDEX_HIGH(J)..
+												  		 GET_LINEAR_WIDTH_INDEX_LOW(J)],
+							.clk0 = clk0_node,
+							.clk1 = clk1_node,
+							.clr0 = clr0_node,
+							.clr1 = clr1_node,
+							.ena0 = ena0_node,
+							.ena1 = ena1_node,
+							.wrinvert = wrinvert_node,
+							.datain = datain_node,
+						  	.waddr[] = waddr_node[CAM_SLICE_ADDR_WIDTH(I)-1..0],
+							.we = we_node[I]
+						)
+						WITH (
+							OPERATION_MODE = CAM_SLICE_OP_MODE,
+							LOGICAL_CAM_NAME = CAM_SLICE_LOGICAL_NAME,
+							LOGICAL_CAM_DEPTH = INT_NUMWORDS,
+							LOGICAL_CAM_WIDTH = WIDTH,
+							ADDRESS_WIDTH = CAM_SLICE_ADDR_WIDTH(I),
+							WADDR_CLEAR = CAM_SLICE_WADDR_CLEAR,
+							WRITE_ENABLE_CLEAR = CAM_SLICE_WRENA_CLEAR,
+							WRITE_LOGIC_CLOCK = "none",	-- always unregistered
+							WRITE_LOGIC_CLEAR = "none",	-- always unregistered
+							OUTPUT_CLOCK = CAM_SLICE_REG_OUTCLK_SEL_NO_INTERN,
+							OUTPUT_CLEAR = CAM_SLICE_REG_CLR_SEL,
+							INIT_FILE = CAM_SLICE_FILE,
+							INIT_FILEX = CAM_SLICE_FILEX,
+							FIRST_ADDRESS = SLICE_FIRST_ADDRESS(I),
+							LAST_ADDRESS = SLICE_LAST_ADDRESS(I),
+							FIRST_PATTERN_BIT = SLICE_FIRST_PATTERN_BIT(J),
+							PATTERN_WIDTH = SLICE_WIDTH(J, WIDTH)
+						)
+						RETURNS (
+							.matchfound,
+							.matchout[CAM_SLICE_MATCHOUT_WIDTH-1..0]
+						);
+					ELSE GENERATE	
+						(matchfound_node[I][J], matchout_node[GET_LINEAR_INDEX_HIGH(I, J, CAM_SLICE_MATCHOUT_WIDTH)..
+															  GET_LINEAR_INDEX_LOW(I, J, CAM_SLICE_MATCHOUT_WIDTH)]) = 
+							apex20ke_cam_slice(
+								.lit[] = masked_pattern_node[GET_LINEAR_WIDTH_INDEX_HIGH(J)..
+													  		 GET_LINEAR_WIDTH_INDEX_LOW(J)],
+								.clk0 = clk0_node,
+								.clr0 = clr0_node,
+								.ena0 = ena0_node,
+								.wrinvert = wrinvert_node,
+								.datain = datain_node,
+							  	.waddr[] = waddr_node[CAM_SLICE_ADDR_WIDTH(I)-1..0],
+								.we = we_node[I]
+							)
+							WITH (
+								OPERATION_MODE = CAM_SLICE_OP_MODE,
+								LOGICAL_CAM_NAME = CAM_SLICE_LOGICAL_NAME,
+								LOGICAL_CAM_DEPTH = INT_NUMWORDS,
+								LOGICAL_CAM_WIDTH = WIDTH,
+								ADDRESS_WIDTH = CAM_SLICE_ADDR_WIDTH(I),
+								WADDR_CLEAR = CAM_SLICE_WADDR_CLEAR,
+								WRITE_ENABLE_CLEAR = CAM_SLICE_WRENA_CLEAR,
+								WRITE_LOGIC_CLOCK = "none",	-- always unregistered
+								WRITE_LOGIC_CLEAR = "none",	-- always unregistered
+								OUTPUT_CLOCK = CAM_SLICE_REG_OUTCLK_SEL_NO_INTERN,
+								OUTPUT_CLEAR = (OUTPUT_REG == "INCLOCK" ? "clear0" : "none"),
+								INIT_FILE = CAM_SLICE_FILE,
+								INIT_FILEX = CAM_SLICE_FILEX,
+								FIRST_ADDRESS = SLICE_FIRST_ADDRESS(I),
+								LAST_ADDRESS = SLICE_LAST_ADDRESS(I),
+								FIRST_PATTERN_BIT = SLICE_FIRST_PATTERN_BIT(J),
+								PATTERN_WIDTH = SLICE_WIDTH(J, WIDTH)
+							)
+							RETURNS (
+								.matchfound,
+								.matchout[CAM_SLICE_MATCHOUT_WIDTH-1..0]
+							);
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+		ELSE GENERATE
+			IF (INT_MATCH_MODE == "MULTIPLE") GENERATE
+				FOR I IN 0 TO CAM_SLICE_NUM-1 GENERATE
+					FOR J IN 0 TO CAM_ROW_NUM-1 GENERATE
+						(matchout_node[GET_LINEAR_INDEX_HIGH(I, J, CAM_SLICE_MATCHOUT_WIDTH)..
+									   GET_LINEAR_INDEX_LOW(I, J, CAM_SLICE_MATCHOUT_WIDTH)]) = 
+						apex20ke_cam_slice(
+							.lit[] = masked_pattern_node[GET_LINEAR_WIDTH_INDEX_HIGH(J)..
+												  		 GET_LINEAR_WIDTH_INDEX_LOW(J)],
+							.clk0 = clk0_node,
+							.clr0 = clr0_node,
+							.ena0 = ena0_node,
+							.outputselect = outputselect_node,
+							.wrinvert = wrinvert_node,
+							.datain = datain_node,
+						  	.waddr[] = waddr_node[CAM_SLICE_ADDR_WIDTH(I)-1..0],
+							.we = we_node[I]
+						)
+						WITH (
+							OPERATION_MODE = CAM_SLICE_OP_MODE,
+							LOGICAL_CAM_NAME = CAM_SLICE_LOGICAL_NAME,
+							LOGICAL_CAM_DEPTH = INT_NUMWORDS,
+							LOGICAL_CAM_WIDTH = WIDTH,
+							ADDRESS_WIDTH = CAM_SLICE_ADDR_WIDTH(I),
+							WADDR_CLEAR = CAM_SLICE_WADDR_CLEAR,
+							WRITE_ENABLE_CLEAR = CAM_SLICE_WRENA_CLEAR,
+							WRITE_LOGIC_CLOCK = "none",	-- always unregistered
+							WRITE_LOGIC_CLEAR = "none",	-- always unregistered
+							OUTPUT_CLOCK = "none",
+							OUTPUT_CLEAR = "none",
+							INIT_FILE = CAM_SLICE_FILE,
+							INIT_FILEX = CAM_SLICE_FILEX,
+							FIRST_ADDRESS = SLICE_FIRST_ADDRESS(I),
+							LAST_ADDRESS = SLICE_LAST_ADDRESS(I),
+							FIRST_PATTERN_BIT = SLICE_FIRST_PATTERN_BIT(J),
+							PATTERN_WIDTH = SLICE_WIDTH(J, WIDTH)
+						)
+						RETURNS (
+							.matchout[CAM_SLICE_MATCHOUT_WIDTH-1..0]
+						);
+					END GENERATE;
+				END GENERATE;
+			ELSE GENERATE
+				IF (INT_MATCH_MODE == "FAST_MULTIPLE") GENERATE
+					FOR I IN 0 TO CAM_SLICE_NUM-1 GENERATE
+						FOR J IN 0 TO CAM_ROW_NUM-1 GENERATE
+							IF (!USED(mnext) & OUTPUT_REG == "OUTCLOCK") GENERATE	
+								(matchout_node[GET_LINEAR_INDEX_HIGH(I, J, CAM_SLICE_MATCHOUT_WIDTH)..
+											   GET_LINEAR_INDEX_LOW(I, J, CAM_SLICE_MATCHOUT_WIDTH)]) = 
+								apex20ke_cam_slice(
+									.lit[] = masked_pattern_node[GET_LINEAR_WIDTH_INDEX_HIGH(J)..
+														  		 GET_LINEAR_WIDTH_INDEX_LOW(J)],
+									.clk0 = clk0_node,
+									.clk1 = clk1_node,
+									.clr0 = clr0_node,
+									.clr1 = clr1_node,
+									.ena0 = ena0_node,
+									.ena1 = ena1_node,
+									.wrinvert = wrinvert_node,
+									.datain = datain_node,
+								  	.waddr[] = waddr_node[CAM_SLICE_ADDR_WIDTH(I)-1..0],
+									.we = we_node[I]
+								)
+								WITH (
+									OPERATION_MODE = CAM_SLICE_OP_MODE,
+									LOGICAL_CAM_NAME = CAM_SLICE_LOGICAL_NAME,
+									LOGICAL_CAM_DEPTH = INT_NUMWORDS,
+									LOGICAL_CAM_WIDTH = WIDTH,
+									ADDRESS_WIDTH = CAM_SLICE_ADDR_WIDTH(I),
+									WADDR_CLEAR = CAM_SLICE_WADDR_CLEAR,
+									WRITE_ENABLE_CLEAR = CAM_SLICE_WRENA_CLEAR,
+									WRITE_LOGIC_CLOCK = "none",	-- always unregistered
+									WRITE_LOGIC_CLEAR = "none",	-- always unregistered
+									OUTPUT_CLOCK = CAM_SLICE_REG_OUTCLK_SEL_NO_INTERN,
+									OUTPUT_CLEAR = CAM_SLICE_REG_CLR_SEL, 
+									INIT_FILE = CAM_SLICE_FILE,
+									INIT_FILEX = CAM_SLICE_FILEX,
+									FIRST_ADDRESS = SLICE_FIRST_ADDRESS(I),
+									LAST_ADDRESS = SLICE_LAST_ADDRESS(I),
+									FIRST_PATTERN_BIT = SLICE_FIRST_PATTERN_BIT(J),
+									PATTERN_WIDTH = SLICE_WIDTH(J, WIDTH)
+								)
+								RETURNS (
+									.matchout[CAM_SLICE_MATCHOUT_WIDTH-1..0]
+								);
+							ELSE GENERATE
+								(matchout_node[GET_LINEAR_INDEX_HIGH(I, J, CAM_SLICE_MATCHOUT_WIDTH)..
+											   GET_LINEAR_INDEX_LOW(I, J, CAM_SLICE_MATCHOUT_WIDTH)]) = 
+								apex20ke_cam_slice(
+									.lit[] = masked_pattern_node[GET_LINEAR_WIDTH_INDEX_HIGH(J)..
+														  		 GET_LINEAR_WIDTH_INDEX_LOW(J)],
+									.clk0 = clk0_node,
+									.clr0 = clr0_node,
+									.ena0 = ena0_node,
+									.wrinvert = wrinvert_node,
+									.datain = datain_node,
+								  	.waddr[] = waddr_node[CAM_SLICE_ADDR_WIDTH(I)-1..0],
+									.we = we_node[I]
+								)
+								WITH (
+									OPERATION_MODE = CAM_SLICE_OP_MODE,
+									LOGICAL_CAM_NAME = CAM_SLICE_LOGICAL_NAME,
+									LOGICAL_CAM_DEPTH = INT_NUMWORDS,
+									LOGICAL_CAM_WIDTH = WIDTH,
+									ADDRESS_WIDTH = CAM_SLICE_ADDR_WIDTH(I),
+									WADDR_CLEAR = CAM_SLICE_WADDR_CLEAR,
+									WRITE_ENABLE_CLEAR = CAM_SLICE_WRENA_CLEAR,
+									WRITE_LOGIC_CLOCK = "none",	-- always unregistered
+									WRITE_LOGIC_CLEAR = "none",	-- always unregistered
+									OUTPUT_CLOCK = !USED(mnext) & OUTPUT_REG == "INCLOCK" ? 
+												    "clock0" : "none",
+									OUTPUT_CLEAR = !USED(mnext) & OUTPUT_REG == "INCLOCK" ?
+													"clear0" : "none",
+									INIT_FILE = CAM_SLICE_FILE,
+									INIT_FILEX = CAM_SLICE_FILEX,
+									FIRST_ADDRESS = SLICE_FIRST_ADDRESS(I),
+									LAST_ADDRESS = SLICE_LAST_ADDRESS(I),
+									FIRST_PATTERN_BIT = SLICE_FIRST_PATTERN_BIT(J),
+									PATTERN_WIDTH = SLICE_WIDTH(J, WIDTH)
+								)
+								RETURNS (
+									.matchout[CAM_SLICE_MATCHOUT_WIDTH-1..0]
+								);
+							END GENERATE;
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;	
+	END GENERATE;
+
+	-- ================================================
+	-- 			Pattern Input and Write Logic
+	-- ================================================
+	-- Input pattern is (externally) registered if asked for
+ 	pattern_reg_node[] = pattern[];
+
+	IF (PATTERN_REG != "UNREGISTERED") GENERATE
+		pattern_reg_node[].(clk, ena) = (inclock, inclocken);
+	
+		IF (PATTERN_ACLR == "ON") GENERATE
+			pattern_reg_node[].clrn = !inaclr;
+		END GENERATE;
+	END GENERATE;
+	
+ 	-- If used, mask pattern is (externally) registered if asked for
+	IF USED(wrx) GENERATE
+		wrx_reg_node[] = wrx[];
+		ext_wrxused_reg_node = wrxused;
+
+		IF (WRX_REG != "UNREGISTERED") GENERATE
+			wrx_reg_node[].(clk, ena) = (inclock, inclocken);
+		
+			IF USED(wrxused) GENERATE
+				ext_wrxused_reg_node.(clk, ena) = (inclock, inclocken);
+			END GENERATE;
+			
+			IF (WRX_ACLR == "ON") GENERATE
+				wrx_reg_node[].clrn = !inaclr;
+				IF USED(wrxused) GENERATE
+					ext_wrxused_reg_node.clrn = !inaclr;
+				END GENERATE;			
+			END GENERATE;
+		END GENERATE;
+				
+		ext_wren_reg_node = wren;
+		ext_wren_reg_node.(clk, ena) = (inclock, inclocken);
+		IF (WRCONTROL_ACLR == "ON") GENERATE
+			ext_wren_reg_node.clrn = !inaclr;
+		END GENERATE;
+
+		masked_pattern_node[] = ((pattern_reg_node[] & !ormask & !ext_wrxused_reg_node) #
+			(((pattern_reg_node[] & !wrx_reg_node[] & !ormask) #
+			((pattern_reg_node[] # wrx_reg_node[]) & ormask)) & ext_wrxused_reg_node) & ext_wren_reg_node) #
+			 (pattern_reg_node[] & !ext_wren_reg_node);
+	ELSE GENERATE
+		masked_pattern_node[] = pattern_reg_node[];
+	END GENERATE;
+		
+	-- Write address 
+	IF (REQ_ADDRESS_WIDTH < CAM_SLICE_EFF_ADR_BITS) GENERATE
+		waddr_node[REQ_ADDRESS_WIDTH-1..0] = wraddress[REQ_ADDRESS_WIDTH-1..0];
+		waddr_node[CAM_SLICE_EFF_ADR_BITS-1..REQ_ADDRESS_WIDTH] = GND;
+	ELSE GENERATE
+		waddr_node[] = wraddress[CAM_SLICE_EFF_ADR_BITS-1..0];
+	END GENERATE;
+
+	-- Write enable(s)
+	IF (REQ_ADDRESS_WIDTH > CAM_SLICE_EFF_ADR_BITS) GENERATE
+		wen_decoder.data[] = wraddress[REQ_ADDRESS_WIDTH-1..CAM_SLICE_EFF_ADR_BITS];
+		wen_decoder.enable = wren;
+		we_node[CAM_SLICE_NUM-1..0] = wen_decoder.eq[CAM_SLICE_NUM-1..0];
+	ELSE GENERATE
+		we_node[] = wren;
+	END GENERATE;
+		
+	clk0_node = inclock;
+	ena0_node = inclocken;
+	IF (WRCONTROL_ACLR == "ON" # WRADDRESS_ACLR == "ON") GENERATE
+		clr0_node = inaclr;
+	ELSE GENERATE
+		clr0_node = GND;
+	END GENERATE;		
+	
+	-- The write state machine
+	IF (WRCONTROL_ACLR == "ON") GENERATE
+		wsm.(clk, reset, ena) = (inclock, inaclr, inclocken);
+	ELSE GENERATE
+		wsm.(clk, ena) = (inclock, inclocken);
+	END GENERATE;
+		
+	IF USED(wrx) GENERATE
+		IF USED(wrdelete) GENERATE
+		%	TABLE
+			-- CurSt  wren	wrxused   wdelete 	=> NxtSt  wrinvert  wrdata  wrb_node, passtru,    
+				wsm,  wren, wrxused,  wrdelete 	=>	wsm,  wrinvert, wrdata, wrb_node, ormask;
+				WS0,	0,  	X,		X		=>	WS0,		0,		0,		  0,	0;
+				WS0,	1,		0,		0		=>	WS1W,		0,		0,		  0,	0;
+				WS0,	1,		1,		0		=>	WS3W,		0,		0,		  0,	0;				
+				WS0,	1,		X,		1		=>	WS1D,		0,		0,		  0,	0;
+				WS1D,	0,		X,		X		=>	WS0,		0,		1,		  1,	0;
+				WS1D,	1,		X,		1		=>	WS2D,		0,		1,		  1,	0;
+				WS1D,	1,		0,		0		=>	WS1W,		0,		1,		  1,	0;
+				WS1D,	1,		1,		0		=>	WS3W,		0,		1,		  1,	0;
+				WS2D,	0,		X,		X		=>	WS0,		1,		1,		  0,	0;
+				WS2D,	1,		X,		1		=>	WS1D,		1,		1,		  0,	0;
+				WS2D,	1,		0,		0		=>	WS1W,		1,		1,		  0,	0;
+				WS2D,	1,		1,		0		=>	WS3W,		1,		1,		  0,	0;
+				WS1W,	0,		X,		X		=>	WS0,		0,		0,		  1,	0;
+				WS1W,	1,		X,		0		=>	WS2W,		0,		0,		  1,	0;
+				WS1W,	1,		X,		1		=>	WS1D,		0,		0,		  1,	0;
+				WS2W,	0,		X,		X		=>	WS0,		1,		1,		  0,	0;
+				WS2W,	1,		0,		0		=>	WS1W,		1,		1,		  0,	0;
+				WS2W,	1,		1,		0		=>	WS3W,		1,		1,		  0,	0;
+				WS2W,	1,		X,		1		=>	WS1D,		1,		1,		  0,	0;
+				WS3W,	0,		X,		X		=>	WS0,		0,		0,		  1,	0;
+				WS3W,	1,		X,		0		=>	WS4W,		0,		0,		  1,	0;
+				WS3W,	1,		X,		1		=>	WS1D,		0,		0,		  1,	0;
+				WS4W,	0,		X,		X		=>	WS0,		1,		1,		  1,	0;
+				WS4W,	1,		X,		0		=>	WS5W,		1,		1,		  1,	0;
+				WS4W,	1,		X,		1		=>	WS1D,		1,		1,		  1,	0;
+				WS5W,	0,		X,		X		=>	WS0,		0,		0,		  0,	1;
+				WS5W,	1,		1,		0		=>	WS3W,		0,		0,		  0,	1;
+				WS5W,	1,		0,		0		=>	WS1W,		0,		0,		  0,	1;
+				WS5W,	1,		0,		1		=>	WS1D,		0,		0,		  0,	1;
+			END TABLE;
+			
+			%TABLE
+			-- CurSt  wren	wrxused   wdelete 	=> NxtSt  wrinvert  wrdata  wrb_node, passtru,    
+				wsm,  wren, wrxused,  wrdelete 	=>	wsm;--,  wrinvert, wrdata, wrb_node, ormask;
+				WS0,	0,  	X,		X		=>	WS0;--,			0,		0,		  0,	0;
+				WS0,	1,		0,		0		=>	WS1W;--,		0,		0,		  0,	0;
+				WS0,	1,		1,		0		=>	WS3W;--,		0,		0,		  0,	0;
+				WS0,	1,		X,		1		=>	WS1D;--,		0,		0,		  0,	0;
+				WS1D,	0,		X,		X		=>	WS0;--,			0,		1,		  1,	0;
+				WS1D,	1,		X,		1		=>	WS2D;--,	  	0,		1,		  1,	0;
+				WS1D,	1,		0,		0		=>	WS1W;--,		0,		1,		  1,	0;
+				WS1D,	1,		1,		0		=>	WS3W;--,		0,		1,		  1,	0;
+				WS2D,	0,		X,		X		=>	WS0;--,			1,		1,		  0,	0;
+				WS2D,	1,		X,		1		=>	WS1D;--,		1,		1,		  0,	0;
+				WS2D,	1,		0,		0		=>	WS1W;--,		1,		1,		  0,	0;
+				WS2D,	1,		1,		0		=>	WS3W;--,		1,		1,		  0,	0;
+				WS1W,	0,		X,		X		=>	WS0;--,			0,		0,		  1,	0;
+				WS1W,	1,		X,		0		=>	WS2W;--,		0,		0,		  1,	0;
+				WS1W,	1,		X,		1		=>	WS1D;--,		0,		0,		  1,	0;
+				WS2W,	0,		X,		X		=>	WS0;--,			1,		1,		  0,	0;
+				WS2W,	1,		0,		0		=>	WS1W;--,		1,		1,		  0,	0;
+				WS2W,	1,		1,		0		=>	WS3W;--,		1,		1,		  0,	0;
+				WS2W,	1,		X,		1		=>	WS1D;--,		1,		1,		  0,	0;
+				WS3W,	0,		X,		X		=>	WS0;--,			0,		0,		  1,	0;
+				WS3W,	1,		X,		0		=>	WS4W;--,		0,		0,		  1,	0;
+				WS3W,	1,		X,		1		=>	WS1D;--,		0,		0,		  1,	0;
+				WS4W,	0,		X,		X		=>	WS0;--,			1,		1,		  1,	0;
+				WS4W,	1,		X,		0		=>	WS5W;--,		1,		1,		  1,	0;
+				WS4W,	1,		X,		1		=>	WS1D;--,		1,		1,		  1,	0;
+				WS5W,	0,		X,		X		=>	WS0;--,			0,		0,		  0,	1;
+				WS5W,	1,		1,		0		=>	WS3W;--,		0,		0,		  0,	1;
+				WS5W,	1,		0,		0		=>	WS1W;--,		0,		0,		  0,	1;
+				WS5W,	1,		X,		1		=>	WS1D;--,		0,		0,		  0,	1;
+			END TABLE;
+			
+			
+			wrinvert = WS2D # WS2W # WS4W;
+			wrdata = WS1D # WS2D # WS2W # WS4W;
+			wrb_node = WS1D # WS1W # WS3W # WS4W;
+			ormask = WS5W;
+			
+		ELSE GENERATE
+			IF USED(wrxused) GENERATE
+				TABLE
+				-- CurSt  wren	wrxused	=> NxtSt  wrinvert  wrdata  wrb_node, passtru,    
+					wsm,  wren, wrxused	=>	wsm;--,  wrinvert, wrdata, wrb_node, ormask;
+					WS0,	0,  	X	=>	WS0;--,		0,		0,		  0,	0;
+					WS0,	1,		0	=>	WS1W;--,	0,		0,		  0,	0;
+					WS0,	1,		1	=>	WS3W;--,	0,		0,		  0,	0;
+					WS1W,	0,		X	=>	WS0;--,		0,		0,		  1,	0;
+					WS1W,	1,		X	=>	WS2W;--,	0,		0,		  1,	0;
+					WS2W,	0,		X	=>	WS0;--,		1,		1,		  0,	0;
+					WS2W,	1,		0	=>	WS1W;--,	1,		1,		  0,	0;
+					WS2W,	1,		1	=>	WS3W;--,	1,		1,		  0,	0;
+					WS3W,	0,		X	=>	WS0;--,		0,		0,		  1,	0;
+					WS3W,	1,		X	=>	WS4W;--,	0,		0,		  1,	0;
+					WS4W,	0,		X	=>	WS0;--,		1,		1,		  1,	0;
+					WS4W,	1,		X	=>	WS5W;--,	1,		1,		  1,	0;
+					WS5W,	0,		X	=>	WS0;--,		0,		0,		  0,	1;
+					WS5W,	1,		1	=>	WS3W;--,	0,		0,		  0,	1;
+					WS5W,	1,		0	=>	WS1W;--,	0,		0,		  0,	1;
+				END TABLE;
+
+				wrinvert = WS2W # WS4W;
+				wrdata = WS2W # WS4W;
+				wrb_node = WS1W # WS3W # WS4W;
+				ormask = WS5W;
+				
+			ELSE GENERATE
+				TABLE
+				-- CurSt  wren	=> NxtSt  wrinvert  wrdata  wrb_node, passtru,    
+					wsm,  wren =>	wsm;--,  wrinvert, wrdata, wrb_node, ormask;
+					WS0,	0	=>	WS0;--,		0,		0,		  0,	0;
+					WS0,	1	=>	WS1W;--,	0,		0,		  0,	0;
+					WS1W,	0	=>	WS0;--,		0,		0,		  1,	0;
+					WS1W,	1	=>	WS2W;--,	0,		0,		  1,	0;
+					WS2W,	0	=>	WS0;--,		1,		1,		  1,	0;
+					WS2W,	1	=>	WS3W;--,	1,		1,		  1,	0;
+					WS3W,	0	=>	WS0;--,		0,		0,		  0,	1;
+					WS3W,	1	=>	WS1W;--,	0,		0,		  0,	1;
+				END TABLE;			
+
+				wrinvert = WS2W;
+				wrdata = WS2W;
+				wrb_node = WS1W # WS2W;
+				ormask = WS3W;
+
+			END GENERATE;
+		END GENERATE;
+	ELSE GENERATE
+		IF USED(wrdelete) GENERATE
+			TABLE
+			-- CurSt  wren	wdelete 	=> NxtSt 	wrinvert  wrdata  wrb_node
+				wsm,  wren, wrdelete 	=>	wsm;--, 	wrinvert, wrdata, wrb_node;
+				WS0,	0,  	X		=>	WS0;--,		0,		0,		  0;
+				WS0,	1,		0		=>	WS1W;--,	0,		0,		  0;
+				WS0,	1,		1		=>	WS1D;--,	0,		0,		  0;
+				WS1D,	0,		X		=>	WS0;--,		0,		1,		  1;
+				WS1D,	1,		1		=>	WS2;--,		0,		1,		  1;
+				WS1D,	1,		0		=>	WS1W;--,	0,		1,		  1;
+				WS1W,	0,		X		=>	WS0;--,		0,		0,		  1;
+				WS1W,	1,		0		=>	WS2;--,		0,		0,		  1;
+				WS1W,	1,		1		=>	WS1D;--,	0,		0,		  1;
+				WS2,	0,		X		=>	WS0;--,		1,		1,		  0;
+				WS2,	1,		0		=>	WS1W;--,	1,		1,		  0;
+				WS2,	1,		1		=>	WS1D;--,	1,		1,		  0;
+			END TABLE;
+
+			wrinvert = WS2;
+			wrdata = WS1D # WS2;
+			wrb_node = WS1D # WS1W;
+		ELSE GENERATE
+			TABLE
+			-- CurSt  wren	=> NxtSt 	wrinvert  wrdata  wrb_node
+				wsm,  wren	=>	wsm;--, 	wrinvert, wrdata, wrb_node;
+				WS0,	0  	=>	WS0;--,		0,		0,		  0;
+				WS0,	1	=>	WS1W;--,	0,		0,		  0;
+				WS1W,	0	=>	WS0;--,		0,		0,		  1;
+				WS1W,	1	=>	WS2;--,		0,		0,		  1;
+				WS2,	0	=>	WS0;--,		1,		1,		  0;
+				WS2,	1	=>	WS1W;--,	1,		1,		  0;
+			END TABLE;
+
+			wrinvert = WS2;
+			wrdata = WS2;
+			wrb_node = WS1W;
+		END GENERATE;
+	END GENERATE;
+
+	wrinvert_node = wrinvert;
+	datain_node = wrdata;
+	wrbusy = wrb_node;
+				
+	-- ================================================
+	-- 				Single Match Mode
+	-- ================================================
+	IF (INT_MATCH_MODE == "SINGLE")	GENERATE			
+		IF (CAM_SLICE_NUM > 1) GENERATE
+			--------------------------
+			--   mfound generation
+			--------------------------
+			-- Generate mfound by ORing all slice match flags
+			mfound_reg_node = lpm_or (.data[CAM_SLICE_NUM-1..0][0] = 
+										matchfound_node[CAM_SLICE_NUM-1..0][0])
+								WITH (LPM_WIDTH = 1, LPM_SIZE = CAM_SLICE_NUM) 
+								RETURNS (.result[]);
+
+			-- Generate the match address from slice match addresses. Only
+			-- address of the slice with asserted match flag will be output
+			IF (REQ_ADDRESS_WIDTH <= CAM_SLICE_EFF_ADR_BITS) GENERATE
+				FOR K IN 0 TO REQ_ADDRESS_WIDTH-1 GENERATE
+					maddress_reg_node[K] = matchfound_node[0][0] &
+							matchout_node[GET_LINEAR_INDEX(0, 0, K, CAM_SLICE_MATCHOUT_WIDTH)];
+				END GENERATE;
+			ELSE GENERATE
+				FOR K IN 0 TO CAM_SLICE_MATCHOUT_WIDTH-1 GENERATE
+					address_node[K][0] = matchfound_node[0][0] &
+										 matchout_node[GET_LINEAR_INDEX(0, 0, K, CAM_SLICE_MATCHOUT_WIDTH)];
+
+					IF (CAM_SLICE_NUM > 1) GENERATE
+						FOR I IN 1 TO CAM_SLICE_NUM-1 GENERATE
+							IF (I MOD 2 == 1) GENERATE
+								address_node[K][I] = (matchfound_node[I][0] &
+													  matchout_node[GET_LINEAR_INDEX(I, 0, K, CAM_SLICE_MATCHOUT_WIDTH)]) #
+													  address_node[K][I-1];
+							ELSE GENERATE
+								address_node[K][I] = (matchfound_node[I][0] &
+													   matchout_node[GET_LINEAR_INDEX(I, 0, K, CAM_SLICE_MATCHOUT_WIDTH)]) # 
+													   address_node[K][I-1];
+							END GENERATE;
+						END GENERATE;			
+					END GENERATE;
+
+					maddress_reg_node[K] = address_node[K][CAM_SLICE_NUM-1];
+				END GENERATE;
+
+				mfounds_encoder.d[CAM_SLICE_NUM-1..0] = matchfound_node[][0];
+				maddress_reg_node[REQ_ADDRESS_WIDTH-1..CAM_SLICE_EFF_ADR_BITS] = mfounds_encoder.q[];
+			END GENERATE;
+		ELSE GENERATE
+			FOR K IN 0 TO REQ_ADDRESS_WIDTH-1 GENERATE
+				maddress_reg_node[K] = matchout_node[GET_LINEAR_INDEX(0, 0, K, CAM_SLICE_MATCHOUT_WIDTH)];
+			END GENERATE;
+												
+			mfound_reg_node = matchfound_node[0][0];
+		END GENERATE;
+		
+		mfound = mfound_reg_node; 
+		maddress[REQ_ADDRESS_WIDTH-1..0] = maddress_reg_node[];
+		IF (WIDTHAD > REQ_ADDRESS_WIDTH) GENERATE 
+			maddress[WIDTHAD-1..REQ_ADDRESS_WIDTH] = GND;
+		END GENERATE;
+	
+		----------------------
+		-- mcount generation
+		----------------------
+		mcount_reg_node[0] = mfound_reg_node;
+		mcount[0] = mcount_reg_node[0];
+
+		IF (WIDTHAD > 1) GENERATE
+			mcount[WIDTHAD-1..1] = GND;
+		END GENERATE;
+
+		-------------------------
+		-- mbits generation
+		-------------------------
+		IF USED(mbits) GENERATE
+			-- Generate mbits by decoding the encoded match address
+			mbits_decoder.data[] = maddress_reg_node[];
+ 			mbits_decoder.enable = mfound_reg_node;
+ 			mbits_reg_node[] = mbits_decoder.eq[INT_NUMWORDS-1..0];		
+			mbits[] = mbits_reg_node[];
+		ELSE GENERATE
+			mbits[] = GND;
+		END GENERATE;
+
+		-- In this mode rdbusy is always Low
+		rdbusy = GND;
+		
+	 	IF (OUTPUT_REG == "OUTCLOCK") GENERATE
+			clk1_node = outclock;
+			ena1_node = outclocken;
+	
+			IF (OUTPUT_ACLR == "ON") GENERATE
+				clr1_node = outaclr;
+			ELSE GENERATE
+				clr1_node = GND;
+			END GENERATE;
+		END GENERATE;
+	ELSE GENERATE
+		-- ================================================
+		-- 			Multi-Match Modes
+		-- ================================================
+		-- Generate the decoded match flags by AND-combining corresponding
+		-- bits from each flag position
+		FOR I IN 0 TO CAM_SLICE_NUM-1 GENERATE
+			FOR J IN 0 TO CAM_ROW_NUM-1 GENERATE
+				FOR K IN 0 TO CAM_SLICE_MATCHOUT_WIDTH-1 GENERATE				
+					2D_flag_ander.data[J][CAM_SLICE_MATCHOUT_WIDTH*I + K] =
+							matchout_node[GET_LINEAR_INDEX(I, J, K, CAM_SLICE_MATCHOUT_WIDTH)]; 
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+				
+		mstart_node = mstart;	
+		mnext_node = mnext & mnext_gate;
+
+		-- Connect the MSB bits of each slice to the LSB of waddress for even/odd
+		-- switching in the unencoded-32 case
+		IF (INT_MATCH_MODE == "MULTIPLE") GENERATE
+			---------------------------------------------------
+			-- 			Compact Multi-Match Mode
+			---------------------------------------------------
+			-- The read state machine
+			rsm.(clk, reset, ena) = (inclock, inaclr, inclocken);
+
+			TABLE
+			-- CurSt wren  mstart_node => NxtSt rdmux  even_ena odd_ena rdb_node, mstart_load, mnext_gate, mfound_gate
+				rsm, wren, mstart_node 	=> rsm, % rdmux, even_ena, odd_ena, rdb_node, %mstart_load%, mnext_gate, mfound_gate%;
+				RS0,  1,		X		=> RS0,	%	0,		0,		0,		0,		%0%,		0,	0%;
+				RS0,  0,		0		=> RS0,	%	0,		0,		0,		0,		%0%,		0,	0%;
+				RS0,  0,		1		=> RS1,	%	0,		0,		0,		0,		%1%,		0,	0%;
+				RS1,  1,		X		=> RS0,	%	0,		1,		0,		1,		%0%,		1,	0%;
+				RS1,  0,		0 		=> RS2,	%	0,		1,		0,		1,		%0%,		1,	0%;
+				RS1,  0,		1 		=> RS3,	%	0,		1,		0,		1,		%0%,		1,	0%;
+				RS2,  1,		X 		=> RS0,	%	1,		0,		1,		0,		%0%,		1,	1%;
+				RS2,  0,		0		=> RS5, %	1,		0,		1,		0,		%0%,		1,	1%;
+				RS2,  0,		1 		=> RS1,	%	1,		0,		1,		0,		%1%,		1,	1%;
+				RS3,  1,		X 		=> RS0,	%	1,		0,		1,		0,		%0%,		1,	1%;
+				RS3,  0,		0 		=> RS5,	%	1,		0,		1,		0,		%0%,		1,	1%;
+				RS3,  0,		1 		=> RS4,	%	1,		0,		1,		0,		%0%,		1,	1%;
+				RS4,  1,		X 		=> RS0,	%	1,		0,		0,		0,		%0%,		1,	1%;
+				RS4,  0,		0 		=> RS5,	%	1,		0,		0,		0,		%0%,		1,	1%;
+				RS4,  0,		1 		=> RS4,	%	1,		0,		0,		0,		%0%,		1,	1%;
+				RS5,  1,		X 		=> RS0,	%	1,		0,		0,		0,		%0%,		1,	1%;
+				RS5,  0,		0 		=> RS5,	%	1,		0,		0,		0,		%0%,		1,	1%;
+				RS5,  0,		1 		=> RS1,	%	1,		0,		0,		0,		%1%,		1,	1%;
+			END TABLE;
+		
+		
+			outputselect_node = (wren_node & !wrdelete_node & wraddress0_node) # 
+								(wren_node & wrdelete_node & (wraddress0_node !$ wrinvert_node)) #
+								(!wren_node & rdmux);
+					
+			rdmux = RS2 # RS3 # RS4 #RS5;			
+			even_ena = RS1;
+			odd_ena = RS2 # RS3;
+			rdb_node = RS1;
+			mnext_gate = RS1 # RS2 # RS3 # RS4 # RS5;
+			mfound_gate = RS2 # RS3 # RS4 #RS5;
+			
+			IF USED(wren) GENERATE
+				wren_node.(d, clk, clrn, ena) = (wren, inclock, !inaclr, inclocken);
+			ELSE GENERATE
+				wren_node = GND;
+			END GENERATE;
+			
+			IF USED(wrdelete) GENERATE
+				wrdelete_node.(d, clk, clrn, ena) = (wrdelete, inclock, !inaclr, inclocken);
+			ELSE GENERATE
+				wrdelete_node = GND;
+			END GENERATE;
+			
+			wraddress0_node.(d, clk, clrn, ena) = (wraddress[0], inclock, !inaclr, inclocken);
+			rdbusy = rdb_node;
+				
+			IF (PATTERN_ACLR == "ON") GENERATE
+				mflag_regs_even[].clrn = !inaclr;
+				
+				IF (REGISTER_ODD_MATCH == "ON") GENERATE
+					mflag_regs_odd[].clrn = !inaclr;
+				END GENERATE;
+			END GENERATE;
+			
+			FOR I IN 0 TO INT_NUMWORDS-1 GENERATE
+				IF (I MOD 2 == 0) GENERATE
+					mflag_regs_even[FLOOR_INT_HALF(I)] = 2D_flag_ander.result[FLOOR_INT_HALF(I)];
+					mbits_unreg_node[I] = mflag_regs_even[FLOOR_INT_HALF(I)];
+
+					mflag_regs_even[FLOOR_INT_HALF(I)].(clk, ena) = (inclock, even_ena & inclocken);
+				ELSE GENERATE
+					mflag_regs_odd[FLOOR_INT_HALF(I)] = 2D_flag_ander.result[FLOOR_INT_HALF(I)];	
+					mbits_unreg_node[I] = mflag_regs_odd[FLOOR_INT_HALF(I)];
+
+					IF (REGISTER_ODD_MATCH == "ON") GENERATE 
+						mflag_regs_odd[FLOOR_INT_HALF(I)].(clk, ena) = (inclock, odd_ena & inclocken);
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+
+		ELSE GENERATE
+			IF (INT_MATCH_MODE == "FAST_MULTIPLE") GENERATE
+				---------------------------------------------------
+				-- 			Fast Multi-Match Mode
+				---------------------------------------------------			
+				mbits_unreg_node[] = 2D_flag_ander.result[INT_NUMWORDS-1..0];
+				rdbusy = GND;
+
+				IF USED(mnext) GENERATE			
+					-- The read state machine
+					rsm.(clk, reset, ena) = (inclock, inaclr, inclocken);
+
+					TABLE
+					-- CurSt wren  mstart mnext => NxtSt mstart_load, mnext_gate, mfound_gate
+						rsm, wren, mstart_node 	=> rsm,  mstart_load;--, mnext_gate, mfound_gate;
+						RS0,  1,		X		=> RS0,		0;--,		0,		0;
+						RS0,  0,		0		=> RS0,		0;--,		0,		0;
+						RS0,  0,		1		=> RS1,		1;--,		0,		0;
+						RS1,  1,		X		=> RS0,		0;--,		1,		1;
+						RS1,  0,		0 		=> RS2,		0;--,		1,		1;
+						RS1,  0,		1 		=> RS3,		0;--,		1,		1;
+						RS2,  1,		X 		=> RS0,		0;--,		1,		1;
+						RS2,  0,		0 		=> RS2,		0;--,		1,		1;
+						RS2,  0,		1 		=> RS1,		1;--,		1,		1;
+						RS3,  1,		X 		=> RS0,		0;--,		1,		1;
+						RS3,  0,		0 		=> RS2,		0;--,		1,		1;
+						RS3,  0,		1 		=> RS3,		0;--,		1,		1;
+					END TABLE;
+					
+					mnext_gate = RS1 # RS2 # RS3;
+					mfound_gate = RS1 # RS2 # RS3;
+				ELSE GENERATE
+					mfound_gate = VCC;
+					mnext_gate = VCC;	
+				END GENERATE;
+				
+		 		IF (OUTPUT_REG == "OUTCLOCK") GENERATE
+					clk1_node = outclock;
+					ena1_node = outclocken;
+	
+					IF (OUTPUT_ACLR == "ON") GENERATE
+						clr1_node = outaclr;
+					ELSE GENERATE
+						clr1_node = GND;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+
+		-------------------------
+		-- maddress generation
+		-------------------------
+		IF USED(maddress) GENERATE
+			IF USED(mnext) GENERATE
+				IF USE_WYSIWYG == "OFF" GENERATE
+					csb[0].sin = !mstart_load;
+					csb[0].cin = !mstart_load & bar_decoded_nodes[0];
+			
+					IF (INT_NUMWORDS > 1) GENERATE
+						FOR I IN 1 TO INT_NUMWORDS-1 GENERATE
+							IF (NO_CARRY_BREAK(I) == 1) GENERATE
+								csb_carry_node[I] = csb[I-1].cout;
+							ELSE GENERATE
+								-- Break the carry chain by inserting an LCELL
+								-- when exceeding the chain-length limit
+								csb_carry_node[I] = CARRY_SUM(GND, CARRY_SUM(csb[I-1].cout, csb[I-1].cout) 
+																				RETURNS (.sout)) RETURNS (.cout); 
+							END GENERATE;
+			
+							csb[I].sin = !mstart_load & !(bar_decoded_nodes[I] & csb_carry_node[I]);
+							csb[I].cin = !mstart_load & (bar_decoded_nodes[I] # csb_carry_node[I]);
+						END GENERATE;
+					END GENERATE;
+			
+					bar_decoded_nodes[] = !csb_reg[].q & mbits_unreg_node[] & mfound_gate;
+					csb_reg[].clk = inclock;
+					csb_reg[].ena = (mnext_node # mstart_load) & inclocken;
+					csb_reg[].d = csb[].sout;
+
+					IF (PATTERN_ACLR == "ON") GENERATE	
+						csb_reg[].clrn = !inaclr;
+					END GENERATE;
+				ELSE GENERATE
+					-- this is the wysiwyg version
+					cam_encoder.data[] =  bar_decoded_nodes[];
+					cam_encoder.mstart_load = mstart_load;
+					cam_encoder.clk = inclock;	
+					cam_encoder.ena = (mnext_node # mstart_load) & inclocken;
+					bar_decoded_nodes[] = !cam_encoder.result[] & mbits_unreg_node[] & mfound_gate;
+
+					IF (PATTERN_ACLR == "ON") GENERATE	
+						cam_encoder.aclr = inaclr;
+					END GENERATE;
+				END GENERATE;
+
+				priority_encoder.d[INT_NUMWORDS-1..0] = bar_decoded_nodes[INT_NUMWORDS-1..0];
+				mfound_reg_node = !priority_encoder.zero;
+			ELSE GENERATE
+				priority_encoder.d[INT_NUMWORDS-1..0] = mbits_unreg_node[INT_NUMWORDS-1..0];			
+				mfound_reg_node = !priority_encoder.zero & mfound_gate;
+			END GENERATE;
+			
+			maddress_reg_node[] = priority_encoder.q[];
+			maddress[REQ_ADDRESS_WIDTH-1..0] = maddress_reg_node[];
+			IF (WIDTHAD > REQ_ADDRESS_WIDTH) GENERATE 
+				maddress[WIDTHAD-1..REQ_ADDRESS_WIDTH] = GND;
+			END GENERATE;
+
+			-- Output clock/enable/clear registers
+			IF (OUTPUT_REG != "UNREGISTERED" & (USE_INTERNAL_OUTPUT_REGS() == 0)) GENERATE
+				maddress_reg_node[].(clk, clrn, ena) = (out_clock, out_aclr, out_clocken);
+			END GENERATE;
+		ELSE GENERATE
+			match_flags_orer.data[][0] = mbits_unreg_node[INT_NUMWORDS-1..0];
+			mfound_reg_node = match_flags_orer.result[0];
+			maddress_reg_node[] = GND;
+		END GENERATE;
+
+		------------------------
+		-- mbits generation
+		------------------------
+		mbits_reg_node[] = mbits_unreg_node[];
+		mbits[] = mbits_reg_node[];
+	
+		-- Output clock/enable/clear registers
+		IF (OUTPUT_REG != "UNREGISTERED" & (USE_INTERNAL_OUTPUT_REGS() == 0)) GENERATE
+			mbits_reg_node[].(clk, clrn, ena) = (out_clock, out_aclr, out_clocken);
+		END GENERATE;
+
+		------------------------
+		-- mfound generation
+		------------------------
+		mfound = mfound_reg_node;
+	
+		-- Output clock/enable/clear registers
+		IF (OUTPUT_REG != "UNREGISTERED" & (USE_INTERNAL_OUTPUT_REGS() == 0)) GENERATE
+			mfound_reg_node.(clk, clrn, ena) = (out_clock, out_aclr, out_clocken);
+		END GENERATE;
+
+		-----------------------
+		-- mcount generation
+		----------------------
+		IF USED(mcount) GENERATE
+			mcount_par_adder.data[][0] = mbits_unreg_node[];
+			mcount_reg_node[REQ_ADDRESS_WIDTH-1..0] = mcount_par_adder.result[];
+
+			IF (WIDTHAD > REQ_ADDRESS_WIDTH) GENERATE
+				mcount[WIDTHAD-1..REQ_ADDRESS_WIDTH] = GND;
+			END GENERATE;
+	
+			-- Output clock/enable/clear registers
+			IF (OUTPUT_REG != "UNREGISTERED" & (USE_INTERNAL_OUTPUT_REGS() == 0)) GENERATE
+				mcount_reg_node[].(clk, clrn, ena) = (out_clock, out_aclr, out_clocken);
+			END GENERATE;
+
+			mcount[] = mcount_reg_node[];
+		ELSE GENERATE
+			mcount[] = GND;
+		END GENERATE;
+
+		-- Registering outputs of the cam slices with outclock, if asked so
+		IF (OUTPUT_REG != "UNREGISTERED" & (USE_INTERNAL_OUTPUT_REGS() == 0)) GENERATE
+			IF (OUTPUT_REG == "INCLOCK") GENERATE
+				out_clock = inclock;
+				out_clocken = inclocken;
+			
+				IF (OUTPUT_ACLR == "ON") GENERATE
+					out_aclr = !inaclr;
+				ELSE GENERATE
+					out_aclr = VCC;
+				END GENERATE;
+			ELSE GENERATE
+				IF (OUTPUT_REG == "OUTCLOCK") GENERATE
+					out_clock = outclock;
+					out_clocken = outclocken;
+				
+					IF (OUTPUT_ACLR == "ON") GENERATE
+						out_aclr = !outaclr;
+					ELSE GENERATE
+						out_aclr = VCC;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;	
+
+	IF !USED(mbits) GENERATE
+		mbits[] = GND;
+	END GENERATE;
+	IF !USED(rdbusy) GENERATE
+		rdbusy = GND;
+	END GENERATE;
+	IF !USED(maddress) GENERATE
+		maddress[] = GND;
+	END GENERATE;
+	IF !USED(wrbusy) GENERATE
+		wrbusy = GND;
+	END GENERATE;
+	IF !USED(mfound) GENERATE
+		mfound = GND;
+	END GENERATE;
+	IF !USED(mcount) GENERATE
+		mcount[] = GND;
+	END GENERATE;
+END;
+			

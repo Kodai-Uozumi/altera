@@ -1,0 +1,20 @@
+# Add ::quartus::verify_ddr to the table of packages
+lappend quartus(package_table) {verify_ddr quartus_sta hidden}
+
+if {[lsearch -exact [list quartus quartus_sta] $quartus(nameofexecutable)] != -1} {
+
+    # Make ::quartus::verify_ddr available to load
+    set qpkg_script_auto [file join [file dirname [info script]] verify_ddr.tcl]
+    if {[file exist $qpkg_script_auto]} {
+       source $qpkg_script_auto
+    }
+    unset qpkg_script_auto
+
+}
+
+if {[lsearch -exact [list quartus] $quartus(nameofexecutable)] != -1} {
+
+    # Load ::quartus::verify_ddr by default
+    package require ::quartus::verify_ddr
+
+}

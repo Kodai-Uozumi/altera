@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<!-- system.h_DEFINE_LIST_output.gtf
+         This "subroutine" generates defines (for system.h) text from a list.
+
+     Inputs:
+       DEFINE_LIST - a list of lists (one list for each define);
+                     each list has three items:
+                        - the name of the define
+                        - the value of the define
+                        - "yes" or "no" - unless "no", put double-quotes around the value
+-->
+
+<generate_set>
+
+    <for_each variable="DEFINE" list="%DEFINE_LIST%">
+        <set_variable variable="DEFINE_NAME" to="uppercase( list_get( %DEFINE%, 0 ) )"/>
+        <set_variable variable="DEFINE_VALUE" to="list_get( %DEFINE%, 1 )"/>
+        <set_variable variable="DEFINE_QUOTE" to="list_get( %DEFINE%, 2 )"/>
+        <if condition="ne( no, %DEFINE_QUOTE% )"> <!-- default to "yes" -->
+            <set_variable variable="DEFINE_VALUE" to='"%DEFINE_VALUE%"'/>
+        </if>
+        <text>
+#define %DEFINE_NAME% %DEFINE_VALUE%
+        </text>
+    </for_each>
+
+</generate_set>

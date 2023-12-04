@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<ROOT>
+
+	<!-- parameters -->
+	<PARAMETER_RULES>
+		<PARAMETER NAME="WIDTH_IN">
+			<FORCE_RANGE MAX="WIDTH_OUT" MIN="1" />
+		</PARAMETER>
+		<PARAMETER NAME="LPM_REPRESENTATION">
+			<FORCE_VALUE TO="UNUSED" WHEN="used(sign_data)" />
+		</PARAMETER>
+	</PARAMETER_RULES>
+
+	<PORT_RULES>
+		<!-- data is the data input, and must always be used -->
+		<PORT NAME="data" USAGE="USED" />
+		<PORT NAME="sign_data" USAGE="VARIABLE" />
+		<PORT NAME="clock" IS_CLOCK_PORT="TRUE" USAGE="USED" />
+		<!-- optional output ports -->
+		<PORT NAME="cout" USAGE="VARIABLE" />
+	</PORT_RULES>
+</ROOT>

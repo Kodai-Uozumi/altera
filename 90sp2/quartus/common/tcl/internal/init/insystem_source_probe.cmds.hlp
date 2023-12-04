@@ -1,0 +1,359 @@
+<<<<versions>>>>
+1.0
+<<<</versions>>>>
+<<<<1.0>>>>
+<get_insystem_source_probe_instance_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_insystem_source_probe_instance_info [-h | -help] [-long_help] -device_name <device name> -hardware_name <hardware name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -device_name <device name>: Name of the device programmed with the design that includes  In-System Sources and Probes instances
+        -hardware_name <hardware name>: Name of the hardware that connects to the JTAG chain
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::insystem_source_probe 1.0
+
+------------
+Description:
+------------
+
+Returns a list of the available In-System Sources and Probes instances and their configuration.
+{instance_index source_width probe_width instance_name}
+
+Example:
+
+{0 4 3 src1} {1 5 5 src2} {2 3 6 none}
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# List information of all In-System Sources and Probes instances
+puts "Information on all In-System Sources and Probes instances:"
+puts "index,source_width,probe_width,name"
+foreach instance [get_insystem_source_probe_instance_info -hardware_name "USB-Blaster \[USB-0\]" -device_name "@1: EP1S25/_HARDCOPY_FPGA_PROTOTYPE (0x020030DD)"] {
+	puts "[lindex $instance 0],[lindex $instance 1],[lindex $instance 2],[lindex $instance 3]"
+}
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: The specified device is not found.
+TCL_ERROR	1   	ERROR: The specified hardware is not found.
+TCL_ERROR	1   	ERROR: An internal Tcl interpreter error occurred.
+TCL_ERROR	1   	ERROR: JTAG communication error detected. Errors can be caused by hardware failure or poor signal integrity in the JTAG chain.
+TCL_ERROR	1   	ERROR: No In-System Sources and Probes instance was found.
+TCL_ERROR	1   	ERROR: There is already an active In-System Sources and Probes session started. Unable to start another session.
+TCL_ERROR	1   	ERROR: The device is locked by another application.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_insystem_source_probe_instance_info>
+
+<start_insystem_source_probe>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: start_insystem_source_probe [-h | -help] [-long_help] -device_name <device name> -hardware_name <hardware name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -device_name <device name>: Name of the device that holds the In-System Sources and Probes instances
+        -hardware_name <hardware name>: Name of programming hardware connected to the JTAG chain
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::insystem_source_probe 1.0
+
+------------
+Description:
+------------
+
+Use this command  before beginning any In-System Sources and Probes transactions
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+#List probe data of instance 0
+start_insystem_source_probe -hardware_name "USB-Blaster \[USB-0\]" -device_name "@1: EP1S25/_HARDCOPY_FPGA_PROTOTYPE (0x020030DD)"
+puts "probe data of instance 0"
+puts [read_probe_data -instance_index 0]
+end_insystem_source_probe
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: The specified device is not found.
+TCL_ERROR	1   	ERROR: The specified hardware is not found.
+TCL_ERROR	1   	ERROR: An internal Tcl interpreter error occurred.
+TCL_ERROR	1   	ERROR: JTAG communication error detected. Errors can be caused by hardware failure or poor signal integrity in the JTAG chain.
+TCL_ERROR	1   	ERROR: No In-System Sources and Probes instance was found.
+TCL_ERROR	1   	ERROR: There is already an active In-System Sources and Probes session started. Unable to start another session.
+TCL_ERROR	1   	ERROR: The device is locked by another application.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</start_insystem_source_probe>
+
+<end_insystem_source_probe>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: end_insystem_source_probe [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::insystem_source_probe 1.0
+
+------------
+Description:
+------------
+
+This command releases the JTAG chain. Use when finished performing In-System Sources and Probes transactions.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+#List probe data of instance 0
+start_insystem_source_probe -hardware_name "USB-Blaster \[USB-0\]" -device_name "@1: EP1S25/_HARDCOPY_FPGA_PROTOTYPE (0x020030DD)"
+puts "probe data of instance 0"
+puts [read_probe_data -instance_index 0]
+end_insystem_source_probe
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: The specified device is not found.
+TCL_ERROR	1   	ERROR: The specified hardware is not found.
+TCL_ERROR	1   	ERROR: An internal Tcl interpreter error occurred.
+TCL_ERROR	1   	ERROR: No In-System Sources and Probes instance was found.
+TCL_ERROR	1   	ERROR: The In-System Sources and Probes instance was not started. This command cannot be used unless the In-System Sources and Probes trasaction is started.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</end_insystem_source_probe>
+
+<read_source_data>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: read_source_data [-h | -help] [-long_help] -instance_index <instance_index> [-value_in_hex]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -instance_index <instance_index>: Index of the In-System Sources and Probes instance to communicate with
+        -value_in_hex: Specifies that the value string is represented in hexadecimal format
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::insystem_source_probe 1.0
+
+------------
+Description:
+------------
+
+Retrieves the current value of the sources.
+
+A string is returned specifying the status of each source, with the MSB on the left and LSB on the right. By default, the value is represented as a binary string.  Optionally, the option -value_in_hex will make the value a hex string.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+#List source data of instance 0
+start_insystem_source_probe -hardware_name "USB-Blaster \[USB-0\]" -device_name "@1: EP1S25/_HARDCOPY_FPGA_PROTOTYPE (0x020030DD)"
+puts "source data of instance 0"
+puts [read_source_data -instance_index 0]
+end_insystem_source_probe
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: The specified device is not found.
+TCL_ERROR	1   	ERROR: The specified hardware is not found.
+TCL_ERROR	1   	ERROR: An internal Tcl interpreter error occurred.
+TCL_ERROR	1   	ERROR: The specified In-System Sources and Probes instance index is invalid.
+TCL_ERROR	1   	ERROR: No In-System Sources and Probes instance was found.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</read_source_data>
+
+<read_probe_data>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: read_probe_data [-h | -help] [-long_help] -instance_index <instance_index> [-value_in_hex]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -instance_index <instance_index>: Index of the In-System Sources and Probes instance to communicate with
+        -value_in_hex: Specifies that the value string is represented in hexadecimal format
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::insystem_source_probe 1.0
+
+------------
+Description:
+------------
+
+Retrieves the current value of the probes.
+
+A string is returned specifying the status of each probe, with the 
+MSB on the left and LSB on the right. By default, the value is 
+represented as a binary string.  Optionally, the option -value_in_hex
+makes the value a hex string.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+#List probe data of instance 0
+start_insystem_sourc_probe -hardware_name "USB-Blaster \[USB-0\]" -device_name "@1: EP1S25/_HARDCOPY_FPGA_PROTOTYPE (0x020030DD)"
+puts "probe data of instance 0"
+puts [read_probe_data -instance_index 0]
+end_insystem_source_probe
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: The specified device is not found.
+TCL_ERROR	1   	ERROR: The specified hardware is not found.
+TCL_ERROR	1   	ERROR: An internal Tcl interpreter error occurred.
+TCL_ERROR	1   	ERROR: The specified In-System Sources and Probes instance index is invalid.
+TCL_ERROR	1   	ERROR: No In-System Sources and Probes instance was found.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</read_probe_data>
+
+<write_source_data>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: write_source_data [-h | -help] [-long_help] -instance_index <instance_index> -value <value> [-value_in_hex]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -instance_index <instance_index>: Index of the In-System Sources and Probes instance to communicate with
+        -value <value>: Value for the source
+        -value_in_hex: Specify that the value string is represented in hexadecimal format
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::insystem_source_probe 1.0
+
+------------
+Description:
+------------
+
+Sets values for the sources.
+
+A value string is sent to the source values.  MSB is on the left 
+and LSB is on the right. The value string is is truncated on the 
+left (MSB) side if necessary.
+	
+By default, the values are represented as a binary string.  
+Optionally, the option -value_in_hex makes the values hex strings.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+#List probe data of instance 0
+start_insystem_source_probe -hardware_name "USB-Blaster \[USB-0\]" -device_name "@1: EP1S25/_HARDCOPY_FPGA_PROTOTYPE (0x020030DD)"
+puts "write source data 10010"
+write_source_data -instance_index 0 -value "10010"
+puts "source data of instance 0"
+puts [read_source_data -instance_index 0]
+end_insystem_source_probe
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: The specified device is not found.
+TCL_ERROR	1   	ERROR: The specified hardware is not found.
+TCL_ERROR	1   	ERROR: An internal Tcl interpreter error occurred.
+TCL_ERROR	1   	ERROR: The specified In-System Sources and Probes instance index is invalid.
+TCL_ERROR	1   	ERROR: No In-System Sources and Probes instance was found.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</write_source_data>
+
+<<<</1.0>>>>

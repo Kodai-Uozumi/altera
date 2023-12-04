@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<generate_set>
+
+    <!-- only set CPU if it hasn't already been set
+         (since this GTF may be included multiple times) -->
+    <if condition="not( %COMPONENT_LIST% )">
+
+		<!-- 2005.06.23, install.ptf is next to system PTF file, so... -->
+	    <set_variable variable="PROJECT_DIR"
+	                  to="directory_only( full_path( %PTF_NAME% ) )"/>
+
+        <!-- build a list of all HAL components -->
+        <set_variable variable="INSTALL_COMPONENT_LIST"
+                      to="ptf_to_list( %PROJECT_DIR%/.sopc_builder/install.ptf, /PACKAGE/COMPONENT )"/>
+        <if condition="file_exists( %PROJECT_DIR%/.sopc_builder/install2.ptf)">
+            <set_variable variable="INSTALL2_COMPONENT_LIST"
+                      to="ptf_to_list( %PROJECT_DIR%/.sopc_builder/install2.ptf, /PACKAGE/COMPONENT )"/>
+        </if>              
+        <switch>
+            <!-- if indicated, return all the version info too -->
+            <if condition="%WITH_VERSIONS%">
+                <set_variable variable="COMPONENT_LIST"
+                              to="%INSTALL_COMPONENT_LIST%"/>
+                <for_each variable="INSTALL_COMPONENT" list="%INSTALL2_COMPONENT_LIST%">
+                        <set_variable variable="COMPONENT_LIST"
+                                      to="list_add( %COMPONENT_LIST%, %INSTALL_COMPONENT% )"/>
+                </for_each>
+                <break/>
+            </if>
+
+            <!-- otherwise strip all the version info out -->
+            <set_variable variable="COMPONENT_LIST" to=""/>
+            <for_each variable="INSTALL_COMPONENT" list="%INSTALL2_COMPONENT_LIST%">
+                <set_variable variable="COMPONENT_NAME"
+                              to="list_get( %INSTALL_COMPONENT%, 0 )"/>
+                <!-- install.ptf is guaranteed to always have the most recent version first -->
+                <set_variable variable="VERSION_LIST"
+                              to="list_get( list_get( %INSTALL_COMPONENT%, 1 ), 0)"/>
+                <set_variable variable="ASSIGNMENT_LIST"
+                              to="list_get( %VERSION_LIST%, 2 )"/>
+                <for_each variable="ASSIGNMENT" list="%ASSIGNMENT_LIST%">
+                    <if condition="eq( local, list_get( %ASSIGNMENT%, 0 ) )">
+                        <set_variable variable="COMPONENT_DIR"
+                                      to="list_get( %ASSIGNMENT%, 1 )"/>
+                        <set_variable variable="COMPONENT_LIST"
+                                      to="list_add( %COMPONENT_LIST%, (%COMPONENT_NAME%,%COMPONENT_DIR%) )"/>
+                        <break/>
+                    </if>
+                </for_each>
+            </for_each>
+            <for_each variable="INSTALL_COMPONENT" list="%INSTALL_COMPONENT_LIST%">
+                <set_variable variable="COMPONENT_NAME"
+                              to="list_get( %INSTALL_COMPONENT%, 0 )"/>
+                <!-- install.ptf is guaranteed to always have the most recent version first -->
+                <set_variable variable="VERSION_LIST"
+                              to="list_get( list_get( %INSTALL_COMPONENT%, 1 ), 0)"/>
+                <set_variable variable="ASSIGNMENT_LIST"
+                              to="list_get( %VERSION_LIST%, 2 )"/>
+                <for_each variable="ASSIGNMENT" list="%ASSIGNMENT_LIST%">
+                    <if condition="eq( local, list_get( %ASSIGNMENT%, 0 ) )">
+                        <set_variable variable="COMPONENT_DIR"
+                                      to="list_get( %ASSIGNMENT%, 1 )"/>
+                        <set_variable variable="COMPONENT_LIST"
+                                      to="list_add( %COMPONENT_LIST%, (%COMPONENT_NAME%,%COMPONENT_DIR%) )"/>
+                        <break/>
+                    </if>
+                </for_each>
+            </for_each>
+        </switch>
+
+    </if>
+
+</generate_set>

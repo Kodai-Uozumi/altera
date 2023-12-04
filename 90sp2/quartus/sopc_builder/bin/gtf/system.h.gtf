@@ -1,0 +1,779 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<template name="system.h">
+
+    <call gtf="%GTF_DIR%/check_version.gtf"/>
+
+    <call gtf="%GTF_DIR%/XPATHs.gtf"/>
+
+    <call gtf="%GTF_DIR%/CPU.gtf"/>
+
+    <call gtf="%GTF_DIR%/file_heading.h.gtf"/>
+
+    <text>
+
+#ifndef __SYSTEM_H_
+#define __SYSTEM_H_
+    </text>
+
+    <include source="%GTF_DIR%/warning.h"/>
+
+    <include source="%GTF_DIR%/license.h"/>
+
+    <set_variable variable="USE_EXCEPTION_STACK"
+                  to='xpath( %STF_NAME%, "normalize-space(%OS_SPEC_XPATH%/@exception_stack)" )'/>
+
+    <set_variable variable="TEXT_SEGMENT"
+                  to='xpath( %STF_NAME%, "normalize-space(%SECTION_XPATH%[@name=\".text\"]/@memory)" )'/>
+    <set_variable variable="RODATA_SEGMENT"
+                  to='xpath( %STF_NAME%, "normalize-space(%SECTION_XPATH%[@name=\".rodata\"]/@memory)" )'/>
+    <set_variable variable="RWDATA_SEGMENT"
+                  to='xpath( %STF_NAME%, "normalize-space(%SECTION_XPATH%[@name=\".rwdata\"]/@memory)" )'/>
+
+    <set_variable variable="PTF_SYSTEM_NAME" ptf_path="SYSTEM"/>
+    <set_variable variable="CPU_ARCHITECTURE" ptf_path="SYSTEM/MODULE %CPU%/class"/>
+    <set_variable variable="DEVICE_FAMILY" ptf_path="SYSTEM/WIZARD_SCRIPT_ARGUMENTS/device_family"/>
+
+    <set_variable variable="BOARD_CLASS" ptf_path="SYSTEM/WIZARD_SCRIPT_ARGUMENTS/board_class"/>
+    <if condition="%BOARD_CLASS%">
+        <set_variable variable="BOARD_DEFINE" to="uppercase( %BOARD_CLASS% )"/>
+    </if>
+
+    <set_variable variable="STDIN"
+                  to='xpath( %STF_NAME%, "normalize-space(%OS_SPEC_XPATH%/@stdin)" )'/>
+    <set_variable variable="STDOUT"
+                  to='xpath( %STF_NAME%, "normalize-space(%OS_SPEC_XPATH%/@stdout)" )'/>
+    <set_variable variable="STDERR"
+                  to='xpath( %STF_NAME%, "normalize-space(%OS_SPEC_XPATH%/@stderr)" )'/>
+
+    <set_variable variable="MODULE" to="%CPU%"/>
+    <export variable="MODULE"/>
+    <call gtf="%GTF_DIR%/MODULE_FREQ.gtf"/>
+
+    <set_variable variable="CPU_VERSION"
+                  ptf_path="SYSTEM/MODULE %CPU%/class_version"/>
+    <set_variable variable="CPU_IMPLEMENTATION"
+                  ptf_path="SYSTEM/MODULE %CPU%/WIZARD_SCRIPT_ARGUMENTS/CPU_Implementation"/>
+    <set_variable variable="NIOS2_BIG_ENDIAN"
+	    ptf_path="SYSTEM/MODULE %CPU%/WIZARD_SCRIPT_ARGUMENTS/big_endian"/>
+    <if condition="not( %NIOS2_BIG_ENDIAN% )">
+            <!-- default to no -->
+            <set_variable variable="NIOS2_BIG_ENDIAN" to="0"/>
+            <break/>
+    </if>
+    <set_variable variable="ICACHE_SIZE"
+                  ptf_path="SYSTEM/MODULE %CPU%/WIZARD_SCRIPT_ARGUMENTS/cache_icache_size"/>
+    <set_variable variable="DCACHE_SIZE"
+                  ptf_path="SYSTEM/MODULE %CPU%/WIZARD_SCRIPT_ARGUMENTS/cache_dcache_size"/>
+    <set_variable variable="ICACHE_LINE_SIZE"
+                  ptf_path="SYSTEM/MODULE %CPU%/WIZARD_SCRIPT_ARGUMENTS/CONSTANTS/CONSTANT nasys_icache_line_size/value"/>
+    <set_variable variable="ICACHE_LINE_SIZE_LOG2"
+                  ptf_path="SYSTEM/MODULE %CPU%/WIZARD_SCRIPT_ARGUMENTS/CONSTANTS/CONSTANT nasys_icache_line_size_log2/value"/>
+    <set_variable variable="DCACHE_LINE_SIZE"
+                  ptf_path="SYSTEM/MODULE %CPU%/WIZARD_SCRIPT_ARGUMENTS/CONSTANTS/CONSTANT nasys_dcache_line_size/value"/>
+    <set_variable variable="DCACHE_LINE_SIZE_LOG2"
+                  ptf_path="SYSTEM/MODULE %CPU%/WIZARD_SCRIPT_ARGUMENTS/CONSTANTS/CONSTANT nasys_dcache_line_size_log2/value"/>
+    <set_variable variable="CACHE_HAS_ICACHE"
+                  ptf_path="SYSTEM/MODULE %CPU%/WIZARD_SCRIPT_ARGUMENTS/cache_has_icache"/>
+    <if condition="not( eq( %CACHE_HAS_ICACHE%, 1 ) )">
+        <set_variable variable="ICACHE_SIZE" to="0"/>
+        <set_variable variable="ICACHE_LINE_SIZE" to="0"/>
+        <set_variable variable="ICACHE_LINE_SIZE_LOG2" to="0"/>
+    </if>
+    <set_variable variable="CACHE_HAS_DCACHE"
+                  ptf_path="SYSTEM/MODULE %CPU%/WIZARD_SCRIPT_ARGUMENTS/cache_has_dcache"/>
+    <if condition="not( eq( %CACHE_HAS_DCACHE%, 1 ) )">
+        <set_variable variable="DCACHE_SIZE" to="0"/>
+        <set_variable variable="DCACHE_LINE_SIZE" to="0"/>
+        <set_variable variable="DCACHE_LINE_SIZE_LOG2" to="0"/>
+    </if>
+
+    <call gtf="%GTF_DIR%/EXC_ADDRESS.gtf"/>
+    <set_variable variable="EXC_ADDRESS_OUTPUT" to="%EXC_ADDRESS%"/>
+
+    <call gtf="%GTF_DIR%/RESET_ADDRESS.gtf"/>
+    <set_variable variable="RESET_ADDRESS_OUTPUT" to="%RESET_ADDRESS%"/>
+
+    <call gtf="%GTF_DIR%/BREAK_ADDRESS.gtf"/>
+    <set_variable variable="BREAK_ADDRESS_OUTPUT" to="%BREAK_ADDRESS%"/>
+   
+    <set_variable variable="MMU_PRESENT"
+                  ptf_path="SYSTEM/MODULE %CPU%/WIZARD_SCRIPT_ARGUMENTS/mmu_present"/>
+
+    <if condition="%MMU_PRESENT%">
+        <error>
+
+Nios II system libraries in the IDE development flow do not support the Nios II MMU.  
+Use the Nios II software build tools development flow.
+
+        </error>
+    </if>
+
+    <set_variable variable="MPU_PRESENT"
+                  ptf_path="SYSTEM/MODULE %CPU%/WIZARD_SCRIPT_ARGUMENTS/mpu_present"/>
+
+    <if condition="%MPU_PRESENT%">
+        <error>
+
+ERROR - Nios II system libraries in the IDE development flow do not support the Nios II MPU.  
+Use the Nios II software build tools development flow.
+
+        </error>
+    </if>
+
+    <set_variable variable="ADVANCED_EXC"
+                  ptf_path="SYSTEM/MODULE %CPU%/WIZARD_SCRIPT_ARGUMENTS/advanced_exc"/>
+
+    <if condition="%ADVANCED_EXC%">
+        <error>
+
+ERROR - Nios II system libraries in the IDE development flow do not support the Nios II advanced exceptions.  
+Use the Nios II software build tools development flow.
+
+        </error>
+    </if>
+    <switch>
+        <if condition="not( %MMU_PRESENT% )">
+            <!-- default to no -->
+            <set_variable variable="MMU_PRESENT" to="0"/>
+            <break/>
+        </if>
+
+        <!-- assert MMU_PRESENT is true -->
+
+        <!-- use the same algorithm for calculating the TBLMISS address as
+             for the EXC & RESET addresses (but it's not in a subroutine
+             because so far we only need it here in system.h)              -->
+        <set_variable variable="TBLMISS_SLAVE"
+                      ptf_path="SYSTEM/MODULE %CPU%/WIZARD_SCRIPT_ARGUMENTS/fast_tlb_miss_exc_slave"/>
+        <set_variable variable="TBLMISS_SLAVE_MODULE"
+                      to="split( %TBLMISS_SLAVE%, /, 0 )"/>
+        <set_variable variable="TBLMISS_SLAVE_SLAVE"
+                      to="split( %TBLMISS_SLAVE%, /, 1 )"/>
+        <set_variable variable="TBLMISS_BASE_ADDRESS"
+                      ptf_path="SYSTEM/MODULE %TBLMISS_SLAVE_MODULE%/SLAVE %TBLMISS_SLAVE_SLAVE%/SYSTEM_BUILDER_INFO/Base_Address"/>
+        <set_variable variable="TBLMISS_OFFSET"
+                      ptf_path="SYSTEM/MODULE %CPU%/WIZARD_SCRIPT_ARGUMENTS/fast_tlb_miss_exc_offset"/>
+        <set_variable variable="TBLMISS_ADDRESS"
+                      to="add( %TBLMISS_BASE_ADDRESS%, %TBLMISS_OFFSET% )"/>
+
+        <set_variable variable="NIOS2_KERNEL_REGION_BASE" to="0xC0000000"/>
+
+        <export variable="MMU_PRESENT"/>
+        <set_variable variable="SHOW_OR" to="1"/>
+        <export variable="SHOW_OR"/>
+        <set_variable variable="OR_VALUE" to="%NIOS2_KERNEL_REGION_BASE%"/>
+        <export variable="OR_VALUE"/>
+        <set_variable variable="OR_OUTPUT_VALUE" to="NIOS2_KERNEL_REGION_BASE"/>
+        <export variable="OR_OUTPUT_VALUE"/>
+   
+        <set_variable variable="ADDRESS" to="%TBLMISS_ADDRESS%"/>
+        <export variable="ADDRESS"/>
+        <set_variable variable="ADDRESS_DESCRIPTION" to="NIOS2_TLBMISS_ADDR"/>
+        <export variable="ADDRESS_DESCRIPTION"/>
+        <call gtf="%GTF_DIR%/MMU_ADDRESS.gtf"/>
+        <set_variable variable="TBLMISS_ADDRESS_OUTPUT" to="%ADDRESS%"/>
+   
+        <set_variable variable="ADDRESS" to="%EXC_ADDRESS%"/>
+        <export variable="ADDRESS"/>
+        <set_variable variable="ADDRESS_DESCRIPTION" to="NIOS2_EXCEPTION_ADDR"/>
+        <export variable="ADDRESS_DESCRIPTION"/>
+        <call gtf="%GTF_DIR%/MMU_ADDRESS.gtf"/>
+        <set_variable variable="EXC_ADDRESS" to="%VALUE%"/>
+        <set_variable variable="EXC_ADDRESS_OUTPUT" to="%ADDRESS%"/>
+   
+        <set_variable variable="ADDRESS" to="%RESET_ADDRESS%"/>
+        <export variable="ADDRESS"/>
+        <set_variable variable="ADDRESS_DESCRIPTION" to="NIOS2_RESET_ADDR"/>
+        <export variable="ADDRESS_DESCRIPTION"/>
+        <call gtf="%GTF_DIR%/MMU_ADDRESS.gtf"/>
+        <set_variable variable="RESET_ADDRESS" to="%VALUE%"/>
+        <set_variable variable="RESET_ADDRESS_OUTPUT" to="%ADDRESS%"/>
+    </switch>
+    <text>
+
+/*
+ * system configuration
+ *
+ */
+
+#define ALT_SYSTEM_NAME "%PTF_SYSTEM_NAME%"
+#define ALT_CPU_NAME "%CPU%"
+#define ALT_CPU_ARCHITECTURE "%CPU_ARCHITECTURE%"
+#define ALT_DEVICE_FAMILY "%DEVICE_FAMILY%"
+    </text>
+
+    <if condition="%BOARD_DEFINE%">
+        <text>
+#define %BOARD_DEFINE%
+        </text>
+    </if>
+
+    <set_variable variable="MODULE" to="%STDIN%"/>
+    <export variable="MODULE"/>
+    <call gtf="%GTF_DIR%/BASE_ADDRESS.gtf"/>
+    <set_variable variable="STDIN_CLASS"
+    		  ptf_path="SYSTEM/MODULE %STDIN%/class"/>
+    <text>
+#define ALT_STDIN "/dev/%STDIN%"
+#define ALT_STDIN_TYPE "%STDIN_CLASS%"
+#define ALT_STDIN_BASE %BASE_ADDRESS%
+#define ALT_STDIN_DEV %STDIN%
+    </text>
+    <if condition="ne( %STDIN%, null )">
+    <text>
+#define ALT_STDIN_PRESENT
+    </text>
+    </if>
+
+    <set_variable variable="MODULE" to="%STDOUT%"/>
+    <export variable="MODULE"/>
+    <call gtf="%GTF_DIR%/BASE_ADDRESS.gtf"/>
+    <set_variable variable="STDOUT_CLASS"
+    		  ptf_path="SYSTEM/MODULE %STDOUT%/class"/>
+    <text>
+#define ALT_STDOUT "/dev/%STDOUT%"
+#define ALT_STDOUT_TYPE "%STDOUT_CLASS%"
+#define ALT_STDOUT_BASE %BASE_ADDRESS%
+#define ALT_STDOUT_DEV %STDOUT%
+    </text>
+    <if condition="ne( %STDOUT%, null )">
+    <text>
+#define ALT_STDOUT_PRESENT
+    </text>
+    </if>
+
+    <set_variable variable="MODULE" to="%STDERR%"/>
+    <export variable="MODULE"/>
+    <call gtf="%GTF_DIR%/BASE_ADDRESS.gtf"/>
+    <set_variable variable="STDERR_CLASS"
+    		  ptf_path="SYSTEM/MODULE %STDERR%/class"/>
+    <text>
+#define ALT_STDERR "/dev/%STDERR%"
+#define ALT_STDERR_TYPE "%STDERR_CLASS%"
+#define ALT_STDERR_BASE %BASE_ADDRESS%
+#define ALT_STDERR_DEV %STDERR%
+    </text>
+    <if condition="ne( %STDERR%, null )">
+    <text>
+#define ALT_STDERR_PRESENT
+    </text>
+    </if>
+    
+    <set_variable variable="LOG_CLASS"
+                  ptf_path="SYSTEM/MODULE %CPU%/WIZARD_SCRIPT_ARGUMENTS/alt_log_port_type"/>
+    <if condition="%LOG_CLASS%">
+        <set_variable variable="LOG_CLASS" to="uppercase( %LOG_CLASS% )"/>		  
+        <set_variable variable="LOG_BASE"
+                      ptf_path="SYSTEM/MODULE %CPU%/WIZARD_SCRIPT_ARGUMENTS/alt_log_port_base"/>
+        <text>
+#define ALT_LOG_PORT_TYPE %LOG_CLASS%
+#define ALT_LOG_PORT_BASE %LOG_BASE%
+        </text>
+    </if>
+    
+    <text>
+#define ALT_CPU_FREQ %MODULE_FREQ%
+#define ALT_IRQ_BASE NULL
+    </text>
+
+    <if condition="eq( yes, %USE_EXCEPTION_STACK% )">
+        <text>
+#define ALT_EXCEPTION_STACK
+        </text>
+    </if>
+
+    <text>
+
+/*
+ * processor configuration
+ *
+ */
+
+#define NIOS2_CPU_IMPLEMENTATION "%CPU_IMPLEMENTATION%"
+#define NIOS2_BIG_ENDIAN %NIOS2_BIG_ENDIAN%
+
+#define NIOS2_ICACHE_SIZE %ICACHE_SIZE%
+#define NIOS2_DCACHE_SIZE %DCACHE_SIZE%
+#define NIOS2_ICACHE_LINE_SIZE %ICACHE_LINE_SIZE%
+#define NIOS2_ICACHE_LINE_SIZE_LOG2 %ICACHE_LINE_SIZE_LOG2%
+#define NIOS2_DCACHE_LINE_SIZE %DCACHE_LINE_SIZE%
+#define NIOS2_DCACHE_LINE_SIZE_LOG2 %DCACHE_LINE_SIZE_LOG2%
+    </text>
+
+    <if condition='ge( %CPU_VERSION%, "1.2" )'>
+        <text>
+#define NIOS2_FLUSHDA_SUPPORTED
+        </text>
+    </if>
+
+    <if condition="%MMU_PRESENT%">
+        <text>
+#define NIOS2_MMU_PRESENT
+#define NIOS2_KERNEL_REGION_BASE %NIOS2_KERNEL_REGION_BASE%
+        </text>
+    </if>
+
+    <text>
+
+#define NIOS2_EXCEPTION_ADDR %EXC_ADDRESS_OUTPUT%
+#define NIOS2_RESET_ADDR %RESET_ADDRESS_OUTPUT%
+#define NIOS2_BREAK_ADDR %BREAK_ADDRESS_OUTPUT%
+    </text>
+   
+    <set_variable variable="ILLEGAL_INSTRUCTIONS_TRAP"
+                  ptf_path="SYSTEM/MODULE %CPU%/WIZARD_SCRIPT_ARGUMENTS/illegal_instructions_trap"/>
+    <if condition="eq( 1, %ILLEGAL_INSTRUCTIONS_TRAP% )"> <!-- default to "0" -->
+        <text>
+
+#define NIOS2_HAS_ILLEGAL_INSTRUCTION_EXCEPTION 1
+        </text>
+    </if>
+
+    <if condition="%MMU_PRESENT%">
+        <text>
+#define NIOS2_TLBMISS_ADDR %TBLMISS_ADDRESS_OUTPUT%
+        </text>
+    </if>
+
+    <if condition="ne( %BREAK_ADDRESS%, %RESET_ADDRESS% )">
+        <text>
+
+#define NIOS2_HAS_DEBUG_STUB
+        </text>
+    </if>
+
+    <set_variable variable="NIOS2_CPU_ID_SIZE"
+                  ptf_path="SYSTEM/MODULE %CPU%/WIZARD_SCRIPT_ARGUMENTS/cpuid_sz"/>
+    <if condition="%NIOS2_CPU_ID_SIZE%">
+        <set_variable variable="NIOS2_CPU_ID_VALUE"
+                      ptf_path="SYSTEM/MODULE %CPU%/WIZARD_SCRIPT_ARGUMENTS/cpuid_value"/>
+        <text>
+
+#define NIOS2_CPU_ID_SIZE %NIOS2_CPU_ID_SIZE%
+#define NIOS2_CPU_ID_VALUE %NIOS2_CPU_ID_VALUE%
+        </text>
+    </if>
+
+    <set_variable variable="CHECK_EXCLUDE_SYSTEM_H" to="1"/>
+    <export variable="CHECK_EXCLUDE_SYSTEM_H"/>
+    <call gtf="%GTF_DIR%/MODULE_lists.gtf"/>
+
+    <!--                                       -->
+    <!-- a define for each unique module class -->
+    <!--                                       -->
+
+    <text>
+
+/*
+ * A define for each class of peripheral
+ *
+ */
+
+    </text>
+
+    <for_each variable="CLASS" list="%MODULE_CLASS_LIST%">
+        <set_variable variable="CLASS_UPPER" to="uppercase( %CLASS% )"/>
+        <text>
+#define __%CLASS_UPPER%
+        </text>
+    </for_each>
+
+    <!--                                                                         -->
+    <!-- output a section for each module in the PTF that is mastered by the CPU -->
+    <!--                                                                         -->
+
+    <set_variable variable="CUSTOM_INSTRUCTION_MODULE_SLAVE_LIST" to=""/>
+
+    <call gtf="%GTF_DIR%/COMPONENT_LIST.gtf"/>
+
+    <for_each variable="MODULE_SLAVE" index_variable="MODULE_SLAVE_LIST_INDEX" list="%MODULE_SLAVE_LIST%">
+       	<export variable="MODULE_SLAVE"/>
+
+        <set_variable variable="MODULE" to='regex( "(.+)/SLAVE .+", 1, %MODULE_SLAVE% )'/>
+        <set_variable variable="MODULE_CLASS" ptf_path="SYSTEM/MODULE %MODULE%/class"/>
+
+        <if condition="eq( %MODULE_CLASS%, altera_nios2 )">
+            <!-- skip the rest for the CPU -->
+			<continue/>
+        </if>
+
+	<if condition="eq( %MODULE_CLASS%, no_legacy_module )">
+            <set_variable variable="MODULE_CLASS"
+                      ptf_path="SYSTEM/MODULE %MODULE%/gtf_class_name"/>
+	</if>
+
+        <set_variable variable="IS_CUSTOM_INSTRUCTION"
+                      ptf_path="SYSTEM/MODULE %MODULE_SLAVE%/SYSTEM_BUILDER_INFO/Is_Custom_Instruction"/>
+        <if condition="eq( 1, %IS_CUSTOM_INSTRUCTION% )">  <!-- default to 0 -->
+	    <if condition="ne( %MODULE_CLASS%, altera_nios_custom_instr_floating_point )"> <!-- don't add FPCIs to the CI list -->
+                <set_variable variable="CUSTOM_INSTRUCTION_MODULE_SLAVE_LIST"
+                              to="list_add( %CUSTOM_INSTRUCTION_MODULE_SLAVE_LIST%, (%MODULE_SLAVE%,%MODULE%) )"/>
+	    </if>
+            <!-- skip the rest for custom instructions -->
+           <continue/>
+        </if>
+
+        <set_variable variable="MODULE_SLAVE_NAME"
+                      to="list_get( %MODULE_SLAVE_NAME_LIST%, %MODULE_SLAVE_LIST_INDEX% )"/>
+
+        <set_variable variable="IS_NON_VOLATILE" ptf_path="SYSTEM/MODULE %MODULE_SLAVE%/SYSTEM_BUILDER_INFO/Is_Nonvolatile_Storage"/>
+
+        <call gtf="%GTF_DIR%/BASE_ADDRESS_and_ADDRESS_SPAN.gtf"/>
+
+        <set_variable variable="IS_BRIDGE"
+                      ptf_path="SYSTEM/MODULE %MODULE%/SYSTEM_BUILDER_INFO/Is_Bridge"/>
+
+        <if condition="not( or( eq( %BASE_ADDRESS%, N/A ), %IS_BRIDGE% ) )">
+            <if condition="and( ge( %EXC_ADDRESS%, %BASE_ADDRESS% ), lt( %EXC_ADDRESS%, add( %BASE_ADDRESS%, %ADDRESS_SPAN% ) ) )">
+                <set_variable variable="EXCEPTIONS_SEGMENT" to="%MODULE_SLAVE_NAME%"/>
+            </if>
+
+            <if condition="and( ge( %RESET_ADDRESS%, %BASE_ADDRESS% ), lt( %RESET_ADDRESS%, add( %BASE_ADDRESS%, %ADDRESS_SPAN% ) ) )">
+                <set_variable variable="RESET_SEGMENT" to="%MODULE_SLAVE_NAME%"/>
+            </if>
+        </if>
+
+        <set_variable variable="HAS_IRQ"
+                      ptf_path="SYSTEM/MODULE %MODULE_SLAVE%/SYSTEM_BUILDER_INFO/Has_IRQ"/>
+        <if condition="eq( %HAS_IRQ%, 1 )">
+            <set_variable variable="IRQ"
+                          ptf_path="SYSTEM/MODULE %MODULE_SLAVE%/SYSTEM_BUILDER_INFO/IRQ_MASTER %CPU%\/%CPU_IRQ_MASTER%/IRQ_Number"/>
+            <if condition="eq( length( %IRQ% ), 0 )">
+                <set_variable variable="IRQ"
+                              ptf_path="SYSTEM/MODULE %MODULE_SLAVE%/SYSTEM_BUILDER_INFO/IRQ_Number"/>
+            </if>
+            <if condition="eq( %IRQ%, NC )">
+                <set_variable variable="IRQ" to="ALT_IRQ_NOT_CONNECTED"/>
+            </if>
+        </if>
+
+        <set_variable variable="MODULE_NAME" to="%MODULE_SLAVE_NAME%"/>
+        <if condition="ne( %MODULE_NAME%, %MODULE% )">
+            <set_variable variable="SLAVE" to='regex( ".+/SLAVE (.+)", 1, %MODULE_SLAVE% )'/>
+            <set_variable variable="MODULE_NAME" to="%MODULE%/%SLAVE%"/>
+        </if>
+        <set_variable variable="MODULE_SLAVE_NAME_UPPER" to="uppercase( %MODULE_SLAVE_NAME% )"/>
+
+        <switch>
+            <export variable="MODULE"/>
+            <export variable="MODULE_NAME"/>
+            <export variable="MODULE_SLAVE_NAME_UPPER"/>
+            <export variable="MMU_PRESENT"/>
+            <export variable="BASE_ADDRESS"/>
+            <export variable="ADDRESS_SPAN"/>
+            <export variable="HAS_IRQ"/>
+            <export variable="IRQ"/>
+
+            <set_variable variable="COMPONENT_LIST_INDEX"
+                          to="list_index_of( %COMPONENT_LIST%, %MODULE_CLASS%, 0 )"/>
+            <set_variable variable="COMPONENT_DIR"
+                          to="list_get( list_get( %COMPONENT_LIST%, %COMPONENT_LIST_INDEX% ), 1 )"/>
+
+            <!-- if the component has its own GTF use that... -->
+            <if condition="file_exists( %COMPONENT_DIR%/HAL/system.h_component_output.gtf )">
+                <call gtf="%COMPONENT_DIR%/HAL/system.h_component_output.gtf"/>
+                <break/>
+            </if>
+
+            <!-- ...otherwise output the default for all components -->
+            <export variable="MODULE_CLASS"/>
+            <call gtf="%GTF_DIR%/system.h_component_output.gtf"/>
+        </switch>
+
+        <!-- add module to module class mapping for alt_driver.h -->
+        <text>
+#define ALT_MODULE_CLASS_%MODULE% %MODULE_CLASS%
+        </text>
+    </for_each>
+
+
+    <!--                     -->
+    <!-- custom instructions -->
+    <!--                     -->
+
+    <if condition="gt( list_size( %CUSTOM_INSTRUCTION_MODULE_SLAVE_LIST% ), 0 )">
+        <text>
+
+/*
+ * custom instruction macros
+ *
+ */
+
+        </text>
+        <for_each variable="MODULE_SLAVE_AND_MODULE" list="%CUSTOM_INSTRUCTION_MODULE_SLAVE_LIST%">
+            <set_variable variable="MODULE_SLAVE"
+                          to="list_get( %MODULE_SLAVE_AND_MODULE%, 0 )"/>
+            <set_variable variable="MODULE"
+                          to="list_get( %MODULE_SLAVE_AND_MODULE%, 1 )"/>
+
+            <!-- use SYSTEM_BUILDER_INFO or WIZARD_SCRIPT_ARGUMENTS? -->
+            <switch>
+                <!-- try SYSTEM_BUILDER_INFO first -->
+                <set_variable variable="PTF_PATH"
+                              to="SYSTEM/MODULE %MODULE_SLAVE%/SYSTEM_BUILDER_INFO"/>
+                <set_variable variable="CI_MACRO_NAME"
+                              ptf_path="%PTF_PATH%/ci_macro_name"/>
+                <if condition='ne( %CI_MACRO_NAME%, "" )'>
+                    <!-- we'll use SYSTEM_BUILDER_INFO -->
+                    <break/>
+                </if>
+
+                <!-- it must be in WIZARD_SCRIPT_ARGUMENTS -->
+                <set_variable variable="PTF_PATH"
+                              to="SYSTEM/MODULE %MODULE%/WIZARD_SCRIPT_ARGUMENTS"/>
+                <set_variable variable="CI_MACRO_NAME"
+                              ptf_path="%PTF_PATH%/ci_macro_name"/>
+            </switch>
+
+            <set_variable variable="CI_MACRO_NAME"
+                          to="uppercase( %CI_MACRO_NAME% )"/>
+            <set_variable variable="BASE_ADDRESS"
+                          ptf_path="SYSTEM/MODULE %MODULE_SLAVE%/SYSTEM_BUILDER_INFO/Base_Address"/>
+
+            <set_variable variable="CI_OPERANDS"
+                          ptf_path="%PTF_PATH%/ci_operands"/>
+
+            <switch>
+                <if condition="eq( 0, %CI_OPERANDS% )">
+                    <set_variable variable="MACRO_PARAMS" to=""/>
+                    <set_variable variable="FUNCTION_ARGS" to=""/>
+                    <set_variable variable="BUILTIN_FUNCTION_TAIL" to="in"/>
+                    <break/>
+                </if>
+                <if condition="eq( 1, %CI_OPERANDS% )">
+                    <set_variable variable="MACRO_PARAMS" to="A"/>
+                    <set_variable variable="FUNCTION_ARGS" to=",(A)"/>
+                    <set_variable variable="BUILTIN_FUNCTION_TAIL" to="ini"/>
+                    <break/>
+                </if>
+                <!-- default to 2 -->
+                <set_variable variable="MACRO_PARAMS" to="A,B"/>
+                <set_variable variable="FUNCTION_ARGS" to=",(A),(B)"/>
+                <set_variable variable="BUILTIN_FUNCTION_TAIL" to="inii"/>
+            </switch>
+            <text>
+#define ALT_CI_%CI_MACRO_NAME%_N %BASE_ADDRESS%
+            </text>
+            <set_variable variable="ADDRESS_WIDTH"
+                          ptf_path="SYSTEM/MODULE %MODULE_SLAVE%/SYSTEM_BUILDER_INFO/Address_Width"/>
+            <set_variable variable="N_MASK" to=""/>
+            <if condition="ne( 0, %ADDRESS_WIDTH% )">
+                <switch>
+                    <if condition="%MACRO_PARAMS%">
+                        <set_variable variable="MACRO_PARAMS" to="n,%MACRO_PARAMS%"/>
+                        <break/>
+                    </if>
+                    <set_variable variable="MACRO_PARAMS" to="n"/>
+                </switch>
+                <set_variable variable="N_ARG" to="n"/>
+                <set_variable variable="N_MASK"
+                              to="no_eval( +(n&amp;ALT_CI_%CI_MACRO_NAME%_N_MASK) )"/>
+                <text>
+#define ALT_CI_%CI_MACRO_NAME%_N_MASK <![CDATA[((1<<%ADDRESS_WIDTH%)-1) ]]>
+                </text>
+            </if>
+            <if condition="%MACRO_PARAMS%">
+                <set_variable variable="MACRO_PARAMS" to="(%MACRO_PARAMS%)"/>
+            </if>
+            <text>
+#define ALT_CI_%CI_MACRO_NAME%%MACRO_PARAMS% __builtin_custom_%BUILTIN_FUNCTION_TAIL%(ALT_CI_%CI_MACRO_NAME%_N%N_MASK%%FUNCTION_ARGS%)
+            </text>
+        </for_each>
+    </if>
+
+    <!--                                         -->
+    <!-- output OS-specific defines from the STF -->
+    <!--                                         -->
+    
+    <set_variable variable="XPATH_INDEX" to="1"/>
+    <set_variable variable="DEFINE_LIST" to=""/>
+    <loop>
+        <if condition='not( xpath_valid( %STF_NAME%, "%DEFINE_XPATH%[position()=%XPATH_INDEX%]" ) )'>
+            <break/>
+        </if>
+
+        <set_variable variable="NAME"
+                      to='xpath( %STF_NAME%, "normalize-space(%DEFINE_XPATH%[position()=%XPATH_INDEX%]/@name)" )'/>
+        <set_variable variable="VALUE"
+                      to='xpath( %STF_NAME%, "normalize-space(%DEFINE_XPATH%[position()=%XPATH_INDEX%]/@value)" )'/>
+        <set_variable variable="QUOTE"
+                      to='xpath( %STF_NAME%, "normalize-space(%DEFINE_XPATH%[position()=%XPATH_INDEX%]/@quote)" )'/>
+
+        <set_variable variable="DEFINE_LIST"
+                      to='list_add( %DEFINE_LIST%, (%NAME%,%VALUE%,%QUOTE%) )'/>
+
+        <set_variable variable="XPATH_INDEX" to="add( 1, %XPATH_INDEX% )"/>
+    </loop>
+
+    <if condition="gt( list_size( %DEFINE_LIST% ), 0 )">
+        <set_variable variable="OS_NAME"
+                      to='xpath( %STF_NAME%, "normalize-space(%OS_SPEC_XPATH%/@name)" )'/>
+        <if condition='eq( "none (single-threaded)", "%OS_NAME%" )'>
+            <!-- /stf/os_spec/@name is "none (single-threaded)" for the basic HAL system library -->
+            <set_variable variable="OS_NAME" to="system library"/>
+        </if>
+        <text>
+
+/*
+ * %OS_NAME% configuration
+ *
+ */
+
+        </text>
+
+        <if condition="eq( %OS_NAME%, MicroC/OS-II )">
+            <!-- add OS_TICKS_PER_SEC -->
+            <set_variable variable="ALT_SYS_CLK"
+                          to='xpath( %STF_NAME%, "normalize-space(%DEFINE_XPATH%[@name=\"alt_sys_clk\"]/@value)" )'/>
+            <if condition="%ALT_SYS_CLK%">
+                <!-- the value of ALT_SYS_CLK is probably all upper-case; find the matching module name with the correct case -->
+                <set_variable variable="ALT_SYS_CLK"
+                              to="ptf_module_that_matches( %ALT_SYS_CLK% )"/>
+                <set_variable variable="PERIOD"
+                              ptf_path="SYSTEM/MODULE %ALT_SYS_CLK%/WIZARD_SCRIPT_ARGUMENTS/period"/>
+                <set_variable variable="MULT"
+                              ptf_path="SYSTEM/MODULE %ALT_SYS_CLK%/WIZARD_SCRIPT_ARGUMENTS/mult"/>
+                <set_variable variable="OS_TICKS_PER_SEC"
+                              to="div( 1, mul( %PERIOD%, %MULT% ) )"/>
+                <set_variable variable="DEFINE_LIST"
+                              to='list_add( %DEFINE_LIST%, (OS_TICKS_PER_SEC,%OS_TICKS_PER_SEC%,no) )'/>
+            </if>
+        </if>
+
+        <export variable="DEFINE_LIST"/>
+        <call gtf="%GTF_DIR%/system.h_DEFINE_LIST_output.gtf"/>
+    </if>
+
+    <!--                                                -->
+    <!-- output software component defines from the STF -->
+    <!--                                                -->
+    
+    <for_each variable="SW_COMPONENT_XPATH" xpath="%OS_SPEC_XPATH%/sw_component" file="%STF_NAME%">
+        <!-- TODO - this block of code (up to the end of the <loop>) is duplicated above -->
+        <set_variable variable="XPATH_INDEX" to="1"/>
+        <set_variable variable="DEFINE_LIST" to=""/>
+        <loop>
+            <if condition='not( xpath_valid( %STF_NAME%, "%SW_COMPONENT_XPATH%/sys_defines/define[position()=%XPATH_INDEX%]" ) )'>
+                <break/>
+            </if>
+
+            <set_variable variable="NAME"
+                          to='xpath( %STF_NAME%, "normalize-space(%SW_COMPONENT_XPATH%/sys_defines/define[position()=%XPATH_INDEX%]/@name)" )'/>
+            <set_variable variable="VALUE"
+                          to='xpath( %STF_NAME%, "normalize-space(%SW_COMPONENT_XPATH%/sys_defines/define[position()=%XPATH_INDEX%]/@value)" )'/>
+            <set_variable variable="QUOTE"
+                          to='xpath( %STF_NAME%, "normalize-space(%SW_COMPONENT_XPATH%/sys_defines/define[position()=%XPATH_INDEX%]/@quote)" )'/>
+
+            <set_variable variable="DEFINE_LIST"
+                          to='list_add( %DEFINE_LIST%, (%NAME%,%VALUE%,%QUOTE%) )'/>
+
+            <set_variable variable="XPATH_INDEX" to="add( 1, %XPATH_INDEX% )"/>
+        </loop>
+
+        <if condition="gt( list_size( %DEFINE_LIST% ), 0 )">
+            <set_variable variable="SW_COMPONENT_NAME"
+                          to='xpath( %STF_NAME%, "normalize-space(%SW_COMPONENT_XPATH%/@name)" )'/>
+            <text>
+
+/*
+ * %SW_COMPONENT_NAME% configuration
+ *
+ */
+
+            </text>
+
+            <export variable="DEFINE_LIST"/>
+            <call gtf="%GTF_DIR%/system.h_DEFINE_LIST_output.gtf"/>
+        </if>
+
+    </for_each>
+
+    <!--                                                               -->
+    <!-- validate the .text, .rodata & .rwdata settings (from the STF) -->
+    <!--                                                               -->
+    
+    <!-- need to get MODULE_SLAVE_NAME_LIST again, but this time with memories only -->
+    <set_variable variable="MEMORY_MODULES_ONLY" to="1"/>
+    <export variable="MEMORY_MODULES_ONLY"/>
+    <set_variable variable="CHECK_EXCLUDE_SYSTEM_H" to="1"/>
+    <export variable="CHECK_EXCLUDE_SYSTEM_H"/>
+    <call gtf="%GTF_DIR%/MODULE_lists.gtf"/>
+   
+    <set_variable variable="SEGMENT" to="%TEXT_SEGMENT%"/>
+    <export variable="SEGMENT"/>
+    <set_variable variable="SEGMENT_NAME" to=".text"/>
+    <export variable="SEGMENT_NAME"/>
+    <export variable="MODULE_SLAVE_NAME_LIST"/>
+    <call gtf="%GTF_DIR%/check_segment.gtf"/>
+    <set_variable variable="TEXT_SEGMENT" to="%SEGMENT%"/>
+    
+    <set_variable variable="SEGMENT" to="%RODATA_SEGMENT%"/>
+    <export variable="SEGMENT"/>
+    <set_variable variable="SEGMENT_NAME" to=".rodata"/>
+    <export variable="SEGMENT_NAME"/>
+    <export variable="MODULE_SLAVE_NAME_LIST"/>
+    <call gtf="%GTF_DIR%/check_segment.gtf"/>
+    <set_variable variable="RODATA_SEGMENT" to="%SEGMENT%"/>
+    
+    <set_variable variable="SEGMENT" to="%RWDATA_SEGMENT%"/>
+    <export variable="SEGMENT"/>
+    <set_variable variable="SEGMENT_NAME" to=".rwdata"/>
+    <export variable="SEGMENT_NAME"/>
+    <export variable="MODULE_SLAVE_NAME_LIST"/>
+    <call gtf="%GTF_DIR%/check_segment.gtf"/>
+    <set_variable variable="RWDATA_SEGMENT" to="%SEGMENT%"/>
+
+<set_variable variable="TEXT_SEGMENT_UPPER" to="uppercase( %TEXT_SEGMENT% )"/>
+<set_variable variable="RODATA_SEGMENT_UPPER" to="uppercase( %RODATA_SEGMENT% )"/>
+<set_variable variable="RWDATA_SEGMENT_UPPER" to="uppercase( %RWDATA_SEGMENT% )"/>
+<set_variable variable="EXCEPTIONS_SEGMENT_UPPER" to="uppercase( %EXCEPTIONS_SEGMENT% )"/>
+<set_variable variable="RESET_SEGMENT_UPPER" to="uppercase( %RESET_SEGMENT% )"/>
+
+    <text>
+
+/*
+ * Devices associated with code sections.
+ *
+ */
+
+#define ALT_TEXT_DEVICE       %TEXT_SEGMENT_UPPER%
+#define ALT_RODATA_DEVICE     %RODATA_SEGMENT_UPPER%
+#define ALT_RWDATA_DEVICE     %RWDATA_SEGMENT_UPPER%
+#define ALT_EXCEPTIONS_DEVICE %EXCEPTIONS_SEGMENT_UPPER%
+#define ALT_RESET_DEVICE      %RESET_SEGMENT_UPPER%
+
+    </text>
+
+    <if condition="eq( %TEXT_SEGMENT%, %RESET_SEGMENT% )">
+        <text>
+/*
+ * The text section is initialised so no bootloader will be required.
+ * Set a variable to tell crt0.S to provide code at the reset address and
+ * to initialise rwdata if appropriate.
+ */
+
+#define ALT_NO_BOOTLOADER
+
+        </text>
+    </if>
+
+    <text>
+
+#endif /* __SYSTEM_H_ */
+    </text>
+
+    <set_variable variable="TOTAL_SECONDS"
+                  to="ms_to_seconds( sub( time_in_ms(), %START_MS% ) )"/>
+
+    <!-- TODO - shouldn't have to do this (but GTF_NAME currently ends up
+                being set by the last call element) -->
+    <set_variable variable="GTF_NAME" to="system.h.gtf"/>
+
+    <!-- TODO - can this be put in the actual text of system.h without making
+                gtf-generate think that the file has changed each time? -->
+    <debug>
+End of %FILE_NAME% generated by %GTF_NAME% in %TOTAL_SECONDS% seconds
+    </debug>
+
+</template>

@@ -1,0 +1,16 @@
+INCLUDE "inc_f.inc";
+SUBDESIGN f_inc 
+(
+     IN1,CI :   INPUT = GND;
+     INC    : OUTPUT;
+)
+VARIABLE
+     	ufinc:inc_f with ( IGNORE_SOFT_BUFFERS = "OFF" );
+begin
+
+	ufinc.in1 = IN1;
+	ufinc.ci = CI;
+	INC = ufinc.inc;	
+end;
+
+

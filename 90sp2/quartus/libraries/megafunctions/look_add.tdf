@@ -1,0 +1,158 @@
+------------------------------------------------------------------
+-- Name: look_add												--
+-- Function: A multi-level carry-look-ahead generator subdesign --
+------------------------------------------------------------------
+INCLUDE "look_add.inc";
+ 
+PARAMETERS
+(
+	WIDTH,					-- number of g/p input pairs
+	CARRY_CHAIN = "MANUAL",
+	DEVICE_FAMILY
+);
+
+INCLUDE "aglobal90.inc";	% device definitions %
+
+-- number of the look-ahead tree levels, with its root at the current level.
+CONSTANT STAGES       = (WIDTH <= 4 ? 1 : (CEIL(CEIL(LOG2(WIDTH)) DIV 2)));
+-- number of leaves of the last branch of look-ahead tree
+CONSTANT STAGE_INPUTS = 4^(STAGES-1);
+-- number of branches entering the root (current) level.
+CONSTANT GP_INPUTS	  = CEIL(WIDTH DIV STAGE_INPUTS);
+-- number of leaves for a specific branch of the root level.
+DEFINE WIDTH_USED_FOR_BLOCK(b) = (((b + 1) * STAGE_INPUTS) <= WIDTH ? STAGE_INPUTS :
+								 ((b* STAGE_INPUTS) < WIDTH ? WIDTH MOD STAGE_INPUTS : 0));
+
+
+SUBDESIGN look_add
+(
+	bg_in[WIDTH-1..0]		: INPUT = GND;
+	bp_in[WIDTH-1..0]		: INPUT = GND;
+	cin						: INPUT = GND;
+	cout[WIDTH-1..0]		: OUTPUT;
+	bg_out, bp_out			: OUTPUT;
+)
+
+
+VARIABLE
+
+	IF WIDTH > 2 GENERATE
+		IF WIDTH == 3 GENERATE
+			IF (FAMILY_FLEX() == 1) & 
+				!USE_CARRY_CHAINS() GENERATE
+				gpc0, gp01 : LCELL;
+			ELSE GENERATE
+				gpc0, gp01 : NODE;
+			END GENERATE;
+
+		ELSE GENERATE
+			IF WIDTH == 4 GENERATE
+				IF (FAMILY_FLEX() == 1) & 
+					!USE_CARRY_CHAINS() GENERATE
+					gpc0, gp12, gp012, gp23 : LCELL;
+				ELSE GENERATE
+					gpc0, gp12, gp012, gp23 : NODE;
+				END GENERATE;
+	
+			ELSE GENERATE
+				stage_cout[GP_INPUTS-1..0]	: NODE;
+				bg_node[GP_INPUTS-1..0]		: NODE;
+				bp_node[GP_INPUTS-1..0]		: NODE;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+
+
+BEGIN
+
+	IF WIDTH == 1 GENERATE
+		cout[0] = cin;
+
+		bg_out  = bg_in[0];
+		bp_out  = bp_in[0];
+	ELSE GENERATE
+
+ 		IF WIDTH == 2 GENERATE
+			cout[0] = cin;
+			cout[1] = bg_in[0] # (bp_in[0] & cin);
+
+			bg_out  = bg_in[1] # (bp_in[1] & bg_in[0]);
+			bp_out  = bp_in[1] & bp_in[0];
+		
+		ELSE GENERATE
+			IF WIDTH == 3 GENERATE
+				cout[0] = cin;
+				gpc0    = bg_in[0] # (bp_in[0] & cin);
+				gp01    = bg_in[1] # (bp_in[1] & bg_in[0]);
+				
+				IF (FAMILY_FLEX() == 1) GENERATE
+					cout[1] = gpc0;
+					cout[2] = bg_in[1] # (bp_in[1] & gpc0);
+					bg_out  = bg_in[2] # (bp_in[2] & gp01);
+					bp_out  = bp_in[2] & bp_in[1] & bp_in[0];
+
+				ELSE GENERATE
+					cout[1] = SOFT(gpc0);
+					cout[2] = SOFT(bg_in[1] # (bp_in[1] & gpc0));
+					bg_out  = SOFT(bg_in[2] # (bp_in[2] & gp01));
+					bp_out  = SOFT(bp_in[2] & bp_in[1] & bp_in[0]);
+				END GENERATE;
+
+			ELSE GENERATE
+				IF WIDTH == 4 GENERATE
+					cout[0] = cin;
+					gpc0    = bg_in[0] # (bp_in[0] & cin);
+					gp12    = bg_in[2] # (bp_in[2] & bg_in[1]);
+					gp012   = bp_in[2] & (bg_in[1] # (bp_in[1] & bg_in[0])); 
+					gp23    = bg_in[3] # (bp_in[3] & bg_in[2]); 
+
+					IF (FAMILY_FLEX() == 1) GENERATE
+						cout[1] = gpc0;
+						cout[2] = bg_in[1] # (bp_in[1] & gpc0);
+						cout[3] = gp12 # (bp_in[2] & bp_in[1] & gpc0);
+		
+						bg_out  = gp23 # (bp_in[3] & gp012);
+						bp_out  = bp_in[3] & bp_in[2] & bp_in[1] & bp_in[0];
+
+					ELSE GENERATE
+						cout[1] = SOFT(gpc0);
+						cout[2] = SOFT(bg_in[1] # (bp_in[1] & gpc0));
+						cout[3] = SOFT(gp12 # (bp_in[2] & bp_in[1] & gpc0));
+		
+						bg_out  = SOFT(gp23 # (bp_in[3] & gp012));
+						bp_out  = SOFT(bp_in[3] & bp_in[2] & bp_in[1] & bp_in[0]);
+					END GENERATE;
+
+				ELSE GENERATE
+					-- stage_cout[i] is the carry output from the current level of carry-look-ahead
+					-- tree to i'th look-ahead or adder unit of the lower level. bg-out and bp_out
+					-- are the block propagate and generate functions passed to the upper level.  
+					(stage_cout[GP_INPUTS-1..0], bg_out, bp_out) = look_add(bg_node[], bp_node[], cin)
+																   WITH (WIDTH = GP_INPUTS) 
+																   RETURNS (.cout[], .bg_out, .bp_out); 
+					
+					FOR I IN 0 to GP_INPUTS-1 GENERATE
+						IF WIDTH_USED_FOR_BLOCK(I) == 1 GENERATE 
+							-- IF a single bg/bp pair, connect them directly to the current level.
+							cout[I*STAGE_INPUTS] = stage_cout[I];
+							bg_node[I] = bg_in[I*STAGE_INPUTS];
+							bp_node[I] = bp_in[I*STAGE_INPUTS];
+		
+						ELSE GENERATE
+							-- determine the values on the bg-node and bp-node input pairs by looking
+							-- at the lower level of the look-ahead tree.	
+							(cout[(I*STAGE_INPUTS-1) + WIDTH_USED_FOR_BLOCK(I)..I*STAGE_INPUTS], 
+							 bg_node[I], bp_node[I]) = 
+								look_add(bg_in[(I*STAGE_INPUTS-1) + WIDTH_USED_FOR_BLOCK(I)..I*STAGE_INPUTS],
+										bp_in[(I*STAGE_INPUTS-1) + WIDTH_USED_FOR_BLOCK(I)..I*STAGE_INPUTS],
+										stage_cout[I]) 
+								WITH (WIDTH = WIDTH_USED_FOR_BLOCK(I)) 
+								RETURNS (.cout[], .bg_out, .bp_out);
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+	 END GENERATE;
+END;
+

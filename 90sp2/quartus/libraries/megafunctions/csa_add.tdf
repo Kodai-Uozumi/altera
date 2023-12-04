@@ -1,0 +1,127 @@
+--------------------------------------------------------------------
+--
+--	Design Name:		csa_add
+--	Function: 			multistage carry_save parallel adder
+--	Feature(s):			unsigned
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--------------------------------------------------------------------
+INCLUDE "csa_cell";
+INCLUDE "csa_add";
+INCLUDE "lpm_add_sub";
+
+PARAMETERS 
+(
+	SIZE = 6,
+	WIDTH = 4,
+	END_ADDER = 0
+);
+
+CONSTANT BLOCKS 	= ((WIDTH < 4) ? 1 : FLOOR(WIDTH DIV 3));
+CONSTANT REM_BITS 	= ((WIDTH < 4) ? 0 : WIDTH - (3*BLOCKS)); 
+
+
+CONSTANT EXTRA_BITS = L_EVEL(WIDTH);
+CONSTANT CSA_RES_LEN = SIZE + EXTRA_BITS;
+CONSTANT RES_LENGTH	 = ((WIDTH == 1) ? SIZE : (CSA_RES_LEN+END_ADDER));
+ 
+SUBDESIGN csa_add
+( 
+	data		[WIDTH-1..0][SIZE-1..0]		: INPUT = GND;
+ 	result		[RES_LENGTH-1..0] 			: OUTPUT;	
+ 	carry_out	[RES_LENGTH-1..0] 			: OUTPUT;
+)
+
+
+VARIABLE 			
+	IF WIDTH > 1 GENERATE
+		adder			[BLOCKS-1..0]		: csa_cell WITH (SIZE = SIZE);
+		sum_out_nodes	[CSA_RES_LEN-1..0]	: SOFT;
+		carry_out_nodes	[CSA_RES_LEN-1..0]	: SOFT;
+	
+	IF (BLOCKS > 1) # (REM_BITS > 0) GENERATE			
+		sub_csa_add		: csa_add WITH (SIZE = (SIZE+1), WIDTH = (2*BLOCKS + REM_BITS), END_ADDER = 0);			
+	END GENERATE; 	
+
+	IF END_ADDER == 1 GENERATE
+		cpa_adder : lpm_add_sub WITH (LPM_WIDTH = RES_LENGTH);
+	END GENERATE;
+	END GENERATE;
+
+BEGIN
+	IF WIDTH == 1 GENERATE
+		result[]   = data[0][];
+		carry_out[] = GND;
+		
+	ELSE GENERATE
+		IF WIDTH < 4 GENERATE
+			adder[0].data[0][] = data[0][];
+			adder[0].data[1][] = data[1][];
+			
+			IF WIDTH == 2 GENERATE
+				adder[0].data[2][] = GND;
+			ELSE GENERATE
+				adder[0].data[2][] = data[2][];
+			END GENERATE;	
+			
+ 			sum_out_nodes[]   = adder[0].sum_out[];
+ 			carry_out_nodes[] = adder[0].carry_out[];
+ 	 
+		ELSE GENERATE
+			FOR I IN 0 TO BLOCKS-1 GENERATE
+				adder[I].data[0][] = data[I*3][];
+				adder[I].data[1][] = data[I*3+1][];
+				adder[I].data[2][] = data[I*3+2][];	
+					
+ 	 			sub_csa_add.data[2*I][]   = (GND, adder[I].sum_out[]);
+ 	 			sub_csa_add.data[2*I+1][] = (adder[I].carry_out[], GND);
+
+	 		END GENERATE;
+	 				
+	 		IF REM_BITS > 0 GENERATE
+	 			FOR J IN 1 TO REM_BITS GENERATE
+	 				sub_csa_add.data[(2*BLOCKS-1) + J][] = (GND, data[(3*BLOCKS-1) + J][]);
+	 			END GENERATE;
+	 		END GENERATE;
+	 		
+	 		sum_out_nodes[]   = sub_csa_add.result[];
+			carry_out_nodes[] = sub_csa_add.carry_out[];	
+		END GENERATE;		
+		
+		IF END_ADDER == 0 GENERATE
+			result[] 	= sum_out_nodes[];
+			carry_out[] = carry_out_nodes[];
+		ELSE GENERATE
+ 			cpa_adder.cin = GND;
+			cpa_adder.dataa[] = (GND, sum_out_nodes[]);
+			cpa_adder.datab[] = (carry_out_nodes[], GND);
+			result[] = cpa_adder.result[];
+			carry_out[0]  = cpa_adder.cout;
+			carry_out[RES_LENGTH-1..1] = GND;
+		END GENERATE;
+	END GENERATE;
+ 	
+	IF !USED(carry_out) GENERATE
+		carry_out[] = GND;
+	END GENERATE;
+	IF !USED(result) GENERATE
+		result[] = GND;
+	END GENERATE;
+END;
+
+

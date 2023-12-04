@@ -1,0 +1,17 @@
+INCLUDE "ge_f.inc";
+SUBDESIGN f_ge 
+(
+     IN1, IN2, CI : INPUT = GND;
+     GTEQ    : OUTPUT;
+)
+VARIABLE
+     	ufge:ge_f with ( IGNORE_SOFT_BUFFERS = "OFF" );
+begin
+
+	ufge.in1 = IN1;
+	ufge.in2 = IN2;
+	ufge.ci = CI;
+	GTEQ = ufge.gteq;	
+end;
+
+

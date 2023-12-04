@@ -1,0 +1,326 @@
+<?xml version="1.0"?>
+<ROOT>
+	<INCLUDE FILE="mfam_family_macros.xml" />
+	<FUNCTION_INFORMATION>
+		<VHDL_LIBRARY NAME="m_wys_lib; sgate.sgate_pack" />
+	</FUNCTION_INFORMATION>
+	<MACROS>
+		<MACRO NAME="int_rx_dwidth_factor" >
+			<DEFINITION> ( ( rx_use_double_data_mode == "true" ) and ( int_rx_use_deserializer_double_data_mode == "true" ) ) ? 4 : ( ( rx_use_double_data_mode == "false" ) and ( int_rx_use_deserializer_double_data_mode == "false" ) ) ? 1 : ( ( rx_use_double_data_mode == "true" ) || ( int_rx_use_deserializer_double_data_mode == "true" ) ) ? 2 : 1 </DEFINITION>
+		</MACRO>
+		<MACRO NAME="int_rx_word_aligner_num_byte" >
+			<DEFINITION> ( rx_use_deserializer_double_data_mode == "true" ) ? 2 : 1 </DEFINITION>
+		</MACRO>
+		<MACRO NAME="int_tx_dwidth_factor" >
+			<DEFINITION> ( ( tx_use_double_data_mode == "true" ) and ( tx_use_serializer_double_data_mode == "true" ) ) ? 4 : ( ( tx_use_double_data_mode == "false" ) and ( tx_use_serializer_double_data_mode == "false" ) ) ? 1 : ( ( tx_use_double_data_mode == "true" ) || ( tx_use_serializer_double_data_mode == "true" ) ) ? 2 : 1 </DEFINITION>
+		</MACRO>
+		<MACRO NAME="int_gxb_powerdown_width" >
+			<DEFINITION> ( ( number_of_quads % num_quad_per_prot ) != 0 ) ? ( number_of_quads quot num_quad_per_prot ) + 1 : ( number_of_quads quot num_quad_per_prot ) </DEFINITION>
+		</MACRO>
+		<MACRO NAME="number_of_quads" >
+			<DEFINITION> ( ( number_of_channels quot number_channels_per_quad ) lte 0 ) ? 1 : ( ( number_of_channels % number_channels_per_quad ) != 0 ) ? ( number_of_channels quot number_channels_per_quad ) + 1 : ( number_of_channels quot number_channels_per_quad ) </DEFINITION>
+		</MACRO>
+		<MACRO NAME="num_quad_per_prot" >
+			<DEFINITION> ( operation_mode == "rx" ) ? ( ( ( rx_channel_bonding != "x8" ) and ( rx_channel_bonding != "x8_unbundled" ) ) ? 1 : 2 ) : ( operation_mode == "tx" ) ? ( ( ( tx_channel_bonding != "x8" ) and ( tx_channel_bonding != "x8_unbundled" ) ) ? 1 : 2 ) : ( ( tx_channel_bonding != "x8" ) and ( tx_channel_bonding != "x8_unbundled" ) ) ? 1 : 2 </DEFINITION>
+		</MACRO>
+		<MACRO NAME="number_channels_per_quad" >
+			<DEFINITION> 4 </DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_wys_lib" >
+			<DEFINITION> mfam_family_arriagx_strict ? "arriagx_hssi.arriagx_hssi_components" : "stratixiigx_hssi.stratixiigx_hssi_components" </DEFINITION>
+		</MACRO>
+		<MACRO NAME="int_rx_use_deserializer_double_data_mode" >
+			<DEFINITION> ( ( protocol == "gige" ) || ( protocol == "xaui" ) || ( protocol == "pipe" ) ) ? "false" : rx_use_deserializer_double_data_mode </DEFINITION>
+		</MACRO>
+	</MACROS>
+	<PARAMETERS>
+		<PARAMETER NAME="tx_reconfig_data_rate_remainder" TYPE="INTEGER" DEFAULT_VALUE="0" />
+		<PARAMETER NAME="rx_cru_inclock4_period" TYPE="INTEGER" DEFAULT_VALUE="5000" />
+		<PARAMETER NAME="rx_align_pattern_length" TYPE="INTEGER" DEFAULT_VALUE="10" />
+		<PARAMETER NAME="rx_cru_inclock_period" TYPE="INTEGER" DEFAULT_VALUE="5000" />
+		<PARAMETER NAME="rx_run_length" TYPE="INTEGER" DEFAULT_VALUE="200" />
+		<PARAMETER NAME="cmu_pll_reconfig_log_index" TYPE="INTEGER" DEFAULT_VALUE="0" />
+		<PARAMETER NAME="tx_data_rate" TYPE="INTEGER" DEFAULT_VALUE="1000" />
+		<PARAMETER NAME="cmu_pll_loop_filter_resistor_control" TYPE="INTEGER" DEFAULT_VALUE="0" />
+		<PARAMETER NAME="preemphasis_ctrl_pretap_setting" TYPE="INTEGER" DEFAULT_VALUE="0" />
+		<PARAMETER NAME="rx_cru_inclock2_period" TYPE="INTEGER" DEFAULT_VALUE="5000" />
+		<PARAMETER NAME="cmu_pll_inclk_log_index" TYPE="INTEGER" DEFAULT_VALUE="0" />
+		<PARAMETER NAME="rx_pll_sim_clkout_phase_shift" TYPE="INTEGER" DEFAULT_VALUE="0" />
+		<PARAMETER NAME="rx_cru_inclock1_period" TYPE="INTEGER" DEFAULT_VALUE="5000" />
+		<PARAMETER NAME="tx_refclk_divide_by" TYPE="INTEGER" DEFAULT_VALUE="1" />
+		<PARAMETER NAME="tx_pll_sim_clkout_phase_shift" TYPE="INTEGER" DEFAULT_VALUE="0" />
+		<PARAMETER NAME="rx_digitalreset_port_width" TYPE="INTEGER" DEFAULT_VALUE="digitalreset_port_width" />
+		<PARAMETER NAME="rx_cru_pre_divide_by" TYPE="INTEGER" DEFAULT_VALUE="1" />
+		<PARAMETER NAME="tx_reconfig_data_rate" TYPE="INTEGER" DEFAULT_VALUE="1000" />
+		<PARAMETER NAME="rx_data_rate_remainder" TYPE="INTEGER" DEFAULT_VALUE="0" />
+		<PARAMETER NAME="reconfig_dprio_mode" TYPE="INTEGER" DEFAULT_VALUE="0" />
+		<PARAMETER NAME="pll_inclk0_inclock_period" TYPE="INTEGER" DEFAULT_VALUE="5000" />
+		<PARAMETER NAME="pll_inclk3_inclock_period" TYPE="INTEGER" DEFAULT_VALUE="5000" />
+		<PARAMETER NAME="rx_infiniband_invalid_code" TYPE="INTEGER" DEFAULT_VALUE="0" />
+		<PARAMETER NAME="rx_cru_inclock5_period" TYPE="INTEGER" DEFAULT_VALUE="5000" />
+		<PARAMETER NAME="pll_inclk5_inclock_period" TYPE="INTEGER" DEFAULT_VALUE="5000" />
+		<PARAMETER NAME="rx_signal_detect_threshold" TYPE="INTEGER" DEFAULT_VALUE="1" />
+		<PARAMETER NAME="tx_digitalreset_port_width" TYPE="INTEGER" DEFAULT_VALUE="digitalreset_port_width" />
+		<PARAMETER NAME="rx_channel_width" TYPE="INTEGER" DEFAULT_VALUE="8" />
+		<PARAMETER NAME="rx_num_align_cons_good_data" TYPE="INTEGER" DEFAULT_VALUE="1" />
+		<PARAMETER NAME="preemphasis_ctrl_1stposttap_setting" TYPE="INTEGER" DEFAULT_VALUE="0" />
+		<PARAMETER NAME="tx_data_rate_remainder" TYPE="INTEGER" DEFAULT_VALUE="0" />
+		<PARAMETER NAME="digitalreset_port_width" TYPE="INTEGER" DEFAULT_VALUE="number_of_channels" />
+		<PARAMETER NAME="sim_dump_dprio_internal_reg_at_time" TYPE="INTEGER" DEFAULT_VALUE="0" />
+		<PARAMETER NAME="equalizer_ctrl_a_setting" TYPE="INTEGER" DEFAULT_VALUE="7" />
+		<PARAMETER NAME="starting_channel_number" TYPE="INTEGER" DEFAULT_VALUE="0" />
+		<PARAMETER NAME="rx_num_align_code_groups_in_ordered_set" TYPE="INTEGER" DEFAULT_VALUE="0" />
+		<PARAMETER NAME="equalizer_ctrl_v_setting" TYPE="INTEGER" DEFAULT_VALUE="7" />
+		<PARAMETER NAME="rx_align_loss_sync_error_num" TYPE="INTEGER" DEFAULT_VALUE="1" />
+		<PARAMETER NAME="tx_rxdetect_ctrl" TYPE="INTEGER" DEFAULT_VALUE="0" />
+		<PARAMETER NAME="pll_inclk6_inclock_period" TYPE="INTEGER" DEFAULT_VALUE="5000" />
+		<PARAMETER NAME="rx_rate_match_pattern_size" TYPE="INTEGER" DEFAULT_VALUE="10" />
+		<PARAMETER NAME="cmu_pll_reconfig_inclock_period" TYPE="INTEGER" DEFAULT_VALUE="5000" />
+		<PARAMETER NAME="cmu_pll_log_index" TYPE="INTEGER" DEFAULT_VALUE="0" />
+		<PARAMETER NAME="tx_pll_reconfig_sim_clkout_phase_shift" TYPE="INTEGER" DEFAULT_VALUE="0" />
+		<PARAMETER NAME="rx_rate_match_almost_full_threshold" TYPE="INTEGER" DEFAULT_VALUE="13" />
+		<PARAMETER NAME="pll_inclk4_inclock_period" TYPE="INTEGER" DEFAULT_VALUE="5000" />
+		<PARAMETER NAME="cmu_pll_inclock_period" TYPE="INTEGER" DEFAULT_VALUE="5000" />
+		<PARAMETER NAME="cmu_pll_reconfig_inclk_log_index" TYPE="INTEGER" DEFAULT_VALUE="0" />
+		<PARAMETER NAME="vod_ctrl_setting" TYPE="INTEGER" DEFAULT_VALUE="1" />
+		<PARAMETER NAME="rx_data_rate" TYPE="INTEGER" DEFAULT_VALUE="1000" />
+		<PARAMETER NAME="equalizer_ctrl_d_setting" TYPE="INTEGER" DEFAULT_VALUE="7" />
+		<PARAMETER NAME="pll_inclk1_inclock_period" TYPE="INTEGER" DEFAULT_VALUE="5000" />
+		<PARAMETER NAME="reconfig_pll_inclk_width" TYPE="INTEGER" DEFAULT_VALUE="1" />
+		<PARAMETER NAME="number_of_channels" TYPE="INTEGER" DEFAULT_VALUE="1" />
+		<PARAMETER NAME="rx_cru_inclock6_period" TYPE="INTEGER" DEFAULT_VALUE="5000" />
+		<PARAMETER NAME="rx_ppmselect" TYPE="INTEGER" DEFAULT_VALUE="32" />
+		<PARAMETER NAME="pll_inclk2_inclock_period" TYPE="INTEGER" DEFAULT_VALUE="5000" />
+		<PARAMETER NAME="rx_cruclk_width" TYPE="INTEGER" DEFAULT_VALUE="number_of_channels" />
+		<PARAMETER NAME="rx_cru_log_index" TYPE="INTEGER" DEFAULT_VALUE="0" />
+		<PARAMETER NAME="rx_num_align_cons_pat" TYPE="INTEGER" DEFAULT_VALUE="1" />
+		<PARAMETER NAME="preemphasis_ctrl_2ndposttap_setting" TYPE="INTEGER" DEFAULT_VALUE="0" />
+		<PARAMETER NAME="equalizer_ctrl_c_setting" TYPE="INTEGER" DEFAULT_VALUE="7" />
+		<PARAMETER NAME="rx_bandwidth_mode" TYPE="INTEGER" DEFAULT_VALUE="1" />
+		<PARAMETER NAME="equalizer_dcgain_setting" TYPE="INTEGER" DEFAULT_VALUE="0" />
+		<PARAMETER NAME="cmu_pll_reconfig_loop_filter_resistor_control" TYPE="INTEGER" DEFAULT_VALUE="0" />
+		<PARAMETER NAME="rx_rate_match_almost_empty_threshold" TYPE="INTEGER" DEFAULT_VALUE="11" />
+		<PARAMETER NAME="rx_cru_inclock3_period" TYPE="INTEGER" DEFAULT_VALUE="5000" />
+		<PARAMETER NAME="equalizer_ctrl_b_setting" TYPE="INTEGER" DEFAULT_VALUE="7" />
+		<PARAMETER NAME="tx_low_speed_test_select" TYPE="INTEGER" DEFAULT_VALUE="0" />
+		<PARAMETER NAME="tx_channel_width" TYPE="INTEGER" DEFAULT_VALUE="8" />
+		<PARAMETER NAME="tx_allow_polarity_inversion" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="loopback_mode" TYPE="STRING" VALUE="none" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="reconfig_use_global_clk_divider" TYPE="STRING" VALUE="auto" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="enable_pll_inclk0_divider" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_enable_bit_reversal" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_add_generic_fifo_we_synch_register" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_allow_pipe_polarity_inversion" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_rate_match_pattern1" TYPE="STRING" VALUE="0" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_flip_rx_out" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_rate_match_fifo_read_mux_sel" TYPE="STRING" VALUE="auto" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_use_double_data_mode" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="enable_pll_inclk3_divider" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_enable_lock_to_data_sig" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_force_freq_det_high" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_channel_bonding" TYPE="STRING" VALUE="indv" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_rate_match_pattern2" TYPE="STRING" VALUE="0" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="enable_pll_inclk5_divider" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_use_pipe8b10binvpolarity" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_use_cruclk" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_common_mode" TYPE="STRING" VALUE="0.9V" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_disable_running_disp_in_word_align" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="tx_use_double_data_mode" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="tx_enable_self_test_mode" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="tx_enable_idle_selection" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="tx_self_test_mode" TYPE="STRING" VALUE="incremental" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="tx_8b_10b_compatibility_mode" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="receiver_termination" TYPE="STRING" VALUE="off" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="use_calibration_block" TYPE="STRING" VALUE="true" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="tx_common_mode" TYPE="STRING" VALUE="0.75V" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_enable_self_test_mode" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="tx_refclk_select" TYPE="STRING" VALUE="auto" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="reconfig_protocol" TYPE="STRING" VALUE="basic" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="enable_reconfig_pll_inclk_drive_rx" TYPE="STRING" VALUE="true" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_force_signal_detect_dig" TYPE="STRING" VALUE="true" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="operation_mode" TYPE="STRING" VALUE="duplex" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_reconfig_clk_scheme" TYPE="STRING" VALUE="tx_clk_to_rx" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_enable_dc_coupling" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_force_freq_det_low" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_force_signal_detect" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="cmu_refclk_divider_enable" TYPE="STRING" VALUE="auto" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_enable_true_complement_match_in_word_align" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_bitslip_enable" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_self_test_mode" TYPE="STRING" VALUE="incremental" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_enable_deep_align_byte_swap" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="preemphasis_ctrl_pretap_inv_setting" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="tx_force_disparity_mode" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_align_to_deskew_pattern_pos_disp_only" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_use_rate_match_pattern1_only" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="tx_dprio_mode" TYPE="STRING" VALUE="none" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="enable_pll_inclk_drive_rx_cru" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="tx_force_echar" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_adaptive_equalization_mode" TYPE="STRING" VALUE="none" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="sim_dump_filename" TYPE="STRING" VALUE="sim_dprio_dump.txt" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="tx_transmit_protocol" TYPE="STRING" VALUE="basic" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="transmitter_termination" TYPE="STRING" VALUE="off" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_rate_match_back_to_back" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="tx_analog_power" TYPE="STRING" VALUE="1.5V" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_use_clkout" TYPE="STRING" VALUE="true" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_enable_lock_to_refclk_sig" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="enforce_reconfig_refclk_divider" TYPE="STRING" VALUE="auto" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="tx_enable_slew_rate" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_8b_10b_compatibility_mode" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_rate_match_skip_set_based" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_deskew_pattern" TYPE="STRING" VALUE="0" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="tx_flip_tx_in" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="tx_channel_bonding" TYPE="STRING" VALUE="indv" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="tx_reconfig_clk_scheme" TYPE="STRING" VALUE="tx_ch0_clk_source" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="use_global_clk_divider" TYPE="STRING" VALUE="auto" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="protocol" TYPE="STRING" VALUE="basic" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="enable_pll_inclk4_divider" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_rate_match_fifo_write_mux_sel" TYPE="STRING" VALUE="auto" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="enable_pll_inclk6_divider" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_byte_ordering_mode" TYPE="STRING" VALUE="none" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_use_deserializer_double_data_mode" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="enable_reconfig_pll_cascade" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="tx_enable_symbol_swap" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="enable_pll_inclk2_divider" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="pll_legal_multiplier_list" TYPE="STRING" VALUE="disable_4_5_mult_in_6g" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="cmu_offset_all_errors_align" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="enable_pll_cascade" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_insert_pad_on_underflow" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="enable_pll_inclk_alt_drive_rx_cru" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="intended_device_family" TYPE="STRING" VALUE="stratixiigx" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="enforce_refclk_divider" TYPE="STRING" VALUE="auto" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="gen_reconfig_pll" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_byte_order_pattern" TYPE="STRING" VALUE="0" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="en_local_clk_div_ctrl" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="cmu_clk_div_use_coreclk_out_post_divider" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_disable_auto_idle_insertion" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_use_local_refclk" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="preemphasis_ctrl_2ndposttap_inv_setting" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="enable_fast_recovery_pci_mode" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="tx_force_kchar" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_use_coreclk" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_use_deskew_fifo" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="enable_pll_inclk1_divider" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="tx_use_serializer_double_data_mode" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_dprio_mode" TYPE="STRING" VALUE="none" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_align_pattern" TYPE="STRING" VALUE="0000000000" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="reverse_loopback_mode" TYPE="STRING" VALUE="none" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="tx_divider_refclk_select" TYPE="STRING" VALUE="auto" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="tx_8b_10b_mode" TYPE="STRING" VALUE="none" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_ignore_lock_detect" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="cmu_clk_div_inclk_sel" TYPE="STRING" VALUE="auto" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_datapath_protocol" TYPE="STRING" VALUE="basic" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="tx_enable_bit_reversal" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_byte_order_pad_pattern" TYPE="STRING" VALUE="0" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_custom_deskew_pattern" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_use_align_state_machine" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_use_rising_edge_triggered_pattern_align" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_rate_match_fifo_mode" TYPE="STRING" VALUE="none" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="cmu_pll_pfd_clk_select" TYPE="STRING" VALUE="auto" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="tx_use_coreclk" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_run_length_enable" TYPE="STRING" VALUE="true" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_allow_align_polarity_inversion" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_rate_match_ordered_set_based" TYPE="STRING" VALUE="false" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="rx_8b_10b_mode" TYPE="STRING" VALUE="none" DEFAULT_VALUE_INDEX="0" />
+		<PARAMETER NAME="LPM_HINT" TYPE="STRING" VALUE="UNUSED" />
+		<PARAMETER NAME="LPM_TYPE" TYPE="STRING" VALUE="alt2gxb" />
+	</PARAMETERS>
+	<PORTS>
+		<PORT NAME="tx_forceelecidle" TYPE="INPUT" WIDTH="number_of_channels" DEFAULT_VALUE="0" />
+		<PORT NAME="tx_coreclk" TYPE="INPUT" WIDTH="number_of_channels" DEFAULT_VALUE="0" />
+		<PORT NAME="tx_digitalreset" TYPE="INPUT" WIDTH="tx_digitalreset_port_width" DEFAULT_VALUE="0" />
+		<PORT NAME="rx_digitalreset" TYPE="INPUT" WIDTH="rx_digitalreset_port_width" DEFAULT_VALUE="0" />
+		<PORT NAME="cal_blk_clk" TYPE="INPUT" DEFAULT_VALUE="0" />
+		<PORT NAME="pll_inclk_rx_cruclk" TYPE="INPUT" WIDTH="reconfig_pll_inclk_width" />
+		<PORT NAME="rx_phfifowrdisable" TYPE="INPUT" WIDTH="number_of_channels" DEFAULT_VALUE="0" />
+		<PORT NAME="rx_analogreset" TYPE="INPUT" WIDTH="rx_digitalreset_port_width" DEFAULT_VALUE="0" />
+		<PORT NAME="powerdn" TYPE="INPUT" WIDTH="number_of_channels*2" DEFAULT_VALUE="0" />
+		<PORT NAME="rx_locktodata" TYPE="INPUT" WIDTH="number_of_channels" DEFAULT_VALUE="0" />
+		<PORT NAME="rx_revbitorderwa" TYPE="INPUT" WIDTH="number_of_channels" DEFAULT_VALUE="0" />
+		<PORT NAME="reconfig_clk" TYPE="INPUT" DEFAULT_VALUE="0" />
+		<PORT NAME="tx_ctrlenable" TYPE="INPUT" WIDTH="INT_TX_DWIDTH_FACTOR*number_of_channels" DEFAULT_VALUE="0" />
+		<PORT NAME="rx_coreclk" TYPE="INPUT" WIDTH="number_of_channels" DEFAULT_VALUE="0" />
+		<PORT NAME="gxb_powerdown" TYPE="INPUT" WIDTH="INT_GXB_POWERDOWN_WIDTH" DEFAULT_VALUE="0" />
+		<PORT NAME="pll_inclk" TYPE="INPUT" DEFAULT_VALUE="0" />
+		<PORT NAME="rx_phfiforeset" TYPE="INPUT" WIDTH="number_of_channels" DEFAULT_VALUE="0" />
+		<PORT NAME="rx_a1a2size" TYPE="INPUT" WIDTH="number_of_channels" DEFAULT_VALUE="0" />
+		<PORT NAME="cal_blk_powerdown" TYPE="INPUT" DEFAULT_VALUE="1" />
+		<PORT NAME="tx_forcedisp" TYPE="INPUT" WIDTH="INT_TX_DWIDTH_FACTOR*number_of_channels" DEFAULT_VALUE="0" />
+		<PORT NAME="tx_detectrxloop" TYPE="INPUT" WIDTH="number_of_channels" DEFAULT_VALUE="0" />
+		<PORT NAME="tx_dispval" TYPE="INPUT" WIDTH="INT_TX_DWIDTH_FACTOR*number_of_channels" DEFAULT_VALUE="0" />
+		<PORT NAME="rx_enabyteord" TYPE="INPUT" WIDTH="number_of_channels" DEFAULT_VALUE="0" />
+		<PORT NAME="rx_phfifordenable" TYPE="INPUT" WIDTH="number_of_channels" DEFAULT_VALUE="1" />
+		<PORT NAME="pipe8b10binvpolarity" TYPE="INPUT" WIDTH="number_of_channels" DEFAULT_VALUE="0" />
+		<PORT NAME="tx_invpolarity" TYPE="INPUT" WIDTH="number_of_channels" DEFAULT_VALUE="0" />
+		<PORT NAME="tx_forcedispcompliance" TYPE="INPUT" WIDTH="number_of_channels" DEFAULT_VALUE="0" />
+		<PORT NAME="aeq_togxb" TYPE="INPUT" WIDTH="number_of_channels*4" DEFAULT_VALUE="0" />
+		<PORT NAME="fixedclk" TYPE="INPUT" DEFAULT_VALUE="0" />
+		<PORT NAME="reconfig_togxb" TYPE="INPUT" WIDTH="3" />
+		<PORT NAME="rx_cruclk" TYPE="INPUT" WIDTH="rx_cruclk_width" DEFAULT_VALUE="0" />
+		<PORT NAME="tx_datainfull" TYPE="INPUT" WIDTH="44*number_of_channels" />
+		<PORT NAME="rx_rmfifordena" TYPE="INPUT" WIDTH="number_of_channels" DEFAULT_VALUE="0" />
+		<PORT NAME="rx_rmfifowrena" TYPE="INPUT" WIDTH="number_of_channels" DEFAULT_VALUE="0" />
+		<PORT NAME="rx_rmfiforeset" TYPE="INPUT" WIDTH="number_of_channels" DEFAULT_VALUE="0" />
+		<PORT NAME="tx_revparallellpbken" TYPE="INPUT" WIDTH="number_of_channels" DEFAULT_VALUE="0" />
+		<PORT NAME="rx_cruclk_alt" TYPE="INPUT" WIDTH="rx_cruclk_width" DEFAULT_VALUE="0" />
+		<PORT NAME="rx_invpolarity" TYPE="INPUT" WIDTH="number_of_channels" DEFAULT_VALUE="0" />
+		<PORT NAME="rx_bitslip" TYPE="INPUT" WIDTH="number_of_channels" DEFAULT_VALUE="0" />
+		<PORT NAME="gxb_enable" TYPE="INPUT" WIDTH="1" DEFAULT_VALUE="1" />
+		<PORT NAME="rx_revbyteorderwa" TYPE="INPUT" WIDTH="number_of_channels" DEFAULT_VALUE="0" />
+		<PORT NAME="rx_datain" TYPE="INPUT" WIDTH="number_of_channels" />
+		<PORT NAME="rx_locktorefclk" TYPE="INPUT" WIDTH="number_of_channels" DEFAULT_VALUE="0" />
+		<PORT NAME="rx_seriallpbken" TYPE="INPUT" WIDTH="number_of_channels" DEFAULT_VALUE="0" />
+		<PORT NAME="rx_enapatternalign" TYPE="INPUT" WIDTH="number_of_channels" DEFAULT_VALUE="0" />
+		<PORT NAME="tx_phfiforeset" TYPE="INPUT" WIDTH="number_of_channels" DEFAULT_VALUE="0" />
+		<PORT NAME="tx_datain" TYPE="INPUT" WIDTH="tx_channel_width*number_of_channels" />
+		<PORT NAME="pll_inclk_alt" TYPE="INPUT" DEFAULT_VALUE="0" />
+		<PORT NAME="rx_powerdown" TYPE="INPUT" WIDTH="number_of_channels" DEFAULT_VALUE="0" />
+		<PORT NAME="rx_dataout" TYPE="OUTPUT" WIDTH="rx_channel_width*number_of_channels" />
+		<PORT NAME="rx_k1detect" TYPE="OUTPUT" WIDTH="number_of_channels*INT_RX_WORD_ALIGNER_NUM_BYTE" />
+		<PORT NAME="pll_locked" TYPE="OUTPUT" WIDTH="NUMBER_OF_QUADS" />
+		<PORT NAME="pipeelecidle" TYPE="OUTPUT" WIDTH="number_of_channels" />
+		<PORT NAME="rx_rmfifodatainserted" TYPE="OUTPUT" WIDTH="number_of_channels*INT_RX_DWIDTH_FACTOR" />
+		<PORT NAME="rx_errdetect" TYPE="OUTPUT" WIDTH="number_of_channels*INT_RX_DWIDTH_FACTOR" />
+		<PORT NAME="debug_tx_phase_comp_fifo_error" TYPE="OUTPUT" WIDTH="number_of_channels" />
+		<PORT NAME="tx_clkout" TYPE="OUTPUT" WIDTH="number_of_channels" />
+		<PORT NAME="rx_byteorderalignstatus" TYPE="OUTPUT" WIDTH="number_of_channels" />
+		<PORT NAME="rx_rmfifoalmostfull" TYPE="OUTPUT" WIDTH="number_of_channels" />
+		<PORT NAME="rx_clkout" TYPE="OUTPUT" WIDTH="number_of_channels" />
+		<PORT NAME="rx_bisterr" TYPE="OUTPUT" WIDTH="number_of_channels" />
+		<PORT NAME="pipedatavalid" TYPE="OUTPUT" WIDTH="number_of_channels" />
+		<PORT NAME="rx_runningdisp" TYPE="OUTPUT" WIDTH="number_of_channels*INT_RX_DWIDTH_FACTOR" />
+		<PORT NAME="rx_disperr" TYPE="OUTPUT" WIDTH="number_of_channels*INT_RX_DWIDTH_FACTOR" />
+		<PORT NAME="pll_locked_alt" TYPE="OUTPUT" WIDTH="NUMBER_OF_QUADS" />
+		<PORT NAME="tx_phfifooverflow" TYPE="OUTPUT" WIDTH="number_of_channels" />
+		<PORT NAME="rx_recovclkout" TYPE="OUTPUT" WIDTH="number_of_channels" />
+		<PORT NAME="rx_k2detect" TYPE="OUTPUT" WIDTH="number_of_channels*2" />
+		<PORT NAME="tx_dataout" TYPE="OUTPUT" WIDTH="number_of_channels" />
+		<PORT NAME="rx_phfifooverflow" TYPE="OUTPUT" WIDTH="number_of_channels" />
+		<PORT NAME="rx_rmfifofull" TYPE="OUTPUT" WIDTH="number_of_channels" />
+		<PORT NAME="rx_rmfifodatadeleted" TYPE="OUTPUT" WIDTH="number_of_channels*INT_RX_DWIDTH_FACTOR" />
+		<PORT NAME="cal_blk_calibrationstatus" TYPE="OUTPUT" WIDTH="5" />
+		<PORT NAME="debug_rx_phase_comp_fifo_error" TYPE="OUTPUT" WIDTH="number_of_channels" />
+		<PORT NAME="rx_rlv" TYPE="OUTPUT" WIDTH="number_of_channels" />
+		<PORT NAME="rx_a1detect" TYPE="OUTPUT" WIDTH="number_of_channels*INT_RX_WORD_ALIGNER_NUM_BYTE" />
+		<PORT NAME="rx_channelaligned" TYPE="OUTPUT" WIDTH="NUMBER_OF_QUADS" />
+		<PORT NAME="rx_freqlocked" TYPE="OUTPUT" WIDTH="number_of_channels" />
+		<PORT NAME="rx_a2detect" TYPE="OUTPUT" WIDTH="number_of_channels*INT_RX_WORD_ALIGNER_NUM_BYTE" />
+		<PORT NAME="rx_dataoutfull" TYPE="OUTPUT" WIDTH="64*number_of_channels" />
+		<PORT NAME="rx_pll_locked" TYPE="OUTPUT" WIDTH="number_of_channels" />
+		<PORT NAME="reconfig_fromgxb" TYPE="OUTPUT" WIDTH="NUMBER_OF_QUADS" />
+		<PORT NAME="rx_a1a2sizeout" TYPE="OUTPUT" WIDTH="number_of_channels*INT_RX_DWIDTH_FACTOR" />
+		<PORT NAME="pipestatus" TYPE="OUTPUT" WIDTH="number_of_channels*3" />
+		<PORT NAME="rx_signaldetect" TYPE="OUTPUT" WIDTH="number_of_channels" />
+		<PORT NAME="reconfig_fromgxb_oe" TYPE="OUTPUT" WIDTH="NUMBER_OF_QUADS" />
+		<PORT NAME="coreclkout" TYPE="OUTPUT" WIDTH="NUMBER_OF_QUADS" />
+		<PORT NAME="rx_ctrldetect" TYPE="OUTPUT" WIDTH="number_of_channels*INT_RX_DWIDTH_FACTOR" />
+		<PORT NAME="rx_syncstatus" TYPE="OUTPUT" WIDTH="number_of_channels*INT_RX_DWIDTH_FACTOR" />
+		<PORT NAME="rx_bistdone" TYPE="OUTPUT" WIDTH="number_of_channels" />
+		<PORT NAME="pipephydonestatus" TYPE="OUTPUT" WIDTH="number_of_channels" />
+		<PORT NAME="rx_rmfifoalmostempty" TYPE="OUTPUT" WIDTH="number_of_channels" />
+		<PORT NAME="tx_phfifounderflow" TYPE="OUTPUT" WIDTH="number_of_channels" />
+		<PORT NAME="rx_patterndetect" TYPE="OUTPUT" WIDTH="number_of_channels*INT_RX_DWIDTH_FACTOR" />
+		<PORT NAME="rx_phfifounderflow" TYPE="OUTPUT" WIDTH="number_of_channels" />
+		<PORT NAME="rx_rmfifoempty" TYPE="OUTPUT" WIDTH="number_of_channels" />
+		<PORT NAME="aeq_fromgxb" TYPE="OUTPUT" WIDTH="number_of_channels*6" />
+	</PORTS>
+</ROOT>

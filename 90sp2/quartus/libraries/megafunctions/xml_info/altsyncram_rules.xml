@@ -1,0 +1,577 @@
+<?xml version="1.0"?>
+<ROOT>
+	<INCLUDE>
+		<FILE> mfam_family_macros.xml </FILE>
+	</INCLUDE>	
+	<MACROS>
+		<MACRO NAME="m_width_ratio" DEFINITION="max(WIDTH_B, WIDTH_A) div min(WIDTH_A, WIDTH_B)" />
+		<MACRO NAME="m_rom" DEFINITION="(OPERATION_MODE == ROM)" />
+		<MACRO NAME="m_single_port" DEFINITION="OPERATION_MODE == SINGLE_PORT" />
+		<MACRO NAME="m_dual_port" DEFINITION="OPERATION_MODE == DUAL_PORT" />
+		<MACRO NAME="m_bidir_dual_port" DEFINITION="OPERATION_MODE == BIDIR_DUAL_PORT" />
+		<MACRO NAME="m_mram" DEFINITION="(RAM_BLOCK_TYPE == mfam_mram)" />
+		<MACRO NAME="m_m144k" DEFINITION="(RAM_BLOCK_TYPE == mfam_m144k)" />
+		<MACRO NAME="m_m4k" DEFINITION="RAM_BLOCK_TYPE == mfam_m4k" />
+		<MACRO NAME="m_m512" DEFINITION="RAM_BLOCK_TYPE == mfam_m512" />
+		<MACRO NAME="m_auto" DEFINITION="RAM_BLOCK_TYPE == mfam_auto" />
+		<MACRO NAME="m_m8k" DEFINITION="RAM_BLOCK_TYPE == mfam_m9k" />
+		<MACRO NAME="m_lutram" DEFINITION="RAM_BLOCK_TYPE == mfam_lutram || RAM_BLOCK_TYPE == LUTRAM" />
+		<MACRO NAME="m_le_ram" DEFINITION="IMPLEMENT_IN_LES == ON" />
+		<MACRO NAME="m_addr_clr_legal"  DEFINITION="m_titan_ram" />
+		<MACRO NAME="m_titan_ram"  DEFINITION="(mfam_family_stratixiii || mfam_family_cycloneiii) and !m_le_ram" />
+		<MACRO NAME="m_cuda_ram" DEFINITION="mfam_family_cycloneiii and !m_le_ram" />
+		<MACRO NAME="m_armstrong_ram"  DEFINITION="mfam_family_has_stratixii_style_ram and !m_titan_ram" />
+		<MACRO NAME="m_ecc_used" DEFINITION="ENABLE_ECC == TRUE" />
+		<MACRO NAME="m_ecc_legal" DEFINITION="m_dual_port and m_mram and m_titan_ram and !is_used(byteena_a)" />
+		<MACRO NAME="m_titan_lutram_no_clr_mode" >
+			<DEFINITION>
+				m_titan_ram and m_lutram and (READ_DURING_WRITE_MODE_MIXED_PORTS == "OLD_DATA") and m_dual_port
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_rom_aclr0_used" >
+			<DEFINITION>
+				(m_rom and (ADDRESS_ACLR_A == "CLEAR0" || OUTDATA_ACLR_A == "CLEAR0"))
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_sp_aclr0_used" >
+			<DEFINITION>
+				(m_single_port and (ADDRESS_ACLR_A == "CLEAR0" || OUTDATA_ACLR_A == "CLEAR0" || INDATA_ACLR_A == "CLEAR0" || WRCONTROL_ACLR_A == "CLEAR0" || BYTEENA_ACLR_A == "CLEAR0"))
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_dp_aclr0_used" >
+			<DEFINITION>
+				(m_dual_port and (ADDRESS_ACLR_A == "CLEAR0" || OUTDATA_ACLR_B == "CLEAR0" || ADDRESS_ACLR_B == "CLEAR0" || INDATA_ACLR_A == "CLEAR0" || WRCONTROL_ACLR_A == "CLEAR0" || BYTEENA_ACLR_A == "CLEAR0" || RDCONTROL_ACLR_B == "CLEAR0"))
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_bdp_aclr0_used" >
+			<DEFINITION>
+				(m_bidir_dual_port and (ADDRESS_ACLR_A == "CLEAR0" || OUTDATA_ACLR_B == "CLEAR0" || OUTDATA_ACLR_A == "CLEAR0" || ADDRESS_ACLR_B == "CLEAR0" || INDATA_ACLR_A == "CLEAR0" || WRCONTROL_ACLR_A == "CLEAR0" || BYTEENA_ACLR_A == "CLEAR0" || INDATA_ACLR_B == "CLEAR0" || WRCONTROL_ACLR_B == "CLEAR0" || BYTEENA_ACLR_B == "CLEAR0"))
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_aclr0_used" >
+			<DEFINITION>
+				m_rom_aclr0_used || m_sp_aclr0_used || m_dp_aclr0_used || m_bdp_aclr0_used
+			</DEFINITION>
+		</MACRO>
+
+		<MACRO NAME="m_rom_aclr1_used" >
+			<DEFINITION>
+				(m_rom and (OUTDATA_ACLR_A == "CLEAR1"))
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_sp_aclr1_used" >
+			<DEFINITION>
+				(m_single_port and (OUTDATA_ACLR_A == "CLEAR1"))
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_dp_aclr1_used" >
+			<DEFINITION>
+				(m_dual_port and (OUTDATA_ACLR_B == "CLEAR1" || ADDRESS_ACLR_B == "CLEAR1" || RDCONTROL_ACLR_B == "CLEAR1"))
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_bdp_aclr1_used" >
+			<DEFINITION>
+				(m_bidir_dual_port and (OUTDATA_ACLR_B == "CLEAR1" || OUTDATA_ACLR_A == "CLEAR1" || ADDRESS_ACLR_B == "CLEAR1" || INDATA_ACLR_B == "CLEAR1" || WRCONTROL_ACLR_B == "CLEAR1" || BYTEENA_ACLR_B == "CLEAR1"))
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_aclr1_used" >
+			<DEFINITION>
+				m_rom_aclr1_used || m_sp_aclr1_used || m_dp_aclr1_used || m_bdp_aclr1_used
+			</DEFINITION>
+		</MACRO>
+
+		<MACRO NAME="m_rom_clk1_used" >
+			<DEFINITION>
+				(m_rom and (OUTDATA_REG_A == "CLOCK1"))
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_sp_clk1_used" >
+			<DEFINITION>
+				(m_single_port and (OUTDATA_REG_A == "CLOCK1"))
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_dp_clk1_used" >
+			<DEFINITION>
+				(m_dual_port and (OUTDATA_REG_B == "CLOCK1" || ADDRESS_REG_B == "CLOCK1"))
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_bdp_clk1_used" >
+			<DEFINITION>
+				(m_bidir_dual_port and (OUTDATA_REG_B == "CLOCK1" || OUTDATA_REG_A == "CLOCK1" || ADDRESS_REG_B == "CLOCK1"))
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_clk1_used" >
+			<DEFINITION>
+				m_rom_clk1_used || m_sp_clk1_used || m_dp_clk1_used || m_bdp_clk1_used
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_wiz" >
+			<DEFINITION>
+				(USE_WIZARD == "ON")
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_clocken0_used" >
+			<DEFINITION>
+				(CLOCK_ENABLE_INPUT_A == "NORMAL") || (CLOCK_ENABLE_CORE_A == "NORMAL") || 
+				(ADDRESS_REG_B == "CLOCK0" and (CLOCK_ENABLE_INPUT_B == "NORMAL" || CLOCK_ENABLE_CORE_B == "NORMAL") and (m_dual_port || m_bidir_dual_port)) ||
+				(OUTDATA_REG_A == "CLOCK0" and CLOCK_ENABLE_OUTPUT_A == "NORMAL" and !m_dual_port) ||
+				(OUTDATA_REG_B == "CLOCK0" and CLOCK_ENABLE_OUTPUT_B == "NORMAL" and (m_dual_port || m_bidir_dual_port))
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_clocken1_used" >
+			<DEFINITION>
+				(ADDRESS_REG_B == "CLOCK1" and (CLOCK_ENABLE_INPUT_B == "NORMAL" || CLOCK_ENABLE_CORE_B == "NORMAL") and (m_dual_port || m_bidir_dual_port)) ||
+				(OUTDATA_REG_A == "CLOCK1" and CLOCK_ENABLE_OUTPUT_A == "NORMAL" and !m_dual_port) ||
+				(OUTDATA_REG_B == "CLOCK1" and CLOCK_ENABLE_OUTPUT_B == "NORMAL" and (m_dual_port || m_bidir_dual_port))
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_clocken2_used" >
+			<DEFINITION>
+				(CLOCK_ENABLE_INPUT_A == "ALTERNATE" || CLOCK_ENABLE_CORE_A == "ALTERNATE") ||
+				(ADDRESS_REG_B == "CLOCK0" and (CLOCK_ENABLE_INPUT_B == "ALTERNATE" || CLOCK_ENABLE_CORE_B == "ALTERNATE") and (m_dual_port || m_bidir_dual_port)) ||
+				(OUTDATA_REG_A == "CLOCK0" and CLOCK_ENABLE_OUTPUT_A == "ALTERNATE" and !m_dual_port) ||
+				(OUTDATA_REG_B == "CLOCK0" and CLOCK_ENABLE_OUTPUT_B == "ALTERNATE" and (m_dual_port || m_bidir_dual_port))
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_clocken3_used" >
+			<DEFINITION>
+				(ADDRESS_REG_B == "CLOCK1" and (CLOCK_ENABLE_INPUT_B == "ALTERNATE" || CLOCK_ENABLE_CORE_B == "ALTERNATE") and (m_dual_port || m_bidir_dual_port)) ||
+				(OUTDATA_REG_A == "CLOCK1" and CLOCK_ENABLE_OUTPUT_A == "ALTERNATE" and !m_dual_port) ||
+				(OUTDATA_REG_B == "CLOCK1" and CLOCK_ENABLE_OUTPUT_B == "ALTERNATE" and (m_dual_port || m_bidir_dual_port))
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_b_uses_clock0" >
+			<DEFINITION>
+				(m_dual_port || m_bidir_dual_port) and (ADDRESS_REG_B == "CLOCK0")
+			</DEFINITION>
+		</MACRO>
+	</MACROS>
+	<PORT_RULES>
+		<PORT NAME="wren_a" >
+			<STATE V="UNUSED" IF="m_rom" ELSE="USED" />			
+			<FORCE_VALUE V="0" >
+				<IF> m_auto and ( ( ( (WIDTH_A gt WIDTH_B) ? address_b : address_a ) quot m_width_ratio ) == ( (WIDTH_A gt WIDTH_B) ? address_a : address_b ) )</IF>
+			</FORCE_VALUE>
+		</PORT>
+		<PORT NAME="wren_b" >
+			<STATE V="UNUSED" IF="!m_bidir_dual_port" ELSE="USED" />
+			<FORCE_VALUE V="0" >
+				<IF> (( wren_a == 1 ) || m_auto) and ( ( ( (WIDTH_A gt WIDTH_B) ? address_b : address_a ) quot m_width_ratio ) == ( (WIDTH_A gt WIDTH_B) ? address_a : address_b ) ) </IF>	
+			</FORCE_VALUE>
+		</PORT>
+		<PORT NAME="rden_b" >
+			<STATE V="UNUSED" >
+				<IF> (m_titan_ram and !(m_dual_port || m_bidir_dual_port)) ||
+             (!m_titan_ram and !m_dual_port) || 
+					(m_mram and 
+						((ADDRESS_REG_B == "CLOCK0" and 
+							(!mfam_family_has_stratixii_style_ram || (mfam_family_has_stratixii_style_ram and CLOCK_ENABLE_INPUT_A == "NORMAL"))
+						) || 
+						(is_used(addressstall_b))
+						)) 
+						|| 
+						(m_mram and m_wiz) 
+						|| m_lutram
+				</IF>
+			</STATE>
+		</PORT>
+		<PORT NAME="rden_a" >
+			<STATE TO="UNUSED" WHEN="!m_titan_ram || m_dual_port || m_lutram" />
+			<STATE TO="UNUSED" WHEN="m_wiz and m_bidir_dual_port and !is_used(rden_b)" />
+		</PORT>
+		<PORT NAME="data_a" >
+			<STATE V="UNUSED" IF="m_rom" ELSE="USED" />
+		</PORT>
+		<PORT NAME="data_b" >
+			<STATE V="UNUSED" IF="!m_bidir_dual_port" ELSE="USED" />
+		</PORT>
+		<PORT NAME="address_b" >
+			<STATE V="UNUSED" IF="(m_rom || m_single_port)" ELSE="USED" />
+			<FORCE_RANGE MAX="NUMWORDS_B - 1" MIN="0" />
+		</PORT>
+		<PORT NAME="address_a" USAGE="USED" >
+			<FORCE_RANGE MAX="NUMWORDS_A - 1" MIN="0" />
+		</PORT>
+		<PORT NAME="byteena_a" >
+			<STATE V="UNUSED" WHEN="m_m512 and !mfam_family_has_stratixii_style_ram" />
+			<STATE V="UNUSED" WHEN="m_rom" />
+		</PORT>
+		<PORT NAME="byteena_b" >
+			<STATE V="UNUSED" WHEN="!m_bidir_dual_port || (m_m512 and !mfam_family_has_stratixii_style_ram)" />
+		</PORT>
+		<PORT NAME="addressstall_a" >
+			<STATE V="UNUSED" WHEN="!mfam_family_has_stratixii_style_ram" />
+			<STATE V="UNUSED" WHEN="m_m512 and mfam_family_has_stratixii_style_ram and m_rom" />
+		</PORT>
+		<PORT NAME="addressstall_b" >
+			<STATE V="UNUSED" WHEN="!mfam_family_has_stratixii_style_ram || m_rom || m_single_port" />
+		</PORT>
+		<PORT NAME="q_b" >
+			<STATE V="UNUSED" WHEN="m_rom || m_single_port" ELSE="USED" />
+		</PORT>
+		<PORT NAME="q_a" >
+			<STATE V="UNUSED" WHEN="m_dual_port" ELSE="USED" />
+		</PORT>
+		<PORT NAME="clock0" USAGE="USED" />
+		<PORT NAME="clock1" >
+			<STATE V="USED" >
+				<IF> m_clk1_used
+				</IF>
+			</STATE>
+			<STATE V="UNUSED" >
+				<IF> !m_clk1_used
+				</IF>
+			</STATE>
+		</PORT>
+		<PORT NAME="aclr0" >
+			<STATE V="USED" >
+				<IF> m_aclr0_used </IF>
+			</STATE>
+			<STATE V="UNUSED" >
+				<IF> !m_aclr0_used </IF>
+			</STATE>
+		</PORT>
+		<PORT NAME="aclr1" >
+			<STATE V="USED" >
+				<IF> m_aclr1_used </IF>
+			</STATE>
+			<STATE V="UNUSED" >
+				<IF> !m_aclr1_used </IF>
+			</STATE>
+		</PORT>
+		<PORT NAME="clocken0" >
+			<STATE V="USED" WHEN="m_clocken0_used" ELSE="UNUSED" />		
+		</PORT>
+		<PORT NAME="clocken1" >
+			<STATE V="USED" WHEN="m_clocken1_used" ELSE="UNUSED" />		
+		</PORT>
+		<PORT NAME="clocken2" >
+			<STATE V="USED" WHEN="m_clocken2_used" ELSE="UNUSED" />
+		</PORT>
+		<PORT NAME="clocken3" >
+			<STATE V="USED" WHEN="m_clocken3_used" ELSE="UNUSED" />
+		</PORT>
+		<PORT NAME="eccstatus">
+			<STATE V="USED" WHEN="m_ecc_used" ELSE="UNUSED" />
+		</PORT>
+	</PORT_RULES>
+	<PARAMETER_RULES>
+		<PARAMETER NAME="RAM_BLOCK_TYPE" >
+			<VALUE_RULE>
+				!mfam_family_has_m512 and (RAM_BLOCK_TYPE != mfam_m512) ||
+				mfam_family_has_m512 and (RAM_BLOCK_TYPE == mfam_m512) || 
+				(RAM_BLOCK_TYPE != mfam_m512)
+			</VALUE_RULE>
+			<VALUE_RULE>
+				!mfam_family_has_megaram and (RAM_BLOCK_TYPE != mfam_mram) ||
+				mfam_family_has_megaram and (RAM_BLOCK_TYPE == mfam_mram) || 
+				(RAM_BLOCK_TYPE != mfam_mram)
+			</VALUE_RULE>
+			<VALUE_RULE>
+				!mfam_family_has_m4k and (RAM_BLOCK_TYPE != mfam_m4k) ||
+				mfam_family_has_m4k and (RAM_BLOCK_TYPE == mfam_m4k) || 
+				(RAM_BLOCK_TYPE != mfam_m4k)
+			</VALUE_RULE>
+			<VALUE_RULE>
+				!mfam_family_has_lutram and (RAM_BLOCK_TYPE != mfam_lutram) ||
+				mfam_family_has_lutram and (RAM_BLOCK_TYPE == mfam_lutram) || 
+				(RAM_BLOCK_TYPE != mfam_lutram)
+			</VALUE_RULE>
+			<VALUE_RULE>
+				!mfam_family_has_m8k and (RAM_BLOCK_TYPE != mfam_m9k) ||
+				mfam_family_has_m8k and (RAM_BLOCK_TYPE == mfam_m9k) || 
+				(RAM_BLOCK_TYPE != mfam_m9k)
+			</VALUE_RULE>
+			<VALUE_RULE>
+				!mfam_family_has_m144k and (RAM_BLOCK_TYPE != mfam_m144k) ||
+				mfam_family_has_m144k and (RAM_BLOCK_TYPE == mfam_m144k) || 
+				(RAM_BLOCK_TYPE != mfam_m144k)
+			</VALUE_RULE>
+			<VALUE_RULE>
+				!m_rom ||
+				(RAM_BLOCK_TYPE != mfam_mram)
+			</VALUE_RULE>
+			<VALUE_RULE>
+				(RAM_BLOCK_TYPE != mfam_m512 and RAM_BLOCK_TYPE != mfam_lutram) and m_bidir_dual_port ||
+				!m_bidir_dual_port ||
+				!((RAM_BLOCK_TYPE == mfam_m512) || (RAM_BLOCK_TYPE == mfam_lutram))
+			</VALUE_RULE>
+		</PARAMETER>
+		<PARAMETER NAME="WIDTH_A" >
+			<VALUE_RULE> ((WIDTH_A % BYTE_SIZE) == 0) and (is_used(byteena_a) || is_used(byteena_b)) || (!is_used(byteena_a) and !is_used(byteena_b)) </VALUE_RULE>
+			<VALUE_RULE> !is_used(byteena_a) || (((WIDTH_A div BYTE_SIZE) gt 1) and is_used(byteena_a)) </VALUE_RULE>
+			<VALUE_RULE> (WIDTH_A lt 64) and m_ecc_used || !m_ecc_used </VALUE_RULE>
+		</PARAMETER>
+		<PARAMETER NAME="NUMWORDS_A" ON_CONFLICT="USE_CALCULATED_VALUE" >
+			<FORCE_RANGE MAX="(2 exp WIDTHAD_A)" MIN="(2 exp (WIDTHAD_A - 1)) + 1" />
+			<VALUE_RULE>
+				( m_rom || m_single_port || ( (m_dual_port || m_bidir_dual_port) and ( (NUMWORDS_A % 2) == 0 ) ) )
+			</VALUE_RULE>
+		</PARAMETER>
+		<PARAMETER NAME="WIDTH_BYTEENA_A" ON_CONFLICT="USE_CALCULATED_VALUE" >
+			<FORCE_VALUE IF="m_rom || ((WIDTH_A % BYTE_SIZE) != 0) || (WIDTH_A lt BYTE_SIZE)" THEN="1" ELSE="WIDTH_A div BYTE_SIZE" />
+		</PARAMETER>
+		<PARAMETER NAME="WIDTH_B" >
+			<FORCE_VALUE V="1" WHEN="m_rom || m_single_port" />
+			
+			<!-- dual port non-MRAM -->
+			<FORCE_RANGE V="2*WIDTH_A|4*WIDTH_A|8*WIDTH_A|16*WIDTH_A|32*WIDTH_A|WIDTH_A int_div 2|WIDTH_A int_div 4|WIDTH_A" 
+				 WHEN="(m_m4k || m_auto || m_m8k) and is_used(byteena_a) and m_dual_port and (WIDTH_A != 16) and (WIDTH_A != 32) and !mfam_family_has_stratixi_style_ram" /> 		
+			<FORCE_RANGE V="2*WIDTH_A|4*WIDTH_A|WIDTH_A int_div 2|WIDTH_A int_div 4|WIDTH_A" 
+				 WHEN="(m_m4k || m_auto || m_m8k) and is_used(byteena_a) and m_dual_port and (WIDTH_A != 16) and (WIDTH_A != 32) and mfam_family_has_stratixi_style_ram" /> 		
+			<FORCE_RANGE V="2*WIDTH_A|4*WIDTH_A|8*WIDTH_A|16*WIDTH_A|32*WIDTH_A|WIDTH_A int_div 2|WIDTH_A int_div 4|WIDTH_A int_div 8|WIDTH_A int_div 16|WIDTH_A int_div 32|WIDTH_A" 
+				 WHEN="(m_m4k || m_auto || m_m8k) and !is_used(byteena_a) and m_dual_port" /> 		
+
+			<FORCE_RANGE V="1|2|4|8|16|32" 
+				WHEN="(m_m4k || m_auto || m_m8k) and is_used(byteena_a) and m_dual_port and (WIDTH_A == 16)" />
+			<FORCE_RANGE V="1|2|16|32|64|4" 
+				WHEN="(m_m4k || m_auto || m_m8k) and is_used(byteena_a) and m_dual_port and (WIDTH_A == 32)" />
+
+			<FORCE_RANGE V="2*WIDTH_A|4*WIDTH_A|8*WIDTH_A|16*WIDTH_A|WIDTH_A int_div 2|WIDTH_A" 
+				 WHEN="m_m512 and is_used(byteena_a) and m_dual_port" /> 		
+			<FORCE_RANGE V="2*WIDTH_A|4*WIDTH_A|8*WIDTH_A|16*WIDTH_A|WIDTH_A int_div 2|WIDTH_A int_div 4|WIDTH_A int_div 8|WIDTH_A int_div 16|WIDTH_A" 
+				 WHEN="m_m512 and !is_used(byteena_a) and m_dual_port" /> 		
+
+			<!-- bidir dual port non-MRAM -->
+			<FORCE_RANGE V="2*WIDTH_A|WIDTH_A int_div 2|WIDTH_A" 
+				 WHEN="(m_m4k || m_auto || m_m8k) and (is_used(byteena_a) and is_used(byteena_b)) and m_bidir_dual_port" /> 		
+			<FORCE_RANGE V="2*WIDTH_A|WIDTH_A int_div 2|WIDTH_A|4*WIDTH_A|8*WIDTH_A|16*WIDTH_A" 
+				 WHEN="(m_m4k || m_auto || m_m8k) and (is_used(byteena_a) and !is_used(byteena_b)) and m_bidir_dual_port and !mfam_family_has_stratixi_style_ram" /> 		
+			<FORCE_RANGE V="2*WIDTH_A|WIDTH_A int_div 2|WIDTH_A|WIDTH_A int_div 4|WIDTH_A int_div 8|WIDTH_A int_div 16" 
+				 WHEN="(m_m4k || m_auto || m_m8k) and (!is_used(byteena_a) and is_used(byteena_b)) and m_bidir_dual_port and !mfam_family_has_stratixi_style_ram" /> 		
+			<FORCE_RANGE V="2*WIDTH_A|WIDTH_A int_div 2|WIDTH_A" 
+				 WHEN="(m_m4k || m_auto || m_m8k) and (is_used(byteena_a) and !is_used(byteena_b)) and m_bidir_dual_port and mfam_family_has_stratixi_style_ram" /> 		
+			<FORCE_RANGE V="2*WIDTH_A|WIDTH_A int_div 2|WIDTH_A" 
+				 WHEN="(m_m4k || m_auto || m_m8k) and (!is_used(byteena_a) and is_used(byteena_b)) and m_bidir_dual_port and mfam_family_has_stratixi_style_ram" /> 		
+			
+			<FORCE_RANGE V="2*WIDTH_A|4*WIDTH_A|8*WIDTH_A|16*WIDTH_A|WIDTH_A int_div 2|WIDTH_A int_div 4|WIDTH_A int_div 8|WIDTH_A int_div 16|WIDTH_A" 
+				 WHEN="(m_m4k || m_auto || m_m8k) and !is_used(byteena_a) and !is_used(byteena_b) and m_bidir_dual_port" /> 		
+
+			<FORCE_RANGE V="1|2|4|8|16|32" 
+				WHEN="(m_m4k || m_auto || m_m8k) and is_used(byteena_a) and m_bidir_dual_port and (WIDTH_A == 16)" />
+		
+			<!-- M-RAM -->
+			<FORCE_RANGE V="2*WIDTH_A|4*WIDTH_A|8*WIDTH_A|WIDTH_A int_div 2|WIDTH_A int_div 4|WIDTH_A int_div 8|WIDTH_A" 
+				 WHEN="m_mram and (m_dual_port || m_bidir_dual_port) and !m_titan_ram" /> 	
+			<FORCE_RANGE V="2*WIDTH_A|4*WIDTH_A|WIDTH_A int_div 2|WIDTH_A int_div 4|WIDTH_A" 
+				 WHEN="(m_mram || m_m144k) and (m_dual_port || m_bidir_dual_port) and m_titan_ram" /> 	
+
+			<FORCE_VALUE TO="WIDTH_A" WHEN="(m_lutram || m_ecc_used) and m_dual_port" />	
+
+			<VALUE_RULE> (max(WIDTH_A, WIDTH_B) % min(WIDTH_A, WIDTH_B)) == 0 </VALUE_RULE>
+			<VALUE_RULE> 
+				<IF> (is_used(byteena_a) || is_used(byteena_b)) and (m_dual_port || m_bidir_dual_port) </IF>
+				<THEN> ((WIDTH_B % BYTE_SIZE) == 0) </THEN>
+			</VALUE_RULE>
+			<VALUE_RULE> 
+				<IF> is_used(byteena_b)  and (m_dual_port || m_bidir_dual_port) </IF>
+				<THEN> (WIDTH_B gt BYTE_SIZE) </THEN>
+			</VALUE_RULE>
+		</PARAMETER>
+		<PARAMETER NAME="WIDTHAD_B" >
+			<FORCE_VALUE V="1" WHEN="m_rom || m_single_port" />
+			<FORCE_VALUE V="ceil_log(NUMWORDS_B)" WHEN="m_dual_port || m_bidir_dual_port" />
+			<VALUE_RULE> WIDTHAD_B gt 0 </VALUE_RULE>
+		</PARAMETER>
+		<PARAMETER NAME="NUMWORDS_B" ON_CONFLICT="USE_CALCULATED_VALUE" >
+			<FORCE_VALUE V="1" WHEN="m_rom || m_single_port" />
+			<FORCE_VALUE V="( (WIDTH_A * NUMWORDS_A) int_div WIDTH_B )" WHEN="m_dual_port || m_bidir_dual_port" />
+			<VALUE_RULE> NUMWORDS_B gt 0 </VALUE_RULE>
+			<VALUE_RULE> (((NUMWORDS_B * WIDTH_B) == (NUMWORDS_A * WIDTH_A)) and (m_dual_port || m_bidir_dual_port)) || !(m_dual_port || m_bidir_dual_port) </VALUE_RULE>			
+		</PARAMETER>
+		<PARAMETER NAME="WIDTH_BYTEENA_B" ON_CONFLICT="USE_CALCULATED_VALUE" >
+			<FORCE_VALUE IF="!m_bidir_dual_port || ((WIDTH_B % BYTE_SIZE) != 0) || (WIDTH_B lt BYTE_SIZE)" THEN="1" ELSE="WIDTH_B div BYTE_SIZE" />
+		</PARAMETER>
+		<PARAMETER NAME="BYTE_SIZE" VALUE="8-9" >
+			<FORCE_RANGE TO="8|9" />
+			<FORCE_RANGE TO="5|8|9|10" WHEN="m_titan_ram and m_lutram" />
+		</PARAMETER>
+		<PARAMETER NAME="OUTDATA_REG_A" >
+			<FORCE_RANGE V="str(CLOCK0)|UNREGISTERED" >	
+				<WHEN> (m_wiz) and m_bidir_dual_port || (ENABLE_RUNTIME_MOD == "YES")</WHEN>
+			</FORCE_RANGE>
+			<FORCE_VALUE V="UNUSED" IF="m_dual_port" />
+		</PARAMETER>
+		<PARAMETER NAME="OUTDATA_REG_B" >
+			<FORCE_RANGE V="str(CLOCK1)|UNREGISTERED" >
+				<WHEN> (m_wiz) and (ADDRESS_REG_B == "CLOCK1") </WHEN>
+			</FORCE_RANGE>
+			<FORCE_RANGE V="str(CLOCK0)|UNREGISTERED" >
+				<WHEN> (m_wiz) and (ADDRESS_REG_B == "CLOCK0") </WHEN>
+			</FORCE_RANGE>
+			<FORCE_VALUE V="UNUSED" WHEN="m_rom || m_single_port" />
+		</PARAMETER>
+		<PARAMETER NAME="ADDRESS_REG_B" >
+			<FORCE_VALUE V="UNUSED" WHEN="m_rom || m_single_port" />
+		</PARAMETER>
+		<PARAMETER NAME="INDATA_REG_B" >
+			<FORCE_VALUE IF="m_bidir_dual_port" THEN="ADDRESS_REG_B" ELSE="UNUSED" />
+		</PARAMETER>
+		<PARAMETER NAME="WRCONTROL_WRADDRESS_REG_B" >
+			<FORCE_VALUE IF="m_bidir_dual_port" THEN="ADDRESS_REG_B" ELSE="UNUSED" />
+		</PARAMETER>
+		<PARAMETER NAME="RDCONTROL_REG_B" >
+			<FORCE_VALUE IF="m_dual_port and is_used(rden_b)" THEN="ADDRESS_REG_B" ELSE="UNUSED" />
+		</PARAMETER>
+		<PARAMETER NAME="BYTEENA_REG_B" >
+			<FORCE_VALUE IF="m_bidir_dual_port and is_used(byteena_b)" THEN="ADDRESS_REG_B" ELSE="UNUSED" />
+		</PARAMETER>
+		<PARAMETER NAME="ADDRESS_ACLR_A" >
+			<FORCE_RANGE V="UNUSED|NONE" IF="((m_mram || mfam_family_has_stratixii_style_ram) and !m_addr_clr_legal) || (m_m512 and !m_rom) || (m_titan_ram and !m_rom) || (m_titan_ram and (ENABLE_RUNTIME_MOD == YES))" />
+		</PARAMETER>
+		<PARAMETER NAME="OUTDATA_ACLR_A" >
+			<FORCE_RANGE V="CLEAR0|NONE" >
+				<WHEN> m_wiz and (OUTDATA_REG_A == "UNREGISTERED") and m_titan_ram and !m_lutram </WHEN>
+			</FORCE_RANGE>
+			<FORCE_RANGE V="CLEAR1|NONE" >
+				 <WHEN> (m_wiz) and (OUTDATA_REG_A == "CLOCK1") </WHEN>
+			</FORCE_RANGE>
+			<FORCE_RANGE V="CLEAR0|NONE" >
+				 <WHEN> (m_wiz) and (OUTDATA_REG_A == "CLOCK0") </WHEN>
+			</FORCE_RANGE>
+			<FORCE_RANGE V="UNUSED|NONE" >
+				<WHEN> ((OUTDATA_REG_A != "CLOCK1") and (OUTDATA_REG_A != "CLOCK0") and !(m_titan_ram and !m_lutram))</WHEN> 
+			</FORCE_RANGE>
+		</PARAMETER>
+		<PARAMETER NAME="BYTEENA_ACLR_A" >
+			<FORCE_VALUE V="UNUSED" WHEN="!is_used(byteena_a)" />
+			<FORCE_RANGE V="UNUSED|NONE" WHEN="m_mram || mfam_family_has_stratixii_style_ram" />
+		</PARAMETER>
+		<PARAMETER NAME="INDATA_ACLR_A" >
+			<FORCE_RANGE V="UNUSED|NONE" WHEN="m_rom" />
+			<FORCE_RANGE V="UNUSED|NONE" WHEN="m_mram || mfam_family_has_stratixii_style_ram" />
+		</PARAMETER>
+		<PARAMETER NAME="WRCONTROL_ACLR_A" >
+			<FORCE_VALUE V="ADDRESS_ACLR_A" WHEN="ADDRESS_ACLR_A != UNUSED" />			
+			<FORCE_RANGE V="UNUSED|NONE" WHEN="m_rom || m_mram || mfam_family_has_stratixii_style_ram || (ADDRESS_ACLR_A == UNUSED)" />
+		</PARAMETER>
+		<PARAMETER NAME="ADDRESS_ACLR_B" >
+			<FORCE_RANGE V="CLEAR0|NONE" >
+				<WHEN> (ADDRESS_REG_B == "CLOCK0") and (m_wiz) </WHEN>
+			</FORCE_RANGE>
+			<FORCE_RANGE V="CLEAR1|NONE" >
+				<WHEN> (ADDRESS_REG_B == "CLOCK1") and (m_wiz) </WHEN>
+			</FORCE_RANGE>
+			<FORCE_RANGE V="UNUSED|NONE" WHEN="m_rom || m_single_port || ((m_mram || mfam_family_has_stratixii_style_ram) and !m_addr_clr_legal) || (m_titan_ram and m_bidir_dual_port) || m_titan_lutram_no_clr_mode" />
+		</PARAMETER>
+		<PARAMETER NAME="INDATA_ACLR_B" >
+			<FORCE_RANGE V="ADDRESS_ACLR_B|NONE" />
+			<FORCE_RANGE V="UNUSED|NONE" WHEN="!m_bidir_dual_port || m_mram || mfam_family_has_stratixii_style_ram" />
+		</PARAMETER>
+		<PARAMETER NAME="WRCONTROL_ACLR_B" >
+			<FORCE_VALUE V="ADDRESS_ACLR_B" WHEN="ADDRESS_ACLR_B != UNUSED" />			
+			<FORCE_RANGE V="UNUSED|NONE" WHEN="!m_bidir_dual_port || m_mram || mfam_family_has_stratixii_style_ram || (ADDRESS_ACLR_B == UNUSED)" />
+		</PARAMETER>
+		<PARAMETER NAME="RDCONTROL_ACLR_B" >
+			<FORCE_RANGE V="ADDRESS_ACLR_B|NONE" />
+			<FORCE_RANGE V="UNUSED|NONE" WHEN="!m_dual_port || !is_used(rden_b) || m_mram || m_m512 || mfam_family_has_stratixii_style_ram" />
+		</PARAMETER>
+		<PARAMETER NAME="BYTEENA_ACLR_B" >
+			<FORCE_RANGE V="ADDRESS_ACLR_B|NONE" />
+			<FORCE_RANGE V="UNUSED|NONE" WHEN="!m_bidir_dual_port || !is_used(byteena_b) || m_mram || mfam_family_has_stratixii_style_ram" />
+		</PARAMETER>
+		<PARAMETER NAME="OUTDATA_ACLR_B" >
+			<FORCE_RANGE V="CLEAR1|NONE" >
+				<WHEN> m_wiz and (OUTDATA_REG_B == "UNREGISTERED") and m_titan_ram and !m_lutram </WHEN>
+			</FORCE_RANGE>
+			<FORCE_RANGE V="CLEAR1|NONE" >
+				 <WHEN> (m_wiz) and (OUTDATA_REG_B == "CLOCK1") </WHEN>
+			</FORCE_RANGE>
+			<FORCE_RANGE V="CLEAR0|NONE" >
+				 <WHEN> (m_wiz) and (OUTDATA_REG_B == "CLOCK0") </WHEN>
+			</FORCE_RANGE>
+			<FORCE_RANGE V="UNUSED|NONE" WHEN="m_rom || m_single_port" />
+			<FORCE_RANGE V="UNUSED|NONE" >
+				<WHEN> (OUTDATA_REG_B != "CLOCK1") and (OUTDATA_REG_B != "CLOCK0") and !(m_titan_ram and !m_lutram) </WHEN>
+			</FORCE_RANGE>
+		</PARAMETER>
+		<PARAMETER NAME="READ_DURING_WRITE_MODE_MIXED_PORTS" >
+			<FORCE_RANGE TO="OLD_DATA|DONT_CARE" WHEN="!m_titan_ram || m_titan_ram and !m_lutram" />
+			<FORCE_RANGE TO="OLD_DATA|NEW_DATA|DONT_CARE" WHEN="m_lutram and m_dual_port and (ADDRESS_REG_B == str(CLOCK0)) and (OUTDATA_REG_B == str(CLOCK0))" />
+			<FORCE_VALUE V="UNUSED" WHEN="m_rom || m_single_port" />
+			<FORCE_VALUE V="DONT_CARE" WHEN="m_mram and !m_titan_ram and !(m_rom || m_single_port)" />
+			<FORCE_VALUE TO="DONT_CARE" WHEN="m_lutram and m_dual_port and (ADDRESS_REG_B != str(CLOCK0) || OUTDATA_REG_B != str(CLOCK0))" />
+			<FORCE_VALUE TO="DONT_CARE" WHEN="m_ecc_used" />
+		</PARAMETER>
+		<PARAMETER NAME="CLOCK_ENABLE_INPUT_A" >
+			<FORCE_RANGE TO="NORMAL|BYPASS" WHEN="!m_titan_ram || m_wiz" />
+			<FORCE_VALUE V="NORMAL" WHEN="!mfam_family_has_stratixii_style_ram" />
+		</PARAMETER>
+		<PARAMETER NAME="CLOCK_ENABLE_INPUT_B" >
+			<FORCE_RANGE TO="NORMAL|BYPASS" WHEN="!m_titan_ram || m_wiz" />		
+			<FORCE_VALUE V="NORMAL" WHEN="!mfam_family_has_stratixii_style_ram and (m_dual_port || m_bidir_dual_port)" />
+			<FORCE_VALUE V="CLOCK_ENABLE_INPUT_A" WHEN="m_armstrong_ram and !m_titan_ram || m_titan_ram and m_b_uses_clock0" />
+			<FORCE_VALUE V="UNUSED" WHEN="m_rom || m_single_port" />
+		</PARAMETER>
+		<PARAMETER NAME="CLOCK_ENABLE_OUTPUT_A" >
+			<FORCE_VALUE V="NORMAL" WHEN="!mfam_family_has_stratixii_style_ram || m_dual_port" />
+			<FORCE_VALUE V="CLOCK_ENABLE_INPUT_A" >
+			<WHEN> mfam_family_has_stratixii_style_ram and m_bidir_dual_port and (OUTDATA_REG_A == "CLOCK0") and !m_titan_ram</WHEN>
+			</FORCE_VALUE>
+			<FORCE_VALUE V="UNUSED" WHEN="m_dual_port" />
+		</PARAMETER>
+		<PARAMETER NAME="CLOCK_ENABLE_OUTPUT_B" >
+			<FORCE_RANGE TO="NORMAL|BYPASS" WHEN="!m_titan_ram" />			
+			<FORCE_VALUE V="NORMAL" WHEN="!mfam_family_has_stratixii_style_ram and (m_dual_port || m_bidir_dual_port)" />
+			<FORCE_VALUE V="CLOCK_ENABLE_OUTPUT_A" > 
+			<WHEN> mfam_family_has_stratixii_style_ram and !m_dual_port and (OUTDATA_REG_A==OUTDATA_REG_B) and !m_titan_ram ||
+					m_titan_ram and (OUTDATA_REG_A == OUTDATA_REG_B)
+			</WHEN>
+			</FORCE_VALUE>
+			<FORCE_VALUE V="CLOCK_ENABLE_INPUT_A" >
+			<WHEN> mfam_family_has_stratixii_style_ram and m_bidir_dual_port and (ADDRESS_REG_B=="CLOCK0") and (OUTDATA_REG_B == "CLOCK0") and !m_titan_ram </WHEN>
+			</FORCE_VALUE>
+			<FORCE_VALUE TO="CLOCK_ENABLE_INPUT_A" IF="m_titan_ram and m_dual_port and m_lutram and (READ_DURING_WRITE_MODE_MIXED_PORTS == OLD_DATA)" />
+			<FORCE_VALUE V="UNUSED" WHEN="m_rom || m_single_port" />
+		</PARAMETER>
+		<PARAMETER NAME="CLOCK_ENABLE_CORE_A" >
+				<FORCE_RANGE TO="CLOCK_ENABLE_INPUT_A|USE_INPUT_CLKEN" WHEN="!m_titan_ram || m_lutram || m_wiz || mfam_family_stratixiii_strict" />
+		</PARAMETER>		
+		<PARAMETER NAME="CLOCK_ENABLE_CORE_B" >
+				<FORCE_RANGE TO="CLOCK_ENABLE_INPUT_B|USE_INPUT_CLKEN" WHEN="!m_titan_ram || (m_lutram and m_dual_port) || (m_wiz and (m_dual_port || m_bidir_dual_port)) || mfam_family_stratixiii_strict" />
+				<FORCE_VALUE TO="CLOCK_ENABLE_CORE_A" WHEN="m_titan_ram and m_b_uses_clock0 and !m_lutram" />
+				<VALUE_RULE> ((CLOCK_ENABLE_CORE_B == CLOCK_ENABLE_INPUT_B) || (CLOCK_ENABLE_CORE_B == USE_INPUT_CLKEN)) and m_lutram and m_dual_port || !m_dual_port || !m_lutram</VALUE_RULE>
+		</PARAMETER>		
+		<PARAMETER NAME="INIT_FILE" >
+			<FORCE_VALUE V="UNUSED" WHEN="m_mram and !mfam_family_has_m144k" />
+			<FORCE_VALUE V="UNUSED" WHEN="m_le_ram" />
+			<FORCE_VALUE V="UNUSED" WHEN="mfam_family_hardcopyii and !m_rom" />
+			<VALUE_RULE>
+					INIT_FILE != "UNUSED" and m_rom || !m_rom
+			</VALUE_RULE>
+		</PARAMETER>
+		<PARAMETER NAME="INIT_FILE_LAYOUT" >
+			<FORCE_VALUE V="PORT_A" WHEN="m_rom || m_single_port" />
+		</PARAMETER>
+		<PARAMETER NAME="MRAM_BYTEENA_LATCH" >
+				<FORCE_VALUE TO="UNUSED" WHEN="!m_mram || (m_wiz)" />
+		</PARAMETER>
+		<PARAMETER NAME="MRAM_WREN_LATCH" >
+				<FORCE_VALUE TO="UNUSED" WHEN="!m_mram || (m_wiz)" />
+		</PARAMETER>
+		<PARAMETER NAME="IMPLEMENT_IN_LES" >
+			<FORCE_VALUE V="OFF" WHEN="m_rom || m_bidir_dual_port" />
+		</PARAMETER>
+		<PARAMETER NAME="LOW_POWER_MODE" >
+			<FORCE_VALUE TO="NONE" WHEN="(m_wiz)" />
+		</PARAMETER>
+		<PARAMETER NAME="READ_DURING_WRITE_MODE_PORT_A" >
+			<FORCE_VALUE TO="NEW_DATA_NO_NBE_READ" WHEN="!m_titan_ram" />
+			<FORCE_VALUE TO="DONT_CARE" WHEN="m_titan_ram and m_lutram" />
+			<FORCE_VALUE TO="UNUSED" WHEN="m_dual_port" />
+		</PARAMETER>
+		<PARAMETER NAME="READ_DURING_WRITE_MODE_PORT_B" >
+			<FORCE_VALUE TO="NEW_DATA_NO_NBE_READ" WHEN="!m_titan_ram" />
+			<FORCE_VALUE TO="UNUSED" WHEN="!m_bidir_dual_port" />
+		</PARAMETER>
+		<PARAMETER NAME="ENABLE_ECC" >
+			<FORCE_VALUE TO="FALSE" WHEN="!m_ecc_legal" />
+		</PARAMETER>
+		<PARAMETER NAME="ENABLE_RUNTIME_MOD" >
+			<FORCE_VALUE TO="NO" WHEN="mfam_family_is_hardcopy and m_rom" />
+		</PARAMETER>
+		<PARAMETER NAME="POWER_UP_UNINITIALIZED" >
+			<FORCE_VALUE TO="FALSE" WHEN="(INIT_FILE != UNUSED)" />
+		</PARAMETER>
+	</PARAMETER_RULES>
+</ROOT>

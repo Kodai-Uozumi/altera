@@ -1,0 +1,83 @@
+-- **************************************************************************
+--  Gray-to-binary conversion - A_GRAY2BIN
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 1.0
+--
+-- **************************************************************************
+OPTIONS NAME_SUBSTITUTION = ON;
+
+define gray2bin(gray,seed) = gray>0 ? gray2bin(floor(gray div 2), gray xor seed) : seed;
+-- gray-to-bin conversion function
+--  (to be called with seed=0)
+
+--------------------------------------------------------------------
+INCLUDE "aglobal90.inc";
+
+parameters
+(
+	WIDTH,
+	CARRY_CHAIN="IGNORE",
+	CARRY_CHAIN_LENGTH=32,
+	DEVICE_FAMILY,
+	CBXI_PARAMETER = "NOTHING"
+);
+FUNCTION @CBXI_PARAMETER (gray[width-1..0]) RETURNS (bin[width-1..0]);
+
+-- only use the chains if the user asks for them and it makes sense to use them
+DEFINE USE_CHAIN_SPEEDUP() = (WIDTH <= CARRY_CHAIN_LENGTH) & USE_CARRY_CHAINS() & WIDTH > 1 & (FAMILY_MERCURY() != 1) & (FAMILY_STRATIX() != 1);
+subdesign a_gray2bin
+(
+	gray[WIDTH-1..0]: input;
+	 bin[WIDTH-1..0]: output;
+)
+
+VARIABLE
+IF (CBXI_PARAMETER == "NOTHING") GENERATE
+	IF USE_CHAIN_SPEEDUP() GENERATE
+		conversion_carry[WIDTH - 1..0] : CARRY_SUM;
+	END GENERATE;
+ELSE GENERATE
+	auto_generated : @CBXI_PARAMETER WITH (CBXI_PARAMETER = "NOTHING");
+END GENERATE;
+begin
+IF CBXI_PARAMETER == "NOTHING" GENERATE
+	IF !USE_CHAIN_SPEEDUP() GENERATE
+		bin[WIDTH-1] = gray[WIDTH-1];
+		if WIDTH>1 generate
+			bin[WIDTH-2..0] = bin[WIDTH-1..1] xor gray[WIDTH-2..0];
+		end generate;
+	ELSE GENERATE
+		-- going to use the chains to speed up the calculation
+		conversion_carry[].sin = (gray[WIDTH - 1], gray[WIDTH - 2..0] $ conversion_carry[WIDTH - 1..1].cout);
+		conversion_carry[].cin = (gray[WIDTH - 1], gray[WIDTH - 2..0] $ conversion_carry[WIDTH - 1..1].cout);
+		bin[] = conversion_carry[].sout;
+	END GENERATE;
+ELSE GENERATE
+	IF USED(gray) GENERATE
+		auto_generated.gray[] = gray[];
+	END GENERATE;
+	IF USED(bin) GENERATE
+		bin[] = auto_generated.bin[];
+	END GENERATE;
+END GENERATE;
+	IF !USED(bin) GENERATE
+		bin[] = GND;
+	END GENERATE;
+end;
+

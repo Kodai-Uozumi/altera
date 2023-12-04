@@ -1,0 +1,270 @@
+------------------------------------------------------------------------------------------------------
+--
+--	DIVIDE Parameterized Megafunction
+--
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+-- Version 2.0
+--
+--
+-- Description:	Performs an unsigned division.  The function reduces circuit size and increases
+--				speed by using an OR of the denominator bits, to reduced the number of subtract
+--				cells needed.
+--
+------------------------------------------------------------------------------------------------------
+
+INCLUDE "lpm_add_sub";
+
+-- obtain carry chain information
+INCLUDE "aglobal90.inc";
+INCLUDE "alt_nonrestoring_divide";
+
+PARAMETERS
+(
+	WIDTH_N,		-- Size of numerator
+	WIDTH_D,		-- Size of denominator
+	WIDTH_Q,		-- Size of quotient, MUST be set to ( WIDTH_N - WIDTH_D_MIN +1 )
+	WIDTH_R,		-- Size of remainder, MUST be set to MIN( WIDTH_N, WIDTH_D )
+
+-- optional parameters
+	WIDTH_D_MIN	= 1,	-- Minimum word size of the denominator
+						-- 	1 <= WIDTH_D_MIN <= WIDTH_D
+						-- Example: if denominator is known to be always greater 
+						--  or equal to H"10", WIDTH_D_MIN can be set to 5.
+
+	-- pipelining
+	LPM_PIPELINE = 0,	-- clock cycle latency number of outputs.
+						-- Default=0 instanciates a purely combinatorial function.
+
+	-- shift the placement of the pipeline latches
+	PIPELINE_DELAY = FLOOR(WIDTH_Q DIV 2),
+						-- by default starts at the middle stage.
+						-- put 0 to start at the last stage.
+						-- put (WIDTH_Q-1) for the first stage.
+	-- choice of speed optimization versus size optimization
+	MAXIMIZE_SPEED = 5, -- must have 0 <= MAXIMIZE_SPEED <= 9
+						-- a larger value of MAXIMIZE_SPEED produces a faster
+						-- circuit at the cost of a larger circuit with less
+						-- routability. a smaller value of MAXIMIZE_SPEED
+						-- produces a smaller circuit with increased routability
+						-- at the cost of slower speed
+	CARRY_CHAIN = "IGNORE",
+	DEVICE_FAMILY
+);
+
+-------------------------------------------------------------------------------
+-- Dont use the lpm_add_sub for Stratix II
+DEFINE MIN(a,b)	= (a<b) ? a : b;
+CONSTANT WidthDeadD		= WIDTH_D_MIN-1;
+CONSTANT QuotientWidth	= WIDTH_N-WidthDeadD;
+CONSTANT RemainderSize	= MIN( WIDTH_N, WIDTH_D );
+CONSTANT StageSizeMax	= MIN( WIDTH_N, WIDTH_D+1 );
+DEFINE SubStageSize(k)	= MIN( WIDTH_D+1, k+WidthDeadD+1 );
+
+-- pipeline
+CONSTANT nStage = WIDTH_Q;
+CONSTANT nInternalDFF = MIN(nStage, LPM_PIPELINE);
+CONSTANT nExternalDFF = LPM_PIPELINE-nInternalDFF;
+
+DEFINE StageVal(k) = (k*nInternalDFF + PIPELINE_DELAY );
+DEFINE StageNum(k) = FLOOR(StageVal(k) DIV nStage);
+DEFINE StageRem(k) = StageVal(k) MOD nStage;
+DEFINE PutStageHere(k) = (LPM_PIPELINE>0) & (StageRem(k)>=StageRem(k+1));
+
+-------------------------------------------------------------------------------
+SUBDESIGN alt_u_div
+(
+	numerator[WIDTH_N-1..0], denominator[WIDTH_D-1..0]	: INPUT;
+	quotient[WIDTH_Q-1..0], remainder[WIDTH_R-1..0]		: OUTPUT;
+
+	den_out[WIDTH_D-1..0] : OUTPUT;
+	clock, aclr: INPUT = GND;		-- for pipelined designs
+	clk_en: INPUT = VCC;
+)
+
+-------------------------------------------------------------------------------
+VARIABLE
+	IF 1== 1 GENERATE
+	StageIn [nStage  ..0][StageSizeMax-1..0]: NODE;
+	StageOut[nStage-1..0][StageSizeMax-1..0]: NODE;
+	prestg  [nStage-1..0][StageSizeMax-1..0]: NODE;
+
+	sel[nStage..0][WIDTH_D-1..WidthDeadD]	: NODE;
+	nose[nStage..0][WIDTH_Q-1..0]			: NODE;
+	selnose[nStage..0][WIDTH_Q-1..0]		: NODE;
+
+	NumeratorIn[nStage..0][WIDTH_N-1..0]	: NODE;
+	DenominatorIn[nStage..0][WIDTH_D..0]	: NODE;
+
+	IF nInternalDFF>0 GENERATE
+		DFFNumerator[nInternalDFF..1][WIDTH_N-1..0]		: DFFE;
+		DFFDenominator[nInternalDFF..1][WIDTH_D-1..0]	: DFFE;
+		DFFQuotient[nInternalDFF..1][WIDTH_Q-1..0]		: DFFE;
+		DFFStage[nInternalDFF..1][StageSizeMax-1..0]	: DFFE;
+	END GENERATE;
+	ELSE GENERATE
+		stratix_nonrestoring : alt_nonrestoring_divide WITH (
+																REPRESENTATION_D = "UNSIGNED",
+																REPRESENTATION_N = "UNSIGNED"
+																);
+	END GENERATE;
+
+-------------------------------------------------------------------------------
+BEGIN
+-- Avoid warnings
+
+	IF 1== 1 GENERATE
+	StageIn[][] = StageIn[][] & GND;
+	selnose[][] = selnose[][] & GND;
+	NumeratorIn[][] = NumeratorIn[][] & GND;
+	DenominatorIn[][] = DenominatorIn[][] & GND;
+
+-------------------------------------------------------------------------------
+-- Pipelined signals
+
+	IF nInternalDFF>0 GENERATE
+		DFFNumerator[1][]	= numerator[];
+		DFFDenominator[1][]	= denominator[];
+		DFFQuotient[1][]	= GND;
+
+		(DFFNumerator[][], DFFDenominator[][], DFFQuotient[][], DFFStage[][]).clk = clock;
+		(DFFNumerator[][], DFFDenominator[][], DFFQuotient[][], DFFStage[][]).ena = clk_en;
+		(DFFNumerator[][], DFFDenominator[][], DFFQuotient[][], DFFStage[][]).clrn = !aclr;
+
+		IF nInternalDFF>1 GENERATE
+			DFFNumerator[nInternalDFF..2][]		= DFFNumerator[nInternalDFF-1..1][];
+			DFFDenominator[nInternalDFF..2][]	= DFFDenominator[nInternalDFF-1..1][];
+--			DFFQuotient[nInternalDFF..2][]		= DFFQuotient[nInternalDFF-1..1][];
+		END GENERATE;
+
+--		quotient[] = DFFQuotient[nInternalDFF][];
+	END GENERATE;
+
+-------------------------------------------------------------------------------
+-- misc
+	sel[][]		= GND;
+	IF WIDTH_D_MIN<WIDTH_D GENERATE
+		sel[][WIDTH_D-2..WidthDeadD] = sel[][WIDTH_D-1..WidthDeadD+1] # 
+								 DenominatorIn[][WIDTH_D-1..WidthDeadD+1];
+	END GENERATE;
+	
+	nose[][]	= GND;
+	selnose[][]	= !nose[][];
+	IF WIDTH_D-WidthDeadD<=WIDTH_Q GENERATE
+		selnose[][WIDTH_D-WidthDeadD-1..0] = sel[][];
+	ELSE GENERATE
+		selnose[][] = sel[][WIDTH_Q+WidthDeadD-1..WidthDeadD];
+	END GENERATE;
+
+-------------------------------------------------------------------------------
+-- Prepare the first stage
+
+	StageIn[][]	= GND;
+	prestg[][]	= GND;
+	IF WidthDeadD>0 GENERATE
+		StageIn[0][WidthDeadD-1..0] = numerator[WIDTH_N-1..WIDTH_N-WidthDeadD];
+	END GENERATE;
+	NumeratorIn[0][] = numerator[];
+	DenominatorIn[0][] = ( 0, denominator[] );
+
+-------------------------------------------------------------------------------
+-- Stages loop
+
+	FOR k IN 0 TO nStage-1 GENERATE
+--		ASSERT (0) REPORT "StageNum(k)=%" StageNum(k) SEVERITY INFO;
+
+		-- Substract the denominator from the numerator
+		IF SubStageSize(k)==1 GENERATE
+				( prestg[k][0], nose[k][k], ) = lpm_add_sub
+					( .dataa[]= NumeratorIn[k][WIDTH_Q-1-k],
+					  .datab[]= DenominatorIn[k][0]
+					) WITH( LPM_WIDTH=1, LPM_DIRECTION="SUB" );
+			ELSE GENERATE
+				( prestg[k][SubStageSize(k)-1..0], nose[k][k], ) = lpm_add_sub
+					( .dataa[]= ( StageIn[k][SubStageSize(k)-2..0], NumeratorIn[k][WIDTH_Q-1-k] ),
+					  .datab[]= DenominatorIn[k][SubStageSize(k)-1..0]
+					) WITH( LPM_WIDTH=SubStageSize(k), LPM_DIRECTION="SUB" );
+		END GENERATE;
+
+		-- MUX the result according to the borrow bit value
+		IF StageSizeMax==1 GENERATE
+			StageOut[k][] =
+				( NumeratorIn[k][WIDTH_Q-1-k] &  selnose[k][k] ) #
+				( prestg[k][]				  & !selnose[k][k] ) ;
+		ELSE GENERATE
+			StageOut[k][] =
+				( (StageIn[k][StageSizeMax-2..0],NumeratorIn[k][WIDTH_Q-1-k]) &  selnose[k][k] ) #
+				(   prestg[k][]												  & !selnose[k][k] ) ;
+		END GENERATE;
+
+		IF (nInternalDFF==0) # (StageNum(k)>=nInternalDFF) GENERATE
+			quotient[WIDTH_Q-1-k] = !selnose[k][k];
+		ELSE GENERATE
+			DFFQuotient[StageNum(k)+1][WIDTH_Q-1-k].d	= !selnose[k][k];
+		END GENERATE;
+
+		IF PutStageHere(k) GENERATE
+--			ASSERT (0) REPORT "PutStageHere(k) k=%" k SEVERITY INFO;
+			DFFStage[StageNum(k)+1][].d	= StageOut[k][];
+			StageIn[k+1][]				= DFFStage[StageNum(k)+1][].q;
+			NumeratorIn[k+1][]			= DFFNumerator[StageNum(k)+1][].q;
+			DenominatorIn[k+1][]		= ( 0, DFFDenominator[StageNum(k)+1][].q );
+
+			IF StageNum(k)<nInternalDFF-1 GENERATE
+				DFFQuotient[StageNum(k)+2][WIDTH_Q-1..WIDTH_Q-k-1].d = 
+					DFFQuotient[StageNum(k)+1][WIDTH_Q-1..WIDTH_Q-k-1].q;
+			ELSE GENERATE
+				quotient[WIDTH_Q-1..WIDTH_Q-k-1] = 
+					DFFQuotient[nInternalDFF][WIDTH_Q-1..WIDTH_Q-k-1].q;
+			END GENERATE;
+
+-- Avoid warnings for unused DFFQuotient
+			IF WIDTH_Q>=k+2 GENERATE
+				DFFQuotient[StageNum(k)+1][WIDTH_Q-k-2..0].d = VCC;
+				quotient[WIDTH_Q-k-2..0] = DFFQuotient[StageNum(k)+1][WIDTH_Q-k-2..0].q & GND;
+			END GENERATE;
+
+		ELSE GENERATE
+			StageIn[k+1][]		= StageOut[k][];
+			NumeratorIn[k+1][]	= NumeratorIn[k][];
+			DenominatorIn[k+1][]= DenominatorIn[k][];
+		END GENERATE;
+
+	END GENERATE;
+
+	remainder[] = StageIn[nStage][RemainderSize-1..0];
+	
+	IF nInternalDFF > 0 GENERATE
+		den_out[] = DFFDenominator[nInternalDFF][];
+	ELSE GENERATE
+		den_out[] = DenominatorIn[nStage - 1][WIDTH_D - 1..0];
+	END GENERATE;		
+	ELSE GENERATE
+		stratix_nonrestoring.clock = clock;
+		stratix_nonrestoring.clk_ena = clk_en;
+		stratix_nonrestoring.aclr = aclr;
+		stratix_nonrestoring.numerator[] = numerator[];
+		stratix_nonrestoring.denominator[] = denominator[];
+		quotient[] = stratix_nonrestoring.quotient[];
+		remainder[] = stratix_nonrestoring.remainder[];
+	END GENERATE;
+	IF !USED(den_out) GENERATE
+		den_out[] = GND;
+	END GENERATE;
+END;
+

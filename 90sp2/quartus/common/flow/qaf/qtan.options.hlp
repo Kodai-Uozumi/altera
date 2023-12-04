@@ -1,0 +1,504 @@
+<DEFAULT_READ_ASSIGNMENT>
+--------
+Overview
+--------
+
+Option to read the assignments from the Quartus II Settings 
+File (.qsf) and override assignments obtained from the 
+database. All options that pass from the command line 
+still override any conflicting assignments found in the 
+QSF.
+
+By default, assignments are read from the QSF unless you 
+specify "--read_settings_files=off".
+
+---------------------------
+Command-Line Option Details
+---------------------------
+
+Command-line options are provided for making many common
+global project settings and performing common tasks. You
+can use either of two methods to make assignments to an
+individual entity. If the project exists, open the project
+in the Quartus II GUI, change the assignment, and close the
+project. The changed assignment is updated in the QSF. Any 
+command-line executables you run after this update use the 
+updated assignment. See "Option Precedence" below for more 
+information. You can also make assignments using the 
+Quartus II Tcl scripting API. To completely script the 
+creation of a Quartus II project, choose this method.
+
+-----------------
+Option Precedence
+-----------------
+
+If you are using the command-line executables, you need to
+be aware of the precedence of various project assignments
+and how to control the precedence. Assignments for a
+particular project exist in the QSF for the project.
+Assignments for a project can also be made by using
+command-line options, as described earlier. Project
+assignments are reflected in compiler database files that
+hold intermediate compilation results and reflect assignments
+made in the previous project compilation.
+
+All command-line options override any conflicting assignments
+found in the QSF or the compiler database files. There are
+two command-line options to specify whether QSF or compiler
+database files take precedence for any assignments not
+specified as command-line options.
+
+Note: Any assignment not specified as a command-line option
+or found in the QSF or compiler database files is set to its
+Quartus II software default value.
+
+The file precedence command-line options are
+--read_settings_files and --write_settings_files. By default,
+the --read_settings_files and --write_settings_files options
+are turned on. Turning on the --read_settings_files option
+causes a command-line executable to read assignments from
+the QSF instead of from the compiler database files. Turning
+on the --write_settings_files option causes a command-line
+executable to update the QSF to reflect any specified options,
+as happens when closing a project in the Quartus II GUI.
+
+Table 1 lists the precedence for reading assignments
+depending on the value of the --read_settings_files option.
+
+
+* Table 1. Precedence for Reading Assignments
+
+Option Specified                      Precedence for Reading Assignments
+------------------------------------  ----------------------------------
+--import_settings_files=on (Default)  1. Command-line options
+                                      2. Quartus II Settings File (.qsf)
+                                      3. Compiler database (db directory, if it exists)
+                                      4. Quartus II software defaults
+
+--import_settings_files=off           1. Quartus II Settings File (.qsf)
+                                      2. Compiler database (db directory, if it exists)
+                                      3. Quartus II software defaults
+
+
+Table 2 lists the locations to which assignments are
+written, depending on the value of the --write_settings_files
+command-line option.
+
+
+* Table 2. Location for Writing Assignments
+
+Option Specified                      Location for Writing Assignments
+------------------------------------  --------------------------------
+--export_settings_files=on (Default)  1. Quartus II Settings File (.qsf) and
+                                      2. Compiler database
+
+--export_settings_files=off           1. Compiler database
+
+
+The following example assumes that a project named fir_filter
+exists, and that the Analysis & Synthesis step has been
+performed (using the quartus_map executable).
+
+quartus_fit fir_filter --fmax=80MHz
+quartus_tan fir_filter
+quartus_tan fir_filter --fmax=100MHz --tao=timing_result-100.tao --write_settings_files=off
+
+The first command, quartus_fit fir_filter --fmax=80MHz, runs
+the Quartus II Fitter and specifies a global fMAX requirement
+of 80 MHz.
+
+The second command, quartus_tan fir_filter, runs Quartus II
+Timing Analyzer for the results of the previous fit.
+
+The third command reruns Quartus II Timing Analyzer with a
+global Fmax requirement of 100 MHz and saves the result in
+a file called timing_result-100.tao. By specifying the
+--write_settings_files=off option, the command-line executable
+does not update the QSF to reflect the changed Fmax requirement.
+The compiler database files reflect the changed Fmax requirement.
+If the --write_settings_files=off option is not specified, the
+command-line executable updates the .qsf to reflect the 100 MHz
+global fMAX requirement.
+
+Use the --read_settings_files=off and --write_settings_files=off
+options (where appropriate) to optimize the way that the
+Quartus II software reads and updates the QSF. The following
+example shows how to avoid unnecessary QSF reading and writing.
+
+quartus_map filtref --source=filtref --part=ep1s10f780c5
+quartus_fit filtref --fmax=100MHz --read_settings_files=off
+quartus_tan filtref --read_settings_files=off --write_settings_files=off
+quartus_asm filtref --read_settings_files=off --write_settings_files=off
+
+The quartus_tan and quartus_asm executables do not need to
+read or write settings files because they do not change any
+settings in the project.
+</DEFAULT_READ_ASSIGNMENT>
+
+<DEFAULT_WRITE_ASSIGNMENT>
+--------
+Overview
+--------
+
+Option to write out the settings obtained from command-line 
+options to the Quartus II Settings File (.qsf). 
+
+By default, assignments are written to the QSF unless you 
+specify "--write_settings_files=off".
+
+---------------------------
+Command-Line Option Details
+---------------------------
+
+Command-line options are provided for making many common
+global project settings and performing common tasks. You
+can use either of two methods to make assignments to an
+individual entity. If the project exists, open the project
+in the Quartus II GUI, change the assignment, and close the
+project. The changed assignment is updated in the QSF. Any
+command-line executables that are run after this update use
+the updated assignment. See "Option Precedence" below for
+more information. You can also make assignments using the
+Quartus II Tcl scripting API. To completely script the 
+creation of a Quartus II project, choose this method.
+
+-----------------
+Option Precedence
+-----------------
+
+If you are using the command-line executables, you need to
+be aware of the precedence of various project assignments
+and how to control the precedence. You can find ssignments 
+for a particular project exist in the QSF for the project.
+You can also make assignments for a project by using
+command-line options, as described earlier. Project
+assignments are reflected in compiler database files that
+hold intermediate compilation results and reflect assignments
+made in the previous project compilation.
+
+All command-line options override any conflicting assignments
+found in the QSF or the compiler database files. There are
+two command-line options to specify whether QSF or compiler
+database files take precedence for any assignments not
+specified as command-line options.
+
+Note: Any assignment not specified as a command-line option
+or found in the QSF or compiler database files is set to its
+Quartus II software default value.
+
+The file precedence command-line options are
+--read_settings_files and --write_settings_files. By default,
+the --read_settings_files and --write_settings_files options
+are turned on. Turning on the --read_settings_files option
+causes a command-line executable to read assignments from
+the QSF instead of from the compiler database files. Turning
+on the --write_settings_files option causes a command-line
+executable to update the QSF to reflect any specified options,
+as happens when closing a project in the Quartus II GUI.
+
+Table 1 lists the precedence for reading assignments
+depending on the value of the --read_settings_files option.
+
+
+* Table 1. Precedence for Reading Assignments
+
+Option Specified                      Precedence for Reading Assignments
+------------------------------------  ----------------------------------
+--import_settings_files=on (Default)  1. Command-line options
+                                      2. Quartus II Settings File (QSF)
+                                      3. Compiler database (db directory, if it exists)
+                                      4. Quartus II software defaults
+
+--import_settings_files=off           1. Quartus II Settings File (QSF)
+                                      2. Compiler database (db directory, if it exists)
+                                      3. Quartus II software defaults
+
+
+Table 2 lists the locations to which assignments are
+written, depending on the value of the --write_settings_files
+command-line option.
+
+
+* Table 2. Location for Writing Assignments
+
+Option Specified                      Location for Writing Assignments
+------------------------------------  --------------------------------
+--export_settings_files=on (Default)  1. Quartus II Settings File (.qsf) and
+                                      2. Compiler database
+
+--export_settings_files=off           1. Compiler database
+
+
+The following example assumes that a project named fir_filter
+exists, and that the Analysis & Synthesis step has been
+performed (using the quartus_map executable).
+
+quartus_fit fir_filter --fmax=80MHz
+quartus_tan fir_filter
+quartus_tan fir_filter --fmax=100MHz --tao=timing_result-100.tao --write_settings_files=off
+
+The first command, quartus_fit fir_filter --fmax=80MHz, runs
+the Quartus II Fitter and specifies a global fMAX requirement
+of 80 MHz.
+
+The second command, quartus_tan fir_filter, runs Quartus II
+Timing Analyzer for the results of the previous fit.
+
+The third command reruns Quartus II Timing Analyzer with a
+global Fmax requirement of 100 MHz and saves the result in
+a file called timing_result-100.tao. By specifying the
+--write_settings_files=off option, the command-line executable
+does not update the QSF to reflect the changed Fmax requirement.
+The compiler database files reflect the changed Fmax requirement.
+If the --write_settings_files=off option is not specified, the
+command-line executable updates the QSF to reflect the 100 MHz
+global fMAX requirement.
+
+Use the --read_settings_files=off and --write_settings_files=off
+options (where appropriate) to optimize the way that the
+Quartus II software reads and updates the QSF. The following
+example shows how to avoid unnecessary QSF reading and writing.
+
+quartus_map filtref --source=filtref --part=ep1s10f780c5
+quartus_fit filtref --fmax=100MHz --read_settings_files=off
+quartus_tan filtref --read_settings_files=off --write_settings_files=off
+quartus_asm filtref --read_settings_files=off --write_settings_files=off
+
+The quartus_tan and quartus_asm executables do not need to
+read or write settings files because they do not change any
+settings in the project.
+</DEFAULT_WRITE_ASSIGNMENT>
+
+<DATASHEET>
+Generates the actual delay timing datasheet for both Stratix 
+and HardCopy revisions using the optionally specified 
+output file name reporting the. By default, the command uses
+<revision>.datasheet.txt if you do not specify an output file name.
+</DATASHEET>
+
+<TRISTATE>
+Option to report tco tristate delays.
+</TRISTATE>
+
+<SPEED_ID>
+Option to specify the device speed grade for running Timing Analysis.
+
+This option specifies the actual speed grade used by the delay 
+annotator.
+
+---------
+Examples:
+---------
+
+	quartus_map top --family=Stratix
+	quartus_fit top --part=EP1S10F780C7
+	# Run Timing Analysis for every speed grade
+	quartus_tan top --speed 5 --tao=top_5.tao
+	quartus_tan top --speed 6 --tao=top_6.tao
+	quartus_tan top --speed 7 --tao=top_7.tao
+</SPEED_ID>
+
+<TAO_ID>
+Option to generate an ASCII Timing Analysis Output File 
+(.tao). The .tao file contains results of the timing analysis 
+similar to results in the report file (.tan.rpt) but uses a 
+different format.
+
+This option can be used as a way to redirect the results of 
+a given analysis.
+	
+---------
+Examples:
+---------
+
+	quartus_tan top --tao=max_results
+	quartus_tan top --fast_model --tao=min_results
+</TAO_ID>
+
+<TAO_SUMMARY_ID>
+Option to generate a Timing Analysis Summary File 
+(.tao_summary). This file contains one line with the 
+worst-case fmax number, and can be used by external scripts 
+to parse the fmax result easily.
+
+The .tao_summary file has one line with the following format:
+    <revision_name>, <clock_name>, <fmax number> MHz
+</TAO_SUMMARY_ID>
+
+<SKIP_DAT>
+Option to skip delay annotation. This option can be used 
+if you previously ran the Timing Analyzer (quartus_tan) 
+with delay annotation, or if the Fitter (quartus_fit) ran 
+delay annotation as the final step.
+
+If delay annotation has not been run for the requested timing
+model(s), then quartus_tan ignores this option and performs 
+delay annotation.
+
+Some device families, such as Stratix(TM) and Cyclone(TM), 
+may use delay annotation as part of a set of post-fitting 
+operations. When this occurs, the Fitter displays the 
+following message:
+
+    Info: Started post-fitting delay annotation
+    
+In this case, you can save time by skipping delay annotation.
+
+If --fast_model has been used before, or if the fitter optimized
+to meet Fast Model Timing, then this option can be used together
+with --timing_analysis_only
+
+---------
+Example:
+---------
+
+    quartus_map top --family Stratix
+    quartus_fit top --set OPTIMIZE_FAST_CORNER_TIMING=ON
+    quartus_tan top --timing_analysis_only --tao=slow.tao
+    quartus_tan top --fast_model --timing_analysis_only --tao=fast.tao
+</SKIP_DAT>
+
+<ONLY_DAT>
+Option to run only delay annotation and skip full 
+timing analysis. This option can be used when you use a 
+third-party timing analyzer or when you run timing 
+simulation without timing analysis.
+
+---------
+Example:
+---------
+    
+	quartus_tan top --delay_annotation_only
+	quartus_sim top --mode=timing
+	quartus_eda top --timing_analysis --tool=primetime 
+		--format=verilog
+</ONLY_DAT>
+
+<POST_MAP>
+Option to run the Timing Analyzer (quartus_tan) based on the 
+results from Analysis & Synthesis (quartus_map).
+
+The estimated timing delays are primitive results, which are 
+not as accurate as the results obtained by running the Timing 
+Analyzer based on results from the Fitter (quartus_fit).
+
+---------
+Example:
+---------
+
+    quartus_map top
+    quartus_tan top --post_map
+</POST_MAP>
+
+<FMAX>
+Option to specify global fmax requirement.
+</FMAX>
+
+<TSU>
+Option to specify global tsu requirement.
+</TSU>
+
+<TH>
+Option to specify global th requirement.
+</TH>
+
+<TCO>
+Option to specify global tco requirement.
+</TCO>
+
+<TPD>
+Option to specify global tpd requirement.
+</TPD>
+
+<MIN_TIMING>
+Option to run Timing Analyzer (Fast Timing Model) using
+minimum delays. This option turns on the "--do_min_analysis"
+option, which forces the Timing Analyzer to perform only the 
+following analyses:
+    clock hold
+    tsu
+    th
+    minimum tpd
+    minimum tco
+</MIN_TIMING>
+
+<DO_MIN_ANALYSIS>
+Option to perform a minimum timing analysis.
+
+The Timing Analyzer performs only the following analyses:
+    clock hold
+    tsu
+    th
+    minimum tpd
+    minimum tco
+</DO_MIN_ANALYSIS>
+
+<COMBINED_TIMING>
+Option to run Timing Analyzer using both minimum delays and 
+maximum delays, producing reports for both.
+</COMBINED_TIMING>
+
+<ZERO_IC_DELAYS>
+Option to assume zero interconnect delays (0 ns) when 
+performing timing analysis. This option can be used for 
+a pre-fitting, best-case analysis. For this analysis,
+use the "--post_map" option together with this option.
+
+---------
+Example:
+---------
+
+    quartus_map top --family=Stratix
+    quartus_tan top --post_map --zero_ic_delays
+
+    quartus_map top --family=Stratix
+    quartus_fit top
+    quartus_tan top --zero_ic_delays
+</ZERO_IC_DELAYS>
+
+<CHECK_CONSTRAINTS>
+Option to check unconstrained keeper to keeper pairs (unconstrained 
+paths) in the design.  Results are reported in the Quartus Report 
+Panel and ASCII format.
+
+Optional argument can take value of:
+  setup		Perform setup analysis.
+  hold		Perform hold analysis.
+  both		Perform both setup and hold analysis. Default.
+
+---------
+Examples:
+---------
+
+  # Example 1. Check clock setup and hold time unconstrained paths on
+  # project chiptrip revision chiptrip.
+  quartus_tan chiptrip -c chiptrip --check_constraints
+
+  # Example 2. Check clock hold time unconstrained paths on project chiptrip.
+  # Force reporting results even the design is largely unconstrained.
+  quartus_tan chiptrip --check_constraints=hold
+</CHECK_CONSTRAINTS>
+
+<CREATE_TIMING_NETLIST>
+Create and save a timing netlist to disk.
+
+---------
+Example:
+---------
+
+execute_module -tool tan -args "--create_timing_netlist"
+load_package advanced_timing
+project_open chiptrip
+read_timing_netlist
+foreach_in_collection node [get_timing_nodes -type all] {
+    set type [get_timing_node_info -info type $node]
+	set name [get_timing_node_info -info name $node]
+        puts "$node => $type <=> $name"
+}
+
+</CREATE_TIMING_NETLIST>
+
+<DUMP_ATOM_GENERATED_CLOCKS>
+Generate file with the clocks, generated by Timing Analyzer from ATOMs, in the TCL format.
+</DUMP_ATOM_GENERATED_CLOCKS>
+

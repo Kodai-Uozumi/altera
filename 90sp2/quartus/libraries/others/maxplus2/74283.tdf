@@ -1,0 +1,59 @@
+TITLE "Top-level file for the 74283 macrofunction.  Chooses a device-family optimized implementation."; 
+FUNCTION p74283 (a[4..1], b[4..1], cin)
+    RETURNS (cout, sum[4..1]);
+FUNCTION f74283 (a[4..1], b[4..1], cin)
+    RETURNS (cout, sum[4..1]);
+
+PARAMETERS
+(
+	DEVICE_FAMILY
+);
+INCLUDE "aglobal.inc";
+
+SUBDESIGN 74283
+(
+	a[4..1]          : INPUT = GND;
+	b[4..1]          : INPUT = GND;
+	cin              : INPUT = GND;
+	cout             : OUTPUT;
+	sum[4..1]        : OUTPUT;
+)
+
+VARIABLE
+	IF (FAMILY_FLEX() == 1) GENERATE
+		sub  : f74283;
+	ELSE GENERATE
+		sub  : p74283;
+	END GENERATE;
+
+BEGIN
+	IF (USED(a1)) GENERATE
+		sub.a1 = a1;
+	END GENERATE;
+	IF (USED(a2)) GENERATE
+		sub.a2 = a2;
+	END GENERATE;
+	IF (USED(a3)) GENERATE
+		sub.a3 = a3;
+	END GENERATE;
+	IF (USED(a4)) GENERATE
+		sub.a4 = a4;
+	END GENERATE;
+	IF (USED(b1)) GENERATE
+		sub.b1 = b1;
+	END GENERATE;
+	IF (USED(b2)) GENERATE
+		sub.b2 = b2;
+	END GENERATE;
+	IF (USED(b3)) GENERATE
+		sub.b3 = b3;
+	END GENERATE;
+	IF (USED(b4)) GENERATE
+		sub.b4 = b4;
+	END GENERATE;
+	IF (USED(cin)) GENERATE
+		sub.cin = cin;
+	END GENERATE;
+	cout = sub.cout;
+	sum[4..1] = sub.sum[4..1];
+END;

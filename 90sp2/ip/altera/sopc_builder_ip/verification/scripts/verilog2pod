@@ -1,0 +1,210 @@
+#!/usr/bin/perl
+# $Id: //acds/rel-r/9.0sp2/ip/sopc/components/verification/scripts/verilog2pod#1 $
+# $Author: sc-build $
+# $Revision: #1 $
+# $Date: 2009/04/01 $
+#------------------------------------------------------------------------------
+# Extract POD documentation from Verilog / SystemVerilog HDL code.
+# Document information is tagged by Perldoc meta comments //= in the code.
+# Dump it out to a seperate file for post processing with perldoc or other
+# Perl documentation tools such as: pod2latex, pod2html, pod2man, and pod2text.
+# Use podchecker to verify that the POD file has valid syntax.
+#------------------------------------------------------------------------------
+# Copyright (c) Altera Corporation 2008. All Rights Reserved.
+#------------------------------------------------------------------------------
+
+use strict;
+use FileHandle;
+
+if ($#ARGV < 0) {
+    &print_usage;
+    exit 1;
+}
+
+my $VERILOG = new FileHandle;
+my $POD = new FileHandle;
+
+my $verilog_file = shift;
+open ($VERILOG, $verilog_file) or die "cannot open file: $verilog_file";
+
+my $pod_file = $verilog_file;
+if ($pod_file =~ /\.sv$/) {
+    $pod_file =~ s/sv$/pod/;
+} elsif ($pod_file =~ /\.v$/) {
+    $pod_file =~ s/v$/pod/;
+}
+
+open ($POD, "> $pod_file") or die "cannot open file: $pod_file";
+
+my $date = "";
+my $revision = "";
+my $module_filename = "";
+my $cvs_captured = 0;
+my $copy_on = 0;
+my $block_comment = 0;
+
+my $method = 0;
+my $method_name  = "";
+my $method_return  = "";
+my $type  = "";
+my $range  = "";
+my $arg_name  = "";
+my $event_name  = "";
+my $parameter_name = "";
+my $parameter_default = 0;
+my $parameter_comment = "";
+
+while (<$VERILOG>) {
+    if ($cvs_captured == 0) {
+	if (/\$Id:/) {
+	    if (/(\w+\.sv)/) {
+		$module_filename = $1;
+	    }
+	    if (/#(\d+)/) {
+		$revision = $1;
+	    }
+	} elsif (/\$Date:\s*(\d+\/\d+\/\d+)/) {
+	    $date = $1;
+	}
+    }
+
+    if ($cvs_captured == 0 &&
+	$module_filename =~ /\w+/ &&
+	$revision =~ /\d+/ &&
+	$date =~ /\d+/) {
+	$cvs_captured = 1;
+    }
+
+
+    if (/^\s*\/\/\s*=/) {  # eg. // =head1
+	s/^\s*\/\/\s*=/=/;
+	# print with extra lines around  POD tags
+	print $POD "\n$_\n\n";   
+	
+	if ((/=back/) || (/=cut/) || (/=end/)){
+	    $copy_on = 0;	    
+	} else {
+	    $copy_on = 1;
+	}
+    } 
+    elsif ($copy_on) {
+	if (/^\s*\/\//) {  
+	    # strip off // verilog comment tags
+	    s/^\s*\/\/\s*//; 
+	    # strip off divider comments like: -----  or ======== ...
+	    s/(\-\-\-\-\-\-\-)\-*//;
+	    s/(=======)=*//;
+	    s/(\*\*\*\*\*\*)\**//;
+	    # strip off synthesis pragmas
+	    s/(synthesis\s+\w+_\w+)//;
+	    print $POD $_;
+	} elsif (/\/\*/) {
+	    # strip off /* begin block comment and print line
+	    s/\/\*//;
+	    print $POD $_;
+	} elsif (/\*\//) {
+	    # strip off */ end block comment and print line
+	    s/\*\///;
+	    print $POD $_;
+	    $copy_on = 0;
+	} elsif (/!(.+)/) {
+	    # ignore blank lines
+	} 
+    } 
+
+    if (/(input)|(output)|(inout)/) {
+	s/;//;
+	print $POD $_;
+    } elsif (/function/) {
+	# try to match this pattern:
+        # function automatic bit [FOO-1:0] bar(); // public
+	if (/\/\/\s*public/) {
+	    $copy_on = 1;
+	    /(\w+)\s*(\w+)?\s*(\w+)?\s*(\[\w+-?\d+:\d+\])?\s*(\w+)\s*\(/;
+	    $method_name = $5;
+	    $method_return = $3 . $4;
+	    print $POD "\n\n=head2 $method_name\n\n";
+	    print $POD "        Return: $method_return\n";	    
+
+	    if (/\)\s*;/) {
+		# end of function declaration
+		$method = 0;
+	    } else {
+		# arg declaration still to follow..
+		$method = 1;		
+	    }
+	}
+    } elsif (/task/) {
+	if (/\/\/\s*public/) {
+	    $copy_on = 1;
+	    /(\w+)\(/;
+	    $method_name = $1;
+	    $method_return = "none";
+	    print $POD "\n\n=head2 $method_name\n\n";
+	    print $POD "        Return: $method_return\n";	    
+
+	    if (/\)\s*;/) {
+		# end of function declaration
+		$method = 0;
+	    } else {
+		# arg declaration still to follow..
+		$method = 1;		
+	    }
+	}
+    } elsif ($method) {
+	if (/\)\s*;/) {  # look for end of arg list marked by );
+	    $method = 0;
+	}
+	# parse argument list and print out
+	# bit [AV_NUMSYMBOLS-1:0] idle,
+	# int                     index
+
+	if (/(\w+)\s*(\[\w+\-?\d+:\d+\])?\s*(\w+)/) {
+	    $type = $1;
+	    $range = $2;
+	    $arg_name = $3;
+	    print $POD "        Arg:  $type$range $arg_name\n";
+	}
+    } elsif (/event/) {
+	if (/\/\/\s*public/) {
+	    $copy_on = 1;
+	    /event\s+(\w+)/;
+	    $event_name = $1;
+	    print $POD "\n\n=head2 $event_name\n\n";
+	}
+    } elsif (/parameter\s+(\w+)\s*=?\s*(\d+)?\s*;\s*\/\/\s*((\w+\s*)*)/) {
+	$parameter_name = $1;
+	$parameter_default = $2;
+	$parameter_comment = $3;
+	print $POD "\n\n=head2 $parameter_name\n\n";
+	print $POD "        Default value = $parameter_default\n";
+	print $POD "$parameter_comment";
+	$copy_on = 1; # comments may be on multiple lines
+    }
+}
+
+print $POD "\n=head1 REVISION\n\n";
+print $POD "\n=pod\n\n";
+print $POD "File name: $module_filename\n";
+print $POD "Version: $revision\n";
+print $POD "Date: $date\n";
+print $POD "Documentation extracted by verilog2pod.\n";
+
+# end of POD
+print $POD "\n=cut\n\n"; 
+
+
+close($VERILOG);
+close($POD);
+exit 0;
+
+
+sub print_usage {
+    print STDERR <<END_USAGE_MSG
+
+
+Usage:
+  verilog2pod [verilog file]
+
+END_USAGE_MSG
+}

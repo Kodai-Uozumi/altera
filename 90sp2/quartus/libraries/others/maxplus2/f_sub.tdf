@@ -1,0 +1,17 @@
+INCLUDE "sub_f.inc";
+SUBDESIGN f_sub 
+(
+     IN1,IN2,BI : INPUT = GND;
+     D          : OUTPUT;
+)
+VARIABLE
+     	ufsub:sub_f with ( IGNORE_SOFT_BUFFERS = "OFF" );
+begin
+
+	ufsub.in1 = IN1;
+	ufsub.in2 = IN2;
+	ufsub.bi = BI;
+	D = ufsub.d;	
+end;
+
+

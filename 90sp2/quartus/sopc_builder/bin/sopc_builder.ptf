@@ -1,0 +1,1439 @@
+#
+# File: sopc_builder.ptf
+# Desc: User Interface Description for SOPC Builder
+#       and Default System Settings
+#
+# Copyright (c) 1999-2009 Altera Corporation.
+# All Rights Reserved.
+#
+SYSTEM_DEFAULTS
+{
+   WIZARD_SCRIPT_ARGUMENTS
+   {
+      device_family = "STRATIX";
+      clock_freq = "50000000";
+      generate_hdl = "1";
+      generate_sdk = "1";
+      do_build_sim = "1";
+      hardcopy_compatible = "0";
+      board_class = "";
+      CLOCKS
+      {
+      	CLOCK clk 
+      	{
+      		frequency = "50000000";
+      		source = "External";
+      	}
+        clk = "50000000";
+      }
+   }
+}
+
+USER_INTERFACE
+{
+   WIZARD_UI main
+   {
+      title = "Altera SOPC Builder - {{ $$system_name; }}";
+      java = "sopc_builder.sopc_builder";
+      help = "http://www.altera.com/literature/hb/qts/qts_qii5v4.pdf";
+      icon = "sopc16.gif";
+      split = "vertical";
+      ACTION initialize
+      {
+         # true if on windows
+         $$onwin_32 = "{{ $$os == 'win32' }}";
+         # set initial family ID to be equal to family if not set
+         init_device_family = "{{ if ($SYS/device_family_id == '') $SYS/device_family_id = $SYS/device_family; }}";
+      }
+      MENU
+      {
+         title = "File";
+         key = "F";
+         ITEM
+         {
+            title = "New System...";
+            key = "N";
+            action = "new_system";
+         }
+         ITEM
+         {
+            title = "Open System...";
+            key = "O";
+            action = "open_system";
+            separator = "1";
+         }
+         ITEM
+         {
+             title = "New Component...";
+             key = "C";
+             action = "component_builder";
+         }
+         ITEM
+         {
+             title = "New Board Description...";
+             key = "D";
+             action = "new_board_description";
+         }
+         ITEM
+         {
+             title = "Edit Board Description...";
+             key = "E";
+             action = "edit_board_description";
+             enable = "{{ $WSA/board_class != '' }}";
+         }
+         ITEM
+         {
+             title = "Check Web for Updates...";
+             key = "W";
+             action = "sopc_library_update";
+         }
+         ITEM
+         {
+             title = "Refresh Component List";
+             key = "R";
+             action = "update_pool";
+             separator = "1";
+         }
+         ITEM
+         {
+            title = "Browse Project Directory...";
+            key = "B";
+            url = "file://{{ $$system_directory }}/";
+         }
+         ITEM
+         {
+            title = "SOPC Builder Setup...";
+            key = "S";
+            action = "edit_configuration";
+            separator = "1";
+         }
+         ITEM
+         {
+            title = "Exit";
+            key = "x";
+            action = "wizard_cancel";
+            separator = "0";
+         }
+      }
+      $$hide_sdk_checkbox = "0";
+      PAGES main
+      {
+         enable = "10";
+         # current page displayed
+         select = "1";
+         PAGE 1
+         {
+            # title of page.
+            title = "System Contents";
+            # stack things side-by-side
+            layout = "horizontal";
+            # use a horizontally-split pane
+            split = "horizontal";
+            # always enabled.
+            enable = "10";
+            # peripheral pool & related UI
+            GROUP pool
+            {
+               width = "188";
+               height = "384";
+               align = "center";
+               spacing = "5";
+
+               POOL tree
+               {
+                  java = "sopc_builder.sopc_module_pool";
+                  width = "188";
+                  height = "1000";
+                  title = "Select a peripheral.";
+                  REM MENU
+                  {
+                     title = "System";
+                     key = "y";
+                     ITEM
+                     {
+                        title = "Add Selected Module...";
+                        action = "new_module";
+                        key = "A";
+                     }
+                  }
+               }
+               PAGES pools
+               {
+                    tabs="bottom";
+                    wrap=1;
+                    width=2000;
+                    height= "{{ if ($$os == 'win32') 40; else 65; }}";
+                    select="all";
+                    ACTION initialize
+                    {
+                        $../select = "{{ $CFG/sopc_pool_filter; }}";
+                    }
+                   PAGE all
+                   {
+                        icon="all.gif";
+                        action="pool_filter_all";
+                        TEXT 
+                        { 
+                            title="<small>&nbsp;All Available Components&nbsp;</small>"; 
+                            tooltip=
+                                "Showing components installed on this system,<br>
+                                 and components downloadable via the internet";
+                        }
+                   }
+                   PAGE install
+                   {
+                        icon="full_eval.gif";
+                        action="pool_filter_install";
+                        TEXT 
+                        { 
+                            title="<small>&nbsp;Installed Components&nbsp;</small>"; 
+                            tooltip=
+                                "Showing components which are currently installed<br>
+                                 and available for use on this system"; 
+                        }
+                   }
+                   PAGE updates
+                   {
+                        icon="all_updated.gif";
+                        action="pool_filter_updates";
+                        TEXT 
+                        { 
+                            title="<small>&nbsp;Web-Available Updates&nbsp;</small>"; 
+                            tooltip=
+                                "Showing newly available components which are <br>
+                                 available for download via the internet";
+                        }
+                   }
+                   PAGE catalog
+                   {
+                        icon="unlicensed.gif";
+                        action="pool_filter_catalog";
+                        TEXT 
+                        { 
+                            title="<small>&nbsp;Web-Available Components&nbsp;</small>"; 
+                            tooltip=
+                                "Showing components only available via download<br>
+                                 or purchase (not installed on this system)"; 
+                        }
+                   }
+                   # PAGE disabled for now...
+                   REM target
+                   {
+                        icon="target.gif";
+                        action="pool_filter_target";
+                        TEXT 
+                        { 
+                            title="<small>&nbsp;Target Boards&nbsp;</small>"; 
+                            tooltip=
+                                "Showing target board components"; 
+                        }
+                   }
+               }
+
+               GROUP buttons
+               {
+                  layout = "flow";
+                  spacing = "2";
+                  BUTTON add
+                  {
+                     title = "Add...";
+                     action = "new_module";
+                     tooltip = "Add the selected component to your system as a new module";
+                     key = "A";
+                  }
+                  BUTTON web_update
+                  {
+                     action = "sopc_library_update";
+                     title = "Check";
+                     tooltip = "Check Altera's website for updates and newly available components...";
+                     icon = "wwwglobe.gif";
+                  }
+               }
+               GROUP
+               {
+                  #Just for spacing
+               }
+            }
+            # module table & related UI
+            GROUP modules
+            {
+               width = "640";
+               height = "384";
+               align = "center";
+               #spacing = "2";
+               #split = "vertical";
+               REM TREETABLE
+               {
+               		#java = "sopc_builder.sopc_heirarchy_table";
+               		
+               }
+               
+			   GROUP top
+			   {
+			      glue = 0;
+                  layout = "flow";
+                  include = "target_board";
+               GROUP bus
+               {
+                  layout = "flow";
+				GROUP target
+				{
+					align = "right";
+						visible = "";
+					title = "{{ if ($$show_board_components) 'Target'; }}";
+					spacing = 4;
+					COMBO board
+					{
+#						glue = "0";
+						id = "board_id";
+						title = "Board:";
+						columns = 35;
+						action = "set_board";
+						visible = "{{ $$show_board_components }}";
+						tooltip = "Select target board from list or choose<br>\"Unspecified\" to select device <br>family directly";
+						DATA
+						{
+							board_class = "$";
+						}
+						ITEM unspecified
+						{
+						   title = "Unspecified Board";
+						   value = "";
+						   fixed = "1";
+						}
+					}
+					GROUP family_selection
+					{
+						layout = "flow";
+                          COMBO
+                           {
+                              #width = "128";
+#                              glue = "0";
+                              id = "set_device";
+                              title = "Device Family:";
+                              tooltip = "Select target device family.<br><b>NOTE:</b>  The device family selected in Quartus must match <br>this selection for correct operation.";
+                              enable = "{{ $WSA/board_class == '' || !$$show_board_components; }}";
+                              action = "set_device";
+                              ITEM
+                              {
+                                 title = "Stratix III";
+                                 value = "STRATIXIII";
+                              }
+                              ITEM
+                              {
+                                 title = "Stratix II";
+                                 value = "STRATIXII";
+                              }
+                              ITEM
+                              {
+                                 title = "Stratix II GX";
+                                 value = "STRATIXIIGX";
+                                 visible = "{{ exists($$quartus_dir+'/common/devinfo/stratixiigx') }}";
+                              }
+                              ITEM
+                              {
+                                 title = "Arria GX";
+                                 value = "STRATIXIIGXLITE";
+                                 visible = "{{ exists($$quartus_dir+'/common/devinfo/arriagx') }}";
+                              }
+                              ITEM
+                              {
+                                 title = "Stratix";
+                                 value = "STRATIX";
+                              }
+                              ITEM
+                              {
+                                 title = "Stratix GX";
+                                 value = "STRATIXGX";
+                                 visible = "{{ exists($$quartus_dir+'/common/devinfo/stratixgx') }}";
+                              }
+                              ITEM
+                              {
+                                 title = "Cyclone";
+                                 value = "CYCLONE";
+                              }
+                              ITEM
+                              {
+                                 title = "Cyclone II";
+                                 value = "CYCLONEII";
+                              }
+                              ITEM
+                              {
+                                 title = "Cyclone III";
+                                 value = "CYCLONEIII";
+                                 visible = "{{ exists($$quartus_dir+'/common/devinfo/cycloneiii') }}";
+                              }
+                              ITEM
+                              {
+                                 title = "MAX II";
+                                 value = "MAXII";
+                              }
+                              ITEM
+                              {
+                                 title = "APEX 20K";
+                                 value = "APEX20K";
+                              }
+                              ITEM
+                              {
+                                 title = "APEX 20KE";
+                                 value = "APEX20KE";
+                              }
+                              ITEM
+                              {
+                                 title = "APEX 20KC";
+                                 value = "APEX20KC";
+                              }
+                              ITEM
+                              {
+                                 title = "APEX II";
+                                 value = "APEXII";
+                              }
+                              ITEM
+                              {
+                                 title = "ACEX 1K";
+                                 value = "ACEX1K";
+                              }
+                              ITEM
+                              {
+                                 title = "FLEX 10KE";
+                                 value = "FLEX10KE";
+                              }
+                              ITEM
+                              {
+                                 title = "Excalibur";
+                                 value = "EXCALIBUR_ARM";
+                                 visible = 0;
+                              }
+                              ITEM
+                              {
+                                 title = "Mercury";
+                                 value = "MERCURY";
+                              }
+                              DATA
+                              {
+                                 device_family_id = "$";
+                              }
+                           }
+						CHECK
+						{
+							id = "hardcopy_compatible";
+							title = "HardCopy Compatible";
+							enable = "{{ device_info('has_HC') > 0 }}";
+							tooltip = "{{ 
+								if ($enable) 'Limit generated logic to HardCopy resources.'; 
+								        else 'HardCopy compatibility does not apply to the selected Device Family.';
+								        }}";
+							DATA
+							{
+								hardcopy_compatible = "$";
+							}
+						}
+                      } # end GROUP family_selection
+                      } # end GROUP target
+                           #GROUP spacer { }
+                     GROUP clocks
+                     {
+                         spacing = 3;
+	                     TABLE
+	                     {
+	                     	java = "sopc_builder.sopc_clock_table";
+	                     }
+                  	}
+                  #	GROUP spacer { width=1; height=8; }
+               	}
+               }
+               TABLE module_table
+               {
+                  java = "sopc_builder.sopc_module_table";
+                  width = "2048";
+                  height = "2048";
+                  MENU
+                  {
+                     title = "Module";
+                     # appears on menu-bar
+                     key = "M";
+                     ITEM
+                     {
+                        title = "Edit...";
+                        action = "edit_module";
+                        key = "E";
+                     }
+                     ITEM
+                     {
+                        title = "Rename";
+                        key = "R";
+                        action = "rename_module";
+                     }
+                     ITEM
+                     {
+                        title = "Delete";
+                        key = "D";
+                        action = "delete_module";
+                     }
+                     ITEM
+                     {
+                        title = "Lock Base Address";
+                        key = "L";
+                        action = "lock_base_address";
+                        type = "boolean";
+                        separator = "1";
+                     }
+                     ITEM
+                     {
+                        title = "Move to top";
+                        action = "module_top";
+                  }
+                     ITEM
+                     {
+                        title = "Move up";
+                        action = "module_up";
+                     }
+                     ITEM
+                     {
+                        title = "Move down";
+                        action = "module_down";
+                     }
+                     ITEM
+                     {
+                        title = "Move to bottom";
+                        action = "module_bottom";
+                     }
+                  }
+                  MENU
+                  {
+                     title = "System";
+                     ITEM
+                     {
+                        title = "Auto-Assign Base Addresses";
+                        action = "auto_address";
+                        key = "U";
+                     }
+                     ITEM
+                     {
+                        title = "Auto-Assign IRQs";
+                        key = "I";
+                        action = "auto_irq";
+                     }
+                  }
+                  MENU
+                  {
+                     title = "View";
+                     key = "V";
+                     ITEM
+                     {
+                        title = "Show Connections";
+                        key = "M";
+                        action = "view_connections";
+                        # makes this a check-box menu item
+                        type = "boolean";
+                        # state of check-box comes from:
+                        value = "{{ $WSA/view_master_columns; }}";
+                     }
+                     ITEM
+                     {
+                        title = "Show Arbitration";
+                        key = "P";
+                        action = "view_arbitration";
+                        # makes this a check-box menu item
+                        type = "boolean";
+                        # state of check-box comes from:
+                        value = "{{ $WSA/view_master_priorities; }}";
+                        separator = 1;
+                     }
+                     ITEM
+                     {
+                        title = "Show Bus Type";
+                        key = "T";
+                        action = "view_bus_type";
+                        type = "boolean";
+                        value = "{{ $WSA/bustype_column_width > 0; }}";
+                     }
+                     ITEM
+                     {
+                        title = "Show Clock Source";
+                        key = "T";
+                        action = "view_clock_source";
+                        type = "boolean";
+                        value = "{{ $WSA/clock_column_width > 0; }}";
+                        separator = 1;
+                     }
+                     ITEM
+                     {
+                        title = "Expand All";
+                        key = "x";
+                        action = "expand_all";
+                     }
+                     ITEM
+                     {
+                        title = "Collapse All";
+                        key = "C";
+                        action = "collapse_all";
+                     }
+                  }
+               }
+               GROUP movers
+               {
+                  layout = "flow";
+                  align = "center";
+                  spacing = 10;
+                  BUTTON moveup 
+                  { 
+                     icon="uparrow.gif"; 
+                     action = "module_up"; 
+                     title = "Move Up"; 
+                  }
+                  BUTTON movedn 
+                  { 
+                     icon="dnarrow.gif"; 
+                     action = "module_down"; 
+                     title = "Move Down"; 
+                  }
+               }
+               GROUP
+               {
+                  #Just for spacing
+               }
+            }
+         }
+         PAGE generate
+         {
+            split = "vertical";
+            title = "System Generation";
+            enable = "10";
+            # always enabled.
+            GROUP settings
+            {
+            glue = 0;
+	           	layout = "vertical";
+        	   	 align = "left";
+	            GROUP options
+	            {
+	               title = "Options";
+	               align = "left";
+	               spacing = "3";
+	               GROUP
+	               {
+	               		id = "builder_component_options";
+	               }
+	               update_sdk_checkbox = "{{ if ($$hide_sdk_checkbox > 0) $WSA/generate_sdk = 0; }}";
+	               CHECK sdk_options
+	               {
+	                  title = "SDK.  Generate header files, library files, and memory contents for CPU(s) and peripherals in your system.";
+	                  tooltip = "Produces subdirectories named for each CPU in your system: <b>{{ $$system_name }}_(cpu-name)_sdk/</b>";
+	                  visible = "{{ $$hide_sdk_checkbox <= 0 }}";
+	                  DATA
+	                  {
+	                     generate_sdk = "$";
+	                  }
+	               }
+	               REM GROUP
+	               {
+	               	layout = "flow";
+	               	align = "left";
+	               	spacing = 3;
+	               	 GROUP { width = 10; height = 10; }
+				   }
+	               CHECK hdl_options
+	               {
+	                  layout = "horizontal";
+	                  title = "HDL.  Generate system module logic in {{ if ($WSA/hdl_language == 'verilog') 'Verilog'; else 'VHDL'; }}.";
+	                  DATA
+	                  {
+	                     generate_hdl = "$";
+	                  }
+	                  jam = "1";
+	                  REM TEXT
+	                  {
+	                     glue = "0";
+	                     title = " device family.";
+	                  }
+	               }
+	               GROUP sim_options
+	               {
+	                  indent = "20";
+	                  CHECK
+	                  {
+	                     enable = "{{ $WSA/generate_hdl }}";
+	                     title = "Simulation.  Create simulator project files.";
+	                     tooltip = "Produces a subdirectory named <b>{{ $$system_name }}_sim</b>";
+	                     DATA
+	                     {
+	                        do_build_sim = "$";
+	                     }
+	                     layout = "horizontal";
+	                     jam = "1";
+						 BUTTON
+						 {
+						    title = "Run Simulator";
+						    glue = "0";
+						    ACTION select
+						    {
+						       run = "{{ exec($$sopc_directory+'/bin/run_modelsim.pl', $CFG/sopc_simulator_dir+','+$$system_directory+','+$$system_name); }}";
+						    }
+						 }
+	                  }
+	               }	               
+	           }
+            }
+            EDIT console
+            {
+               id = "generation_console";
+               rows = "20";
+               editable = "0";
+               enable = "10";
+            }
+            message = "{{ if ($$generated == 0) 'Generation in-process; system is not editable.  Press the <b><u>S</u>top</b> button to make changes to your system.'; }}";
+         }
+         warning = "{{ if (!exists($$sopc_directory+'/.sopc_builder')) 'No valid configuration file present.  Please select <b>File->SOPC Builder Setup...</b> to setup configuration.'; }}";
+         warning = "{{ if ($$os == 'unix' && $WSA/hdl_language == 'vhdl' && $$generated > 0) 
+                    'You must add the file <b>altera_vhdl_support.vhd</b> to the top of your Quartus project file-list before compiling.'; }}";
+      }
+      MENU
+      {
+         title = "Help";
+         key = "H";
+         ITEM
+         {
+            title = "Accessing Help & Documentation...";
+            #key = "A";
+            icon = "help.gif";
+            action = "menu_help_accessing";
+         }
+         ITEM
+         {
+            title = "SOPC Builder Handbook";
+            icon = "doc.gif";
+            url = "http://www.altera.com/literature/hb/qts/qts_qii5v4.pdf";
+            separator = 1;
+        }
+         ITEM
+         {
+            title = "Online Documentation";
+            url = "http://www.altera.com/literature/lit-sop.html#";
+            icon = "wwwglobe.gif";
+         }
+         ITEM
+         {
+            title = "Altera Home Page";
+            key = "H";
+            url = "http://www.altera.com";
+            icon = "html.gif";
+         }
+         ITEM
+         {
+            title = "SOPC Builder Home Page";
+            key = "S";
+            url = "http://www.altera.com/sopcbuilder";
+            icon = "html.gif";
+            separator = "1";
+         }
+         ITEM
+         {
+            title = "About Altera SOPC Builder...";
+            key = "A";
+            icon = "sopc16.gif";
+            action = "menu_help_about";
+         }
+      }
+      	
+      ACTION menu_help_accessing
+      {
+         show_dialog = "{{ dialog('help_dialog', ''); }}";
+      }
+      ACTION menu_help_about
+      {
+         show_dialog = "{{ dialog('about_dialog', ''); }}";
+      }
+      ACTION edit_configuration
+      {
+         show_dialog = "{{ dialog('edit_configuration', '@'); }}";
+      }
+      GROUP messages
+      {
+         glue = 0;
+         split = "{{ if ($CFG/sopc_ui_debug != 0) 'horizontal' }}";
+         CONSOLE
+         {
+			visible = "{{ $CFG/sopc_ui_debug != 0 }}";
+			enable = 10;
+         	java = "sopc_wizard.sopc_ui_console";
+         	rows = 5;
+			font = "mono";
+         }
+         LIST
+         {
+            rows = 5;
+            glue = 0;
+            background = "lightGray";
+         }
+      }
+      ACTION initialize
+      {
+         $$generated = "-1";
+      }
+      GROUP nav
+      {
+         layout = "horizontal";
+         spacing = "16";
+         BUTTON
+         {
+            title = "Exit";
+            key = "x";
+            action = "wizard_cancel";
+         }
+         BUTTON
+         {
+            title = "<  Prev";
+            key = "P";
+            action = "wizard_prev";
+         }
+         BUTTON
+         {
+            title = "Next  >";
+            key = "N";
+            action = "wizard_next";
+         }
+         BUTTON
+         {
+            title = " ";
+            visible = "0";
+         }
+         # for spacing, since the next 3 buttons are crammed.
+         BUTTON
+         {
+            title = "Re-Generate";
+            key = "G";
+            action = "builder_generate";
+            enable = "{{ $$errors == 0 }}";
+            visible = "{{ $$generated > 0 }}";
+            cram = "1";
+         }
+         BUTTON
+         {
+            title = "Stop";
+            key = "S";
+            action = "builder_stop";
+            visible = "{{ $$generated == 0 }}";
+            cram = "1";
+            enable = "10";
+         }
+         BUTTON
+         {
+            title = "Generate";
+            key = "G";
+            action = "builder_generate";
+            enable = "{{ $$errors == 0 }}";
+            visible = "{{ $$generated < 0 }}";
+            cram = "1";
+         }
+      }
+
+
+      # dvb 2004: add a "debug" menu which is visible
+      # when sopc_ui_debug happens
+      MENU
+      {
+         # menu visible only if debugging enabled.
+         visible = "{{$CFG/sopc_ui_debug}}";
+         title = "Debug";
+         key = "D";
+         ITEM
+         {
+            title = "<font color=800000><i>iMerlin</i></font> Debug Window";
+            key = "M";
+            action = "debug_merlin";
+            separator = "1";
+         }
+         ITEM
+         {
+            title = "F6: Locals";
+            key = "6";
+            action = "debug_f6";
+         }
+         ITEM
+         {
+            title = "F7: System PTF";
+            key = "7";
+            action = "debug_f7a";
+         }
+         ITEM
+         {
+            title = "Ctl F7: System PTF Selection";
+            action = "debug_f7b";
+         }
+         ITEM
+         {
+            title = "F8: System PTF";
+            key = "8";
+            action = "debug_f8a";
+         }
+         ITEM
+         {
+            title = "Ctl F8: Module PTF";
+            action = "debug_f8b";
+         }
+         ITEM
+         {
+            title = "F9: UI Source";
+            key = "9";
+            action = "debug_f9a";
+         }
+         ITEM
+         {
+            title = "Ctl F9: UI Root";
+            action = "debug_f9b";
+         }
+         ITEM
+         {
+            title = "F11: Schema";
+            action = "debug_f11";
+         }
+
+         ITEM
+         {
+            title = "F12: Notepad System PTF";
+            action = "debug_f12";
+         }
+      }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   }
+   WIZARD_UI help_dialog
+   {
+      title = "Accessing Help & Documentation";
+      align = "left";
+      GROUP
+      {
+         layout = "horizontal";
+         GROUP
+         {
+            width = "10";
+            height = "1";
+         }
+         GROUP
+         {
+            TEXT
+            {
+               title = "<b><font color=red>Right click</font></b>
+                        on a component name to display a menu
+                        with documents, as shown below.<br>
+               ";
+            }
+            IMAGE
+            {
+               file = "help_pool.gif";
+            }
+            TEXT
+            {
+               title = "<br><br><b><font color=red>Right click</font></b>
+                        on a module of your system to display a menu
+                        with related documents.<br>
+               ";
+            }
+            IMAGE
+            {
+               file = "help_modules.gif";
+            }
+         }
+         GROUP
+         {
+            width = "10";
+            height = "1";
+         }
+      }
+      # no messages.
+      GROUP messages
+      {
+      }
+      # override standard OK/cancel with:
+      GROUP dialog
+      {
+         BUTTON
+         {
+            title = "OK";
+            action = "dialog_ok";
+            default = 1;
+         }
+         GROUP
+         {
+            width = "8";
+            height = "8";
+         }
+      }
+   }
+   WIZARD_UI about_dialog
+   {
+      title = "About SOPC Builder";
+      align = "left";
+      GROUP
+      {
+         layout = "horizontal";
+         GROUP
+         {
+            width = "10";
+            height = "1";
+         }
+         GROUP
+         {
+            TEXT
+            {
+               title = " ";
+            }
+            GROUP
+            {
+               TEXT
+               {
+                  title = "Altera SOPC Builder {{ str($VERSION/number) }} Build {{ $VERSION/build }} ";
+                  font = "bold";
+               }
+               TEXT
+               {
+                  title = "<p>Copyright &copy; 1999-2009 Altera Corporation.  All Rights Reserved.</p>";
+               }
+            }
+            TEXT
+            {
+               title = "
+<br>  Warning: This computer program is protected by copyright law and international
+<br>treaties.  Unauthorized reproduction or distribution of this program, or any portion
+<br>of it, may result in severe civil and criminal penalties, and will be prosecuted to
+<br>the maximum extent possible under the law.";
+            }
+            TEXT
+            {
+               title = "
+<br>This program, these components, and the system comprising both may be covered
+<br>by one or more of the following U.S. patents:";
+            }
+            EDIT
+            {
+               rows = "4";
+               font = "prop bold";
+               columns = "40";
+               editable = "0";
+               ACTION initialize
+               {
+                  $ = "6,169,417; 6,167,364; 6,163,195; 6,163,166; 6,161,211; 6,161,211;
+6,160,419; 6,157,212; 6,157,210; 6,157,208; 6,154,059; 6,154,055;
+6,150,840; 6,147,511; 6,144,573; 6,137,313; 6,134,707; 6,134,705;
+6,134,173; 6,134,166; 6,130,555; 6,130,552; 6,128,692; 6,128,215;
+6,127,865; 6,127,846; 6,127,844; 6,127,217; 6,122,720; 6,122,209;
+6,121,790; 6,120,550; 6,118,720; 6,118,302; 6,114,915; 6,114,312;
+6,112,020; 6,110,223; 6,108,239; 6,107,854; 6,107,825; 6,107,824;
+6,107,822; 6,107,820; 6,104,208; 6,102,964; 6,097,211; 6,094,064;
+6,091,258; 6,091,102; 6,085,317; 6,084,427; 6,081,449; 6,080,204;
+6,078,521; 6,076,179; 6,075,380; 6,072,358; 6,072,332; 6,069,487;
+6,066,960; 6,064,599; 6,060,903; 6,058,452; 6,057,707; 6,052,755;
+6,052,309; 6,052,327; 6,049,223; 6,049,225; 6,045,252; 6,043,676;
+6,040,712; 6,038,171; 6,037,829; 6,034,857; 6,034,540; 6,034,536;
+6,032,159; 6,031,763; 6,031,391; 6,029,236; 6,028,809; 6,028,808;
+6,028,787; 6,026,226; 6,025,737; 6,023,439; 6,020,760; 6,020,759;
+6,020,758; 6,018,490; 6,018,476; 6,014,334; 6,011,744; 6,011,730;
+6,011,406; 6,005,379; 5,999,016; 5,999,015; 5,998,295; 5,996,039;
+5,986,470; 5,986,465; 5,983,277; 5,982,195; 5,978,476; 5,977,793;
+5,977,791; 5,968,161; 5,970,255; 5,966,597; 5,963,565; 5,969,051;
+5,963,069; 5,963,049; 5,959,891; 5,953;537; 5,949,991; 5,949,710;
+5,949,250; 5,949,239; 5,954,751; 5,943,267; 5,942,914; 5,940,852;
+5,939,790; 5,936,425; 5,926,036; 5,925,904; 5,923,567; 5,915,756;
+5,915,017; 5,909,450; 5,909,375; 5,909,126; 5,905,675; 5,904,524;
+5,900,743; 5,898,628; 5,898,318; 5,894,228; 5,893,088; 5,892,683;
+5,883,526; 5,880,725; 5,880,597; 5,880,596; 5,878,250; 5,875,112;
+5,873,113; 5,872,529; 5,872,463; 5,870,410; 5,869,980; 5,869,979;
+5,861,760; 5,859,544; 5,859,542; 5,850,365; 5,850,152; 5,850,151;
+5,848,005; 5,847,617; 5,845,385; 5,844,854;  RE35,977; 5,838,628;
+5,838,584; 5,835,998; 5,834,849; 5,828,229; 5,825,197; 5,821,787;
+5,821,773; 5,821,771; 5,815,726; 5,815,024; 5,815,003; 5,812,479;
+5,812,450; 5,809,281; 5,809,034; 5,805,516; 5,802,540; 5,801,541;
+5,796,267; 5,793,246; 5,790,469; 5,787,009; 5,771,264; 5,768,562;
+5,768,372; 5,767,734; 5,764,583; 5,764,569; 5,764,080; 5,764,079;
+5,761,099; 5,760,624; 5,757,207; 5,757,070; 5,744,991; 5,744,383;
+5,740,110; 5,732,020; 5,729,495; 5,717,901; 5,705,939; 5,699,020;
+5,699,312; 5,696,455; 5,693,540; 5,694,058; 5,691,653; 5,689,195;
+5,668,771; 5,680,061; 5,672,985; 5,670,895; 5,659,717; 5,650,734;
+5,649,163; 5,642,262; 5,642,082; 5,633,830; 5,631,576; 5,621,312;
+5,614,840; 5,612,642; 5,608,337; 5,606,276; 5,606,266; 5,604,453;
+5,598,109; 5,598,108; 5,592,106; 5,592,102; 5,590,305; 5,583,749;
+5,581,501; 5,574,893; 5,572,717; 5,572,148; 5,572,067; 5,570,040;
+5,567,177; 5,565,793; 5,563,592; 5,561,757; 5,557,217; 5,555,214;
+5,550,842; 5,550,782; 5,548,552; 5,548,228; 5,543,732; 5,543,730;
+5,541,530; 5,537,295; 5,537,057; 5,525,917; 5,525,827; 5,523,706;
+5,523,247; 5,517,186; 5,498,975; 5,495,182; 5,493,526; 5,493,519;
+5,490,266; 5,488,586; 5,487,143; 5,486,775; 5,485,103; 5,485,102;
+5,483,178; 5,477,474; 5,473,266; 5,463,328, 5,444,394; 5,438,295;
+5,436,575; 5,436,574; 5,434,514; 5,432,467; 5,414,312; 5,399,922;
+5,384,499; 5,376,844; 5,371,422; 5,369,314; 5,359,243; 5,359,242;
+5,353,248; 5,352,940; 5,309,046; 5,350,954; 5,349,255; 5,341,308;
+5,341,048; 5,341,044; 5,329,487; 5,317,210; 5,315,172; 5,301,416;
+5,294,975; 5,285,153; 5,280,203; 5,274,581; 5,272,368; 5,268,598;
+5,266,037; 5,260,611; 5,260,610; 5,258,668; 5,247,478; 5,247,477;
+5,243,233; 5,241,224; 5,237,219; 5,220,533; 5,220,214; 5,200,920;
+5,187,392; 5,166,604; 5,162,680; 5,144,167; 5,138,576; 5,128,565;
+5,121,006; 5,111,423; 5,097,208; 4,912,342; 4,903,223; 4,899,070;
+4,899,067; 4,871,930; 4,864,161; 4,831,573; 4,785,423; 4,774,421;
+4,713,792; 4,677,318; 4,617,479; 4,609,986.";
+               }
+            }
+         }
+         GROUP
+         {
+            width = "10";
+            height = "1";
+         }
+      }
+      # no messages.
+      GROUP messages
+      {
+      }
+      # override standard OK/cancel with:
+      GROUP dialog
+      {
+         BUTTON
+         {
+            title = "OK";
+            action = "dialog_ok";
+            default = 1;
+         }
+         GROUP
+         {
+            width = "8";
+            height = "8";
+         }
+      }
+   }
+   WIZARD_UI new_dialog
+   {
+      title = "Create New System";
+      align = "left";
+#      spacing = "8";
+      indent = "5";
+      EDIT
+      {
+         columns = "15";
+         title = "System Name: ";
+         suffix = " ";
+         type = "file";
+         DATA
+         {
+            $$new_system_name = "$";
+         }
+      }
+      GROUP
+      {
+         layout = "horizontal";
+         title = "Target HDL";
+         RADIO
+         {
+            title = "Verilog";
+            DATA
+            {
+               $CFG/preferred_hdl = "verilog";
+            }
+         }
+         RADIO
+         {
+            title = "VHDL";
+            DATA
+            {
+               $CFG/preferred_hdl = "vhdl";
+            }
+         }
+      }
+      GROUP dialog
+      {
+        layout="horizontal";
+        spacing=8;
+        BUTTON cancel 
+        { title="Cancel";  key="C"; action="dialog_cancel"; }
+        BUTTON ok     
+        { title="OK";      key="O"; default="1"; action="dialog_ok"; enable= "{{ $$new_system_name != '' }}";    }
+      }
+      GROUP messages
+      {
+      }
+   }
+   WIZARD_UI prompt_revert
+   {
+      TEXT
+      {
+         title = "Revert to previous System PTF?";
+      }
+   }
+   WIZARD_UI edit_configuration
+   {
+      title = "SOPC Builder Setup";
+      CONTEXT
+      {
+#         FILE = "@{{ $$sopc_directory }}/.sopc_builder";
+         FILE = "$CFG";
+         EDIT = "";
+      }
+      ACTION initialize
+      {
+         $$exe_suffix = "{{ if ($$onwin_32) '.exe'; }}";
+         $$save_sopc_path = "{{ $EDIT/sopc_component_path }}";
+         init_proxy_port = "{{ if (int($CFG/sopc_proxy_port) == 0) $CFG/sopc_proxy_port = 80; }}";
+      }
+      align = "left";
+      GROUP
+      {
+         title = "Help and Documentation";
+         align = "left";
+         spacing = 4;
+         COMBO
+         {
+            title = "Access materials ";
+            suffix = ", or {{ if ($CFG/sopc_help_source == 'local') 'Online'; else 'Locally'; }} when not available.";
+            key = "D";
+            DATA
+            {
+               $FILE/sopc_help_source = "$";
+               $CFG/sopc_help_source = "$";
+            }
+            ITEM
+            {
+               title = "Online";
+               value = "web";
+            }
+            ITEM
+            {
+               title = "Locally";
+               value = "local";
+            }
+         }
+     }
+     GROUP
+     {
+         title = "Web Browser";
+        TEXT
+        {
+           title = "Application Path (Leave blank for system default)";
+        }
+        EDIT
+        {
+           DATA
+           {
+              sopc_browser_command = "$";
+           }
+           #TBD: tooltip="What this is used for";
+           BUTTON
+           {
+              title = "...";
+              ACTION select
+              {
+                 $FILE/sopc_browser_command = "{{ browse($FILE/sopc_browser_command, ''); }}";
+              }
+           }
+        }
+        GROUP { width = 1; height = 4; }
+        GROUP
+        {
+           layout = "horizontal";
+           align = "left";
+           spacing = 4;
+           CHECK proxy_set
+           {
+              title = "Use Proxy Host";
+              DATA
+              {
+                 sopc_proxy_set = "$";
+              }
+              glue = 0;
+           }
+           EDIT proxy_host
+           {
+              enable = "{{ $CFG/sopc_proxy_set == 1 }}";
+              columns = 14;
+              glue = 0;
+              DATA
+              {
+                 sopc_proxy_host = "$";
+              }
+           }
+           EDIT proxy_port
+           {
+              title = " : ";
+              enable = "{{ $CFG/sopc_proxy_set == 1 }}";
+              columns = 4;
+              DATA
+              {
+                 sopc_proxy_port = "$";
+              }
+           }
+           GROUP { width = 100; height = 2; }
+        }
+      }
+      GROUP sim
+      {
+         title = "HDL Simulator";
+        spacing = "8";
+        COMBO
+        {
+           suffix = " Application Path: ";
+        	DATA { sopc_simulator_type = "$"; }
+			ITEM
+			{
+				title = "ModelSim by ModelTech, Inc.";
+				value = "modelsim";
+			}
+        }
+        EDIT
+        {
+           type = "path";
+           DATA
+           {
+              sopc_simulator_dir = "$";
+           }
+           error = "{{ if (regexp($,'.* .*')) 'Path to HDL Simulator cannot contain spaces'; }}";
+           # SPR 174499: warn if vsim not found
+           warning = "{{ if (($CFG/sopc_simulator_type == 'modelsim') && ($ != '' && !exists($+'/vsim'+$$exe_suffix))) 'Cannot locate '+$+'/vsim'+$$exe_suffix; }}";
+           BUTTON
+           {
+              title = "...";
+              ACTION select
+              {
+                 $FILE/sopc_simulator_dir = "{{ browse($FILE/sopc_simulator_dir, 'directory'); }}";
+              }
+           }
+        }
+	# 5.0 fixup for code which is dependent on sopc_modelsim_dir
+	modelsim_fixup = "{{ if ($CFG/sopc_simulator_type == 'modelsim') { $CFG/sopc_modelsim_dir = $CFG/sopc_simulator_dir; } }}";
+      }
+      GROUP
+      {
+         title = "Component/Kit Library Search Path";
+         REM
+         {
+            title = "Additional directories containing SOPC Builder components / kits";
+         }
+         EDIT
+         {
+            tooltip = 
+            "List directories containing SOPC Builder components, separated<br>
+             by plusses ('+'). Default is to search the current project directory, <br>
+             then the built-in SOPC Builder component directories.  Directories listed<br>
+             here will be searched first, in the order specified (left-to-right).
+		{{ if ($$os == 'win32') '<br>NOTE: Forward slashes are used in place of backslashes.' }}";
+            DATA
+            {
+               sopc_component_path = "$";
+            }
+            rows=3;
+            type = "path";
+            warning = "{{ if ($$save_sopc_path != $) 'Changes to search path will not take effect until SOPC Builder is restarted.' }}";
+         }
+      }
+    GROUP messages
+    {
+        LIST
+        {
+            rows=3;
+            glue=0;
+            background="lightGray";
+        }
+    }
+    GROUP dialog
+    {
+        BUTTON ok     { title="OK";      key="O"; action="dialog_ok"; default="1";     }
+    }
+   }
+
+   WIZARD_UI advertisement
+   {
+      type = "dialog";
+      title = "{{ if ($AD/window_title != '') $AD/window_title; else 'Available SOPC Builder Ready Core'; }}";
+      spacing=6;
+      align = "center";
+      # logo-image which typically links to provider info page
+      IMAGE logo
+      {
+         file="{{ $AD/logo_image }}";
+         url="{{ $AD/logo_url }}";
+         tooltip="{{ $AD/logo_tooltip }}";
+      }
+      # title text, large and centered beneath logo
+      TEXT
+      {
+         title="{{ $AD/title }}";
+         font="bold";
+      }
+      # a brief but scintillating tale revealing this core's lineage and its future in your system design(s)
+      GROUP
+      {
+          layout="horizontal";
+          GROUP { width = 20; height = 20; }
+          TEXT
+          {
+              title="A no-cost OpenCore evaluation of the {{ $AD/name }} {{ if ($AD/provider != '') 'by '; }}{{ $AD/provider }} is available upon request.<br>
+              This peripheral meets Altera's requirements for seamless integration within an {{ $AD/bus }}-based system, and is<br>
+              designated by Altera as SOPC Builder Ready.  For a product overview, or to {{ $AD/verbiage }},<br>
+              please click on the '{{ $AD/action }}' button below.";
+          }
+          GROUP { width = 20; height = 20; }
+      }
+      # remove the message-pane
+      GROUP messages
+      {
+      }
+      # special dialog buttons to take action or cancel
+      GROUP dialog
+      {
+         GROUP buttons
+         {
+            layout = "horizontal";
+            spacing = 15;
+            BUTTON
+            {
+               title="{{ $AD/action }}"; 
+               action="dialog_ok";
+            }
+            BUTTON
+            {
+               title="Cancel"; 
+               action="dialog_cancel";
+            }
+         }
+         GROUP { width=8; height=8; }
+      }
+   }
+
+   # display upgrade warning message
+   WIZARD_UI legacy_sdk_warning
+   {
+      title = "Legacy SDK Warning";
+      align = "left";
+      TEXT
+      {
+         title = "Legacy SDK is not supported for Nios II 6.0 and beyond.<br>Please migrate your software to use the HAL System Library.<br><br>Legacy SDK support has been removed from the PTF file.<br>Original PTF file has been saved with .bak extension in the project directory.";
+      }
+
+      # override standard OK/cancel with:
+      GROUP dialog
+      {
+         BUTTON
+         {
+            title = "OK";
+            action = "dialog_ok";
+            default = 1;
+         }
+         GROUP
+         {
+            width = "8";
+            height = "8";
+         }
+      }
+   }
+}

@@ -1,0 +1,2625 @@
+<<<<versions>>>>
+2.0
+<<<</versions>>>>
+<<<<2.0>>>>
+<read_netlist>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: read_netlist [-h | -help] [-long_help] [-force_post <pass|fail>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -force_post <pass|fail>: Force cleanup procedures to run after a fit if -force was used
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Reads the Chip Planner netlist from the last compilation.
+
+You must open a project before using this command.
+
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+read_netlist
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Unable to create Chip Planner netlist. Current device family does not support the Chip Planner. Specify another device family and recompile the design.
+TCL_ERROR	1   	ERROR: Chip Planner (::quartus::chip_planner) is not available from the Quartus II Tcl Console. Run the quartus_cdb executable with commands from the ::quartus::chip_planner package from a system command prompt.
+TCL_ERROR	1   	ERROR: Chip Planner is unavailable with the current license. Refer to the Licensing section of the Altera website to obtain a valid Quartus II license file.
+TCL_ERROR	1   	ERROR: Unable to find an active revision. Make sure there is an open, active revision.
+TCL_ERROR	1   	ERROR: No open project. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Before running Chip Planner, run Analysis & Synthesis (quartus_map) for read-only use and quartus_fit to enable writable ECO changes.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</read_netlist>
+
+<update_node_loc>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: update_node_loc [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+This command uses the node_loc.loc file to update node locations using
+the ECO fitter. Any warnings are stored in the text_eco_warnings.loc
+file. You must open a project and call read_netlist before using this
+command. A node_loc.loc file must exist before running this command
+(see get_node_loc for instructions on creating a .loc file).
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open my_proj
+read_netlist
+#ensure that the .loc file exists and is ready with desired node locations
+update_node_loc
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</update_node_loc>
+
+<get_node_loc>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_node_loc [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Dumps locations for all post-fit lcell nodes in a text file named
+node_loc.loc. To change any node locations using ECO fitter, update
+node_loc.loc file and call the update_node_loc command.  You must open
+a project and call read_netlist before using this command. The project
+must have passed fitter before using this command.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open my_proj
+read_netlist
+get_node_loc
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_node_loc>
+
+<routing_path>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: routing_path [-h | -help] [-long_help] [-dst_gen_id <gen id>] [-file <file name>] [-node <node id>] [-port_id <port id>] [-table]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -dst_gen_id <gen id>: Destination port generic ID
+        -file <file name>: File to which to append the routing path
+        -node <node id>: Destination node ID
+        -port_id <port id>: Destination port ID
+        -table: Option to use a tabular format
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Returns the routing path to the specified destination port
+of the specified destination node.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+routing_path -node 3 -port_id 4
+routing_path -node 3 -port_id 4 -table -file my_file
+routing_path -dst_gen_id 37
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Unable to find port ID: %u. Specify a different port ID.
+TCL_ERROR	1   	ERROR: Conflicting arguments. Consult help for the Tcl command for details.
+TCL_ERROR	1   	ERROR: Illegal iport generic ID: %u. Specify a legal iport generic ID.
+TCL_ERROR	1   	ERROR: Illegal node ID: %u. Specify a legal node ID.
+TCL_ERROR	1   	ERROR: The node you specified is a legalization node. Modification of legalization nodes is not supported.
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</routing_path>
+
+<get_nodes>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_nodes [-h | -help] [-long_help] -type <all|lcell|io|pll|dsp|ram>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -type <all|lcell|io|pll|dsp|ram>: Type of nodes to return
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Returns a collection of nodes of the specified type.
+
+You can use the collection with the foreach_in_collection
+Tcl command.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+get_nodes -type all
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_nodes>
+
+<get_iports>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_iports [-h | -help] [-long_help] [-as_gen_id] [-gen_id <gen id>] [-node <node id>] [-src_gen_id <gen id>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -as_gen_id: Option to return results as generic ID
+        -gen_id <gen id>: Node generic ID
+        -node <node id>: Node id
+        -src_gen_id <gen id>: Source port generic ID
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Returns a collection of input ports for the specified node.
+
+You can use the collection with the "foreach_in_collection"
+command.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+get_iports -node 3
+get_iports -src_gen_id 5
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Conflicting arguments. Consult help for the Tcl command for details.
+TCL_ERROR	1   	ERROR: Illegal node generic ID: %u. Specify a legal node generic ID.
+TCL_ERROR	1   	ERROR: Illegal node ID: %u. Specify a legal node ID.
+TCL_ERROR	1   	ERROR: Illegal oport generic ID: %u. Specify a legal oport generic ID.
+TCL_ERROR	1   	ERROR: The node you specified is a legalization node. Modification of legalization nodes is not supported.
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_iports>
+
+<get_oports>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_oports [-h | -help] [-long_help] [-as_gen_id] [-gen_id <gen id>] [-node <node id>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -as_gen_id: Option to return results as generic id
+        -gen_id <gen id>: Node generic id
+        -node <node id>: Node id
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Returns a collection of output ports for the specified node.
+
+You can use the collection with the foreach_in_collection
+command.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+get_oports -node 3
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Conflicting arguments. Consult help for the Tcl command for details.
+TCL_ERROR	1   	ERROR: Illegal node generic ID: %u. Specify a legal node generic ID.
+TCL_ERROR	1   	ERROR: Illegal node ID: %u. Specify a legal node ID.
+TCL_ERROR	1   	ERROR: The node you specified is a legalization node. Modification of legalization nodes is not supported.
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_oports>
+
+<get_info_parameters>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_info_parameters [-h | -help] [-long_help] [-file <file name>] [-for_chip]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -file <file name>: Name of output file
+        -for_chip: Option to display all of the chip info parameters
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Returns a Tcl list of information parameters.
+
+When you use the -file option, the list is redirected
+to the specified output file. If the output file already
+exists, it is overwritten without warning.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+get_info_parameters
+get_info_parameters -file the_list.txt
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_info_parameters>
+
+<get_node_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_node_info [-h | -help] [-long_help] [-gen_id <gen id>] -info <information type> [-node <node id>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -gen_id <gen id>: Node generic id
+        -info <information type>: Type of information
+        -node <node id>: Node id
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Returns the requested type of information for the
+specified node.
+
+To get available information types, use the
+"get_info_parameters" command.
+
+If the information type is legal for the specified
+node, the result is the requested information.
+Otherwise, the result is an empty string.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+get_node_info -node 3 -info name
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Conflicting arguments. Consult help for the Tcl command for details.
+TCL_ERROR	1   	ERROR: <string> value "<string>" is not valid for the specified node. Specify a legal value.
+TCL_ERROR	1   	ERROR: Illegal node generic ID: %u. Specify a legal node generic ID.
+TCL_ERROR	1   	ERROR: Illegal node ID: %u. Specify a legal node ID.
+TCL_ERROR	1   	ERROR: The node you specified is a legalization node. Modification of legalization nodes is not supported.
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_node_info>
+
+<get_port_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_port_info [-h | -help] [-long_help] [-gen_id <gen id>] -info <information type> [-node <node id>] [-port_id <port id>] [-type <iport|oport>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -gen_id <gen id>: Port generic ID
+        -info <information type>: Type of information
+        -node <node id>: Node ID
+        -port_id <port id>: Port ID
+        -type <iport|oport>: Option to specify the port as an input or output port
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Returns the requested type of information for
+the specified port.
+
+To get available information types, use the
+get_info_parameters command.
+
+If the information type is legal for the specified
+port, the result is the requested information.
+Otherwise, the result is an empty string.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+get_port_info -node 3 -port_id 2 -type iport -info port_name
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Unable to find port ID: %u. Specify a different port ID.
+TCL_ERROR	1   	ERROR: Conflicting arguments. Consult help for the Tcl command for details.
+TCL_ERROR	1   	ERROR: <string> value "<string>" is not valid for the specified port. Specify a legal value.
+TCL_ERROR	1   	ERROR: Illegal node ID: %u. Specify a legal node ID.
+TCL_ERROR	1   	ERROR: Illegal port generic ID: %u. Specify a legal port generic ID.
+TCL_ERROR	1   	ERROR: The node you specified is a legalization node. Modification of legalization nodes is not supported.
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_port_info>
+
+<get_node_by_name>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_node_by_name [-h | -help] [-long_help] [-as_gen_id] -name <node name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -as_gen_id: Option to return result as generic id
+        -name <node name>: Node name
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Returns the node id of the specified node.
+
+Returns -1 if the node cannot be found.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+get_node_by_name -name 3
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_node_by_name>
+
+<check_node>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: check_node [-h | -help] [-long_help] [-gen_id <gen id>] [-node <node id>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -gen_id <gen id>: Node generic ID
+        -node <node id>: Node ID
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Checks whether the specified node is legal.
+
+Returns 1, if the node is legal. Returns 0, otherwise.
+
+Even if a node is legal, you still must run the
+check_netlist_and_save command to verify the node
+legality within the netlist.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+check_node -node 3
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Conflicting arguments. Consult help for the Tcl command for details.
+TCL_ERROR	1   	ERROR: Illegal node generic ID: %u. Specify a legal node generic ID.
+TCL_ERROR	1   	ERROR: Illegal node ID: %u. Specify a legal node ID.
+TCL_ERROR	1   	ERROR: The node you specified is a legalization node. Modification of legalization nodes is not supported.
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</check_node>
+
+<check_netlist_and_save>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: check_netlist_and_save [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Checks that the netlist is legal and writes the netlist
+to disk.
+
+If you make netlist connectivity changes, this command
+performs ECO fitting.
+
+Returns 1, if the netlist is legal, and saves the netlist
+to disk. Returns 0, if the netlist is illegal, and restores
+the current netlist to the last legal netlist.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+check_netlist_and_save
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</check_netlist_and_save>
+
+<discard_node_changes>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: discard_node_changes [-h | -help] [-long_help] [-gen_id <gen id>] [-node <node id>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -gen_id <gen id>: Node generic id
+        -node <node id>: Node id
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Discards all the changes made to the specified node since the
+last successful use of the check_netlist_and_save command.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+discard_node_changes -node 3
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Conflicting arguments. Consult help for the Tcl command for details.
+TCL_ERROR	1   	ERROR: Illegal node generic ID: %u. Specify a legal node generic ID.
+TCL_ERROR	1   	ERROR: Illegal node ID: %u. Specify a legal node ID.
+TCL_ERROR	1   	ERROR: The node you specified is a legalization node. Modification of legalization nodes is not supported.
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</discard_node_changes>
+
+<discard_all_changes>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: discard_all_changes [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Discards all the changes made to the netlist since the
+last successful use of the "check_netlist_and_save" command.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+discard_all_changes
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</discard_all_changes>
+
+<set_node_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: set_node_info [-h | -help] [-long_help] [-gen_id <gen id>] -info <information type> [-node <node id>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -gen_id <gen id>: Node generic id
+        -info <information type>: Type of information and the new value
+        -node <node id>: Node id
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Sets the requested type of information for the
+specified node.
+
+To get available information types, use the
+"get_info_parameters" command.
+
+Returns 1, if the information type and new value
+are legal for the specified node. Returns 0,
+otherwise, and the node remains unchanged.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+set_node_info -node 3 -info zbt_dc OFF
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Conflicting arguments. Consult help for the Tcl command for details.
+TCL_ERROR	1   	ERROR: <string> value "<string>" is not valid for the specified node. Specify a legal value.
+TCL_ERROR	1   	ERROR: Illegal node generic ID: %u. Specify a legal node generic ID.
+TCL_ERROR	1   	ERROR: Illegal node ID: %u. Specify a legal node ID.
+TCL_ERROR	1   	ERROR: Illegal number of arguments. Specify %u argument(s) for option <string>.
+TCL_ERROR	1   	ERROR: The node you specified is a legalization node. Modification of legalization nodes is not supported.
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</set_node_info>
+
+<set_port_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: set_port_info [-h | -help] [-long_help] [-gen_id <gen id>] -info <information type> [-node <node id>] [-port_id <port id>] [-type <iport|oport>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -gen_id <gen id>: Port generic ID
+        -info <information type>: Type of information and the new value
+        -node <node id>: Node ID
+        -port_id <port id>: Port ID
+        -type <iport|oport>: Option to specify the port as an input or output port
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Sets the requested information for the
+specified port.
+
+To get available information types, use the
+get_info_parameters command.
+
+Returns 1, if the information type and new value
+are legal for the specified port, or returns 0
+and the port remains unchanged.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+set_port_info -node 3 -info invert 1 -port_id 2 -type iport
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Unable to find port ID: %u. Specify a different port ID.
+TCL_ERROR	1   	ERROR: Conflicting arguments. Consult help for the Tcl command for details.
+TCL_ERROR	1   	ERROR: <string> value "<string>" is not valid for the specified port. Specify a legal value.
+TCL_ERROR	1   	ERROR: Illegal node ID: %u. Specify a legal node ID.
+TCL_ERROR	1   	ERROR: Illegal port generic ID: %u. Specify a legal port generic ID.
+TCL_ERROR	1   	ERROR: Illegal number of arguments. Specify %u argument(s) for option <string>.
+TCL_ERROR	1   	ERROR: The node you specified is a legalization node. Modification of legalization nodes is not supported.
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</set_port_info>
+
+<set_batch_mode>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: set_batch_mode [-h | -help] [-long_help] <on|off>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        <on|off>: Option to turn batch mode on or off
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Sets the batch mode to On or Off.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+set_batch_mode on
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</set_batch_mode>
+
+<design_has_encrypted_ip>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: design_has_encrypted_ip [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Determines whether the current design contains encrypted IP.
+
+Returns 1, if the design contains encrypted IP. You may be
+able to view or edit individual nodes of the design if they
+are not part of an encrypted IP. To check individual nodes,
+use the command "get_node_info -node <node id> -info encrypted".
+Returns 0, otherwise.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+design_has_encrypted_ip
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</design_has_encrypted_ip>
+
+<design_has_ace_support>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: design_has_ace_support [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Determines whether Chip Planner operations can be performed on the
+current design.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+design_has_ace_support
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</design_has_ace_support>
+
+<make_ape_connection>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: make_ape_connection [-h | -help] [-long_help] [-delay_chain_index <delay chain index>] [-dst_node <node id>] [-gen_id <gen id>] [-gnd] [-literal_index <literal index>] -port_type <port type> [-src_gen_id <gen id>] [-src_node <node id>] [-src_port <port id>] [-vcc]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -delay_chain_index <delay chain index>: Used for Connections from pins through the PAD_TO_CORE delay chain. -2 = bypass, -1 = don't care, 0,1 = specific index
+        -dst_node <node id>: Destination node ID
+        -gen_id <gen id>: Destination node generic ID
+        -gnd: Option to connect to GND
+        -literal_index <literal index>: Literal index of new input port
+        -port_type <port type>: Type of new input port
+        -src_gen_id <gen id>: Source port generic ID
+        -src_node <node id>: Source node ID
+        -src_port <port id>: Source port ID
+        -vcc: Option to connect to VCC
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Makes a netlist connection between the source and
+destination ports.
+
+Returns 1, if a netlist connection is made between
+the two ports. Returns 0, otherwise.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+make_ape_connection -src_node 0 -src_port 0 -dst_node 3 -port_type DATAC
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Unable to find port ID: %u. Specify a different port ID.
+TCL_ERROR	1   	ERROR: Conflicting arguments. Consult help for the Tcl command for details.
+TCL_ERROR	1   	ERROR: Illegal node generic ID: %u. Specify a legal node generic ID.
+TCL_ERROR	1   	ERROR: Illegal node ID: %u. Specify a legal node ID.
+TCL_ERROR	1   	ERROR: Illegal oport generic ID: %u. Specify a legal oport generic ID.
+TCL_ERROR	1   	ERROR: Illegal port type: <string>. Specify a legal port type.
+TCL_ERROR	1   	ERROR: The node you specified is a legalization node. Modification of legalization nodes is not supported.
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</make_ape_connection>
+
+<add_usage>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: add_usage [-h | -help] [-long_help] [-gen_id <gen id>] [-node <node id>] [-port_id <port id>] -port_type <port type>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -gen_id <gen id>: Input port generic id
+        -node <node id>: Node id
+        -port_id <port id>: Input port id
+        -port_type <port type>: Type of port usage to add
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Adds a new usage to the specified input port.
+
+Returns 1, if the usage is added. Returns 0,
+otherwise.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+add_usage -node 0 -port_id 4 -port_type DATAC
+add_usage -gen_id 21 -port_type DATAC
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Unable to find port ID: %u. Specify a different port ID.
+TCL_ERROR	1   	ERROR: Conflicting arguments. Consult help for the Tcl command for details.
+TCL_ERROR	1   	ERROR: Illegal iport generic ID: %u. Specify a legal iport generic ID.
+TCL_ERROR	1   	ERROR: Illegal node ID: %u. Specify a legal node ID.
+TCL_ERROR	1   	ERROR: Illegal port type: <string>. Specify a legal port type.
+TCL_ERROR	1   	ERROR: The node you specified is a legalization node. Modification of legalization nodes is not supported.
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</add_usage>
+
+<remove_usage>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: remove_usage [-h | -help] [-long_help] [-gen_id <gen id>] [-node <node id>] [-port_id <port id>] -port_type <port type>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -gen_id <gen id>: Input port generic id
+        -node <node id>: Node id
+        -port_id <port id>: Input port id
+        -port_type <port type>: Type of port usage to remove
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Removes a usage from the specified input port.
+
+Returns 1, if the usage is removed. Returns 0,
+otherwise.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+remove_usage -node 0 -port_id 4 -port_type DATAC
+remove_usage -gen_id 21 -port_type DATAC
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Unable to find port ID: %u. Specify a different port ID.
+TCL_ERROR	1   	ERROR: Conflicting arguments. Consult help for the Tcl command for details.
+TCL_ERROR	1   	ERROR: Illegal iport generic ID: %u. Specify a legal iport generic ID.
+TCL_ERROR	1   	ERROR: Illegal node ID: %u. Specify a legal node ID.
+TCL_ERROR	1   	ERROR: Illegal port type: <string>. Specify a legal port type.
+TCL_ERROR	1   	ERROR: The node you specified is a legalization node. Modification of legalization nodes is not supported.
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</remove_usage>
+
+<make_input_port>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: make_input_port [-h | -help] [-long_help] [-gen_id <gen id>] [-literal_index <literal index>] [-node <node id>] -port_type <port type>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -gen_id <gen id>: Generic ID of the node for the port
+        -literal_index <literal index>: Literal index of new input port
+        -node <node id>: ID of the node for the port
+        -port_type <port type>: Type of new input port
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Adds a new input port to the specified node.
+
+To use this command, the input port must not exist.
+
+Returns the port index, if a new input port is added
+to the node. Returns -1, otherwise.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+make_input_port -node 0 -port_type DATAA
+make_input_port -node 0 -port_type DATAA -literal_index 0
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Conflicting arguments. Consult help for the Tcl command for details.
+TCL_ERROR	1   	ERROR: Illegal node generic ID: %u. Specify a legal node generic ID.
+TCL_ERROR	1   	ERROR: Illegal node ID: %u. Specify a legal node ID.
+TCL_ERROR	1   	ERROR: Illegal port type: <string>. Specify a legal port type.
+TCL_ERROR	1   	ERROR: The node you specified is a legalization node. Modification of legalization nodes is not supported.
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</make_input_port>
+
+<remove_input_port>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: remove_input_port [-h | -help] [-long_help] [-gen_id <gen id>] [-literal_index <literal index>] [-node <node id>] [-port_type <port type>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -gen_id <gen id>: Input port generic ID
+        -literal_index <literal index>: Literal index of input port
+        -node <node id>: ID of the node to which to remove the port
+        -port_type <port type>: Type of input port
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Deletes the specified input port.
+
+To use this command, the input port must exist.
+
+Returns 1 if successful, otherwise returns 0.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+remove_input_port -node 0 -port_type DATAA
+remove_input_port -node 0 -port_type DATAA -literal_index 0
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Unable to find port type: <string>. Specify a different port type.
+TCL_ERROR	1   	ERROR: Conflicting arguments. Consult help for the Tcl command for details.
+TCL_ERROR	1   	ERROR: Cannot remove target as it is part of a iteration list.
+TCL_ERROR	1   	ERROR: Illegal iport generic ID: %u. Specify a legal iport generic ID.
+TCL_ERROR	1   	ERROR: Illegal node ID: %u. Specify a legal node ID.
+TCL_ERROR	1   	ERROR: Illegal port type: <string>. Specify a legal port type.
+TCL_ERROR	1   	ERROR: The node you specified is a legalization node. Modification of legalization nodes is not supported.
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</remove_input_port>
+
+<remove_output_port>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: remove_output_port [-h | -help] [-long_help] [-gen_id <gen id>] [-literal_index <literal index>] [-node <node id>] [-port_type <port type>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -gen_id <gen id>: Output port generic ID
+        -literal_index <literal index>: Literal index of output port
+        -node <node id>: ID of the node for removing the port
+        -port_type <port type>: Type of output port
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Deletes the specified output port.
+
+To use this command, the output port must exist.
+
+Returns 1 if successful. Returns 0, otherwise.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+remove_output_port -node 0 -port_type DATAA
+remove_output_port -node 0 -port_type DATAA -literal_index 0
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Unable to find port type: <string>. Specify a different port type.
+TCL_ERROR	1   	ERROR: Conflicting arguments. Consult help for the Tcl command for details.
+TCL_ERROR	1   	ERROR: Cannot remove target as it is part of a iteration list.
+TCL_ERROR	1   	ERROR: Illegal node ID: %u. Specify a legal node ID.
+TCL_ERROR	1   	ERROR: Illegal oport generic ID: %u. Specify a legal oport generic ID.
+TCL_ERROR	1   	ERROR: Illegal port type: <string>. Specify a legal port type.
+TCL_ERROR	1   	ERROR: The node you specified is a legalization node. Modification of legalization nodes is not supported.
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</remove_output_port>
+
+<make_output_port>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: make_output_port [-h | -help] [-long_help] [-gen_id <gen id>] [-literal_index <literal index>] [-node <node id>] -port_type <port type>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -gen_id <gen id>: Generic ID of the node to which to add the port
+        -literal_index <literal index>: Literal index of new output port
+        -node <node id>: ID of the node for adding the port
+        -port_type <port type>: Type of new output port
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Adds a new output port to the specified node. The
+output port must not already exist.
+
+Returns the port index, if a new output port is added
+to the node. Returns -1, otherwise.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+make_output_port -node 0 -port_type REGOUT
+make_output_port -node 0 -port_type REGOUT -literal_index 0
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Conflicting arguments. Consult help for the Tcl command for details.
+TCL_ERROR	1   	ERROR: Illegal node generic ID: %u. Specify a legal node generic ID.
+TCL_ERROR	1   	ERROR: Illegal node ID: %u. Specify a legal node ID.
+TCL_ERROR	1   	ERROR: Illegal port type: <string>. Specify a legal port type.
+TCL_ERROR	1   	ERROR: The node you specified is a legalization node. Modification of legalization nodes is not supported.
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</make_output_port>
+
+<remove_ape_connection>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: remove_ape_connection [-h | -help] [-long_help] [-dst_gen_id <gen id>] [-dst_node <node id>] [-dst_port <port id>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -dst_gen_id <gen id>: Destination port generic id
+        -dst_node <node id>: Destination node id
+        -dst_port <port id>: Destination port id
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Removes a netlist connection to the destination port.
+
+This command also removes the destination port.
+
+Returns 1, if the netlist connection is removed. Returns 0,
+otherwise.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+remove_ape_connection -dst_node 3 -dst_port 5
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Unable to find port ID: %u. Specify a different port ID.
+TCL_ERROR	1   	ERROR: Conflicting arguments. Consult help for the Tcl command for details.
+TCL_ERROR	1   	ERROR: Cannot remove target as it is part of a iteration list.
+TCL_ERROR	1   	ERROR: Illegal iport generic ID: %u. Specify a legal iport generic ID.
+TCL_ERROR	1   	ERROR: Illegal node ID: %u. Specify a legal node ID.
+TCL_ERROR	1   	ERROR: The node you specified is a legalization node. Modification of legalization nodes is not supported.
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</remove_ape_connection>
+
+<get_port_by_type>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_port_by_type [-h | -help] [-long_help] [-as_gen_id] [-gen_id <gen id>] [-literal_index <literal index>] [-node <node id>] -port_type <port type> -type <iport|oport>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -as_gen_id: Option to return result as generic ID
+        -gen_id <gen id>: Node generic id
+        -literal_index <literal index>: Literal index
+        -node <node id>: Node id
+        -port_type <port type>: Port type
+        -type <iport|oport>: Option to specify the port as an input or output port
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Returns the port index for the specified port type on
+the specified node.
+
+Returns -1 if the port is not in use or is invalid for
+the specified node.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+get_port_by_type -node 0 -port_type SLOAD -type iport
+get_port_by_type -node 0 -port_type EXTCLK -literal_index 2 -type oport
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Unable to find port type: <string>. Specify a different port type.
+TCL_ERROR	1   	ERROR: Conflicting arguments. Consult help for the Tcl command for details.
+TCL_ERROR	1   	ERROR: Illegal node generic ID: %u. Specify a legal node generic ID.
+TCL_ERROR	1   	ERROR: Illegal node ID: %u. Specify a legal node ID.
+TCL_ERROR	1   	ERROR: Illegal port type: <string>. Specify a legal port type.
+TCL_ERROR	1   	ERROR: The node you specified is a legalization node. Modification of legalization nodes is not supported.
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_port_by_type>
+
+<add_new_cell>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: add_new_cell [-h | -help] [-long_help] [-arith] -cell_name <cell name> [-comb] [-crc] [-ddio_in] [-ddio_oe] [-ddio_out] [-extended] [-ff] [-hsadder] [-ibuf] [-location <location>] [-obuf] [-partition_name <partition_name>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -arith: Option to create a new LUT lcell_comb atom in arithmetic mode.  For Stratix II, HardCopy II, and newer devices
+        -cell_name <cell name>: Name of new cell
+        -comb: Option to create a new lcell_comb atom.  For Stratix II, Cyclone II, HardCopy II, and newer devices
+        -crc: Option to create a new CRC block
+        -ddio_in: Option to create a new DDIO Input block in devices with composite I/O
+        -ddio_oe: Option to create a new DDIO OE block in devices with composite I/O
+        -ddio_out: Option to create a new DDIO Output block in devices with composite I/O
+        -extended: Option to create a new extended LUT lcell_comb atom.  For Stratix II and newer devices
+        -ff: Option to create a new lcell_ff atom.  For Stratix II, Cyclone II, HardCopy II, and newer devices
+        -hsadder: Option to create a new lcell_hsadder atom.  For HardCopy II devices only
+        -ibuf: Option to create a new ibuf block
+        -location <location>: Location of new cell
+        -obuf: Option to create a new obuf block
+        -partition_name <partition_name>: Name of the partition where the cell is placed.  Only for logic cells (default, comb, ff).
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Creates a new atom of the specified type in the netlist.
+The atom is placed in at the top level of the design hierarchy
+by default, but it can also be placed into a specific
+partition.
+
+If the atom type is not specified, it defaults to LCELL and is
+supported only on Stratix(R), Stratix GX, and Cyclone(TM) devices.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+add_new_cell -cell_name test1 -location LC_X1_Y1_N1 -partition_name rx
+add_new_cell -cell_name test1 -comb -location LC_X1_Y1_N0
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Conflicting arguments. Consult help for the Tcl command for details.
+TCL_ERROR	1   	ERROR: Illegal <string> value: <string>. Specify a legal value.
+TCL_ERROR	1   	ERROR: Invalid partition name: <string>.  This name does not correspond to any partitions in the design.
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+TCL_ERROR	1   	ERROR: Unable to assign a partition to the new node <string>.  This design is not compiled with incremental compilation turned on.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</add_new_cell>
+
+<remove_old_cell>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: remove_old_cell [-h | -help] [-long_help] [-gen_id <gen id>] [-node <node id>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -gen_id <gen id>: Node generic id
+        -node <node id>: Node id
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Removes a cell from the netlist.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+remove_old_cell -node 34
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Conflicting arguments. Consult help for the Tcl command for details.
+TCL_ERROR	1   	ERROR: Cannot remove target as it is part of a iteration list.
+TCL_ERROR	1   	ERROR: Illegal node generic ID: %u. Specify a legal node generic ID.
+TCL_ERROR	1   	ERROR: Illegal node ID: %u. Specify a legal node ID.
+TCL_ERROR	1   	ERROR: The node you specified is a legalization node. Modification of legalization nodes is not supported.
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</remove_old_cell>
+
+<add_new_io>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: add_new_io [-h | -help] [-long_help] -cell_name <cell name> -direction <input|output|bidir> [-location <location>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -cell_name <cell name>: Name of new pin
+        -direction <input|output|bidir>: Direction of new pin
+        -location <location>: Cell location
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Adds a new I/O pin to the netlist.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+add_new_io -cell_name test1 -location LC_X1_Y1_N1 -direction input
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal <string> value: <string>. Specify a legal value.
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</add_new_io>
+
+<undo_command>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: undo_command [-h | -help] [-long_help] <position>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        <position>: Position
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Undo the command at the specified position in the command stack.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+undo_command 5
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</undo_command>
+
+<apply_command>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: apply_command [-h | -help] [-long_help] <position>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        <position>: Position
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Execute the command at the specified position in the command stack.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+apply_command 5
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</apply_command>
+
+<get_stack>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_stack [-h | -help] [-long_help] [-line <line>] [-signalprobe] [-size] [-top_only]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -line <line>: Option to print a command in a comma-separated format
+        -signalprobe: Option to return a list of SignalProbe commands
+        -size: Option to return the number of top level commands
+        -top_only: Option to print the top level command only.  Use with the -line option
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Returns specified information from the command stack.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+get_stack -size
+get_stack -line 4
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Conflicting arguments. Consult help for the Tcl command for details.
+TCL_ERROR	1   	ERROR: Illegal <string> value: <string>. Specify a legal value.
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_stack>
+
+<export_stack_to>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: export_stack_to [-h | -help] [-long_help] [-applied] [-file <file name>] [<position>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -applied: Whether to export only applied changes
+        -file <file name>: Name of file to which the stack is exported
+        <position>: Position
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Exports the the command stack to the specified position as
+a Tcl script, CSV, or TXT file. If position is not specified,
+exports the entire stack. The type of file is set by the
+extension specified in the name argument.  If a .csv or .txt
+extension is specified, a file of the specified type is
+produced.
+Otherwise, a Tcl script will be produced.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+The following is a sample sequence of commands that
+produces a Tcl script and a CSV file of the changes in the
+Command Manager:
+
+project_open <project_name>
+read_netlist
+export_stack_to -name new_tcl_file.tcl
+export_stack_to -name new_tcl_file.csv
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</export_stack_to>
+
+<connect_chain>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: connect_chain [-h | -help] [-long_help] [-gen_id <gen id>] [-node <node id>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -gen_id <gen id>: Node generic id
+        -node <node id>: Node id
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Connects a carry chain to this node. Supported for Stratix,
+Cyclone, and MAX II device families only.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+connect_chain -node 3
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Conflicting arguments. Consult help for the Tcl command for details.
+TCL_ERROR	1   	ERROR: Illegal node generic ID: %u. Specify a legal node generic ID.
+TCL_ERROR	1   	ERROR: Illegal node ID: %u. Specify a legal node ID.
+TCL_ERROR	1   	ERROR: The node you specified is a legalization node. Modification of legalization nodes is not supported.
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</connect_chain>
+
+<remove_chain>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: remove_chain [-h | -help] [-long_help] [-gen_id <gen id>] [-node <node id>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -gen_id <gen id>: Node generic id
+        -node <node id>: Node id
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Removes a carry chain connected to this node. Supported for
+Stratix, Cyclone, and MAX II device families only.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+remove_chain -node 1
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Conflicting arguments. Consult help for the Tcl command for details.
+TCL_ERROR	1   	ERROR: Illegal node generic ID: %u. Specify a legal node generic ID.
+TCL_ERROR	1   	ERROR: Illegal node ID: %u. Specify a legal node ID.
+TCL_ERROR	1   	ERROR: The node you specified is a legalization node. Modification of legalization nodes is not supported.
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</remove_chain>
+
+<close_chip_planner>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: close_chip_planner [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Releases the chip planner netlist from use.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+close_chip_planner
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</close_chip_planner>
+
+<get_sp_pin_list>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_sp_pin_list [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Returns a list of the pins availible for use as signal probe output pins.;
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+get_sp_pin_list
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_sp_pin_list>
+
+<make_sp>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: make_sp [-h | -help] [-long_help] [-clk <clock signal name>] [-io_std <io standard>] -loc <location> -pin_name <pin name> [-regs <num>] [-reset <reset signal name>] -src_name <source name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -clk <clock signal name>: Clock signal for the register in the SignalProbe pipeline
+        -io_std <io standard>: I/O standard of the SignalProbe pin
+        -loc <location>: Pin location of the SignalProbe pin
+        -pin_name <pin name>: SignalProbe pin name
+        -regs <num>: Number of pipeline stages for the SignalProbe pin
+        -reset <reset signal name>: Reset signal for the register in the SignalProbe pipeline
+        -src_name <source name>: Name of the signal to probe
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Creates a SignalProbe pin connected to the source signal
+using the specified number of registers. Columns are:
+Pin_name, pin_lcation, io_standard, oterm_name,
+number of registers, clock name, reset_name, is enabled,
+and has ECO changes.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+make_sp
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</make_sp>
+
+<delete_sp>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: delete_sp [-h | -help] [-long_help] -pin_name <pin name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -pin_name <pin name>: SignalProbe Pin Name
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Deletes a signal probe connected to the named pin.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+delete_sp
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</delete_sp>
+
+<enable_sp>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: enable_sp [-h | -help] [-long_help] -pin_name <pin name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -pin_name <pin name>: SignalProbe Pin Name
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Enables a signal probe connected to the named pin.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+enable_sp
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</enable_sp>
+
+<disable_sp>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: disable_sp [-h | -help] [-long_help] -pin_name <pin name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -pin_name <pin name>: SignalProbe Pin Name
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Disables a signal probe connected to the named pin.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+disable_sp
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</disable_sp>
+
+<list_sps>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: list_sps [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Returns a list of all SignalProbe instances.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+list_sps
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</list_sps>
+
+<convert_signal_probes>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: convert_signal_probes [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Converts Existing QSF SignalProbe Assignments into ECOs.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+convert_signal_probes
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</convert_signal_probes>
+
+<create_migrated_script>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: create_migrated_script [-h | -help] [-long_help] [-file <file name>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -file <file name>: Migrated Tcl Script File Name
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Creates a Tcl script showing the ECO changes for
+HardCopy II based on the changes implemented in a design targeting
+Stratix II.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+create_migrated_script
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</create_migrated_script>
+
+<get_tile_power_setting>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_tile_power_setting [-h | -help] [-long_help] [-X <X location>] [-Y <Y location>] [-gen_id <gen id>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -X <X location>: X location
+        -Y <Y location>: Y location
+        -gen_id <gen id>: Generic id
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Returns the High-Speed/Low Power setting of the tile at the specified location.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+get_tile_power_setting -gen_id 12345
+get_tile_power_setting -X 12 -Y 5
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Conflicting arguments. Consult help for the Tcl command for details.
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_tile_power_setting>
+
+<set_tile_power_setting>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: set_tile_power_setting [-h | -help] [-long_help] [-X <X location>] [-Y <Y location>] [-gen_id <gen id>] -setting <power setting>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -X <X location>: X location
+        -Y <Y location>: Y location
+        -gen_id <gen id>: Generic ID
+        -setting <power setting>: Power setting
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::chip_planner 2.0
+
+------------
+Description:
+------------
+
+Sets the High-Speed/Low Power setting of the tile at the specified location.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+set_tile_power_setting -gen_id 12345 -setting "High Speed"
+set_tile_power_setting -X 12 -Y 5 -setting "Low Power"
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Conflicting arguments. Consult help for the Tcl command for details.
+TCL_ERROR	1   	ERROR: Illegal <string> value: <string>. Specify a legal value.
+TCL_ERROR	1   	ERROR: Unable to find Chip Planner netlist. Read the netlist by using the "read_netlist" command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</set_tile_power_setting>
+
+<<<</2.0>>>>

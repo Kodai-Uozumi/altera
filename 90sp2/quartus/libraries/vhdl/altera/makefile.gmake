@@ -1,0 +1,182 @@
+#//START_MODULE_HEADER/////////////////////////////////////////////////////////
+# 
+#  Filename:	makefile.mak
+# 
+#  Description: Gets VHDL library files out of PVCS.
+# 
+#  Authors:		Thiagaraja Gopalsamy
+# 
+#  Copyright (c)  Altera Corporation 1996 - 1999
+# 
+#  All rights reserved.
+# 
+# 
+#//END_MODULE_HEADER///////////////////////////////////////////////////////////
+
+#
+#  $Log:   /pvcs/quartus/libraries/vhdl/altera/makefile.ma_  $
+#**	
+#**	   Rev 25.0   08 Jul 2007 04:06:32   max
+#**	Quartus II 8.0 
+#**	SJ, Sat Jul  7 09:06:33 2007
+#**	
+#**	   Rev 24.3   11 Apr 2007 19:21:48   dsundara
+#**	use scripts from common dir to get copyright stuff
+#**	 
+#**	SJ, Wed Apr 11 00:21:47 2007
+#**	
+#**	   Rev 24.2   10 Apr 2007 10:48:00   dsundara
+#**	slight change to make gmake conv easier
+#**	 
+#**	SJ, Mon Apr  9 15:47:23 2007
+#**	
+#**	   Rev 24.1   22 Mar 2007 04:19:38   dsundara
+#**	move base dir setting to very beginning 
+#**	SJ, Wed Mar 21 09:19:37 2007
+#**	
+#**	   Rev 24.0   11 Feb 2007 02:58:58   max
+#**	Quartus II 7.2 
+#**	SJ, Sat Feb 10 06:58:58 2007
+#**	
+#**	   Rev 23.2   18 Nov 2006 06:42:24   bpederse
+#**	Remove symbolic link before deleting 
+#**	SJ, Fri Nov 17 10:42:25 2006
+#**	
+#**	   Rev 23.1   15 Sep 2006 11:55:18   aperfilo
+#**	spr 215596  
+#**	SJ, Thu Sep 14 16:55:19 2006
+#**	
+#**	   Rev 23.0   10 Sep 2006 00:49:14   max
+#**	Quartus II 7.1 
+#**	SJ, Sat Sep  9 05:49:15 2006
+#**	
+#**	   Rev 22.4   08 Sep 2006 00:46:48   adraper
+#**	Delete alt_cusp_package from here (master copy is in CusP CVS) 
+#**	UK, Thu Sep 07 13:46:47 2006
+#**	
+#**	   Rev 22.3   21 Jul 2006 11:45:04   aperfilo
+#**	add alt_cusp_package  
+#**	SJ, Thu Jul 20 16:45:02 2006
+#**	
+#**	   Rev 22.2   02 May 2006 09:19:18   devins
+#**	use global rule instead of getting each file
+#**	 
+#**	SJ, Mon May 01 14:18:37 2006
+#**	
+#**	   Rev 22.1   17 Feb 2006 13:47:38   aleaver
+#**	Adding altera_europa_support_lib.vhd
+#**	 
+#**	SJ, Thu Feb 16 17:47:38 2006
+#**	
+#**	   Rev 22.0   05 Feb 2006 00:17:34   max
+#**	Quartus II 6.1 
+#**	SJ, Sat Feb  4 04:17:33 2006
+#**	
+#**	   Rev 21.0   07 Aug 2005 00:16:54   max
+#**	Quartus II 6.0 
+#**	SJ, Sat Aug  6 05:16:54 2005
+#**	
+#**	   Rev 20.2   21 Jul 2005 17:06:42   whlai
+#**	autogenerate altera_primitives_components.vhd from the eda\sim_lib version. (SPR 181500) 
+#**	PN, Thu Jul 21 13:06:40 2005
+#**	
+#**	   Rev 20.1   18 Jul 2005 20:26:36   whlai
+#**	Add new package for primitives 
+#**	PN, Mon Jul 18 16:26:34 2005
+#**	
+#**	   Rev 20.0   06 Feb 2005 06:23:26   max
+#**	Quartus II 5.1 
+#**	SJ, Sat Feb  5 10:23:27 2005
+#**	
+#**	   Rev 19.0   12 Sep 2004 04:18:36   max
+#**	Quartus II 5.0 
+#**	SJ, Sat Sep 11 09:18:35 2004
+#**	
+#**	   Rev 18.0   10 Apr 2004 04:39:54   max
+#**	Quartus II 4.2 
+#**	SJ, Fri Apr  9 09:39:54 2004
+#**	
+#**	   Rev 1.0   24 Mar 2004 06:17:32   tgopalsa
+#**	  
+#**	SJ, Tue Mar 23 10:17:17 2004
+
+#
+
+###############################################################################
+# Set up the environment
+###############################################################################
+
+BASE_DIR = ../../..
+
+
+include $(BASE_DIR)/environ.gmake
+
+PVCS_DIR = $(PVCS_ROOT)/libraries/vhdl/altera
+
+###############################################################################
+# Set target(s) and files used.
+###############################################################################
+
+OWNED_FILES = \
+	altera_internal_syn.vhd \
+	altera_primitives_components.vhd \
+	altera_europa_support_lib.vhd \
+	maxplus2.vhd \
+	megacore.vhd
+
+ifneq ($(and $(if $(filter x$(PORT)x,xUNIXx),T,),$(if $(filter x$(SYS)x,xSOLARISx),T,)),)
+OWNED_FILES += alt_cusp_package.vhd
+endif
+
+AUTO_COMP_FILE_DIR = $(BASE_DIR)/h/auto_rtl
+
+PRIM_COMPONENT_FILE = $(AUTO_COMP_FILE_DIR)/auto_altera_primitives_components.vhd
+VHDL_ATTRIBUTES_FILE = $(AUTO_COMP_FILE_DIR)/auto_altera_syn_attributes.vhd
+
+###############################################################################
+# Builtins.mak
+###############################################################################
+
+
+include $(BASE_DIR)/builtins.gmake
+
+###############################################################################
+# Now the targets
+###############################################################################
+
+all : get_owned_files create_primitives_components create_vhdl_attributes
+
+create_primitives_components :
+	$(create_primitives_components)
+define create_primitives_components
+	@if [ !  -e $(PRIM_COMPONENT_FILE) ]; then \
+	echo "Error : $(PRIM_COMPONENT_FILE) does not exist!" ; \
+	export _PctStatus=1 ; \
+	exit $(_PctStatus) ; \
+	fi ;
+	@echo "Generates new altera_primitives_components.vhd."
+	@rm -f altera_primitives_components.vhd
+	@$(KSH) $(UNSHIPPED_DATA_DIR)/ver_get_copyright_date.sh $(BASE_DIR) > altera_primitives_components.vhd
+	@$(KSH) $(UNSHIPPED_DATA_DIR)/gen_get_copyright.sh $(BASE_DIR) >> altera_primitives_components.vhd
+	@cat $(PRIM_COMPONENT_FILE) >> altera_primitives_components.vhd
+
+endef
+
+create_vhdl_attributes :
+	$(create_vhdl_attributes)
+define create_vhdl_attributes
+	@if [ !  -e $(VHDL_ATTRIBUTES_FILE) ]; then \
+	echo "Error : $(VHDL_ATTRIBUTES_FILE) does not exist!" ; \
+	export _PctStatus=1 ; \
+	exit $(_PctStatus) ; \
+	fi ;
+	@echo "Generates new altera_syn_attributes.vhd."
+	@rm -f altera_syn_attributes.vhd
+	@$(KSH) $(UNSHIPPED_DATA_DIR)/ver_get_copyright_date.sh $(BASE_DIR) > altera_syn_attributes.vhd
+	@$(KSH) $(UNSHIPPED_DATA_DIR)/gen_get_copyright.sh $(BASE_DIR) >> altera_syn_attributes.vhd
+	@cat $(VHDL_ATTRIBUTES_FILE) >> altera_syn_attributes.vhd
+
+endef
+
+clean : 
+	rm -f *.vhd

@@ -1,0 +1,93 @@
+------------------------------------------------------------------
+-- altfp_sqrt parameterized megafunction
+-- Generated with 'clearbox' loader - do not edit
+------------------------------------------------------------------
+
+
+-- Copyright (C) 1991-2009 Altera Corporation
+--  Your use of Altera Corporation's design tools, logic functions 
+--  and other software and tools, and its AMPP partner logic 
+--  functions, and any output files from any of the foregoing 
+--  (including device programming or simulation files), and any 
+--  associated documentation or information are expressly subject 
+--  to the terms and conditions of the Altera Program License 
+--  Subscription Agreement, Altera MegaCore Function License 
+--  Agreement, or other applicable license agreement, including, 
+--  without limitation, that your use is for the sole purpose of 
+--  programming logic devices manufactured by Altera and sold by 
+--  Altera or its authorized distributors.  Please refer to the 
+--  applicable agreement for further details.
+
+--  Version 9.0 Build 235 06/17/2009
+
+OPTIONS NAME_SUBSTITUTION = ON;
+
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+
+PARAMETERS
+(
+	EXCEPTION_HANDLING = "YES",
+	PIPELINE = 28,
+	ROUNDING = "TO_NEAREST",
+	WIDTH_EXP = 8,
+	WIDTH_MAN = 23,
+	CBXI_PARAMETER = "NOTHING"
+);
+FUNCTION @CBXI_PARAMETER (aclr, clk_en, clock, data[WIDTH_EXP+WIDTH_MAN+1-1..0])
+RETURNS (nan, overflow, result[WIDTH_EXP+WIDTH_MAN+1-1..0], zero);
+
+
+SUBDESIGN altfp_sqrt
+(
+	aclr		:	INPUT = GND;
+	clk_en		:	INPUT = VCC;
+	clock		:	INPUT;
+	data[WIDTH_EXP+WIDTH_MAN+1-1..0]		:	INPUT;
+	nan		:	OUTPUT;
+	overflow		:	OUTPUT;
+	result[WIDTH_EXP+WIDTH_MAN+1-1..0]		:	OUTPUT;
+	zero		:	OUTPUT;
+)
+VARIABLE
+	IF CBXI_PARAMETER != "NOTHING" GENERATE
+		auto_generated : @CBXI_PARAMETER WITH ( CBXI_PARAMETER = "NOTHING" );
+	END GENERATE;
+BEGIN
+	ASSERT (CBXI_PARAMETER != "NOTHING")
+	REPORT "Valid clear box generator not found or Errors encountered during clear box generation"
+	SEVERITY ERROR;
+	IF (CBXI_PARAMETER != "NOTHING") GENERATE
+		IF USED(aclr) GENERATE
+			auto_generated.aclr = aclr;
+		END GENERATE;
+		IF USED(clk_en) GENERATE
+			auto_generated.clk_en = clk_en;
+		END GENERATE;
+		IF USED(clock) GENERATE
+			auto_generated.clock = clock;
+		END GENERATE;
+		IF USED(data) GENERATE
+			auto_generated.data[] = data[];
+		END GENERATE;
+		IF USED(nan) GENERATE
+			nan = auto_generated.nan;
+		ELSE GENERATE
+			nan = GND;
+		END GENERATE;
+		IF USED(overflow) GENERATE
+			overflow = auto_generated.overflow;
+		ELSE GENERATE
+			overflow = GND;
+		END GENERATE;
+		IF USED(result) GENERATE
+			result[] = auto_generated.result[];
+		ELSE GENERATE
+			result[] = GND;
+		END GENERATE;
+		IF USED(zero) GENERATE
+			zero = auto_generated.zero;
+		ELSE GENERATE
+			zero = GND;
+		END GENERATE;
+	END GENERATE;
+END;

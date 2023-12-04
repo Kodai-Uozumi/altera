@@ -1,0 +1,191 @@
+#
+# nios_bash - set up nios development environment for 'bash' shell
+#             ($sopc_builder must point to installation directory)
+# 
+#
+
+
+# +---------------------------
+# | source_kit_bashes
+# |
+# | loop through all the installed kits,
+# | and for each, if it has a kit_bash, source
+# | it.
+# |
+# | (SOPC_BUILDER_PATH has things besides kits,
+# | but thats ok. kit_bash's get sourced, that's the
+# | important thing.)
+# |
+# | dvb 2003
+
+source_kit_bashes ()
+    {
+    old_IFS=$IFS
+    IFS="+"
+
+    for potential_kit_dir in $SOPC_BUILDER_PATH${SOPC_BUILDER_PATH:++}$SOPC_BUILDER_PATH_90
+    do
+        IFS=$old_IFS
+        if [ -f "$potential_kit_dir/kit_bash" ]
+        then
+            old_dir=`pwd`
+            cd "$potential_kit_dir"
+            . ./kit_bash
+            cd "$old_dir"
+        fi
+        IFS="+"
+    done
+
+    IFS=$old_IFS
+    }
+
+
+
+# safe_alias
+#  will only set alias if it's not set.
+#  $1 is alias name, $2 is alias command
+safe_alias ()
+{
+	if [ -z "$(alias | grep '$1=')" ]
+	then
+		alias $1="$2"
+	fi
+}
+
+if [ "$NIOS_BASH_RUN_9_0" != "" ]
+then
+	return 0
+	# already we've run once!
+fi
+NIOS_BASH_RUN_9_0=1
+
+#
+# IF the old path had a cygwin1.dll in it, then we
+# surely dont want to add it back to the path. Sorry.
+# It would conflict with the one we know we have.
+# (This could only happen on Windows/Cygwin; will
+# have no effect on linux, &c.) dvb05
+#
+
+do_append_previous_path=1
+
+if [ -f /bin/cygpath ]
+then
+	if [ "`/bin/which cygwin1.dll 2> /dev/null`" != "" ]
+	then
+		do_append_previous_path=0
+		echo "."
+		echo ". Removing old PATH, because a copy of"
+		echo ". cygwin1.dll was found at: "
+		echo ".     `/bin/which cygwin1.dll`"
+		echo ". You can remove or rename it to avoid conflict."
+		echo "."
+	fi
+fi
+
+
+PATH_BEFORE_NIOS_BASH=$PATH
+export PATH_BEFORE_NIOS_BASH
+
+PATH="/bin:/usr/bin:$PATH"
+# If ModelSim is in the path, let's keep it before we rebuild PATH
+vsimpath=`which vsim 2> /dev/null`
+[ $? != 1 ] && msim_path=`dirname $vsimpath`
+unset vsimpath
+
+PATH="/bin:/usr/bin"
+
+if [ $do_append_previous_path = "1" ]
+then
+	PATH=$PATH:$PATH_BEFORE_NIOS_BASH
+else
+    # Add in ModelSim, if it was in previous PATH
+    if [ -n "$msim_path" ]
+    then
+        PATH=$PATH:$msim_path
+    fi
+fi
+
+unset msim_path
+unset do_append_previous_path
+
+# correct paths which may come from DOS
+export QUARTUS_ROOTDIR=${QUARTUS_ROOTDIR//\\\\/\/}
+export sopc_builder=${sopc_builder:-$QUARTUS_ROOTDIR/sopc_builder}
+
+# set up environment via nios_sh, which deals with paths, etc.
+# this is the essential setup; everything else is convenience
+source "$sopc_builder/bin/nios_sh"
+
+# set window title
+printf "\033]2;Nios II EDS 9.0\a"
+
+# set prompt
+PS1="\[\e[32;2m\]\w\[\e[0m\]\n[NiosII EDS]$ "
+
+echo ------------------------------------------------
+echo Welcome To Altera SOPC Builder
+echo
+echo Version 9.0, Built Wed Jun 17 22:46:32 PDT 2009
+echo ------------------------------------------------
+
+# +----------------------
+# | conveniences 
+# |
+alias nb=nios-build
+safe_alias ll 'ls -lF'
+safe_alias vi 'vim'
+safe_alias view 'vim -R'
+safe_alias m 'make -s'
+
+# +----------------------
+# | safety features for typical
+# | users. Disable at great risk.
+# |
+
+safe_alias cp 'cp -ip'
+safe_alias mv 'mv -i'
+safe_alias rm 'rm -i'
+safe_alias ls 'ls -AF'
+
+safe_alias awk gawk
+
+    # +---------------
+    # | handy things for other kits
+    # |
+
+    source_kit_bashes
+
+    # +---------------
+
+# |
+# | And while we are busy printing helpful tips,
+# | let us inform the user if they have a
+# | particularly bad version of cygwin1.dll
+# |
+# | (If we dont see it in the usual spot, we
+# | remain silent on the issue.)
+# |
+
+if [ -f /bin/cygwin1.dll ]
+then
+    cygwin_dll_size=`find /bin -name cygwin1.dll -printf %s`
+    if [ $cygwin_dll_size = 804728 ]
+    then
+        echo .
+        echo .
+        echo . By the by:
+        echo .
+        echo .  You should STRONGLY CONSIDER upgrading your
+        echo .  version 1.0 /bin/cygwin1.dll file. The version
+        echo .  you have may crash GDB, among other problems.
+        echo .  We have tested 1.3.10 with good results.
+        echo .
+        echo ------------------------------------------------
+    fi
+fi
+
+
+
+unset safe_alias
+unset source_kit_bashes

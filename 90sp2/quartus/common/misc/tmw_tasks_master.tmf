@@ -1,0 +1,966 @@
+<?xml version="1.0"?>
+<!--
+* File name:   tmw_tasks_master.tmf
+*
+* Description: File to define the Task Manager Window contents.
+*			   This is the master flow that contains all items.  It is not
+*			   used as a flow in the UI instead all custom flows reference 
+*			   this flow.
+*
+*              Copyright (c) Altera Corporation 2007.
+*              All rights reserved.
+*
+*******************************************************************************
+*
+* $Revision:   25.1  $
+*
+*******************************************************************************
+-->
+<tasks flowname = "Master" type = "master">
+
+	*******************
+	** Start Project **
+	*******************
+
+	<task>
+		<id>project</id>
+		<name>Start Project</name>
+		<status_ok_if>project_is_open</status_ok_if>
+		<subtasks>
+			<task>
+				<id>create_project</id>
+				<name>Open New Project Wizard</name>
+				<item_bitmap>create_project</item_bitmap>
+				<status_ok_if>project_is_open</status_ok_if>
+				<action type="command"> New Project Wizard...</action>
+			</task>
+			<task>
+				<id>open_project</id>
+				<name>Open Existing Project</name>
+				<item_bitmap>open_project</item_bitmap>
+				<status_ok_if>project_is_open</status_ok_if>
+				<action type="command">Open Project...</action>
+			</task>
+			<task>
+				<id>create_revision</id>
+				<name>Create Revision</name>
+				<item_bitmap>dialog_box</item_bitmap>
+				<action type="command">Revisions...</action>
+			</task>
+			<task>
+				<id>specify_lib</id>
+				<name>Specify Project Libraries</name>
+				<item_bitmap>dialog_box</item_bitmap>
+				<action type="settings_command">SETD_LIBRARIES_PAGE</action>
+			</task>
+			<task>
+				<id>import_database</id>
+				<name>Import Database</name>
+				<item_bitmap>dialog_box</item_bitmap>
+				<action type="command">Import Database...</action>
+			</task>
+		</subtasks>
+	</task>
+
+	<task>
+		<id>advisors</id>
+		<name>Advisors</name>
+		<status_ok_if>always_with_project</status_ok_if>
+		<subtasks>
+			<task>
+				<id>hardcopy_advisor</id>
+				<name>HardCopy Advisor</name>
+				<item_bitmap>tool_hardcopy_advisor</item_bitmap>
+				<status_ok_if>always_with_project</status_ok_if>
+				<action type="command">HardCopy Advisor</action>
+			</task>
+			<task>
+				<id>qic_advisor</id>
+				<name>Incremental Compilation Advisor</name>
+				<item_bitmap>tool_incremental_compile_advisor</item_bitmap>
+				<status_ok_if>always_with_project</status_ok_if>
+				<action type="command">Incremental Compilation Advisor</action>
+			</task>
+			<task>
+				<id>compile_advisor</id>
+				<name>Compilation Time Advisor</name>
+				<item_bitmap>tool_compile_time_advisor</item_bitmap>
+				<status_ok_if>always_with_project</status_ok_if>
+				<action type="command">Compilation Time Advisor</action>
+			</task>
+			<task>
+				<id>ip_advisor</id>
+				<name>IP Advisor</name>
+				<item_bitmap>tool_ip_advisor</item_bitmap>
+				<status_ok_if>always_with_project</status_ok_if>
+				<action type="command">IP Advisor</action>
+			</task>
+			<task>
+				<id>resopt_advisor</id>
+				<name>Resource Optimization Advisor</name>
+				<item_bitmap>tool_resource_advisor</item_bitmap>
+				<status_ok_if>always_with_project</status_ok_if>
+				<action type="command">Resource Optimization Advisor</action>
+			</task>
+			<task>
+				<id>timopt_advisor</id>
+				<name>Timing Optimization Advisor</name>
+				<item_bitmap>tool_timing_advisor</item_bitmap>
+				<status_ok_if>always_with_project</status_ok_if>
+				<action type="command">Timing Optimization Advisor</action>
+			</task>
+			<task>
+				<id>powopt_advisor</id>
+				<name>Power Optimization Advisor</name>
+				<item_bitmap>tool_power_advisor</item_bitmap>
+				<status_ok_if>always_with_project</status_ok_if>
+				<action type="command">Power Optimization Advisor</action>
+			</task>
+			<task>
+				<id>pin_advisor</id>
+				<name>Pin Advisor</name>
+				<item_bitmap>tool_pin_advisor</item_bitmap>
+				<status_ok_if>always_with_project</status_ok_if>
+				<action type="command">Pin Advisor</action>
+			</task>
+		</subtasks>
+	</task>
+
+
+
+	*******************
+	** Create Design **
+	*******************
+
+	<task>
+		<id>create_design</id>
+		<name>Create Design</name>
+		<status_ok_if>always</status_ok_if>
+		<subtasks>
+			<task>
+				<id>add_file</id>
+				<name>Create New Design File</name>
+				<item_bitmap>dialog_box</item_bitmap>
+				<status_ok_if>always</status_ok_if>
+				<action type="command">New...</action>
+			</task>
+			<task>
+				<id>open_file</id>
+				<name>Open Existing Design File</name>
+				<item_bitmap>dialog_box</item_bitmap>
+				<status_ok_if>always</status_ok_if>
+				<action type="command">Open...</action>
+			</task>
+			<task>
+				<id>addremove_file</id>
+				<name>Add/Remove Files in Project</name>
+				<item_bitmap>dialog_box</item_bitmap>
+				<action type="command">Add/Remove Files in Project...</action>
+			</task>
+			<task>
+				<id>ip_megafunction</id>
+				<name>MegaWizard Plug-In Manager (IP cores and megafunctions)</name>
+				<item_bitmap>tool_megafunction</item_bitmap>
+				<status_ok_if>always_with_project</status_ok_if>
+				<action type="command">MegaWizard Plug-In Manager...</action>
+			</task>
+			<task>
+				<id>sopc_builder</id>
+				<name>SOPC Builder (system generation)</name>
+				<item_bitmap>tool_sopc_builder</item_bitmap>
+				<action type="command">SOPC Builder</action>
+			</task>
+		</subtasks>
+	</task>
+
+
+	*************************
+	**  Assign Constraints **
+	*************************
+
+	<task>
+		<id>assign_constraints</id>
+		<name>Assign Constraints</name>
+		<subtasks>
+			<task>
+				<id>import_assignments</id>
+				<name>Import Assignments</name>
+				<item_bitmap>dialog_box</item_bitmap>
+				<status_ok_if>always_with_project</status_ok_if>
+				<action type="command">Import Assignments...</action>
+			</task>
+			<task>
+				<id>global_settings</id>
+				<name>Set Project and Compiler Settings</name>
+				<item_bitmap>dialog_box</item_bitmap>
+				<status_ok_if>always_with_project</status_ok_if>
+				<action type="command">Settings...</action>
+			</task>
+			<task>
+				<id>open_design_partitions</id>
+				<name>Design Partitions (Open Design Partition Planner)</name>
+				<prereq>start_partition_merge</prereq>
+				<item_bitmap>tool_partition_planner</item_bitmap>
+				<action type="command">Design Partition Planner</action>
+			</task>
+			<task>
+				<id>logic_regions_window</id>
+				<name>Edit LogicLock Regions (Open LogicLock Regions Window)</name>
+				<item_bitmap>tool_logiclock</item_bitmap>
+				<status_ok_if>always_with_project</status_ok_if>
+				<action type="command">LogicLock Regions Window</action>
+			</task>
+			<task>
+				<id>edit_pin_planner_assignments</id>
+				<name>Edit Pin Assignments (Open Pin Planner)</name>
+				<item_bitmap>tool_pin_planner</item_bitmap>
+				<status_ok_if>always_with_project</status_ok_if>
+				<action type="command">Pin Planner</action>
+			</task>
+			<task>
+				<id>assignment_editor</id>
+				<name>Edit Logic Options (Open Assignment Editor)</name>
+				<item_bitmap>tool_assign_editor</item_bitmap>
+				<status_ok_if>always_with_project</status_ok_if>
+				<action type="command">Assignment Editor</action>
+			</task>
+			<task>
+				<id>export_assignments</id>
+				<name>Export Assignments</name>
+				<item_bitmap>dialog_box</item_bitmap>
+				<status_ok_if>always_with_project</status_ok_if>
+				<action type="command">Export Assignments...</action>
+			</task>
+		</subtasks>
+	</task>
+
+
+
+
+	********************
+	** Compile Design **
+	********************
+
+	<task>
+		<id>start_full_compilation</id>
+		<name>Compile Design</name>
+		<item_bitmap>task_start</item_bitmap>
+		<action type="process">FSTR_FLOW_DBG_NAME_COMPILE</action>
+		<subtasks>
+
+			**************************
+			** Analysis & Synthesis **
+			**************************
+			<task>
+				<id>start_analysis_synthesis</id>
+				<name>Analysis &amp; Synthesis</name>
+				<item_bitmap>task_start</item_bitmap>
+				<action type="process">FSTR_FLOW_DBG_NAME_TECHNOLOGY_MAPPER</action>
+				<smart_action>SOURCE</smart_action>
+				<smart_action>INC_TAP</smart_action>
+				<smart_action>SGATES</smart_action>
+				<reset type= unknown>start_quartus_simulator</reset>
+				<reset>start_generate_netlist</reset>
+				<subset>start_analysis_elaboration</subset>
+				<subtasks>
+
+					<task>
+						<id>analysis_synthesis_settings</id>
+						<name>Edit Settings</name>
+						<item_bitmap>dialog_box</item_bitmap>
+						<action type="settings_command">SETD_SYNTHESIS_PAGE</action>
+					</task>
+					<task>
+						<id>analysis_synthesis_report</id>
+						<name>View Report</name>
+						<item_bitmap>report_table</item_bitmap>
+						<prereq>start_analysis_synthesis</prereq>
+						<action type="report_command"> Analysis &amp; Synthesis||Analysis &amp; Synthesis Summary</action>
+					</task>
+
+					**********************************
+					** Start Analysis & Elaboration **
+					**********************************
+					<task>
+						<id>start_analysis_elaboration</id>
+						<name>Analysis &amp; Elaboration</name>
+						<item_bitmap>task_start</item_bitmap>
+						<action type="process">FSTR_FLOW_DBG_NAME_ANALYSIS_AND_ELABORATION</action>
+						<smart_action>SOURCE</smart_action>
+						<smart_action>INC_TAP</smart_action>
+						<smart_action>SGATES</smart_action>
+						<superset>start_analysis_synthesis</superset>
+						<reset type= unknown>start_analysis_synthesis</reset>
+					</task>
+
+					*********************
+					** Partition Merge **
+					*********************
+					<task>
+						<id>start_partition_merge</id>
+						<name>Partition Merge</name>
+						<item_bitmap>task_start</item_bitmap>
+						<prereq>start_analysis_synthesis</prereq>
+						<action type="process">FSTR_FLOW_DBG_NAME_PARTITION_MERGE</action>
+						<smart_action>MERGE</smart_action>
+						<subtasks>
+							<task>
+								<id>partition_merge_report</id>
+								<name>View Report</name>
+								<item_bitmap>report_table</item_bitmap>
+								<prereq>start_partition_merge</prereq>
+								<action type="report_command">Partition Merge||Partition Merge Summary</action>
+							</task>
+							<task>
+								<id>design_partitions</id>
+								<name>Design Partition Planner</name>
+								<prereq>start_partition_merge</prereq>
+								<item_bitmap>tool_partition_planner</item_bitmap>
+								<action type="command">Design Partition Planner</action>
+							</task>
+						</subtasks>
+					</task>
+
+					<task>
+						<id>netlist_viewers</id>
+						<name>Netlist Viewers</name>
+						<subtasks>
+							<task>
+								<id>rtl_viewer</id>
+								<prereq>start_analysis_elaboration</prereq>
+								<name>RTL Viewer</name>
+								<item_bitmap>tool_rtl_viewer</item_bitmap>
+								<action type="command">RTL Viewer</action>		
+								<preprocess>RTL Viewer Preprocess</preprocess>
+							</task>
+							<task>
+								<id>fsm_viewer</id>
+								<prereq>start_analysis_elaboration</prereq>
+								<name>State Machine Viewer</name>
+								<item_bitmap>tool_state_machine_viewer</item_bitmap>
+								<action type="command">State Machine Viewer</action>		
+								<preprocess>State Machine Viewer Preprocess</preprocess>
+							</task>
+							<task>
+								<id>tech_map_viewer_post_map</id>
+								<name>Technology Map Viewer (Post-Mapping)</name>
+								<prereq>start_partition_merge</prereq>
+								<item_bitmap>tool_tech_map_viewer</item_bitmap>
+								<action type="command">Technology Map Viewer (Post-Mapping)</action>		
+								<preprocess>Technology Map Viewer Preprocess</preprocess>
+							</task>
+						</subtasks>	
+					</task>
+
+					**********************
+					** Design Assistant **
+					**********************
+					<task>
+						<id>start_design_assistant_post_map</id>
+						<name>Design Assistant (Post-Mapping)</name>
+						<item_bitmap>task_start</item_bitmap>
+						<prereq>start_partition_merge</prereq>
+						<action type="process">FSTR_FLOW_DBG_NAME_DESIGN_ASSISTANT</action>
+						<smart_action>BASEO</smart_action>
+						<subtasks>
+							<task>
+								<id>design_assistant_edit_post_map</id>
+								<name>Edit Settings</name>
+								<item_bitmap>dialog_box</item_bitmap>
+								<action type="settings_command">SETD_DESIGN_ASSIST_PAGE</action>
+							</task>
+							<task>
+								<id>design_assistant_report_post_map</id>
+								<name>View Report</name>
+								<item_bitmap>report_table</item_bitmap>
+								<prereq>start_design_assistant_post_map</prereq>
+								<action type="report_command"> Design Assistant||Design Assistant Summary</action>
+							</task>
+						</subtasks>
+					</task>
+
+
+					***********************************
+					** Start I/O Assignment Analysis **
+					***********************************
+
+					<task>
+						<id>start_io_assignment_analysis</id>
+						<name>I/O Assignment Analysis</name>
+						<item_bitmap>task_start</item_bitmap>
+						<prereq>start_partition_merge</prereq>
+						<action type="process">FSTR_FLOW_DBG_NAME_CHECK_IOS</action>
+						<smart_action>SOURCE</smart_action>
+						<reset type= unknown>start_fitter</reset>
+						<reset>start_design_assistant_post_map</reset>
+						<reset>start_design_assistant_post_fit</reset>
+						<subtasks>
+							<task>
+								<id>io_analysis_report</id>
+								<name>View Report</name>
+								<item_bitmap>report_table</item_bitmap>
+								<prereq>start_io_assignment_analysis</prereq>
+								<action type="report_command"> I/O Assignment Analysis||I/O Assignment Analysis Summary</action>
+							</task>
+							<task>
+								<id>pin_planner_assignments</id>
+								<name>Pin Planner</name>
+								<item_bitmap>tool_pin_planner</item_bitmap>
+								<action type="command">Pin Planner</action>
+							</task>
+						</subtasks>
+					</task>
+
+					***************************
+					** Early Timing Estimate **
+					***************************
+
+					<task>
+						<id>start_early_timing</id>
+						<name>Early Timing Estimate</name>
+						<item_bitmap>task_start</item_bitmap>
+						<prereq>start_partition_merge</prereq>
+						<action type="process">FSTR_FLOW_DBG_NAME_EARLY_TIMING_ESTIMATE</action>
+						<clear_subprocess>on</clear_subprocess>
+						<smart_action>FIT</smart_action>
+						<smart_action>SIGNALPROBE</smart_action>
+						<smart_action>SIGNALTAP</smart_action>
+						<smart_action>FIT_SMART_IO</smart_action>
+						<smart_action>MIF</smart_action>
+						<subtasks>
+							<task>
+								<id>early_timing_edit</id>
+								<name>Edit Settings</name>
+								<item_bitmap>dialog_box</item_bitmap>
+								<action type="settings_command">SETD_EARLY_TIMING_PAGE</action>
+							</task>
+							<task>
+								<id>early_timing_report</id>
+								<name>View Report</name>
+								<item_bitmap>report_table</item_bitmap>
+								<prereq>start_early_timing</prereq>
+								<action type="report_command" assignment = "off"> Timing Analyzer||Timing Analyzer Summary</action>
+								<action type="report_command" assignment = "on"> TimeQuest Timing Analyzer||TimeQuest Timing Analyzer Summary</action>
+								<action_assignment>STA_MODE</action_assignment>
+							</task>
+
+							*******************************
+							** TimeQuest Timing Analyzer **
+							*******************************
+							<task>
+								<id>open_timequest_assignments</id>
+								<name>TimeQuest Timing Analyzer</name>
+								<item_bitmap>tool_timequest</item_bitmap>
+								<action type="command">TimeQuest Timing Analyzer</action>
+							</task>
+						</subtasks>
+					</task>
+					********************************************
+					** Early Timing Estimate with Fast Synthesis
+					********************************************
+					<task>
+						<id>start_early_timing_with_synthesis</id>
+						<name>Early Timing Estimate with Synthesis</name>
+						<item_bitmap>task_start</item_bitmap>
+						<action type="process">FSTR_FLOW_DBG_NAME_EARLY_TIMING_ESTIMATE_WITH_SYNTHESIS</action>
+				    	<clear_subprocess>on</clear_subprocess>
+						<smart_action>FIT</smart_action>
+						<smart_action>SIGNALPROBE</smart_action>
+						<smart_action>SIGNALTAP</smart_action>
+						<smart_action>FIT_SMART_IO</smart_action>
+						<smart_action>MIF</smart_action>
+						<subtasks>
+							<task>
+								<id>early_timing_edit_for_ete_with_synthesis</id>
+								<name>Edit Settings</name>
+								<item_bitmap>dialog_box</item_bitmap>
+								<action type="settings_command">SETD_EARLY_TIMING_PAGE</action>
+							</task>
+							<task>
+								<id>early_timing_report_for_ete_with_synthesis</id>
+								<name>View Report</name>
+								<item_bitmap>report_table</item_bitmap>
+								<prereq>start_early_timing_with_synthesis</prereq>
+								<action type="report_command" assignment = "off"> Timing Analyzer||Timing Analyzer Summary</action>
+								<action type="report_command" assignment = "on"> TimeQuest Timing Analyzer||TimeQuest Timing Analyzer Summary</action>
+								<action_assignment>STA_MODE</action_assignment>
+							</task>
+
+							*******************************
+							** TimeQuest Timing Analyzer **
+							*******************************
+							<task>
+								<id>open_timequest_assignments_for_ete_with_synthesis</id>
+								<name>TimeQuest Timing Analyzer</name>
+								<item_bitmap>tool_timequest</item_bitmap>
+								<action type="command">TimeQuest Timing Analyzer</action>
+							</task>
+						</subtasks>
+					</task>
+				</subtasks>
+			</task>
+
+			************
+			** Fitter **
+			************
+			<task>
+				<id>start_fitter</id>
+				<name>Fitter (Place &amp; Route)</name>
+				<item_bitmap>task_start</item_bitmap>
+				<prereq>start_partition_merge</prereq>
+				<action type="process">FSTR_FLOW_DBG_NAME_FITTER</action>
+				<smart_action>FIT</smart_action>
+				<smart_action>SIGNALPROBE</smart_action>
+				<smart_action>SIGNALTAP</smart_action>
+				<smart_action>FIT_SMART_IO</smart_action>
+				<smart_action>MIF</smart_action>
+				<reset>start_early_timing</reset>
+				<reset>start_io_assignment_analysis</reset>
+				<reset>start_design_assistant_post_map</reset>
+				<reset>start_design_assistant_post_fit</reset>
+				<subtasks>
+					<task>
+						<id>fitter_settings</id>
+						<name>Edit Settings</name>
+						<item_bitmap>dialog_box</item_bitmap>
+						<action type="settings_command">SETD_FITTER_PAGE</action>
+					</task>
+					<task>
+						<id>fitter_report</id>
+						<name>View Report</name>
+						<item_bitmap>report_table</item_bitmap>
+						<prereq>start_fitter</prereq>
+						<action type="report_command"> Fitter||Fitter Summary</action>
+					</task>
+					<task>
+						<id>open_chip_planner</id>
+						<name>Chip Planner (Floorplan and Chip Editor)</name>
+						<item_bitmap>tool_chip_planner</item_bitmap>
+						<action type="command">Chip Planner (Floorplan and Chip Editor)</action>
+					</task>
+					<task>
+						<id>tech_map_viewer_post_fit</id>
+						<name>Technology Map Viewer (Post-Fitting)</name>
+						<item_bitmap>tool_tech_map_viewer</item_bitmap>
+						<prereq>start_fitter</prereq>
+						<action type="command">Technology Map Viewer</action>
+					</task>
+					<task>
+						<id>start_design_assistant_post_fit</id>
+						<name>Design Assistant (Post-Fitting)</name>
+						<item_bitmap>task_start</item_bitmap>
+						<prereq>start_fitter</prereq>
+						<action type="process">FSTR_FLOW_DBG_NAME_DESIGN_ASSISTANT</action>
+						<smart_action>BASEO</smart_action>
+						<subtasks>
+							<task>
+								<id>design_assistant_edit_post_fit</id>
+								<name>Edit Settings</name>
+								<item_bitmap>dialog_box</item_bitmap>
+								<action type="settings_command">SETD_DESIGN_ASSIST_PAGE</action>
+							</task>
+							<task>
+								<id>design_assistant_report_post_fit</id>
+								<name>View Report</name>
+								<item_bitmap>report_table</item_bitmap>
+								<prereq>start_design_assistant_post_fit</prereq>
+								<action type="report_command">Design Assistant||Design Assistant Summary</action>
+							</task>
+						</subtasks>
+					</task>
+				</subtasks>
+			</task>
+
+
+			***************
+			** Assembler **
+			***************
+			<task>
+				<id>start_assembler</id>
+				<name>Assembler (Generate programming files)</name>
+				<item_bitmap>task_start</item_bitmap>
+				<prereq>start_fitter</prereq>
+				<action type="process">FSTR_FLOW_DBG_NAME_ASSEMBLER</action>
+				<smart_action>ASM</smart_action>
+				<subtasks>
+					<task>
+						<id>assembler_edit</id>
+						<name>Edit Settings</name>
+						<item_bitmap>dialog_box</item_bitmap>
+						<action type="settings_command">SETD_ASSEMBLER_PAGE</action>
+					</task>
+					<task>
+						<id>assembler_report</id>
+						<name>View Report</name>
+						<item_bitmap>report_table</item_bitmap>
+						<prereq>start_assembler</prereq>
+						<action type="report_command">Assembler||Assembler Summary</action>
+					</task>
+				</subtasks>
+			</task>
+
+
+			*********************
+			** Timing Analyzer **
+			*********************
+			<task>
+				<id>start_timing_analyzer</id>
+				<name assignment = "default">Timing Analysis</name>
+				<name assignment = "on">TimeQuest Timing Analysis</name>
+				<name assignment = "off">Classic Timing Analysis</name>
+				<item_bitmap>task_start</item_bitmap>
+				<prereq>start_fitter</prereq>
+
+				<action type="process" assignment = "on">
+						FSTR_FLOW_DBG_NAME_ADVANCED_TIMING_ANALYSIS</action>
+
+				<action type="process" assignment = "off">
+						FSTR_FLOW_DBG_NAME_TIMING_ANALYSIS</action>
+				<action_assignment>STA_MODE</action_assignment>
+				<name_assignment>STA_MODE</name_assignment>
+				<smart_action>TAN</smart_action>
+				<smart_action>DAT</smart_action>
+
+				<subtasks>
+					<task>
+						<id>timing_settings</id>
+						<name>Edit Settings</name>
+						<item_bitmap>dialog_box</item_bitmap>
+						<action type="settings_command" assignment = "off">SETD_CLASSIC_TIMING_PAGE</action>
+						<action type="settings_command" assignment = "on">SETD_STA_PAGE</action>
+						<action_assignment>STA_MODE</action_assignment>
+					</task>
+					<task>
+						<id>timing_report</id>
+						<name>View Report</name>
+						<item_bitmap>report_table</item_bitmap>
+						<prereq>start_timing_analyzer</prereq>
+						<action type="report_command" assignment = "off"> Timing Analyzer||Timing Analyzer Summary</action>
+						<action type="report_command" assignment = "on"> TimeQuest Timing Analyzer||TimeQuest Timing Analyzer Summary</action>
+						<action_assignment>STA_MODE</action_assignment>
+					</task>
+					<task>
+						<id>timequest_assignments</id>
+						<name>TimeQuest Timing Analyzer</name>
+						<item_bitmap>tool_timequest</item_bitmap>
+						<action type="command">TimeQuest Timing Analyzer</action>
+					</task>
+				</subtasks>
+			</task>
+
+
+			************************
+			** EDA Netlist Writer **
+			************************
+
+			<task>
+				<id>start_eda_netlist_writer</id>
+				<name>EDA Netlist Writer</name>
+				<item_bitmap>task_start</item_bitmap>
+				<prereq>start_partition_merge</prereq>
+				<action type="process">FSTR_FLOW_DBG_NAME_EDA_NETLIST_WRITER</action>
+				<smart_action>BASEO</smart_action>
+				<subtasks>
+					<task>
+						<id>eda_edit</id>
+						<name>Edit Settings</name>
+						<item_bitmap>dialog_box</item_bitmap>
+						<action type="settings_command">SETD_EDA_TOOLS_PAGE</action>
+					</task>
+					<task>
+						<id>eda_netlist_writer_report</id>
+						<name>View Report</name>
+						<item_bitmap>report_table</item_bitmap>
+						<prereq>start_eda_netlist_writer</prereq>
+						<action type="report_command">EDA Netlist Writer||EDA Netlist Writer Summary</action>
+					</task>
+				</subtasks>
+			</task>
+		</subtasks>
+	</task>
+
+	********************
+	** Program Device **
+	********************
+
+	<task>
+		<id>start_programming</id>
+		<name>Program Device (Open Programmer)</name>
+		<item_bitmap>tool_programmer</item_bitmap>
+		<status_ok_if>always_with_project</status_ok_if>
+		<action type="command">Programmer</action>
+	</task>
+
+	*******************
+	** Verify Design **
+	*******************
+
+	<task>
+		<id>verify_design</id>
+		<name>Verify Design</name>
+		<subtasks>
+
+			******************************
+			** Simulate Design (Timing) **
+			******************************
+
+			<task>
+				<id>timing_sim</id>
+				<name>Simulate Design</name>
+				<subtasks>
+	 				<task>
+	 					<id>start_quartus_simulator</id>
+						<name assignment = "default">Quartus II Simulator</name>
+	 					<name assignment = "Functional">Quartus II Simulator (Functional)</name>
+	 					<name assignment = "Timing">Quartus II Simulator (Timing)</name>
+	 					<name assignment = "Timing using Fast Timing Model">Quartus II Simulator (Fast Timing)</name>
+	 					<item_bitmap>task_start</item_bitmap>
+	 					<prereq assignment = "Functional">start_generate_netlist</prereq>
+	 					<prereq assignment = "Timing">start_timing_analyzer</prereq>
+	 					<prereq assignment = "Timing using Fast Timing Model">start_full_compilation</prereq>
+	 					<action type="process">Start Simulation</action>
+	 					<prereq_assignment>SIMULATION_TYPE</prereq_assignment>
+	 					<name_assignment>SIMULATION_TYPE</name_assignment>
+						<smart_action>SOURCE</smart_action>
+						<smart_action>INC_TAP</smart_action>
+						<smart_action>SGATES</smart_action>
+						<smart_action>SIM</smart_action>
+	 					<subtasks>
+	 						<task>
+	 							<id>quartus_sim_edit</id>
+	 							<name>Edit Settings</name>
+	 							<item_bitmap>dialog_box</item_bitmap>
+	 							<action type="settings_command">SETD_SIMULATOR_PAGE</action>
+	 						</task>
+	 						<task>
+	 							<id>quartus_sim_report</id>
+	 							<name>View Report</name>
+	 							<item_bitmap>report_table</item_bitmap>
+								<prereq>start_quartus_simulator</prereq>
+								<action type="report_command">Simulator||Simulator Summary</action>
+	 						</task>
+							<task>
+								<id>start_generate_netlist</id>
+								<name>Generate Functional Simulation Netlist</name>
+								<item_bitmap>task_start</item_bitmap>
+								<action type="process">FSTR_FLOW_DBG_NAME_FUNCTIONAL_SIMULATION_NETLIST_GENERATION</action>
+								<smart_action>SOURCE</smart_action>
+								<smart_action>INC_TAP</smart_action>
+								<smart_action>SGATES</smart_action>
+								<smart_action>SIM</smart_action>
+							</task>
+	 					</subtasks>
+	 				</task>
+					<task>
+						<id>start_eda_rtl_simulation</id>
+						<name>EDA RTL Simulation</name>
+						<item_bitmap>task_start</item_bitmap>
+						<action type="process">FSTR_FLOW_DBG_NAME_RTL_SIMULATION</action>
+						<prereq>start_analysis_elaboration</prereq>
+						<can_error_before_run>on</can_error_before_run>
+						<subtasks>
+							<task>
+								<id>eda_rtl_simulation_edit</id>
+								<name>Edit Settings</name>
+								<item_bitmap>dialog_box</item_bitmap>
+								<action type="settings_command">SETD_EDA_SIMULATION_PAGE</action>
+							</task>
+						</subtasks>
+					</task>
+
+					<task>
+						<id>start_eda_gate_simulation</id>
+						<name>EDA Gate Level Simulation</name>
+						<item_bitmap>task_start</item_bitmap>
+						<prereq>start_eda_netlist_writer</prereq>
+						<action type="process"> FSTR_FLOW_DBG_NAME_EDA_SIMULATION</action>
+						<can_error_before_run>on</can_error_before_run>
+						<subtasks>
+							<task>
+								<id>eda_gate_simulation_edit</id>
+								<name>Edit Settings</name>
+								<item_bitmap>dialog_box</item_bitmap>
+								<action type="settings_command">SETD_EDA_SIMULATION_PAGE</action>
+							</task>
+						</subtasks>
+					</task>
+				</subtasks>
+			</task>
+
+
+
+
+			*******************
+			** On-chip Debug **
+			*******************
+
+			<task>
+				<id>chip_debug</id>
+				<name>On-chip Debugging</name>
+				<subtasks>
+					<task>
+						<id>signaltap</id>
+						<name>SignalTap II Logic Analyzer</name>
+						<item_bitmap>tool_signaltap</item_bitmap>
+						<status_ok_if>always_with_project</status_ok_if>
+						<action type="command">SignalTap II Logic Analyzer</action>
+						<subtasks>
+							<task>
+								<id>stap_edit</id>
+								<name>Edit Settings</name>
+								<item_bitmap>dialog_box</item_bitmap>
+								<status_ok_if>always_with_project</status_ok_if>
+								<action type="settings_command">SETD_SIGNALTAP_PAGE</action>
+							</task>
+						</subtasks>
+					</task>
+					<task>
+						<id>in_system_memory</id>
+						<name>In-System Memory Content Editor</name>
+						<item_bitmap>tool_in_system_memory</item_bitmap>
+						<status_ok_if>always_with_project</status_ok_if>
+						<action type="command">In-System Memory Content Editor</action>
+					</task>
+					<task>
+						<id>lainterface</id>
+						<name>Logic Analyzer Interface Editor</name>
+						<item_bitmap>tool_logic_analyzer</item_bitmap>
+						<status_ok_if>always_with_project</status_ok_if>
+						<action type="command">Logic Analyzer Interface Editor</action>
+						<subtasks>
+							<task>
+								<id>lai_edit</id>
+								<name>Edit Settings</name>
+								<item_bitmap>dialog_box</item_bitmap>
+								<status_ok_if>always_with_project</status_ok_if>
+								<action type="settings_command">SETD_LOGIC_ANALYZER_PAGE</action>
+							</task>
+						</subtasks>
+					</task>
+					<task>
+						<id>in_system_sources</id>
+						<name>In-System Sources and Probes Editor</name>
+						<item_bitmap>tool_probe_editor</item_bitmap>
+						<status_ok_if>always_with_project</status_ok_if>
+						<action type="command">In-System Sources and Probes Editor</action>
+					</task>
+					<task>
+						<id>signalprobe</id>
+						<name>SignalProbe Pins</name>
+						<item_bitmap>dialog_box</item_bitmap>
+						<action type="command">SignalProbe Pins...</action>
+					</task>
+				</subtasks>
+			</task>
+
+
+			***************************************************
+			** Analyze Power (Open PowerPlay Power Analyzer) **
+			***************************************************
+			<task>
+				<id>start_powerplay</id>
+				<name>PowerPlay Power Analyzer</name>
+				<item_bitmap>task_start</item_bitmap>
+				<prereq>start_assembler</prereq>
+				<action type="process">FSTR_FLOW_DBG_NAME_POWER_ESTIMATOR</action>
+				<smart_action>SOURCE</smart_action>
+				<smart_action>INC_TAP</smart_action>
+				<smart_action>SGATES</smart_action>
+				<smart_action>FIT</smart_action>
+				<smart_action>SIGNALPROBE</smart_action>
+				<smart_action>SIGNALTAP</smart_action>
+				<smart_action>FIT_SMART_IO</smart_action>
+				<smart_action>MIF</smart_action>
+				<smart_action>ASM</smart_action>
+				<smart_action>POWER</smart_action>
+				<subtasks>
+					<task>
+						<id>powerplay_settings</id>
+						<name>Edit Settings</name>
+						<item_bitmap>dialog_box</item_bitmap>
+						<action type="settings_command">SETD_POWER_PAGE</action>
+					</task>
+					<task>
+						<id>powerplay_report</id>
+						<name>View Report</name>
+						<item_bitmap>report_table</item_bitmap>
+						<prereq>start_powerplay</prereq>
+						<action type="report_command">PowerPlay Power Analyzer||PowerPlay Power Analyzer Summary</action>
+					</task>
+				</subtasks>
+			</task>
+
+			******************
+			** SSN Analyzer **
+			******************
+			<task>
+				<id>start_ssn_analyzer</id>
+				<name>SSN Analyzer</name>
+				<item_bitmap>task_start</item_bitmap>
+				<prereq>start_fitter</prereq>
+				<action type="process">FSTR_FLOW_DBG_NAME_SSN_ANALYZER</action>
+				<subtasks>
+					<task>
+						<id>ssn_analyzer_settings</id>
+						<name>Edit Settings</name>
+						<item_bitmap>dialog_box</item_bitmap>
+						<action type="settings_command">SETD_SSN_PAGE</action>
+					</task>
+					<task>
+						<id>ssn_analyzer_report</id>
+						<name>View Report</name>
+						<item_bitmap>report_table</item_bitmap>
+						<prereq>start_ssn_analyzer</prereq>
+						<action type="report_command">SSN Analyzer||SSN Analyzer Summary</action>
+					</task>
+				</subtasks>
+			</task>
+
+			********************************************
+			** Perform Engineering Change Order (ECO) **
+			********************************************
+			<task>
+				<id>eco</id>
+				<name>Engineering Change Order (ECO)</name>
+				<subtasks>
+					<task>
+						<id>chip_planner</id>
+						<name>Chip Planner (Floorplan and Chip Editor)</name>
+						<item_bitmap>tool_chip_planner</item_bitmap>
+						<action type="command">Chip Planner (Floorplan and Chip Editor)</action>
+					</task>
+					<task>
+						<id>change_manager</id>
+						<name>Change Manager</name>
+						<item_bitmap>tool_change_manager</item_bitmap>
+						<status_ok_if>always_with_project</status_ok_if>
+						<action type="command">Change Manager</action>
+					</task>
+				</subtasks>
+			</task>
+		</subtasks>
+	</task>
+
+	<task>
+		<id>export_database</id>
+		<name>Export Database</name>
+		<item_bitmap>dialog_box</item_bitmap>
+		<action type="command">Export Database...</action>
+	</task>
+
+	*********************
+	** Archive Project **
+	*********************
+
+	<task>
+		<id>archive_project</id>
+		<name>Archive Project</name>
+		<item_bitmap>dialog_box</item_bitmap>
+		<action type="command">Archive Project...</action>
+	</task>
+</tasks>
+
+
+
+
+

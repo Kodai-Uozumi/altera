@@ -1,0 +1,55 @@
+<?xml version="1.0"?>
+<ROOT>
+	<INCLUDE>
+		<FILE> mfam_family_macros.xml </FILE>
+	</INCLUDE>
+	<!-- macros -->
+	<MACROS>
+		<MACRO NAME="m_s3"  DEFINITION="mfam_family_stratixiii" />
+		<MACRO NAME="m_c3"  DEFINITION="mfam_family_cycloneiii" />
+		<MACRO NAME="m_a2"  DEFINITION="mfam_family_arriaii" />
+		<MACRO NAME="m_titan_style_io"  DEFINITION="(m_s3 || m_c3 || m_a2)" />
+		<MACRO NAME="m_use_diff_mode_false"	DEFINITION="USE_DIFFERENTIAL_MODE == FALSE" />
+		<MACRO NAME="m_use_in_ddchain_false" DEFINITION="USE_IN_DYNAMIC_DELAY_CHAIN == FALSE" />
+		<MACRO NAME="m_use_in_ddchain_true" DEFINITION="USE_IN_DYNAMIC_DELAY_CHAIN == TRUE" />
+	</MACROS>
+
+	<!-- ports -->
+	<PORT_RULES>
+		<!-- input ports -->
+		<PORT NAME="datain" TYPE="INPUT">
+		</PORT>
+		<PORT NAME="datain_b" TYPE="INPUT" USAGE="VARIABLE">
+			<STATE V="UNUSED" WHEN="m_use_diff_mode_false" />
+		</PORT>
+		<PORT NAME="io_config_datain" TYPE="INPUT" USAGE="VARIABLE">
+			<STATE V="UNUSED" WHEN="m_use_in_ddchain_false" />
+			<STATE V="USED" WHEN="m_use_in_ddchain_true" />
+		</PORT>
+		<PORT NAME="io_config_clk" TYPE="INPUT" USAGE="VARIABLE">
+			<STATE V="UNUSED" WHEN="m_use_in_ddchain_false" />
+			<STATE V="USED" WHEN="m_use_in_ddchain_true" />
+		</PORT>
+		<PORT NAME="io_config_clkena" TYPE="INPUT" USAGE="VARIABLE">
+			<STATE V="UNUSED" WHEN="m_use_in_ddchain_false" />
+		</PORT>
+		<PORT NAME="io_config_update" TYPE="INPUT" USAGE="VARIABLE">
+			<STATE V="UNUSED" WHEN="m_use_in_ddchain_false" />
+			<STATE V="USED" WHEN="m_use_in_ddchain_true" />
+		</PORT>
+
+		<!-- output ports -->
+		<PORT NAME="dataout" TYPE="OUTPUT" />
+	</PORT_RULES>
+
+	<!-- parameters -->
+	<PARAMETER_RULES>
+		<PARAMETER NAME="NUMBER_OF_CHANNELS" TYPE="INTEGER" DEFAULT_VALUE="1">
+			<FORCE_RANGE MIN="1" />
+		</PARAMETER>
+		<PARAMETER NAME="USE_IN_DYNAMIC_DELAY_CHAIN" TYPE="STRING">
+			<FORCE_VALUE TO="FALSE" WHEN="m_c3 || m_a2" />
+		</PARAMETER>
+	</PARAMETER_RULES>
+
+</ROOT>

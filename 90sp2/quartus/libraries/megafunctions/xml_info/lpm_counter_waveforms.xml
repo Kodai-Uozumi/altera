@@ -1,0 +1,137 @@
+<?xml version="1.0" ?>
+<ROOT>
+	<MACROS>
+		<MACRO NAME="m_start_time_1" >
+			<DEFINITION>
+				is_used(LPM_MODULUS) ? (LPM_MODULUS * 40) : ((2 exp LPM_WIDTH)* 40)
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_start_time" >
+			<DEFINITION>
+				(m_start_time_1 gt 200) ? (m_start_time_1 - 200) : 0
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_end_time" DEFINITION="m_start_time + 500" />
+		<MACRO NAME="m_mod_value" DEFINITION="LPM_MODULUS - 1" />
+		<MACRO NAME="m_max_runtime" DEFINITION="(2 exp 12) * 40" />
+	</MACROS>
+	<HTML_TEXT>
+		<TITLE>Sample Waveforms for m_design_file_name</TITLE>
+		<HEADER>Sample behavioral waveforms for design file m_design_file_name</HEADER>
+		<INTRO>
+			<T>The following waveforms show the behavior of lpm_counter megafunction for the chosen set of parameters in design m_design_file_name. </T>
+			<T> The design m_design_file_name is a LPM_WIDTH bit </T>
+			<IF> is_used(updown) </IF>
+			<THEN> dynamically controlled up/down </THEN>
+			<ELSE>
+				<IF> LPM_DIRECTION == "DOWN" </IF>
+				<THEN> down </THEN>
+				<ELSE> up </ELSE>
+			</ELSE>
+			<IF> is_used(LPM_MODULUS) </IF>
+			<THEN> modulus LPM_MODULUS </THEN>
+			<T> counter. </T>
+			<IF> is_used(sload) and is_used(aload) </IF>
+			<THEN> The counter supports both synchronous and asynchronous load of data input. </THEN>
+			<ELSE>
+				<IF> is_used(sload) </IF>
+				<THEN> The counter supports a synchronous load of data input. </THEN>
+				<IF> is_used(aload) </IF>
+				<THEN> The counter supports an asynchronous load of data input. </THEN>
+			</ELSE>
+			<IF> is_used(aset) </IF>
+			<THEN> 
+				<T>The counter has an asynchronous set signal, that sets the counter to </T>
+				<IF> is_used(LPM_AVALUE) </IF>
+				<THEN> LPM_AVALUE. </THEN>		
+				<ELSE> all 1's. </ELSE>
+			</THEN>
+			<IF> is_used(sset) </IF>
+			<THEN> 
+				<T>The counter has a synchronous set signal, that sets the counter to </T>
+				<IF> is_used(LPM_SVALUE) </IF>
+				<THEN> LPM_SVALUE. </THEN>		
+				<ELSE> all 1's. </ELSE>
+			</THEN>
+			<IF> is_used(aclr) </IF>
+			<THEN> The counter has an asynchronous clear input. </THEN>
+			<IF> is_used(sclr) </IF>
+			<THEN> The counter has a synchronous clear input. </THEN>
+		</INTRO>
+	</HTML_TEXT>
+	<WAVE_DATA>
+		<WAVE NAME="ALL" TIME_STEP="10" MAX_TIME="1000">
+			<CAPTION>Wave showing counter operation.</CAPTION>
+			<DESCRIPTION>
+				<IF> is_used(cin) </IF>
+				<THEN> The behavior of the cin input is identical to the behavior of the cnt_en input. </THEN>
+				<IF> is_used(cout) </IF>
+				<THEN> The output port cout will be asserted at the completion of count sequence. </THEN>
+				<IF> is_used(cin) || is_used(cout) </IF>
+				<THEN> The ports cin and cout are used to chain multiple counters together. </THEN>
+			</DESCRIPTION>
+
+			<STIM>force data 1 @0, 0 @420, 3 @500, 2 @660</STIM>
+			<STIM>force clock 0 @0, 1 @40, -repeat @80</STIM> 
+			<STIM>force clk_en 0 @0, 1 @100</STIM>
+			<STIM>force cnt_en 1 @0, 0 @180, 1 @260</STIM>
+			<STIM>force updown 1 @0, 0 @500, 1 @820</STIM>
+			<STIM>force cin 1 @0, 0 @260, 1 @340</STIM>
+			<STIM>force aclr 0 @0, 1 @20, 0 @100</STIM>
+			<STIM>force sclr 0 @0, 1 @340, 0 @420</STIM>
+			<IF> is_used(aclr) </IF>
+			<THEN>
+				<STIM>force aset 0 @0, 1 @580, 0 @660</STIM>
+			</THEN>
+			<ELSE>
+				<STIM>force aset 0 @0, 1 @20, 0 @100</STIM>
+			</ELSE>		
+			<STIM>force sset 0 @0, 1 @820, 0 @900</STIM>
+			<IF> is_used(aclr) || is_used(aset) </IF>
+			<THEN>
+				<STIM>force aload 0 @0, 1 @500, 0 @580</STIM>
+			</THEN>
+			<ELSE>
+				<STIM>force aload 0 @0, 1 @20, 0 @100</STIM>
+			</ELSE>
+			<STIM>force sload 0 @0, 1 @740, 0 @820</STIM>
+		</WAVE>
+		<WAVE NAME="COUT_MOD" TIME_STEP="10" DISPLAY_START_TIME="m_start_time" MAX_TIME="m_end_time">
+			<CAPTION>Wave showing counter cout and/or modulus operation.</CAPTION>
+			<WAVE_CONDITION> (is_used(cout) || is_used(LPM_MODULUS)) and (m_start_time lt m_max_runtime) </WAVE_CONDITION>
+			<DESCRIPTION>
+				<IF> is_used(cout) </IF>
+				<THEN> The output port cout will be asserted at the completion of count sequence. </THEN>
+				<IF> is_used(LPM_MODULUS) </IF>
+				<THEN> The counter counts till the modulus value m_mod_value. </THEN>
+			</DESCRIPTION>
+
+			<STIM>force data 0 @0</STIM>
+			<STIM>force clock 0 @0, 1 @20, -repeat @40</STIM> 
+			<STIM>force clk_en 1 @0</STIM>
+			<STIM>force cnt_en 1 @0</STIM>
+			<STIM>force updown 1 @0</STIM>
+			<STIM>force cin 1 @0</STIM>
+			<STIM>force sclr 0 @0</STIM>
+			<STIM>force sset 0 @0</STIM>
+			<STIM>force sload 0 @0</STIM>
+			<STIM>force aclr 0 @0, 1 @20, 0 @100</STIM>
+			<IF> is_used(aclr) </IF>
+			<THEN>
+				<STIM>force aset 0 @0, 1 @580, 0 @660</STIM>
+			</THEN>
+			<ELSE>
+				<STIM>force aset 0 @0, 1 @20, 0 @100</STIM>
+			</ELSE>		
+			<IF> is_used(aclr) || is_used(aset) </IF>
+			<THEN>
+				<STIM>force aload 0 @0, 1 @500, 0 @580</STIM>
+			</THEN>
+			<ELSE>
+				<STIM>force aload 0 @0, 1 @20, 0 @100</STIM>
+			</ELSE>
+			<DISPLAY> remove wave aclr sclr sset aset aload sload</DISPLAY>			
+		</WAVE>
+	</WAVE_DATA>
+</ROOT>
+

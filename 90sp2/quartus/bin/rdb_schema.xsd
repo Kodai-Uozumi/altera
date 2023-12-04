@@ -1,0 +1,409 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified">
+	<xs:element name="report">
+		<xs:annotation>
+			<xs:documentation>This is the top-level element of a report.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="folders">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="root">
+								<xs:complexType>
+									<xs:attribute name="name_id" type="xs:int"/>
+									<xs:attribute name="name" type="xs:string" use="required"/>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="folder" minOccurs="0" maxOccurs="unbounded">
+								<xs:complexType>
+									<xs:attribute name="name_id" type="xs:int"/>
+									<xs:attribute name="name" type="xs:string" use="required"/>
+								</xs:complexType>
+							</xs:element>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="panels">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element ref="panel" minOccurs="0" maxOccurs="unbounded"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+			</xs:sequence>
+		</xs:complexType>
+		<xs:key name="allFolderNames">
+			<xs:selector xpath="folders/*"/>
+			<xs:field xpath="@name"/>
+		</xs:key>
+		<!-- what about reverseFolderNames to make sure the keyrefs work both ways? -->
+
+		<!-- Disable uniqueness check for panel names until runtime checks guarantee uniqueness -->
+
+		<!--
+		<xs:key name="allPanelNames">
+			<xs:selector xpath="panels/*"/>
+			<xs:field xpath="@name"/>
+		</xs:key>
+		-->
+
+		<xs:keyref name="allFolderRefs" refer="allFolderNames">
+			<xs:selector xpath="panels/folder_ref"/>
+			<xs:field xpath="@name"/>
+		</xs:keyref>
+		<xs:keyref name="allParentRefs" refer="allFolderNames">
+			<xs:selector xpath="panels/*"/>
+			<xs:field xpath="@parent"/>
+		</xs:keyref>
+	</xs:element>
+	<xs:complexType name="panelType">
+		<xs:annotation>
+			<xs:documentation>This is the base type for all panels.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="header" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="footer" type="xs:string" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="tcl_cmd" type="xs:string" minOccurs="0" maxOccurs="1"/>
+		</xs:sequence>
+		<xs:attribute name="name" type="xs:string"/>
+		<xs:attribute name="parent" type="xs:string"/>
+		<xs:attribute name="name_id" type="xs:int"/>
+		<xs:attribute name="parent_id" type="xs:int"/>
+		<xs:attribute name="enabled" type="xs:boolean" default="true"/>
+		<xs:attribute name="creator" type="xs:string"/>
+	</xs:complexType>
+	<xs:complexType name="textPanelType">
+		<xs:annotation>
+			<xs:documentation>This is the base type for text-only panels.</xs:documentation>
+		</xs:annotation>
+		<xs:complexContent>
+			<xs:extension base="panelType">
+				<xs:sequence>
+					<xs:element name="ascii_text"/>
+					<xs:element name="show_html" type="xs:boolean" minOccurs="0"/>
+				</xs:sequence>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:element name="panel" type="panelType" abstract="true">
+		<xs:annotation>
+			<xs:documentation>This is the abstract panel.  Each panel type, except folders, should use this as a substitutionGroup.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="folder_ref" type="panelType" substitutionGroup="panel">
+		<xs:annotation>
+			<xs:documentation>Folder reference to preserve panel ordering.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="text" type="textPanelType" substitutionGroup="panel">
+		<xs:annotation>
+			<xs:documentation>A simple text panel.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="legal" type="textPanelType" substitutionGroup="panel">
+		<xs:annotation>
+			<xs:documentation>A legal text panel - same as a simple text panel.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="embedded" substitutionGroup="panel">
+		<xs:annotation>
+			<xs:documentation>An embedded panel - usable only by the GUI.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="panelType">
+					<xs:sequence>
+						<xs:element name="info" type="xs:string" minOccurs="0"/>
+					</xs:sequence>
+					<xs:attribute name="type" type="xs:string" use="required"/>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="chart" substitutionGroup="panel">
+		<xs:annotation>
+			<xs:documentation>A chart element - similar to a table.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="panelType">
+					<xs:sequence>
+						<xs:element name="type" type="xs:string"/>
+						<xs:element name="x_label" type="xs:string"/>
+						<xs:element name="y_label" type="xs:string"/>
+						<xs:element name="show_labels" type="xs:boolean"/>
+						<xs:element name="data" minOccurs="0" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>Should the name be the attribute, and value the content?</xs:documentation>
+							</xs:annotation>
+							<xs:complexType>
+								<xs:simpleContent>
+									<xs:extension base="xs:int">
+										<xs:attribute name="name" type="xs:string" use="required"/>
+									</xs:extension>
+								</xs:simpleContent>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+					<xs:attribute name="size" type="xs:int" use="required"/>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="summary" substitutionGroup="panel">
+		<xs:annotation>
+			<xs:documentation>A summary element - similar to a table.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="panelType">
+					<xs:sequence>
+						<xs:element name="elements">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element name="element" minOccurs="0" maxOccurs="unbounded">
+										<xs:complexType>
+											<xs:simpleContent>
+												<xs:extension base="xs:string">
+													<xs:attribute name="name" type="xs:string"/>
+												</xs:extension>
+											</xs:simpleContent>
+										</xs:complexType>
+									</xs:element>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+						<xs:element name="gauges" minOccurs="0">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element name="gauge" minOccurs="0" maxOccurs="unbounded">
+										<xs:complexType>
+											<xs:sequence>
+												<xs:element name="min" type="xs:int"/>
+												<xs:element name="max" type="xs:int"/>
+												<xs:element name="value" type="xs:int"/>
+											</xs:sequence>
+											<xs:attribute name="name" type="xs:string" use="required"/>
+											<xs:attribute name="percent" type="xs:boolean" default="false"/>
+											<xs:attribute name="enabled" type="xs:boolean" default="true"/>
+										</xs:complexType>
+									</xs:element>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="table" type="tableType" substitutionGroup="panel">
+		<xs:annotation>
+			<xs:documentation>Standard table element.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="tan_slack_table" substitutionGroup="table">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="tableType">
+					<xs:sequence>
+						<xs:element name="restricted_to" type="xs:int"/>
+						<xs:element name="column_types_map">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element name="column" minOccurs="0" maxOccurs="unbounded">
+										<xs:complexType>
+											<xs:attribute name="id" type="xs:int" use="required"/>
+											<xs:attribute name="type" use="required" type="xs:string"/>
+										</xs:complexType>
+									</xs:element>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+					<xs:attribute name="analysis_type" type="xs:int" use="required"/>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="tan_spd_table" substitutionGroup="table">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="tableType">
+					<xs:attribute name="show_min" type="xs:boolean" default="false"/>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="tcl_table" substitutionGroup="table">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="tableType">
+					<xs:sequence>
+						<xs:element name="command" minOccurs="0" maxOccurs="unbounded">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element name="gui_cmd_name" type="xs:string"/>
+									<xs:element name="tool_tip" type="xs:string"/>
+									<xs:element name="help" type="xs:string"/>
+									<xs:element name="cmd_template" type="xs:string"/>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="histogram" substitutionGroup="table">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="tableType">
+					<xs:sequence>
+						<xs:element name="x_label" type="xs:string"/>
+						<xs:element name="y_label" type="xs:string"/>
+						<xs:element name="unit" type="xs:string"/>
+						<xs:element name="scale" type="xs:unsignedInt"/>
+					</xs:sequence>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="link_table" substitutionGroup="table">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="tableType">
+					<xs:sequence>
+						<xs:element name="link_info" type="xs:string"/>
+					</xs:sequence>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+
+
+	<xs:element name="cell" abstract="true"/>
+	<xs:element name="string_cell" substitutionGroup="cell">
+		<xs:complexType>
+			<xs:simpleContent>
+				<xs:extension base="xs:string">
+					<xs:attribute name="foreground" type="xs:hexBinary"/>
+					<xs:attribute name="background" type="xs:hexBinary"/>
+				</xs:extension>
+			</xs:simpleContent>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="int_cell" substitutionGroup="cell">
+		<xs:complexType>
+			<xs:simpleContent>
+				<xs:extension base="xs:int">
+					<xs:attribute name="foreground" type="xs:hexBinary"/>
+					<xs:attribute name="background" type="xs:hexBinary"/>
+				</xs:extension>
+			</xs:simpleContent>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="iname_cell" substitutionGroup="cell">
+		<xs:complexType>
+			<xs:simpleContent>
+				<xs:extension base="xs:string">
+					<xs:attribute name="foreground" type="xs:hexBinary"/>
+					<xs:attribute name="background" type="xs:hexBinary"/>
+				</xs:extension>
+			</xs:simpleContent>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="delay_cell" substitutionGroup="cell">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="delay" type="xs:int"/>
+				<xs:element name="display_option" type="xs:string"/>
+			</xs:sequence>
+			<xs:attribute name="foreground" type="xs:hexBinary"/>
+			<xs:attribute name="background" type="xs:hexBinary"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="memory" substitutionGroup="panel">
+		<xs:annotation>
+			<xs:documentation>A memory view.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="panelType">
+					<xs:sequence>
+						<xs:element name="original_filename" type="xs:string" minOccurs="0"/>
+						<xs:element name="address_names">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element name="name" minOccurs="0" maxOccurs="unbounded"/>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+						<xs:element name="data_names">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element name="name" minOccurs="0" maxOccurs="unbounded"/>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+						<xs:element name="content">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element name="address" minOccurs="0" maxOccurs="unbounded">
+										<xs:complexType>
+											<xs:sequence>
+												<xs:element name="data" type="xs:int" minOccurs="0" maxOccurs="unbounded"/>
+											</xs:sequence>
+										</xs:complexType>
+									</xs:element>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+					<xs:attribute name="logical_name" type="xs:string" use="required"/>
+					<xs:attribute name="depth" type="xs:unsignedLong" use="required"/>
+					<xs:attribute name="width" type="xs:unsignedInt" use="required"/>
+					<xs:attribute name="address_width" type="xs:unsignedInt" use="required"/>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="waveform" substitutionGroup="panel">
+		<xs:annotation>
+			<xs:documentation>A waveform result view.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="panelType">
+					<xs:sequence>
+						<xs:element name="source_vector" type="xs:string"/>
+						<xs:element name="result_vector" type="xs:string"/>
+						<xs:element name="compare" type="xs:boolean"/>
+					</xs:sequence>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="report_link">
+		<xs:annotation>
+			<xs:documentation>A link to an external report.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:complexType name="tableType">
+		<xs:complexContent>
+			<xs:extension base="panelType">
+				<xs:sequence>
+					<xs:element name="row" minOccurs="0" maxOccurs="unbounded">
+						<xs:complexType>
+							<xs:sequence>
+								<xs:element ref="cell" minOccurs="0" maxOccurs="unbounded"/>
+							</xs:sequence>
+						</xs:complexType>
+					</xs:element>
+				</xs:sequence>
+				<xs:attribute name="enable_fled" type="xs:boolean" default="false"/>
+				<xs:attribute name="no_compact" type="xs:boolean" default="false"/>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+</xs:schema>

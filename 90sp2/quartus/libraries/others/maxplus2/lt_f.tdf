@@ -1,0 +1,18 @@
+
+SUBDESIGN lt_f 
+(
+	IN1,IN2,CI : INPUT = GND;
+	LT         : OUTPUT;
+)
+VARIABLE
+
+	int : node;
+
+begin
+
+	int = !IN1&IN2#CI&!(IN1$IN2);
+	LT = SOFT(int);
+
+end;
+
+

@@ -1,0 +1,77 @@
+<?xml version="1.0" ?>
+<ROOT>
+	<MACROS>
+		<MACRO NAME="m_normal_mode" >
+			<DEFINITION> 
+				(OPERATION_MODE == "NORMAL")
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_zero_delay_buffer_mode" >
+			<DEFINITION> 
+				(OPERATION_MODE == "ZERO_DELAY_BUFFER")
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_unsupported" >
+			<DEFINITION> 
+				OPERATION_MODE == "EXTERNAL_FEEDBACK" || is_used(enable0) || is_used(enable1) || is_used(scanclk) || PRIMARY_CLOCK == "INCLK1"
+			</DEFINITION>
+		</MACRO>
+	</MACROS>
+	<HTML_TEXT>
+		<TITLE>Sample Waveforms for m_design_file_name</TITLE>
+
+		<HEADER>Sample behavioral waveforms for design file m_design_file_name</HEADER>
+
+		<INTRO>
+			<IF>m_unsupported</IF>
+			<THEN>
+				<IF> OPERATION_MODE == "EXTERNAL_FEEDBACK" </IF>
+				<THEN> OPERATION_MODE is not supported for sample waveforms</THEN>
+				<IF> is_used(enable0) || is_used(enable1) </IF>
+				<THEN> LVDS mode is not supported for sample waveforms </THEN>
+
+				<IF> is_used(scanclk) </IF>
+				<THEN>
+					<IF> PRIMARY_CLOCK == "INCLK1" </IF>
+					<THEN> Dynamic Reconfiguration of PLL and Clock Switchover are not supported in Sample waveforms </THEN>
+					<ELSE> Sample waveforms do not support Dynamic PLL Reconfiguration </ELSE>
+				</THEN>
+				<IF> !is_used(scanclk) </IF>
+				<THEN>
+					<IF> PRIMARY_CLOCK == "INCLK1" </IF>
+					<THEN> Clock Switch features are not supported in sample waveforms </THEN>
+				</THEN>
+			</THEN>
+			<IF> !m_unsupported</IF>
+			<THEN>
+				<T>The following waveforms show the behavior of altpll megafunction for the chosen set of parameters in design m_design_file_name.</T>
+				<T>The design m_design_file_name has INTENDED_DEVICE_FAMILY PLL_TYPE pll configured in OPERATION_MODE mode</T>
+				<T> The primary clock input to the PLL</T>
+				<IF> PRIMARY_CLOCK == "INCLK1" </IF>
+				<THEN> is INCLK1, with clock period INCLK1_INPUT_FREQUENCY ps. </THEN>
+				<ELSE> is INCLK0, with clock period INCLK0_INPUT_FREQUENCY ps. </ELSE>
+				<IF> is_used(locked) </IF>
+				<THEN> 
+				<T> Output port LOCKED  will go high when the PLL locks to the input clock. </T>
+				</THEN>
+
+			</THEN>
+			</INTRO>
+
+		<END>
+		</END>
+	</HTML_TEXT>
+	<WAVE_DATA>
+		<WAVE NAME="SIMPLE" TIME_STEP="1" MAX_TIME="7500" INDEX="1" AUTO_STIMULUS_IN_MODEL="ON" >
+			<WAVE_CONDITION>!m_unsupported</WAVE_CONDITION>
+			<CAPTION>Wave showing OPERATION_MODE mode operation.</CAPTION>
+			<DESCRIPTION> 
+				<IF> is_used(areset) </IF>
+				<THEN>When input port ARESET is asserted, it will cause the LOCKED port and all CLK outputs to drop to zero. The PLL will relock to the input clock when this port is deasserted.</THEN>
+				<IF> is_used(pllena) </IF>
+				<THEN> When input port PLLENA is deasserted, it will cause the PLL to unlock, and the LOCKED port and all CLK outputs will drop to zero.</THEN>
+			</DESCRIPTION>
+			<STIM> force areset 0 @0 </STIM>
+	     	</WAVE>
+	</WAVE_DATA>
+</ROOT>

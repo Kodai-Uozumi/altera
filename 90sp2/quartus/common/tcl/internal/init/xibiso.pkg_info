@@ -1,0 +1,20 @@
+# Add ::quartus::xibiso to the table of packages
+lappend quartus(package_table) {xibiso quartus_sta hidden}
+
+if {[lsearch -exact [list quartus_cdb quartus_eda quartus_sta] $quartus(nameofexecutable)] != -1} {
+
+    # Make ::quartus::xibiso available to load
+    set qpkg_script_auto [file join [file dirname [info script]] xibiso.tcl]
+    if {[file exist $qpkg_script_auto]} {
+       source $qpkg_script_auto
+    }
+    unset qpkg_script_auto
+
+}
+
+if {[lsearch -exact [list quartus_eda quartus_sta] $quartus(nameofexecutable)] != -1} {
+
+    # Load ::quartus::xibiso by default
+    package require ::quartus::xibiso
+
+}

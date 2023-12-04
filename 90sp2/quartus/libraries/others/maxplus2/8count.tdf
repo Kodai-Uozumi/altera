@@ -1,0 +1,101 @@
+TITLE "Top-level file for the 8count macrofunction.  Chooses a device-family optimized implementation."; 
+FUNCTION p8count (clk, clrn, setn, ldn, dnup, gn,
+                 h, g, f, e, d, c, b, a)
+    RETURNS (qh, qg, qf, qe, qd, qc, qb, qa, cout);
+FUNCTION f8count (clk, clrn, setn, ldn, dnup, gn,
+                 h, g, f, e, d, c, b, a)
+    RETURNS (qh, qg, qf, qe, qd, qc, qb, qa, cout);
+
+PARAMETERS
+(
+	DEVICE_FAMILY
+);
+INCLUDE "aglobal.inc";
+
+SUBDESIGN 8count
+(
+	clk              : INPUT = GND;
+	clrn             : INPUT = VCC;
+	setn             : INPUT = VCC;
+	ldn              : INPUT = VCC;
+	dnup             : INPUT = VCC;
+	gn               : INPUT = GND;
+	h                : INPUT = GND;
+	g                : INPUT = GND;
+	f                : INPUT = GND;
+	e                : INPUT = GND;
+	d                : INPUT = GND;
+	c                : INPUT = GND;
+	b                : INPUT = GND;
+	a                : INPUT = GND;
+	qh               : OUTPUT;
+	qg               : OUTPUT;
+	qf               : OUTPUT;
+	qe               : OUTPUT;
+	qd               : OUTPUT;
+	qc               : OUTPUT;
+	qb               : OUTPUT;
+	qa               : OUTPUT;
+	cout             : OUTPUT;
+)
+
+VARIABLE
+	IF (FAMILY_FLEX() == 1) GENERATE
+		sub  : f8count;
+	ELSE GENERATE
+		sub  : p8count;
+	END GENERATE;
+
+BEGIN
+	IF (USED(clk)) GENERATE
+		sub.clk = clk;
+	END GENERATE;
+	IF (USED(clrn)) GENERATE
+		sub.clrn = clrn;
+	END GENERATE;
+	IF (USED(setn)) GENERATE
+		sub.setn = setn;
+	END GENERATE;
+	IF (USED(ldn)) GENERATE
+		sub.ldn = ldn;
+	END GENERATE;
+	IF (USED(dnup)) GENERATE
+		sub.dnup = dnup;
+	END GENERATE;
+	IF (USED(gn)) GENERATE
+		sub.gn = gn;
+	END GENERATE;
+	IF (USED(h)) GENERATE
+		sub.h = h;
+	END GENERATE;
+	IF (USED(g)) GENERATE
+		sub.g = g;
+	END GENERATE;
+	IF (USED(f)) GENERATE
+		sub.f = f;
+	END GENERATE;
+	IF (USED(e)) GENERATE
+		sub.e = e;
+	END GENERATE;
+	IF (USED(d)) GENERATE
+		sub.d = d;
+	END GENERATE;
+	IF (USED(c)) GENERATE
+		sub.c = c;
+	END GENERATE;
+	IF (USED(b)) GENERATE
+		sub.b = b;
+	END GENERATE;
+	IF (USED(a)) GENERATE
+		sub.a = a;
+	END GENERATE;
+	qh = sub.qh;
+	qg = sub.qg;
+	qf = sub.qf;
+	qe = sub.qe;
+	qd = sub.qd;
+	qc = sub.qc;
+	qb = sub.qb;
+	qa = sub.qa;
+	cout = sub.cout;
+END;

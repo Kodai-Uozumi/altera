@@ -1,0 +1,407 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ROOT NAME="arriaii_hssi_pcie_hip">
+	<PARAMETERS>
+		<PARAMETER NAME="vc_enable" TYPE="Vector" WIDTH="7" DEFAULT_VALUE="0000000"/>
+		<PARAMETER NAME="enable_slot_register" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="pcie_mode" TYPE="String" VALUE="EP_NATIVE|EP_LEGACY|RP|SW_UP|SW_DN|BRIDGE|SWITCH_MODE|SHARED_MODE" DEFAULT_VALUE="SHARED_MODE"/>
+		<PARAMETER NAME="bypass_cdc" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="disable_cdc_clk_ppm" TYPE="String" VALUE="false|true" DEFAULT_VALUE="true"/>
+		<PARAMETER NAME="enable_rx_reordering" TYPE="String" VALUE="false|true" DEFAULT_VALUE="true"/>
+		<PARAMETER NAME="enable_rx_buffer_checking" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="single_rx_detect" TYPE="Integer" VALUE="0..15" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="use_crc_forwarding" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="bypass_tl" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="gen2_lane_rate_mode" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="lane_mask" TYPE="Vector" WIDTH="8" DEFAULT_VALUE="11110000"/>
+		<PARAMETER NAME="disable_link_x2_support" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="port_link_number" TYPE="Integer" DEFAULT_VALUE="1"/>
+		<PARAMETER NAME="device_number" TYPE="Integer" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="enable_coreclk_out_half_rate" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="core_clk_divider" TYPE="Integer" VALUE="1|2|4|8|16" DEFAULT_VALUE="1"/>
+		<PARAMETER NAME="core_clk_source" TYPE="String" VALUE="PLL_FIXED_CLK|PCLK|CORE_CLK_IN" DEFAULT_VALUE="PLL_FIXED_CLK"/>
+		<PARAMETER NAME="enable_ch0_pclk_out" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="enable_hip_x1_loopback" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="iei_logic" TYPE="String" VALUE="DISABLE|IEI_EIOS|IEI_ELECIDLE|IEI_NO_ELECIDLE|IEI_ISII|IEI_IDID|IEI_IDIS|IEI_IIIS" DEFAULT_VALUE="IEI_IIIS"/>
+		<PARAMETER NAME="enable_rx0buf_ecc" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="enable_rx1buf_ecc" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="enable_retrybuf_ecc" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="enable_rx0buf_x8_clk_stealing" TYPE="Integer" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="enable_rx1buf_x8_clk_stealing" TYPE="Integer" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="enable_retrybuf_x8_clk_stealing" TYPE="Integer" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="enable_retrybuf_output_regs" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="enable_retrybuf_a_we" TYPE="String" VALUE="false|true" DEFAULT_VALUE="true"/>
+		<PARAMETER NAME="enable_retrybuf_b_re" TYPE="String" VALUE="false|true" DEFAULT_VALUE="true"/>
+		<PARAMETER NAME="enable_rcv0buf_output_regs" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="enable_rcv0buf_a_we" TYPE="String" VALUE="false|true" DEFAULT_VALUE="true"/>
+		<PARAMETER NAME="enable_rcv0buf_b_re" TYPE="String" VALUE="false|true" DEFAULT_VALUE="true"/>
+		<PARAMETER NAME="enable_rcv1buf_output_regs" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="enable_rcv1buf_a_we" TYPE="String" VALUE="false|true" DEFAULT_VALUE="true"/>
+		<PARAMETER NAME="enable_rcv1buf_b_re" TYPE="String" VALUE="false|true" DEFAULT_VALUE="true"/>
+		<PARAMETER NAME="vendor_id" TYPE="Integer" DEFAULT_VALUE="4466"/>
+		<PARAMETER NAME="device_id" TYPE="Integer" DEFAULT_VALUE="1"/>
+		<PARAMETER NAME="revision_id" TYPE="Integer" DEFAULT_VALUE="1"/>
+		<PARAMETER NAME="class_code" TYPE="Integer" DEFAULT_VALUE="16711680"/>
+		<PARAMETER NAME="subsystem_vendor_id" TYPE="Integer" DEFAULT_VALUE="4466"/>
+		<PARAMETER NAME="subsystem_device_id" TYPE="Integer" DEFAULT_VALUE="1"/>
+		<PARAMETER NAME="no_soft_reset" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="maximum_current" TYPE="Integer" VALUE="0..7" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="pme_state_enable" TYPE="Vector" WIDTH="5" DEFAULT_VALUE="00000"/>
+		<PARAMETER NAME="advanced_errors" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="low_priority_vc" TYPE="Integer" VALUE="0..7" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="vc_arbitration" TYPE="Integer" VALUE="0..15" DEFAULT_VALUE="1"/>
+		<PARAMETER NAME="disable_snoop_packet" TYPE="Vector" WIDTH="8" DEFAULT_VALUE="00000000"/>
+		<PARAMETER NAME="max_payload_size" TYPE="Integer" VALUE="0..7" DEFAULT_VALUE="2"/>
+		<PARAMETER NAME="surprise_down_error_support" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="dll_active_report_support" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="extend_tag_field" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="endpoint_l0_latency" TYPE="Integer" VALUE="0..7" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="endpoint_l1_latency" TYPE="Integer" VALUE="0..7" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="indicator" TYPE="Integer" VALUE="0..7" DEFAULT_VALUE="7"/>
+		<PARAMETER NAME="slot_power_scale" TYPE="Integer" VALUE="0..3" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="max_link_width" TYPE="Integer" VALUE="0..15" DEFAULT_VALUE="4"/>
+		<PARAMETER NAME="enable_l1_aspm" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="l1_exit_latency_sameclock" TYPE="Integer" VALUE="0..7" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="l1_exit_latency_diffclock" TYPE="Integer" VALUE="0..7" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="hot_plug_support" TYPE="Vector" WIDTH="7" DEFAULT_VALUE="0000000"/>
+		<PARAMETER NAME="slot_power_limit" TYPE="Integer" VALUE="0..255" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="slot_number" TYPE="Integer" VALUE="0..16383" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="diffclock_nfts_count" TYPE="Integer" VALUE="0..255" DEFAULT_VALUE="128"/>
+		<PARAMETER NAME="sameclock_nfts_count" TYPE="Integer" VALUE="0..255" DEFAULT_VALUE="128"/>
+		<PARAMETER NAME="completion_timeout" TYPE="String" VALUE="NONE|A|B|AB|BC|ABC|BCD|ABCD" DEFAULT_VALUE="ABCD"/>
+		<PARAMETER NAME="enable_completion_timeout_disable" TYPE="String" VALUE="false|true" DEFAULT_VALUE="true"/>
+		<PARAMETER NAME="enable_ecrc_check" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="enable_ecrc_gen" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="no_command_completed" TYPE="String" VALUE="false|true" DEFAULT_VALUE="true"/>
+		<PARAMETER NAME="msi_function_count" TYPE="Integer" VALUE="0..5" DEFAULT_VALUE="2"/>
+		<PARAMETER NAME="enable_msi_64bit_addressing" TYPE="String" VALUE="false|true" DEFAULT_VALUE="true"/>
+		<PARAMETER NAME="enable_msi_masking" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="enable_function_msi_support" TYPE="String" VALUE="false|true" DEFAULT_VALUE="true"/>
+		<PARAMETER NAME="enable_function_msix_support" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="msix_table_size" TYPE="Integer" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="msix_table_bir" TYPE="Integer" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="msix_table_offset" TYPE="Integer" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="msix_pba_bir" TYPE="Integer" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="msix_pba_offset" TYPE="Integer" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="bridge_port_vga_enable" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="bridge_port_ssid_support" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="ssvid" TYPE="Integer" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="ssid" TYPE="Integer" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="eie_before_nfts_count" TYPE="Integer" DEFAULT_VALUE="4"/>
+		<PARAMETER NAME="gen2_diffclock_nfts_count" TYPE="Integer" DEFAULT_VALUE="255"/>
+		<PARAMETER NAME="gen2_sameclock_nfts_count" TYPE="Integer" DEFAULT_VALUE="255"/>
+		<PARAMETER NAME="deemphasis_enable" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="enable_gen2_core" TYPE="String" VALUE="false|true" DEFAULT_VALUE="true"/>
+		<PARAMETER NAME="l0_exit_latency_sameclock" TYPE="Integer" VALUE="0..7" DEFAULT_VALUE="6"/>
+		<PARAMETER NAME="l0_exit_latency_diffclock" TYPE="Integer" VALUE="0..7" DEFAULT_VALUE="6"/>
+		<PARAMETER NAME="enable_rx_ei_l0s_exit_refined" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="disable_async_l2_logic" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="enable_adapter_half_rate_mode" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="vc0_clk_enable" TYPE="String" VALUE="false|true" DEFAULT_VALUE="true"/>
+		<PARAMETER NAME="vc1_clk_enable" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="register_pipe_signals" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="rx0_adap_fifo_full_value" TYPE="Integer" VALUE="0..15" DEFAULT_VALUE="9"/>
+		<PARAMETER NAME="rx1_adap_fifo_full_value" TYPE="Integer" VALUE="0..15" DEFAULT_VALUE="9"/>
+		<PARAMETER NAME="tx0_adap_fifo_full_value" TYPE="Integer" VALUE="0..31" DEFAULT_VALUE="11"/>
+		<PARAMETER NAME="tx1_adap_fifo_full_value" TYPE="Integer" VALUE="0..31" DEFAULT_VALUE="11"/>
+		<PARAMETER NAME="allow_rx_valid_empty" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="bar0_io_space" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="bar0_64bit_mem_space" TYPE="String" VALUE="false|true" DEFAULT_VALUE="true"/>
+		<PARAMETER NAME="bar0_prefetchable" TYPE="String" VALUE="false|true" DEFAULT_VALUE="true"/>
+		<PARAMETER NAME="bar0_size_mask" TYPE="Integer" VALUE="0..63" DEFAULT_VALUE="32"/>
+		<PARAMETER NAME="bar1_io_space" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="bar1_64bit_mem_space" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="bar1_prefetchable" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="bar1_size_mask" TYPE="Integer" VALUE="0..63" DEFAULT_VALUE="4"/>
+		<PARAMETER NAME="bar2_io_space" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="bar2_64bit_mem_space" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="bar2_prefetchable" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="bar2_size_mask" TYPE="Integer" VALUE="0..63" DEFAULT_VALUE="4"/>
+		<PARAMETER NAME="bar3_io_space" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="bar3_64bit_mem_space" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="bar3_prefetchable" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="bar3_size_mask" TYPE="Integer" VALUE="0..63" DEFAULT_VALUE="4"/>
+		<PARAMETER NAME="bar4_io_space" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="bar4_64bit_mem_space" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="bar4_prefetchable" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="bar4_size_mask" TYPE="Integer" VALUE="0..63" DEFAULT_VALUE="4"/>
+		<PARAMETER NAME="bar5_io_space" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="bar5_64bit_mem_space" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="bar5_prefetchable" TYPE="String" VALUE="false|true" DEFAULT_VALUE="false"/>
+		<PARAMETER NAME="bar5_size_mask" TYPE="Integer" VALUE="0..63" DEFAULT_VALUE="4"/>
+		<PARAMETER NAME="expansion_base_address_register" TYPE="Integer" VALUE="0..63" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="bar_io_window_size" TYPE="String" VALUE="NONE|16BIT|32BIT" DEFAULT_VALUE="NONE"/>
+		<PARAMETER NAME="bar_prefetchable" TYPE="Integer" VALUE="0|32|64" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="rx_cdc_full_value" TYPE="Integer" VALUE="0..15" DEFAULT_VALUE="12"/>
+		<PARAMETER NAME="tx_cdc_full_value" TYPE="Integer" VALUE="0..15" DEFAULT_VALUE="12"/>
+		<PARAMETER NAME="rx_idl_os_count" TYPE="Integer" VALUE="0..255" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="tx_cdc_stop_dummy_full_value" TYPE="Integer" VALUE="0..15" DEFAULT_VALUE="11"/>
+		<PARAMETER NAME="ei_delay_powerdown_count" TYPE="Integer" VALUE="0..255" DEFAULT_VALUE="10"/>
+		<PARAMETER NAME="millisecond_cycle_count" TYPE="Integer" VALUE="0..1048575" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="skp_os_schedule_count" TYPE="Integer" VALUE="0..1048575" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="fc_init_timer" TYPE="Integer" VALUE="0..1048575" DEFAULT_VALUE="1024"/>
+		<PARAMETER NAME="l01_entry_latency" TYPE="Integer" VALUE="0..31" DEFAULT_VALUE="31"/>
+		<PARAMETER NAME="flow_control_update_count" TYPE="Integer" VALUE="0..31" DEFAULT_VALUE="30"/>
+		<PARAMETER NAME="flow_control_timeout_count" TYPE="Integer" VALUE="0..255" DEFAULT_VALUE="200"/>
+		<PARAMETER NAME="vc0_rx_flow_ctrl_posted_header" TYPE="Integer" VALUE="0..255" DEFAULT_VALUE="50"/>
+		<PARAMETER NAME="vc0_rx_flow_ctrl_posted_data" TYPE="Integer" VALUE="0..4095" DEFAULT_VALUE="360"/>
+		<PARAMETER NAME="vc0_rx_flow_ctrl_nonposted_header" TYPE="Integer" VALUE="0..255" DEFAULT_VALUE="54"/>
+		<PARAMETER NAME="vc0_rx_flow_ctrl_nonposted_data" TYPE="Integer" VALUE="0..4095" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="vc0_rx_flow_ctrl_compl_header" TYPE="Integer" VALUE="0..255" DEFAULT_VALUE="112"/>
+		<PARAMETER NAME="vc0_rx_flow_ctrl_compl_data" TYPE="Integer" VALUE="0..4095" DEFAULT_VALUE="448"/>
+		<PARAMETER NAME="vc1_rx_flow_ctrl_posted_header" TYPE="Integer" VALUE="0..255" DEFAULT_VALUE="50"/>
+		<PARAMETER NAME="vc1_rx_flow_ctrl_posted_data" TYPE="Integer" VALUE="0..4095" DEFAULT_VALUE="360"/>
+		<PARAMETER NAME="vc1_rx_flow_ctrl_nonposted_header" TYPE="Integer" VALUE="0..255" DEFAULT_VALUE="54"/>
+		<PARAMETER NAME="vc1_rx_flow_ctrl_nonposted_data" TYPE="Integer" VALUE="0..4095" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="vc1_rx_flow_ctrl_compl_header" TYPE="Integer" VALUE="0..255" DEFAULT_VALUE="112"/>
+		<PARAMETER NAME="vc1_rx_flow_ctrl_compl_data" TYPE="Integer" VALUE="0..4095" DEFAULT_VALUE="448"/>
+		<PARAMETER NAME="rx_ptr0_posted_dpram_min" TYPE="Integer" VALUE="0..4095" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="rx_ptr0_posted_dpram_max" TYPE="Integer" VALUE="0..4095" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="rx_ptr0_nonposted_dpram_min" TYPE="Integer" VALUE="0..4095" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="rx_ptr0_nonposted_dpram_max" TYPE="Integer" VALUE="0..4095" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="rx_ptr1_posted_dpram_min" TYPE="Integer" VALUE="0..4095" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="rx_ptr1_posted_dpram_max" TYPE="Integer" VALUE="0..4095" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="rx_ptr1_nonposted_dpram_min" TYPE="Integer" VALUE="0..4095" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="rx_ptr1_nonposted_dpram_max" TYPE="Integer" VALUE="0..4095" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="retry_buffer_last_active_address" TYPE="Integer" VALUE="0..2047" DEFAULT_VALUE="2047"/>
+		<PARAMETER NAME="retry_buffer_memory_settings" TYPE="Integer" VALUE="0..16383" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="vc0_rx_buffer_memory_settings" TYPE="Integer" VALUE="0..16383" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="vc1_rx_buffer_memory_settings" TYPE="Integer" VALUE="0..16383" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="mram_bist_settings" TYPE="String" DEFAULT_VALUE="UNUSED"/>
+		<PARAMETER NAME="device_address" TYPE="Integer" VALUE="0..31" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="port_address" TYPE="Integer" VALUE="0..31" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="base_address" TYPE="Integer" VALUE="0..255" DEFAULT_VALUE="0"/>
+		<PARAMETER NAME="credit_buffer_allocation_aux" TYPE="String" VALUE="BALANCED|INITIATOR|TARGET|ABSOLUTE" DEFAULT_VALUE="BALANCED"/>
+		<PARAMETER NAME="LPM_TYPE" TYPE="STRING" VALUE="arriaii_hssi_pcie_hip" />
+	</PARAMETERS>
+	<PORTS>
+		<PORT NAME="dpclk" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="dprioin" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="dpriodisable" TYPE="INPUT" DEFAULT_VALUE="1"/>
+		<PORT NAME="dprioload" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="lmirden" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="lmiwren" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="pldclk" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="pldsrst" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="pldrst" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="pclkch0" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="pclkcentral" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="pllfixedclk" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="phyrst" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="physrst" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="coreclkin" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="corerst" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="corepor" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="corecrst" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="coresrst" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxmaskvc0" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxreadyvc0" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="txvalidvc0" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="txerrvc0" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="txsopvc00" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="txeopvc00" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="txsopvc01" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="txeopvc01" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxmaskvc1" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxreadyvc1" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="txvalidvc1" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="txerrvc1" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="txsopvc10" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="txeopvc10" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="txsopvc11" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="txeopvc11" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="tlpmetocr" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="tlpmevent" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="tlpmauxpwr" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="tlappintasts" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="tlappmsireq" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="dlrxecrcchk" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="dlaspmcr0" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="dlcomclkreg" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="dlinhdllp" TYPE="INPUT" DEFAULT_VALUE="1"/>
+		<PORT NAME="dlreqwake" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="dltxcfgextsy" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="dltxreqpm" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="dlrequpfc" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="dlsndupfc" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="tlslotclkcfg" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="cplpending" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="mramregscanen" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="mramregscanin" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="mramhiptestenable" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="bisttesten" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="bistenrpl" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="bistscanin" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="bistscanen" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="bistenrcv0" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="bistenrcv1" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="scanmoden" TYPE="INPUT" DEFAULT_VALUE="1"/>
+		<PORT NAME="scanen" TYPE="INPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="lmiaddr" TYPE="INPUT" WIDTH="12" DEFAULT_VALUE="0"/>
+		<PORT NAME="lmidin" TYPE="INPUT" WIDTH="32" DEFAULT_VALUE="0"/>
+		<PORT NAME="swdnin" TYPE="INPUT" WIDTH="3" DEFAULT_VALUE="0"/>
+		<PORT NAME="swupin" TYPE="INPUT" WIDTH="7" DEFAULT_VALUE="0"/>
+		<PORT NAME="txdatavc00" TYPE="INPUT" WIDTH="64" DEFAULT_VALUE="0"/>
+		<PORT NAME="txdatavc01" TYPE="INPUT" WIDTH="64" DEFAULT_VALUE="0"/>
+		<PORT NAME="txdatavc10" TYPE="INPUT" WIDTH="64" DEFAULT_VALUE="0"/>
+		<PORT NAME="txdatavc11" TYPE="INPUT" WIDTH="64" DEFAULT_VALUE="0"/>
+		<PORT NAME="tlpmdata" TYPE="INPUT" WIDTH="10" DEFAULT_VALUE="0"/>
+		<PORT NAME="tlappmsitc" TYPE="INPUT" WIDTH="3" DEFAULT_VALUE="0"/>
+		<PORT NAME="tlappmsinum" TYPE="INPUT" WIDTH="5" DEFAULT_VALUE="0"/>
+		<PORT NAME="tlaermsinum" TYPE="INPUT" WIDTH="5" DEFAULT_VALUE="0"/>
+		<PORT NAME="tlpexmsinum" TYPE="INPUT" WIDTH="5" DEFAULT_VALUE="0"/>
+		<PORT NAME="tlhpgctrler" TYPE="INPUT" WIDTH="5" DEFAULT_VALUE="0"/>
+		<PORT NAME="dlvcctrl" TYPE="INPUT" WIDTH="8" DEFAULT_VALUE="0"/>
+		<PORT NAME="dlvcidmap" TYPE="INPUT" WIDTH="24" DEFAULT_VALUE="0"/>
+		<PORT NAME="dltxtyppm" TYPE="INPUT" WIDTH="3" DEFAULT_VALUE="0"/>
+		<PORT NAME="dlmaxploaddcr" TYPE="INPUT" WIDTH="3" DEFAULT_VALUE="0"/>
+		<PORT NAME="dlreqphypm" TYPE="INPUT" WIDTH="4" DEFAULT_VALUE="0"/>
+		<PORT NAME="dlreqphycfg" TYPE="INPUT" WIDTH="4" DEFAULT_VALUE="0"/>
+		<PORT NAME="dltypupfc" TYPE="INPUT" WIDTH="2" DEFAULT_VALUE="0"/>
+		<PORT NAME="dlvcidupfc" TYPE="INPUT" WIDTH="3" DEFAULT_VALUE="0"/>
+		<PORT NAME="dlhdrupfc" TYPE="INPUT" WIDTH="8" DEFAULT_VALUE="0"/>
+		<PORT NAME="dldataupfc" TYPE="INPUT" WIDTH="12" DEFAULT_VALUE="0"/>
+		<PORT NAME="dlctrllink2" TYPE="INPUT" WIDTH="13" DEFAULT_VALUE="0"/>
+		<PORT NAME="mode" TYPE="INPUT" WIDTH="2" DEFAULT_VALUE="0"/>
+		<PORT NAME="testin" TYPE="INPUT" WIDTH="40" DEFAULT_VALUE="0"/>
+		<PORT NAME="cplerr" TYPE="INPUT" WIDTH="7" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxvalid" TYPE="INPUT" WIDTH="8" DEFAULT_VALUE="0"/>
+		<PORT NAME="phystatus" TYPE="INPUT" WIDTH="8" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxstatus" TYPE="INPUT" WIDTH="24" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxdata" TYPE="INPUT" WIDTH="64" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxelecidle" TYPE="INPUT" WIDTH="8" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxdatak" TYPE="INPUT" WIDTH="8" DEFAULT_VALUE="0"/>
+		<PORT NAME="dbgpipex1rx" TYPE="INPUT" WIDTH="15" DEFAULT_VALUE="0"/>
+		<PORT NAME="dprioout" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="dataenablen" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="lmiack" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="resetstatus" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="l2exit" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="hotrstexit" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="dlupexit" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="coreclkout" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="swdnwake" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="swuphotrst" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxvalidvc0" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxerrvc0" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxsopvc00" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxeopvc00" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxsopvc01" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxeopvc01" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxfifofullvc0" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxfifoemptyvc0" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="txreadyvc0" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="txfifofullvc0" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="txfifoemptyvc0" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxvalidvc1" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxerrvc1" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxsopvc10" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxeopvc10" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxsopvc11" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxeopvc11" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxfifofullvc1" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxfifoemptyvc1" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="txreadyvc1" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="txfifofullvc1" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="txfifoemptyvc1" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="tlpmetosr" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="tlcfgstswr" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="tlcfgctlwr" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="tlappintaack" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="tlappmsiack" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="dlup" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="dlerrphy" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="dlrpbufemp" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="dldllreq" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="linkup" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="clrrxpath" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="dlrxvalpm" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="dltxackpm" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="dlrstentercompbit" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="dlrsttxmarginfield" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="dlcurrentdeemp" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="dllinkautobdwstatus" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="dllinkbdwmngstatus" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="dlackrequpfc" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="dlacksndupfc" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="ev1us" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="ev128ns" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="wakeoen" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="serrout" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="gen2rate" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="gen2rategnd" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="ltssml0state" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="mramregscanout" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="bistscanoutrpl" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="bistdonearpl" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="bistdonebrpl" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="bistpassrpl" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="derrrpl" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="derrcorextrpl" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="bistscanoutrcv0" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="bistdonearcv0" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="bistdonebrcv0" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="bistpassrcv0" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="derrcorextrcv0" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="bistscanoutrcv1" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="bistdonearcv1" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="bistdonebrcv1" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="bistpassrcv1" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="derrcorextrcv1" TYPE="OUTPUT" DEFAULT_VALUE="0"/>
+		<PORT NAME="txdeemph" TYPE="OUTPUT" WIDTH="8" DEFAULT_VALUE="0"/>
+		<PORT NAME="dpriostate" TYPE="OUTPUT" WIDTH="3" DEFAULT_VALUE="0"/>
+		<PORT NAME="lmidout" TYPE="OUTPUT" WIDTH="32" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxbardecvc0" TYPE="OUTPUT" WIDTH="8" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxdatavc00" TYPE="OUTPUT" WIDTH="64" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxbevc00" TYPE="OUTPUT" WIDTH="8" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxdatavc01" TYPE="OUTPUT" WIDTH="64" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxbevc01" TYPE="OUTPUT" WIDTH="8" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxfifowrpvc0" TYPE="OUTPUT" WIDTH="4" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxfifordpvc0" TYPE="OUTPUT" WIDTH="4" DEFAULT_VALUE="0"/>
+		<PORT NAME="txcredvc0" TYPE="OUTPUT" WIDTH="36" DEFAULT_VALUE="0"/>
+		<PORT NAME="txfifowrpvc0" TYPE="OUTPUT" WIDTH="4" DEFAULT_VALUE="0"/>
+		<PORT NAME="txfifordpvc0" TYPE="OUTPUT" WIDTH="4" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxbardecvc1" TYPE="OUTPUT" WIDTH="8" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxdatavc10" TYPE="OUTPUT" WIDTH="64" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxbevc10" TYPE="OUTPUT" WIDTH="8" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxdatavc11" TYPE="OUTPUT" WIDTH="64" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxbevc11" TYPE="OUTPUT" WIDTH="8" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxfifowrpvc1" TYPE="OUTPUT" WIDTH="4" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxfifordpvc1" TYPE="OUTPUT" WIDTH="4" DEFAULT_VALUE="0"/>
+		<PORT NAME="txcredvc1" TYPE="OUTPUT" WIDTH="36" DEFAULT_VALUE="0"/>
+		<PORT NAME="txfifowrpvc1" TYPE="OUTPUT" WIDTH="4" DEFAULT_VALUE="0"/>
+		<PORT NAME="txfifordpvc1" TYPE="OUTPUT" WIDTH="4" DEFAULT_VALUE="0"/>
+		<PORT NAME="tlcfgsts" TYPE="OUTPUT" WIDTH="53" DEFAULT_VALUE="0"/>
+		<PORT NAME="tlcfgctl" TYPE="OUTPUT" WIDTH="32" DEFAULT_VALUE="0"/>
+		<PORT NAME="tlcfgadd" TYPE="OUTPUT" WIDTH="4" DEFAULT_VALUE="0"/>
+		<PORT NAME="intstatus" TYPE="OUTPUT" WIDTH="4" DEFAULT_VALUE="0"/>
+		<PORT NAME="dlvcstatus" TYPE="OUTPUT" WIDTH="8" DEFAULT_VALUE="0"/>
+		<PORT NAME="dlerrdll" TYPE="OUTPUT" WIDTH="5" DEFAULT_VALUE="0"/>
+		<PORT NAME="laneact" TYPE="OUTPUT" WIDTH="4" DEFAULT_VALUE="0"/>
+		<PORT NAME="dlltssm" TYPE="OUTPUT" WIDTH="5" DEFAULT_VALUE="0"/>
+		<PORT NAME="dlrxtyppm" TYPE="OUTPUT" WIDTH="3" DEFAULT_VALUE="0"/>
+		<PORT NAME="dlackphypm" TYPE="OUTPUT" WIDTH="2" DEFAULT_VALUE="0"/>
+		<PORT NAME="dlcurrentspeed" TYPE="OUTPUT" WIDTH="2" DEFAULT_VALUE="0"/>
+		<PORT NAME="testout" TYPE="OUTPUT" WIDTH="64" DEFAULT_VALUE="0"/>
+		<PORT NAME="eidleinfersel" TYPE="OUTPUT" WIDTH="24" DEFAULT_VALUE="0"/>
+		<PORT NAME="txmargin" TYPE="OUTPUT" WIDTH="24" DEFAULT_VALUE="0"/>
+		<PORT NAME="powerdown" TYPE="OUTPUT" WIDTH="16" DEFAULT_VALUE="0"/>
+		<PORT NAME="txdatak" TYPE="OUTPUT" WIDTH="8" DEFAULT_VALUE="0"/>
+		<PORT NAME="txcompl" TYPE="OUTPUT" WIDTH="8" DEFAULT_VALUE="0"/>
+		<PORT NAME="rxpolarity" TYPE="OUTPUT" WIDTH="8" DEFAULT_VALUE="0"/>
+		<PORT NAME="txdata" TYPE="OUTPUT" WIDTH="64" DEFAULT_VALUE="0"/>
+		<PORT NAME="txelecidle" TYPE="OUTPUT" WIDTH="8" DEFAULT_VALUE="0"/>
+		<PORT NAME="txdetectrx" TYPE="OUTPUT" WIDTH="8" DEFAULT_VALUE="0"/>
+		<PORT NAME="observablepldclk" TYPE="OUTPUT" CONTEXT="OBSERVABLE" DEFAULT_VALUE="0"/>
+		<PORT NAME="observablecoreclk" TYPE="OUTPUT" CONTEXT="OBSERVABLE" DEFAULT_VALUE="0"/>
+		<PORT NAME="observablemdcclk" TYPE="OUTPUT" CONTEXT="OBSERVABLE" DEFAULT_VALUE="0"/>
+		<PORT NAME="observablemramredsclk" TYPE="OUTPUT" CONTEXT="OBSERVABLE" DEFAULT_VALUE="0"/>
+		<PORT NAME="observablescanmoden" TYPE="OUTPUT" CONTEXT="OBSERVABLE" DEFAULT_VALUE="0"/>
+		<PORT NAME="observablescanen" TYPE="OUTPUT" CONTEXT="OBSERVABLE" DEFAULT_VALUE="0"/>
+		<PORT NAME="observabletlslotclkcfg" TYPE="OUTPUT" CONTEXT="OBSERVABLE" DEFAULT_VALUE="0"/>
+		<PORT NAME="observablemode" TYPE="OUTPUT" CONTEXT="OBSERVABLE" DEFAULT_VALUE="0"/>
+		<PORT NAME="observableportaddr" TYPE="OUTPUT" CONTEXT="OBSERVABLE" DEFAULT_VALUE="0"/>
+		<PORT NAME="observabledevaddr" TYPE="OUTPUT" CONTEXT="OBSERVABLE" DEFAULT_VALUE="0"/>
+		<PORT NAME="observablehipbaseaddr" TYPE="OUTPUT" CONTEXT="OBSERVABLE" DEFAULT_VALUE="0"/>
+		<PORT NAME="observablesershiftload" TYPE="OUTPUT" CONTEXT="OBSERVABLE" DEFAULT_VALUE="0"/>
+	</PORTS>
+</ROOT>

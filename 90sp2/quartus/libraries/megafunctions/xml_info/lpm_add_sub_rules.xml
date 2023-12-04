@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<ROOT>
+	<!-- macros -->
+	<MACROS>
+		<MACRO NAME="lpm_pipeline_is_zero"  DEFINITION="LPM_PIPELINE == 0" />
+		<MACRO NAME="max_range_width" DEFINITION="LPM_WIDTH gt 32 ? 32 : LPM_WIDTH" />
+		<MACRO NAME="range_width" DEFINITION="(2 exp max_range_width) - 1" />
+	</MACROS>
+	<!-- USE_WIZARD == ON -->
+	<!-- ports -->
+	<PORT_RULES>
+		<!-- input ports -->
+
+		<PORT NAME="add_sub" TYPE="INPUT" DEFAULT_VALUE="1" USAGE="VARIABLE">
+			<STATE TO="UNUSED" IF="LPM_DIRECTION != UNUSED"/>
+		</PORT>
+		<PORT NAME="dataa" TYPE="INPUT" WIDTH="LPM_WIDTH" DEFAULT_VALUE="0" USAGE="USED"/>
+		<PORT NAME="datab" TYPE="INPUT" WIDTH="LPM_WIDTH" DEFAULT_VALUE="0" USAGE="VARIABLE">
+			<STATE V="CONSTANT" WHEN="ONE_INPUT_IS_CONSTANT==YES" ELSE="USED"/>
+			<CONSTANT_RANGE MIN="0" MAX="range_width" />
+		</PORT>
+
+		<!-- pipeline-related ports -->
+		<PORT NAME="clock" TYPE="INPUT" DEFAULT_VALUE="0" IS_CLOCK_PORT="TRUE" CLOCK_PERIOD="10" USAGE="VARIABLE">
+			<STATE V="UNUSED" WHEN="lpm_pipeline_is_zero"/>
+			<STATE V="USED" WHEN="!lpm_pipeline_is_zero" />
+		</PORT>
+		<PORT NAME="aclr" TYPE="INPUT" HIGH_PROBABILITY="10" USAGE="VARIABLE">
+			<STATE V="UNUSED" WHEN="lpm_pipeline_is_zero"/>
+		</PORT>
+		<PORT NAME="clken" TYPE="INPUT" HIGH_PROBABILITY="90" USAGE="VARIABLE">
+			<STATE V="UNUSED" WHEN="lpm_pipeline_is_zero"/>
+		</PORT>
+		<PORT NAME="cin" TYPE="INPUT" USAGE="VARIABLE" />
+
+		<!-- output ports -->
+		<PORT NAME="cout" TYPE="OUTPUT" USAGE="VARIABLE" />
+		<PORT NAME="overflow" TYPE="OUTPUT" USAGE="VARIABLE">
+			<STATE V="UNUSED" WHEN="LPM_REPRESENTATION != SIGNED" />
+		</PORT>
+	
+	</PORT_RULES>
+	
+</ROOT>

@@ -1,0 +1,92 @@
+------------------------------------------------------------------
+-- alt_oct_power parameterized megafunction
+-- Generated with 'clearbox' loader - do not edit
+------------------------------------------------------------------
+
+
+-- Copyright (C) 1991-2009 Altera Corporation
+--  Your use of Altera Corporation's design tools, logic functions 
+--  and other software and tools, and its AMPP partner logic 
+--  functions, and any output files from any of the foregoing 
+--  (including device programming or simulation files), and any 
+--  associated documentation or information are expressly subject 
+--  to the terms and conditions of the Altera Program License 
+--  Subscription Agreement, Altera MegaCore Function License 
+--  Agreement, or other applicable license agreement, including, 
+--  without limitation, that your use is for the sole purpose of 
+--  programming logic devices manufactured by Altera and sold by 
+--  Altera or its authorized distributors.  Please refer to the 
+--  applicable agreement for further details.
+
+--  Version 9.0 Build 235 06/17/2009
+
+OPTIONS NAME_SUBSTITUTION = ON;
+
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+
+PARAMETERS
+(
+	CBXI_PARAMETER = "NOTHING"
+);
+FUNCTION @CBXI_PARAMETER (rdn[0..0], rup[0..0])
+RETURNS (parallelterminationcontrol[14-1..0], seriesterminationcontrol[14-1..0], termination_control[16-1..0], terminationclock, terminationdata, terminationselect);
+
+
+SUBDESIGN alt_oct_power
+(
+	parallelterminationcontrol[14-1..0]		:	OUTPUT;
+	rdn[0..0]		:	INPUT;
+	rup[0..0]		:	INPUT;
+	seriesterminationcontrol[14-1..0]		:	OUTPUT;
+	termination_control[16-1..0]		:	OUTPUT;
+	terminationclock		:	OUTPUT;
+	terminationdata		:	OUTPUT;
+	terminationselect		:	OUTPUT;
+)
+VARIABLE
+	IF CBXI_PARAMETER != "NOTHING" GENERATE
+		auto_generated : @CBXI_PARAMETER WITH ( CBXI_PARAMETER = "NOTHING" );
+	END GENERATE;
+BEGIN
+	ASSERT (CBXI_PARAMETER != "NOTHING")
+	REPORT "Valid clear box generator not found or Errors encountered during clear box generation"
+	SEVERITY ERROR;
+	IF (CBXI_PARAMETER != "NOTHING") GENERATE
+		IF USED(parallelterminationcontrol) GENERATE
+			parallelterminationcontrol[] = auto_generated.parallelterminationcontrol[];
+		ELSE GENERATE
+			parallelterminationcontrol[] = GND;
+		END GENERATE;
+		IF USED(rdn) GENERATE
+			auto_generated.rdn[] = rdn[];
+		END GENERATE;
+		IF USED(rup) GENERATE
+			auto_generated.rup[] = rup[];
+		END GENERATE;
+		IF USED(seriesterminationcontrol) GENERATE
+			seriesterminationcontrol[] = auto_generated.seriesterminationcontrol[];
+		ELSE GENERATE
+			seriesterminationcontrol[] = GND;
+		END GENERATE;
+		IF USED(termination_control) GENERATE
+			termination_control[] = auto_generated.termination_control[];
+		ELSE GENERATE
+			termination_control[] = GND;
+		END GENERATE;
+		IF USED(terminationclock) GENERATE
+			terminationclock = auto_generated.terminationclock;
+		ELSE GENERATE
+			terminationclock = GND;
+		END GENERATE;
+		IF USED(terminationdata) GENERATE
+			terminationdata = auto_generated.terminationdata;
+		ELSE GENERATE
+			terminationdata = GND;
+		END GENERATE;
+		IF USED(terminationselect) GENERATE
+			terminationselect = auto_generated.terminationselect;
+		ELSE GENERATE
+			terminationselect = GND;
+		END GENERATE;
+	END GENERATE;
+END;

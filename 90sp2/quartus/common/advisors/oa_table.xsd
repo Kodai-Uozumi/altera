@@ -1,0 +1,135 @@
+<?xml version="1.0"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+	<xsd:element name="optimization_record_list">
+		<xsd:complexType>
+			<xsd:sequence>
+				<xsd:element ref="optimization_record" minOccurs="1" maxOccurs="unbounded"/>
+				<xsd:element ref="sub_oa_xml_file" minOccurs="0" maxOccurs="unbounded"/>
+			</xsd:sequence>
+		</xsd:complexType>
+	</xsd:element>
+	<xsd:element name="acf_variable_list">
+		<xsd:complexType>
+			<xsd:sequence>
+				<xsd:element ref="acf_variable" minOccurs="0" maxOccurs="unbounded"/>
+			</xsd:sequence>
+		</xsd:complexType>
+	</xsd:element>
+	<xsd:element name="device_family_list">
+		<xsd:complexType>
+			<xsd:sequence>
+				<xsd:element ref="device_family" minOccurs="1" maxOccurs="unbounded"/>
+			</xsd:sequence>
+		</xsd:complexType>
+	</xsd:element>
+	<xsd:element name="conditions">
+		<xsd:complexType>
+			<xsd:sequence>
+				<xsd:element ref="acf_variable" minOccurs="0" maxOccurs="unbounded"/>
+			</xsd:sequence>
+		</xsd:complexType>
+	</xsd:element>
+	<xsd:element name="optimization_record">
+		<xsd:complexType>
+			<xsd:sequence>
+				<xsd:element ref="recommendation_key"/>
+				<xsd:element ref="recommendation"/>
+				<xsd:element ref="recommendation_description"/>
+				<xsd:element ref="description"/>
+				<xsd:element ref="more_info_link" minOccurs="0" maxOccurs="1"/>
+				<xsd:element ref="effect_list" minOccurs="0" maxOccurs="1"/>
+				<xsd:element ref="action" minOccurs="0" maxOccurs="1"/>
+				<xsd:element ref="device_family_list"/>
+				<xsd:element ref="conditions" minOccurs="0" maxOccurs="1"/>
+				<xsd:element ref="image_path" minOccurs="0" maxOccurs="1"/>
+				<xsd:element ref="parent_list"/>
+				<xsd:element ref="logic_algorithm"/>
+				<xsd:element ref="tcl_script"/>
+			</xsd:sequence>
+		</xsd:complexType>
+	</xsd:element>
+	<xsd:element name="device_family">
+		<xsd:complexType>
+			<xsd:simpleContent>
+				<xsd:extension base="xsd:string">
+					<xsd:attribute name="exclude" use="optional" type="xsd:string"/>
+				</xsd:extension>
+			</xsd:simpleContent>
+		</xsd:complexType>
+	</xsd:element>
+	<xsd:element name="parent">
+		<xsd:complexType>
+			<xsd:simpleContent>
+				<xsd:extension base="xsd:string">
+					<xsd:attribute name="priority" use="required" type="xsd:string"/>
+				</xsd:extension>
+			</xsd:simpleContent>
+		</xsd:complexType>
+	</xsd:element>
+	<xsd:element name="tcl_script">
+		<xsd:complexType>
+			<xsd:simpleContent>
+				<xsd:extension base="xsd:string">
+					<xsd:attribute name="button_name" use="optional" type="xsd:string"/>
+					<xsd:attribute name="quartus_exe" use="required" type="xsd:string"/>
+				</xsd:extension>
+			</xsd:simpleContent>
+		</xsd:complexType>
+	</xsd:element>
+	<xsd:element name="sub_oa_xml_file">
+		<xsd:complexType>
+			<xsd:simpleContent>
+				<xsd:extension base="xsd:string">
+					<xsd:attribute name="parent" use="optional" type="xsd:string"/>
+					<xsd:attribute name="priority" use="optional" type="xsd:string"/>
+				</xsd:extension>
+			</xsd:simpleContent>
+		</xsd:complexType>
+	</xsd:element>
+	<xsd:element name="action">
+		<xsd:complexType>
+			<xsd:sequence>
+				<xsd:element ref="action_description"/>
+				<xsd:element ref="action_link" minOccurs="0" maxOccurs="unbounded"/>
+				<xsd:element ref="acf_variable_list" minOccurs="0" maxOccurs="1"/>
+			</xsd:sequence>
+		</xsd:complexType>
+	</xsd:element>
+	<xsd:element name="effect_list">
+		<xsd:complexType>
+			<xsd:sequence>
+				<xsd:element ref="fmax_effect" minOccurs="0" maxOccurs="1"/>
+				<xsd:element ref="resource_effect" minOccurs="0" maxOccurs="1"/>
+				<xsd:element ref="compilation_effect" minOccurs="0" maxOccurs="1"/>
+			</xsd:sequence>
+		</xsd:complexType>
+	</xsd:element>
+	<xsd:element name="acf_variable">
+		<xsd:complexType>
+			<xsd:simpleContent>
+				<xsd:extension base="xsd:string">
+					<xsd:attribute name="name" use="required" type="xsd:string"/>
+				</xsd:extension>
+			</xsd:simpleContent>
+		</xsd:complexType>
+	</xsd:element>
+	<xsd:element name="parent_list">
+		<xsd:complexType>
+			<xsd:sequence>
+				<xsd:element ref="parent" minOccurs="1" maxOccurs="unbounded"/>
+			</xsd:sequence>
+		</xsd:complexType>
+	</xsd:element>
+	<xsd:element name="image_path" type="xsd:string"/>
+	<xsd:element name="compilation_effect" type="xsd:string"/>
+	<xsd:element name="logic_algorithm" type="xsd:string"/>
+	<xsd:element name="more_info_link" type="xsd:string"/>
+	<xsd:element name="recommendation_description" type="xsd:string"/>
+	<xsd:element name="recommendation" type="xsd:string"/>
+	<xsd:element name="recommendation_key" type="xsd:string"/>
+	<xsd:element name="description" type="xsd:string"/>
+	<xsd:element name="action_link" type="xsd:string"/>
+	<xsd:element name="resource_effect" type="xsd:string"/>
+	<xsd:element name="action_description" type="xsd:string"/>
+	<xsd:element name="fmax_effect" type="xsd:string"/>
+</xsd:schema>

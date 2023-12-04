@@ -1,0 +1,129 @@
+-----------------------------------------------------------
+-- declut: lower level subdesign of lpm_decode
+-- Description:	Declut implements a tree-structured
+--              decoder with WIDTH inputs and a full
+--              set of 2^WIDTH-1 decoded outputs. Declut
+--				has an enable input which will force all
+--			    outputs to low when forced to GND.
+-----------------------------------------------------------
+INCLUDE "declut";
+INCLUDE "bypassff";
+
+PARAMETERS
+(  
+	WIDTH,				-- Width of input
+	STAGE,				-- Current tree level 
+	TOT_LEVELS,			-- Total number of tree levels
+	LATENCY				-- Internal latency of the tree
+);
+
+-- Number of data inputs to this level of tree, not including enable
+CONSTANT INP_NUM0 = (WIDTH MOD 3 == 0) ? 3 : WIDTH MOD 3;
+-- Number of output nodes emanating from this tree level to the next
+CONSTANT OUT_NUM0 = 2^INP_NUM0;
+-- Number of remaining data bits that should go to the next level
+CONSTANT REM_WIDTH = WIDTH-INP_NUM0;
+
+-- latency-related functions and parameters
+DEFINE MOD_DIST(n, d)	 = ((2 * n) > d ? d - n : n);
+DEFINE LATENCY_MOD(k)	 = ((k * (LATENCY + 1)) MOD TOT_LEVELS);
+CONSTANT NEED_CLK		 = -((LATENCY_MOD(STAGE+1) == 0) # 
+						    ((LATENCY_MOD(STAGE+1) > LATENCY_MOD(STAGE+2)) & 
+			  			     (MOD_DIST(LATENCY_MOD(STAGE+1), TOT_LEVELS) < 
+							  MOD_DIST(LATENCY_MOD(STAGE+2), TOT_LEVELS))) #
+			  			    ((LATENCY_MOD(STAGE+1) < LATENCY_MOD(STAGE)) & 
+						     (MOD_DIST(LATENCY_MOD(STAGE+1), TOT_LEVELS) <= 
+							  MOD_DIST(LATENCY_MOD(STAGE), TOT_LEVELS))));
+
+
+SUBDESIGN declut
+(
+	data[WIDTH-1..0]		: INPUT = GND;
+	enable					: INPUT = VCC;
+	clock, aclr				: INPUT = GND;
+	clken					: INPUT = VCC;
+	eq[2^WIDTH-1..0]		: OUTPUT;
+	clock_out, aclr_out		: OUTPUT;
+	clken_out				: OUTPUT;
+)
+
+
+VARIABLE
+
+	IF WIDTH <= 3 GENERATE
+		anode[2^WIDTH-1..0][WIDTH..0] 		: NODE;
+		eq_node[2^WIDTH-1..0]				: NODE;
+
+	ELSE GENERATE
+		anode[OUT_NUM0-1..0][INP_NUM0..0] 	: NODE;
+		data_latency_ffs					: bypassff WITH (WIDTH = REM_WIDTH);
+
+		IF USED(clock) & (NEED_CLK == 1) GENERATE
+			dec_out[OUT_NUM0-1..0]	: DFFE;
+		ELSE GENERATE
+			dec_out[OUT_NUM0-1..0]	: LCELL;
+		END GENERATE;
+
+		sub_decoder[OUT_NUM0-1..0] : declut WITH (	WIDTH = REM_WIDTH, STAGE = STAGE+1,
+													LATENCY = LATENCY, TOT_LEVELS = TOT_LEVELS);
+	END GENERATE;
+
+
+BEGIN
+
+	IF WIDTH <= 3 GENERATE
+		FOR out IN 0 TO 2^WIDTH-1 GENERATE
+			anode[out][0] = enable;
+			FOR each_bit IN 0 TO WIDTH-1 GENERATE
+				IF ((2^each_bit & out) == 0) GENERATE
+					anode[out][each_bit+1] = anode[out][each_bit] & !data[each_bit];
+				ELSE GENERATE
+					anode[out][each_bit+1] = anode[out][each_bit] & data[each_bit];
+				END GENERATE;
+			END GENERATE;
+			eq_node[out] = anode[out][WIDTH];
+		END GENERATE;
+		eq[] = eq_node[];
+
+	ELSE GENERATE	
+		data_latency_ffs.d[] = data[REM_WIDTH-1..0];
+		FOR I IN 0 TO OUT_NUM0-1 GENERATE
+			anode[I][0] = enable;
+			FOR each_bit IN 0 TO INP_NUM0-1 GENERATE
+				IF ((2^each_bit & I) == 0) GENERATE
+					anode[I][each_bit+1] = anode[I][each_bit] & !data[each_bit+WIDTH-INP_NUM0];
+				ELSE GENERATE
+					anode[I][each_bit+1] = anode[I][each_bit] &  data[each_bit+WIDTH-INP_NUM0];
+				END GENERATE;
+			END GENERATE;
+
+			dec_out[I] = anode[I][INP_NUM0];
+			sub_decoder[I].enable = dec_out[I];
+			sub_decoder[I].data[] = data_latency_ffs.q[];
+			eq[(I+1)*(2^REM_WIDTH)-1..I*(2^REM_WIDTH)] = sub_decoder[I].eq[];
+		END GENERATE;
+
+	  	IF USED(clock) GENERATE
+			sub_decoder[].(clock, aclr) = (clock, aclr);
+			
+			IF USED(clken) GENERATE
+				sub_decoder[].clken = clken;
+			END GENERATE;
+		END GENERATE;
+
+	 	IF USED(clock) & NEED_CLK == 1 GENERATE
+			ASSERT REPORT "stage % is clocked" STAGE SEVERITY DEBUG;
+			dec_out[].(clk, clrn) = (clock, !aclr);
+			data_latency_ffs.(clk, clrn) = (clock, !aclr);
+
+			IF USED(clken) GENERATE
+				dec_out[].ena = clken;
+				data_latency_ffs.ena = clken;
+			END GENERATE;
+		END GENERATE;
+ 	END GENERATE;
+
+	clock_out = clock;
+	clken_out = clken;
+	aclr_out = aclr;
+END;

@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<template name="generated.sh">
+
+    <call gtf="%GTF_DIR%/check_version.gtf"/>
+
+    <call gtf="%GTF_DIR%/XPATHs.gtf"/>
+
+    <call gtf="%GTF_DIR%/CPU.gtf"/>
+
+    <text>
+#!/bin/sh
+#
+    </text>
+
+    <set_variable variable="FILE_DESCRIPTION"
+                  to="- shell script fragment - not very useful on its own"/>
+    <export variable="FILE_DESCRIPTION"/>              
+    <call gtf="%GTF_DIR%/file_heading.mk.gtf"/>
+
+    <include source="%GTF_DIR%/warning.mk"/>
+
+    <text>
+
+# This variable indicates where the PTF file for this design is located
+ptf=%PTF_NAME%
+    </text>
+
+    <set_variable variable="NIOS2_DEBUG_CORE" to="no"/>
+    <set_variable variable="INCLUDE_OCI"
+                  ptf_path="SYSTEM/MODULE %CPU%/WIZARD_SCRIPT_ARGUMENTS/include_oci"/>
+    <if condition="eq( %INCLUDE_OCI%, 1 )"> <!-- defaults to 0 -->
+        <set_variable variable="NIOS2_DEBUG_CORE" to="yes"/>
+    </if>
+
+    <text>
+
+# This variable indicates whether there is a CPU debug core
+nios2_debug_core=%NIOS2_DEBUG_CORE%
+    </text>
+
+    <set_variable variable="NIOS2_INSTANCE"
+                  ptf_path="SYSTEM/MODULE %CPU%/SLAVE jtag_debug_module/SYSTEM_BUILDER_INFO/JTAG_Hub_Instance_Id"/>
+
+    <text>
+
+# This variable indicates how to connect to the CPU debug core
+nios2_instance=%NIOS2_INSTANCE%
+
+# This variable indicates the CPU module name 
+nios2_cpu_name=%CPU%
+    </text>
+
+    <!-- find the altera_avalon_sysid module, if any -->
+    <set_variable variable="BASE_ADDRESS" to=""/>
+    <for_each variable="MODULE" ptf_path="SYSTEM/MODULE">
+        <set_variable variable="CLASS"
+                      ptf_path="SYSTEM/MODULE %MODULE%/class"/>
+        <if condition="and( eq( altera_avalon_sysid, %CLASS% ), ptf_module_is_mastered_by( %MODULE%, %CPU% ) )">
+            <for_each variable="SLAVE" ptf_path="SYSTEM/MODULE %MODULE%/SLAVE">
+                <set_variable variable="IS_ENABLED"
+                              ptf_path="SYSTEM/MODULE %MODULE%/SLAVE %SLAVE%/SYSTEM_BUILDER_INFO/Is_Enabled"/>
+                <if condition="ne( %IS_ENABLED%, 0 )"> <!-- defaults to 1 -->
+                    <set_variable variable="BASE_ADDRESS"
+                                  ptf_path="SYSTEM/MODULE %MODULE%/SLAVE %SLAVE%/SYSTEM_BUILDER_INFO/Base_Address"/>
+                    <set_variable variable="ID"
+                                  ptf_path="SYSTEM/MODULE %MODULE%/WIZARD_SCRIPT_ARGUMENTS/id"/>
+                    <set_variable variable="TIMESTAMP"
+                                  ptf_path="SYSTEM/MODULE %MODULE%/WIZARD_SCRIPT_ARGUMENTS/timestamp"/>
+                    <break/>
+                </if>
+            </for_each>
+            <if condition='ne( "", %BASE_ADDRESS% )'>
+                <break/> <!-- once we've found it, we're done looping -->
+            </if>
+        </if>
+    </for_each>
+
+    <if condition='ne( "", %BASE_ADDRESS% )'>
+        <text>
+
+# These variables indicate what the System ID peripheral should hold
+sidp=%BASE_ADDRESS%
+id=%ID%
+timestamp=%TIMESTAMP%
+        </text>
+    </if>
+
+    <set_variable variable="FULL_SOPC_KIT_NIOS2_DIR"
+                  to="make_cygdrive_path( %SOPC_KIT_NIOS2_DIR% )"/>
+
+    <set_variable variable="COMPONENTS_DIR"
+                  to="%FULL_SOPC_KIT_NIOS2_DIR%/components"/>
+
+    <set_variable variable="OS_COMPONENT_NAME"
+                  to='xpath( %STF_NAME%, "normalize-space(%OS_SPEC_XPATH%/@sopc_component_dir)" )'/>
+    <if condition="not( %OS_COMPONENT_NAME% )">
+        <!-- OS defaults to "altera_hal" -->
+        <set_variable variable="OS_COMPONENT_NAME" to="altera_hal"/>
+    </if>
+
+    <set_variable variable="OS_SH"
+                  to="%COMPONENTS_DIR%/%OS_COMPONENT_NAME%/build/os.sh"/>
+
+    <text>
+
+# Include operating system specific parameters, if they are supplied.
+
+if test -f %OS_SH% ; then
+   . %OS_SH%
+fi
+    </text>
+
+</template>

@@ -1,0 +1,385 @@
+--------------------------------------------------------------------
+--
+--	mul_boothc
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 3.0
+--
+--------------------------------------------------------------------
+------------------------------------------------------------------
+-- Name : mul_boothc.tdf										--
+-- Function:  													--
+--																--
+-- Output decoding for q[]:										--
+--							00 => 	0							--
+--							01 = > +1							--
+--							10 = > -1							--
+--							11 = > -2							--
+------------------------------------------------------------------
+  
+INCLUDE "aglobal90.inc";	% device definitions %
+
+PARAMETERS
+(
+	WIDTH = 1,
+	MS_BIT = 0,
+	OP_MODE = 0
+);
+
+CONSTANT SEL_WIDTH = (OP_MODE == 0 & MS_BIT == 0) ? 2 : 3;
+CONSTANT NEED_SEL1_NODE = !((OP_MODE == 4 # OP_MODE == 2) & (WIDTH == 1)) ? 1 : 0;
+CONSTANT SEL1_NODE_WIDTH = ((OP_MODE == 4 # OP_MODE == 2) & (WIDTH > 1)) ? WIDTH-1 : WIDTH;
+
+SUBDESIGN mul_boothc
+(
+ 	b[WIDTH-1..0][2..0]		: INPUT = GND;
+	cin[WIDTH-1..0] 		: INPUT = GND;
+	clock					: INPUT = GND;
+	aclr					: INPUT = GND;
+	clken					: INPUT = VCC;
+
+ 	sel[WIDTH-1..0][2..0]	: OUTPUT;
+ 	cout[WIDTH-1..0]		: OUTPUT;
+ 	booth_cout[WIDTH-1..0]	: OUTPUT;
+)
+
+VARIABLE
+	
+	IF (OP_MODE >= 1) GENERATE
+		cin_s0_node			: CARRY;
+		cin_s1_node			: CARRY;
+		cin_bcout_node 		: CARRY;
+		
+		sel0_a[WIDTH-1..0]	: CARRY_SUM;
+		sel1_a[WIDTH-1..0]	: CARRY_SUM;
+		bcout[WIDTH-1..0]	: CARRY_SUM;
+		
+		IF (OP_MODE == 2 # OP_MODE == 3) GENERATE
+			b1_node[WIDTH-1..0] 		: NODE;
+			b2_node[WIDTH-1..0] 		: NODE;
+			booth_cout_node[WIDTH-1..0] : NODE;
+		END GENERATE;
+			
+		IF USED(clock) GENERATE
+			sel0_reg[WIDTH-1..0]		: DFFE;
+			IF (NEED_SEL1_NODE == 1) GENERATE
+				sel1_reg[SEL1_NODE_WIDTH-1..0]	: DFFE;
+			END GENERATE;
+
+			booth_cout_reg[WIDTH-1..0]	: DFFE;
+		ELSE GENERATE
+			sel0_reg[WIDTH-1..0]		: NODE;
+			IF (NEED_SEL1_NODE == 1) GENERATE
+				sel1_reg[SEL1_NODE_WIDTH-1..0]: NODE;
+			END GENERATE;
+
+			booth_cout_reg[WIDTH-1..0]	: NODE;
+		END GENERATE;
+	ELSE GENERATE
+		sl[WIDTH-1..0][SEL_WIDTH-1..0] 	: NODE;
+	END GENERATE;
+
+BEGIN
+	IF (OP_MODE == 0) GENERATE
+		FOR I IN 0 TO WIDTH-1 GENERATE
+			IF (MS_BIT == 0) GENERATE
+				TABLE
+				  	b[I][], cin[I]	=> sl[I][], cout[I], booth_cout[I];
+				  	0, 		0  	=> 0, 	0, 		0;	-- 0 =>  0	no change
+				  	1, 		0   => 1, 	0,		0;	-- 1 => +1	no change
+				  	2, 		0   => 1, 	0,		0;	-- 2 => +1  no change
+					3, 		0   => 3, 	1,		1;	-- 3 => +2 => -2 with a carry out
+					4, 		0   => 3, 	0, 		1;	-- 4 => -2  no change
+					5, 		0   => 2, 	0, 		1;	-- 5 => -1  no change
+					6, 		0   => 2, 	0, 		1;	-- 6 => -1  no change
+					7, 		0   => 0, 	0, 		0;	-- 7 =>  0  no change
+				  	-------------------------------------
+					0, 		1   => 1, 	0, 		0;	-- 0 => +1 no change
+					1, 		1   => X, 	X, 		X;  -- Will never occur
+				  	2, 		1   => 3, 	1, 		1;	-- 2 => +2 => -2 with a carry out
+				 	3, 		1   => X,	X, 		X;  -- Will never occur
+				  	4, 		1   => 2, 	0, 		1;	-- 4 => -1 no change
+				  	5, 		1   => X, 	X, 		X;  -- Will never occur
+				  	6, 		1   => 0, 	0, 		0;	-- 6 =>  0 no change 
+				  	7, 		1   => X, 	X,	 	X;  -- Will never occur
+				END TABLE;
+
+				sel[I][1..0] = sl[I][];
+				sel[I][2] = GND;
+				
+			ELSE GENERATE
+				-- The Most Significant Bit is special as we do not want to have a 
+				-- propagate carry out of this position (unlike the previous ones
+				-- which propagated a carry out for +2 cases)
+				TABLE
+				  	b[I][], cin[I]	=> sl[I][], booth_cout[I];
+				  	0, 		0  	=> 0, 		0;	-- 0 =>  0
+				  	1, 		0   => 1, 		0;	-- 1 => +1
+				  	2, 		0   => 2, 		0;	-- 2 => +1
+					3, 		0   => 3, 		0;	-- 3 => +2 
+					4, 		0   => 4, 		1;	-- 4 => -2
+					5, 		0   => 5, 		1;	-- 5 => -1
+					6, 		0   => 6, 		1;	-- 6 => -1
+					7, 		0   => 7, 		0;	-- 7 =>  0
+				  	----------------------------------------
+					0, 		1   => 1, 		0;	--  0 => +1
+					1, 		1   => X, 		X;  -- Will never occur
+				  	2, 		1   => 3, 		0;	-- +1 => +2
+				 	3, 		1   => X,		X;  -- Will never occur
+			  	  	4, 		1   => 5, 		1;	-- -2 => -1
+				  	5, 		1   => X, 		X;  -- Will never occur
+					6, 		1   => 0, 		0;	-- -1 =>  0 
+				  	7, 		1   => X, 	 	X;  -- Will never occur
+				END TABLE;
+				
+				sel[I][] = sl[I][];
+				cout[I] = GND;
+			END GENERATE;
+		END GENERATE;
+		
+	ELSE GENERATE
+		IF (OP_MODE == 1 # OP_MODE == 4) GENERATE
+			FOR I IN 0 TO WIDTH-1 GENERATE
+				%	TABLE
+					  	b[I][], cin[I]	=> sl[I][], cout[I], booth_cout[I];
+					  	00, 		0 	=> 00, 		0, 		0;	-- 0 =>  0	no change
+					  	01, 		0  	=> 01, 		0,		0;	-- +1	no change
+					  	10, 		0  	=> 10, 		0,		0;	-- +2  no change
+						11, 		0  	=> 11, 		1,		1;	-- +3 => 4 + -1 with a carry out
+					  	-----------------------------------------------------------------
+						00, 		1  	=> 01, 		0, 		0;	-- +1 no change
+						01, 		1  	=> 10, 		0, 		0;  -- +2
+					  	10, 		1  	=> 11, 		1, 		1;	-- +3 => 4 + -1 with a carry out
+					 	11, 		1  	=> 00,		1, 		0;  -- +4
+					END TABLE;		
+				%
+				IF (I == 0) GENERATE
+					cin_s0_node = cin[0];
+					sel0_a[0].cin = (b[0][2] & b[0][1]) # (b[0][2] & !b[0][1] & cin_s0_node);
+					sel0_a[0].sin = b[0][1] $ cin_s0_node;
+				ELSE GENERATE
+					sel0_a[I].cin = (b[I][2] & b[I][1]) # (b[I][2] & !b[I][1] & sel0_a[I-1].cout);
+					sel0_a[I].sin = b[I][1] $ sel0_a[I-1].cout;
+				END GENERATE;
+				sel0_reg[I] = sel0_a[I].sout;
+				sel[I][0] = sel0_reg[I];
+
+				IF (I == 0) GENERATE
+					cin_s1_node = cin[0];
+					sel1_a[0].cin = (b[0][2] & b[0][1]) # (b[0][2] & !b[0][1] & cin_s1_node); 
+					sel1_a[0].sin = (b[0][2] & !cin_s1_node) #
+								 ((b[0][2] $ b[0][1]) & cin_s1_node);
+				ELSE GENERATE
+					sel1_a[I].cin = (b[I][2] & b[I][1]) # (b[I][2] & !b[I][1] & sel1_a[I-1].cout);
+					sel1_a[I].sin = (b[I][2] & !sel1_a[I-1].cout) #
+								   ((b[I][2] $ b[I][1]) & sel1_a[I-1].cout);
+				END GENERATE;
+
+				IF (OP_MODE == 4 & (I == WIDTH-1)) GENERATE
+					sel[I][1] = sel1_a[I].sout;		-- This will definitely be a GND!
+				ELSE GENERATE
+					sel1_reg[I] = sel1_a[I].sout;
+					sel[I][1] = sel1_reg[I];
+				END GENERATE;
+
+				IF (I == 0) GENERATE
+					cin_bcout_node = cin[0];
+					bcout[0].cin = (b[0][2] & b[0][1]) # (b[0][2] & !b[0][1] & cin_bcout_node);
+					bcout[0].sin = b[0][2] & (b[0][1] $ cin_bcout_node); 
+				ELSE GENERATE
+					bcout[I].cin = (b[I][2] & b[I][1]) # (b[I][2] & !b[I][1] & bcout[I-1].cout);
+					bcout[I].sin = b[I][2] & (b[I][1] $ bcout[I-1].cout);	
+				END GENERATE;
+				
+				booth_cout_reg[I] = bcout[I].sout;
+				booth_cout[I] = booth_cout_reg[I];
+			END GENERATE;
+			
+			sel[][2] = GND;
+			cout[WIDTH-1] = bcout[WIDTH-1].cout # b[WIDTH-1][0];	-- get rid of b[][0] warnings!
+			IF (WIDTH > 1) GENERATE
+				cout[WIDTH-2..0] = GND # b[WIDTH-2..0][0];
+			END GENERATE;
+		
+		ELSE GENERATE
+			b1_node[] = b[][1];
+			b2_node[] = b[][2];
+			
+			FOR I IN 0 TO WIDTH-1 GENERATE
+				%	TABLE
+					  	b[I][], cin[I]	=> sl[I][], cout[I], booth_cout[I];
+					  	00, 		0 	=> 00, 		0, 		0;	--  0 no change
+					  	01, 		0  	=> 01, 		0,		0;	-- +1 no change
+					  	10, 		0  	=> 10, 		1,		1;	-- +2 => 4 + (-2)
+						11, 		0  	=> 11, 		1,		1;	-- +3 => 4 + (-1)
+					  	-----------------------------------------------------------------
+						00, 		1  	=> 01, 		0, 		0;	-- +1 no change
+						01, 		1  	=> 10, 		1, 		1;  -- +2 => 4 + (-2)
+					  	10, 		1  	=> 11, 		1, 		1;	-- +3 => 4 + (-1)
+					 	11, 		1  	=> 00,		1, 		0;  -- +4 => 0
+					END TABLE;		
+				
+					TABLE
+					  	b[I][], cin[I]	=> sl[I][], cout[I], booth_cout[I];
+					  	00, 		0 	=> 00, 		0, 		0;	--  0 no change
+					  	01, 		0  	=> 01, 		0,		0;	-- +1 no change
+					  	10, 		0  	=> 10, 		0,		1;	-- -2 no change 
+						11, 		0  	=> 11, 		0,		1;	-- -1 no change
+					  	-----------------------------------------------------------------
+						00, 		1  	=> 01, 		0, 		0;	-- +1 no change
+						01, 		1  	=> 10, 		1, 		1;  -- +2 => 4 + (-2)
+					  	10, 		1  	=> 11, 		0, 		1;	-- -1 no change
+					 	11, 		1  	=> 00,		0, 		0;  --  0 no change
+					END TABLE;
+
+					TABLE
+					  	b[I][], cin[I]	=> sl[I][], cout[I], booth_cout[I];
+					  	00, 		0 	=> 00, 		0, 		0;	--  0 no change
+					  	01, 		0  	=> 11, 		0,		1;	-- -1 no change
+					  	10, 		0  	=> XX, 		X,		X;	-- Never occurs 
+						11, 		0  	=> XX, 		X,		X;	-- Never occurs 
+					  	-----------------------------------------------------------------
+						00, 		1  	=> 01, 		0, 		0;	-- +1 no change
+						01, 		1  	=> 00, 		0, 		0;  --  0 no change
+					  	10, 		1  	=> XX, 		X, 		X;	-- Never occurs
+					 	11, 		1  	=> XX,		X, 		X;  -- Never occurs
+					END TABLE;
+				%
+
+				IF (I == 0) GENERATE
+					cin_s0_node = cin[0];
+					IF ((OP_MODE == 2) & (WIDTH == 2)) GENERATE
+						sel0_a[0].cin = !b2_node[0] & b1_node[0] & cin_s0_node;
+					ELSE GENERATE
+						sel0_a[0].cin = b2_node[0] # (!b2_node[0] & b1_node[0] & cin_s0_node);
+					END GENERATE;
+					sel0_a[0].sin = b1_node[0] $ cin_s0_node;
+
+				ELSE GENERATE
+					IF ((OP_MODE == 2) & (WIDTH > 1) & (I == WIDTH-2)) GENERATE
+						sel0_a[I].cin = !b2_node[I] & b1_node[I] & sel0_a[I-1].cout;
+					ELSE GENERATE
+						sel0_a[I].cin = b2_node[I] # (!b2_node[I] & b1_node[I] & sel0_a[I-1].cout);
+					END GENERATE;
+
+					sel0_a[I].sin = b1_node[I] $ sel0_a[I-1].cout;
+				END GENERATE;
+				sel0_reg[I] = sel0_a[I].sout;
+				sel[I][0] = sel0_reg[I];
+			
+				IF (I == 0) GENERATE
+					cin_s1_node = cin[0];
+					IF ((OP_MODE == 2) & (WIDTH == 2)) GENERATE	
+						sel1_a[0].cin = !b2_node[0] & b1_node[0] & cin_s1_node;
+					ELSE GENERATE
+						sel1_a[0].cin = b2_node[0] # (!b2_node[0] & b1_node[0] & cin_s1_node); 
+					END GENERATE;
+
+					IF ((OP_MODE == 3) & (I == WIDTH-1)) GENERATE
+						sel1_a[0].sin = (b1_node[0] & !cin_s1_node);
+					ELSE GENERATE
+						sel1_a[0].sin = (b2_node[0] & !cin_s1_node) #
+										 ((b2_node[0] $ b1_node[0]) & cin_s1_node);
+					END GENERATE;
+
+				ELSE GENERATE
+					IF (OP_MODE == 2 & (WIDTH > 1) & (I == WIDTH-2)) GENERATE
+						sel1_a[I].cin = !b2_node[I] & b1_node[I] & sel1_a[I-1].cout;
+					ELSE GENERATE
+						sel1_a[I].cin = b2_node[I] # (!b2_node[I] & b1_node[I] & sel1_a[I-1].cout);
+					END GENERATE;
+
+					IF (OP_MODE == 3 & I == WIDTH-1) GENERATE
+						sel1_a[I].sin = (b1_node[I] & !sel1_a[I-1].cout);
+					ELSE GENERATE
+						sel1_a[I].sin = (b2_node[I] & !sel1_a[I-1].cout) #
+										((b2_node[I] $ b1_node[I]) & sel1_a[I-1].cout);
+					END GENERATE;
+				END GENERATE;
+				
+				IF (OP_MODE == 2) & (I == WIDTH-1) GENERATE
+					sel[I][1] = sel1_a[I].sout;		-- This will definitely be a GND!
+				ELSE GENERATE
+					sel1_reg[I] = sel1_a[I].sout;
+					sel[I][1] = sel1_reg[I];
+				END GENERATE;
+
+				IF (I == 0) GENERATE
+					cin_bcout_node = cin[0];
+					IF (OP_MODE == 2 & WIDTH == 2) GENERATE	
+						bcout[0].cin = !b2_node[0] & b1_node[0] & cin_bcout_node;
+					ELSE GENERATE
+						bcout[0].cin = b2_node[0] # (!b2_node[0] & b1_node[0] & cin_bcout_node);
+					END GENERATE;
+
+					IF (OP_MODE == 3 & I == WIDTH-1) GENERATE
+						bcout[0].sin = b1_node[0] & !cin_bcout_node;
+					ELSE GENERATE
+						bcout[0].sin = (b2_node[0] & !cin_bcout_node) #
+									((b2_node[0] $ b1_node[0]) & cin_bcout_node); 
+					END GENERATE;
+				ELSE GENERATE
+					IF (I < WIDTH-1) GENERATE
+						IF (OP_MODE == 2 & (WIDTH > 1) & (I == WIDTH-2)) GENERATE
+							bcout[I].cin = !b2_node[I] & b1_node[I] & bcout[I-1].cout;
+						ELSE GENERATE
+							bcout[I].cin = b2_node[I] # (!b2_node[I] & b1_node[I] & bcout[I-1].cout);
+						END GENERATE;
+					ELSE GENERATE
+						bcout[I].cin = !b2_node[I] & b1_node[I] & bcout[I-1].cout;
+					END GENERATE;
+
+					IF (OP_MODE == 3 & I == WIDTH-1) GENERATE
+						bcout[I].sin = b1_node[I] & !bcout[I-1].cout;
+					ELSE GENERATE
+						bcout[I].sin = (b2_node[I] & !bcout[I-1].cout) #
+									((b2_node[I] $ b1_node[I]) & bcout[I-1].cout);
+					END GENERATE;
+				END GENERATE;					
+				booth_cout_node[I] = bcout[I].sout;
+				booth_cout_reg[I] = booth_cout_node[I];
+				booth_cout[I] = booth_cout_reg[I];
+			END GENERATE;
+			
+			sel[][2] = GND;
+			cout[WIDTH-1] = bcout[WIDTH-1].cout # b[WIDTH-1][0];	-- get rid of b[][0] warnings!
+			IF (WIDTH > 1) GENERATE
+				cout[WIDTH-2..0] = GND # b[WIDTH-2..0][0];
+			END GENERATE;
+		END GENERATE;
+
+		IF USED(clock) GENERATE
+			sel0_reg[].(clk, clrn) = (clock, !aclr);
+			sel1_reg[].(clk, clrn) = (clock, !aclr);
+			booth_cout_reg[].(clk, clrn) = (clock, !aclr);
+
+			IF USED(clken) GENERATE
+				sel0_reg[].ena = clken;
+				sel1_reg[].ena = clken;			
+				booth_cout_reg[].ena = clken;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+	IF !USED(booth_cout) GENERATE
+		booth_cout[] = GND;
+	END GENERATE;
+	IF !USED(cout) GENERATE
+		cout[] = GND;
+	END GENERATE;
+END;
+

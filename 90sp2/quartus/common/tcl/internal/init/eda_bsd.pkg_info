@@ -1,0 +1,20 @@
+# Add ::quartus::eda_bsd to the table of packages
+lappend quartus(package_table) {eda_bsd quartus_eda hidden}
+
+if {[lsearch -exact [list quartus_eda] $quartus(nameofexecutable)] != -1} {
+
+    # Make ::quartus::eda_bsd available to load
+    set qpkg_script_auto [file join [file dirname [info script]] eda_bsd.tcl]
+    if {[file exist $qpkg_script_auto]} {
+       source $qpkg_script_auto
+    }
+    unset qpkg_script_auto
+
+}
+
+if {[lsearch -exact [list quartus_eda] $quartus(nameofexecutable)] != -1} {
+
+    # Load ::quartus::eda_bsd by default
+    package require ::quartus::eda_bsd
+
+}

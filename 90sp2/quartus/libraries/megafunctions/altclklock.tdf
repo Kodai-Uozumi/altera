@@ -1,0 +1,633 @@
+--------------------------------------------------------------------
+--
+--	ALTCLKLOCK Parameterized Megafunction
+--
+--	This function accesses the user PLLs found in some Altera devices.
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 1.0
+--
+--------------------------------------------------------------------
+
+CONSTANT DUMMY = "UNUSED";
+CONSTANT DUMMY_INCLOCK_PERIOD = 10000;
+CONSTANT TIME_DELAY_DEFAULT = 0 %ps%;
+PARAMETERS
+(
+	DEVICE_FAMILY,
+	INCLOCK_PERIOD=DUMMY_INCLOCK_PERIOD,	-- Input clock period or frequency, with units, e.g. "50MHz".  Defaults to ps if no units
+	INCLOCK_SETTINGS=DUMMY,
+	VALID_LOCK_CYCLES=5,					-- Number of synchronized 1/2 clock cycles before PLL is considered locked
+	INVALID_LOCK_CYCLES=5,					-- Number of unsynchronized 1/2 clock cycles before PLL is considered to have lost its lock
+	VALID_LOCK_MULTIPLIER=5,				-- Multiplier for VALID_LOCK_CYCLES
+	INVALID_LOCK_MULTIPLIER=5,				-- Multiplier for INVALID_LOCK_CYCLES
+	OPERATION_MODE=DUMMY,
+	-- clock0 parameters
+	CLOCK0_BOOST=1,							-- Multiply factor for output "clock0"
+	CLOCK0_DIVIDE=1,						-- Divide factor for output "clock0"
+	CLOCK0_SETTINGS=DUMMY,					-- Name of clock assignmentm replaces CLOCK0_BOOST and CLOCK0_DIVIDE parameters
+	CLOCK0_TIME_DELAY=TIME_DELAY_DEFAULT,	-- Time delay for "clock0" in ps
+	-- clock1 parameters
+	CLOCK1_BOOST=1,							-- Multiply factor for output "clock1"
+	CLOCK1_DIVIDE=1,						-- Divide factor for output "clock1"
+	CLOCK1_SETTINGS=DUMMY,					-- Name of clock assignment, replaces CLOCK1_BOOST and CLOCK1_DIVIDE parameters
+	CLOCK1_TIME_DELAY=TIME_DELAY_DEFAULT,	-- Time delay for "clock1" in ps
+	-- clock2 parameters
+	CLOCK2_BOOST=1,							-- Multiply factor for output "clock2"
+	CLOCK2_DIVIDE=1,						-- Divide factor for output "clock2"
+	CLOCK2_SETTINGS=DUMMY,					-- Name of clock assignment, replaces CLOCK2_BOOST and CLOCK2_DIVIDE parameters
+	CLOCK2_TIME_DELAY=TIME_DELAY_DEFAULT,	-- Time delay for "clock2" in ps
+	-- clock_ext parameters
+	CLOCK_EXT_BOOST=1,						-- Multiply factor for output "clock_ext"
+	CLOCK_EXT_DIVIDE=1,						-- Divide factor for output "clock_ext"
+	CLOCK_EXT_SETTINGS=DUMMY,				-- Name of clock assignment, replaces CLOCK_EXT_BOOST and CLOCK_EXT_DIVIDE parameters
+	CLOCK_EXT_TIME_DELAY=TIME_DELAY_DEFAULT,-- Time delay for "clock_ext" in ps
+	OUTCLOCK_PHASE_SHIFT=0,					-- Phase shift in picosenconds
+	INTENDED_DEVICE_FAMILY=DUMMY			-- Needed for modeling
+);
+
+INCLUDE "aglobal90";	% device definitions %
+INCLUDE "flex10ke_pll";
+INCLUDE "apex20k_pll";
+INCLUDE "apex20ke_pll";
+INCLUDE "apexii_pll";
+INCLUDE "mercury_pll";
+INCLUDE "altpll";
+
+-- be backwards compatible with wizard-generated files that didnt have INTENDED_DEVICE_FAMILY
+CONSTANT PRE_INTENDED_DEVICE_FAMILY = USED(INTENDED_DEVICE_FAMILY) ? INTENDED_DEVICE_FAMILY : DEVICE_FAMILY;
+-- allow users to swap between 20ke, 20kc, exc_arm, exc_mips without any errors
+DEFINE FAMILY_APEX_MEMBER(x) = (((FAMILY_APEX20KE_MEMBER(x) == 1) # (FAMILY_APEXII_MEMBER(x) ==1)) ? 1 : 0);
+CONSTANT ACTUAL_INTENDED_DEVICE_FAMILY = ((FAMILY_APEX_MEMBER(PRE_INTENDED_DEVICE_FAMILY) == 1) & (FAMILY_APEX_MEMBER(DEVICE_FAMILY) == 1)) ? DEVICE_FAMILY : PRE_INTENDED_DEVICE_FAMILY;
+
+DEFINE S2_MEMBER() = FAMILY_STRATIXII_MEMBER(ACTUAL_INTENDED_DEVICE_FAMILY);
+DEFINE C3_MEMBER() = FAMILY_CYCLONEIII_MEMBER(ACTUAL_INTENDED_DEVICE_FAMILY);
+DEFINE C2_MEMBER() = FAMILY_CYCLONEII_MEMBER(ACTUAL_INTENDED_DEVICE_FAMILY);
+DEFINE C_MEMBER() = FAMILY_CYCLONE_MEMBER(ACTUAL_INTENDED_DEVICE_FAMILY);
+
+-- For stratix backwards compatibilty
+DEFINE WYS_COMPENSATE_CLOCK() = (S2_MEMBER()==1 # C3_MEMBER()==1) ? WYS_COMPENSATE_CLOCK_S2() : ((C2_MEMBER()==1) ? "CLK2" : ((C_MEMBER()==1)? WYS_COMPENSATE_CLOCK_CYC() : WYS_COMPENSATE_CLOCK_STX()));
+-- Setting compensate_clock to a valid used clock in normal mode
+DEFINE WYS_COMPENSATE_CLOCK_S2() = (OPERATION_MODE == "ZERO_DELAY_BUFFER")? "CLK3" : ( (OPERATION_MODE=="NORMAL")? (USED(clock0)? "CLK0" : (USED(clock1)? "CLK1" : "CLK2")) : "UNUSED" );
+DEFINE WYS_COMPENSATE_CLOCK_CYC() = (OPERATION_MODE == "ZERO_DELAY_BUFFER")? "EXTCLK0" : (OPERATION_MODE == "NORMAL")? "CLK1" : "UNUSED";
+DEFINE WYS_COMPENSATE_CLOCK_STX() = (OPERATION_MODE=="ZERO_DELAY_BUFFER" # OPERATION_MODE=="EXTERNAL_FEEDBACK")? "EXTCLK0" : (USED(clock1) & !SWAP_CLOCK1() & (!USED(clock0) # SWAP_CLOCK0()) ? "CLK1" : "UNUSED" );
+DEFINE WYS_FEEDBACK_SOURCE() = (OPERATION_MODE=="EXTERNAL_FEEDBACK")? ((S2_MEMBER()==1)? "CLK3" : WYS_COMPENSATE_CLOCK() ) : "UNUSED";
+DEFINE NEED_TO_REPAIR_STRATIX_EXTERNAL_FEEDBACK() = 
+	((FAMILY_STRATIX() == 1) & !USED(clock_ext) & ((OPERATION_MODE == "EXTERNAL_FEEDBACK") # (OPERATION_MODE == "ZERO_DELAY_BUFFER")));
+DEFINE CLOCK_TO_SWAP() = (USED(clock0) & !USED(clock1)) ? 0 : 1;
+DEFINE SWAP_CLOCK0() = NEED_TO_REPAIR_STRATIX_EXTERNAL_FEEDBACK() & CLOCK_TO_SWAP() == 0;
+DEFINE SWAP_CLOCK1() = NEED_TO_REPAIR_STRATIX_EXTERNAL_FEEDBACK() & CLOCK_TO_SWAP() == 1;
+
+DEFINE LOCK_PARAMS() = ((FAMILY_STRATIXIII()!=1 & FAMILY_CYCLONEIII()!=1) & (FAMILY_BASE_STRATIXII()==1 # FAMILY_BASE_CYCLONEII()==1 & USED(LOCKED)))? "USED" : "UNUSED";
+
+CONSTANT APEXII_VALID_LOCK_MULTIPLIER = 1;
+CONSTANT APEXII_INVALID_LOCK_MULTIPLIER = 5;
+
+SUBDESIGN altclklock
+(
+	inclock		: INPUT;
+	inclocken	: INPUT = VCC;
+	fbin		: INPUT = VCC;
+	clock0		: OUTPUT;			-- Apex --> feeds core/pin;  Mercury --> feeds core
+	clock1		: OUTPUT;			-- Apex --> feeds core/pin;	 Mercury --> feeds core
+	clock2		: OUTPUT;			-- Apex --> feeds core/pin;  Mercury --> feeds core
+	clock_ext	: OUTPUT;			-- Apex --> feeds core/pin;	 Mercury --> feeds pin
+	locked		: OUTPUT;
+)
+
+VARIABLE
+	IF (FAMILY_FLEX10KE()) GENERATE
+		pll : flex10ke_pll WITH (OPERATION_MODE=OPERATION_MODE,
+								 clkin_settings=INCLOCK_SETTINGS,
+								 clk0_settings=CLOCK0_SETTINGS,
+								 clk1_settings=CLOCK1_SETTINGS,
+								 clk1_multiply_by=CLOCK1_BOOST,
+								 input_frequency=INCLOCK_PERIOD);
+	ELSE GENERATE IF (FAMILY_APEX20K()) GENERATE
+		pll	: apex20k_pll WITH (OPERATION_MODE=OPERATION_MODE,
+								clkin_settings=INCLOCK_SETTINGS,
+								clk0_settings=CLOCK0_SETTINGS,
+								clk1_settings=CLOCK1_SETTINGS,
+								clk0_multiply_by=CLOCK0_BOOST,
+								clk1_multiply_by=CLOCK1_BOOST,
+								input_frequency=INCLOCK_PERIOD);
+	ELSE GENERATE IF (FAMILY_APEX20KE()) GENERATE
+		pll	: apex20ke_pll WITH (OPERATION_MODE=OPERATION_MODE,
+								clkin_settings=INCLOCK_SETTINGS,
+								clk0_settings=CLOCK0_SETTINGS,
+								clk1_settings=CLOCK1_SETTINGS,
+								clk0_multiply_by=CLOCK0_BOOST, clk0_divide_by=CLOCK0_DIVIDE,
+								clk1_multiply_by=CLOCK1_BOOST, clk1_divide_by=CLOCK1_DIVIDE,
+								input_frequency=INCLOCK_PERIOD, phase_shift=OUTCLOCK_PHASE_SHIFT,
+								lock_high=VALID_LOCK_CYCLES, lock_low=INVALID_LOCK_CYCLES,
+								valid_lock_multiplier=VALID_LOCK_MULTIPLIER, invalid_lock_multiplier=INVALID_LOCK_MULTIPLIER);
+	ELSE GENERATE IF (FAMILY_APEXII() == 1) GENERATE
+		pll	: apexii_pll WITH (OPERATION_MODE=OPERATION_MODE,
+								clkin_settings=INCLOCK_SETTINGS,
+								clk0_settings=CLOCK0_SETTINGS,
+								clk1_settings=CLOCK1_SETTINGS,
+								clk0_multiply_by=CLOCK0_BOOST, clk0_divide_by=CLOCK0_DIVIDE,
+								clk1_multiply_by=CLOCK1_BOOST, clk1_divide_by=CLOCK1_DIVIDE,
+								input_frequency=INCLOCK_PERIOD, phase_shift=OUTCLOCK_PHASE_SHIFT,
+								lock_high=VALID_LOCK_CYCLES, lock_low=INVALID_LOCK_CYCLES,
+								valid_lock_multiplier=APEXII_VALID_LOCK_MULTIPLIER, invalid_lock_multiplier=APEXII_INVALID_LOCK_MULTIPLIER);
+	ELSE GENERATE  IF (FAMILY_MERCURY()) GENERATE 
+		pll : mercury_pll WITH	(
+								OPERATION_MODE=OPERATION_MODE,
+								CLK0_MULTIPLY_BY=CLOCK0_BOOST,
+								CLK0_DIVIDE_BY=CLOCK0_DIVIDE,
+								CLK0_SETTINGS=CLOCK0_SETTINGS,
+								CLK0_TIME_DELAY=CLOCK0_TIME_DELAY,
+								CLK1_MULTIPLY_BY=CLOCK1_BOOST,
+								CLK1_DIVIDE_BY=CLOCK1_DIVIDE,
+								CLK1_SETTINGS=CLOCK1_SETTINGS,
+								CLK1_TIME_DELAY=CLOCK1_TIME_DELAY,
+								CLK2_MULTIPLY_BY=CLOCK2_BOOST,
+								CLK2_DIVIDE_BY=CLOCK2_DIVIDE,
+								CLK2_SETTINGS=CLOCK2_SETTINGS,
+								CLK2_TIME_DELAY=CLOCK2_TIME_DELAY,
+								EXTCLK_MULTIPLY_BY=CLOCK_EXT_BOOST,
+								EXTCLK_DIVIDE_BY=CLOCK_EXT_DIVIDE,
+								EXTCLK_SETTINGS=CLOCK_EXT_SETTINGS,
+								EXTCLK_TIME_DELAY=CLOCK_EXT_TIME_DELAY,
+								INPUT_FREQUENCY=INCLOCK_PERIOD,
+								PHASE_SHIFT=OUTCLOCK_PHASE_SHIFT,
+								LOCK_HIGH=VALID_LOCK_CYCLES,
+								LOCK_LOW=INVALID_LOCK_CYCLES,
+								VALID_LOCK_MULTIPLIER=VALID_LOCK_MULTIPLIER,
+								INVALID_LOCK_MULTIPLIER=INVALID_LOCK_MULTIPLIER,
+								CLKIN_SETTINGS=INCLOCK_SETTINGS
+								);
+	ELSE GENERATE IF (FAMILY_STRATIXIII()==1 # FAMILY_CYCLONEIII()==1) GENERATE
+		pll : altpll WITH	(
+								OPERATION_MODE = OPERATION_MODE,
+								QUALIFY_CONF_DONE = "OFF",
+								COMPENSATE_CLOCK = WYS_COMPENSATE_CLOCK(),
+								PRIMARY_CLOCK = "INCLK0",
+								WIDTH_CLOCK = (FAMILY_STRATIXIII() == 1) ? ((FAMILY_ARRIAIIGX()==1)? 7: 10) : 5,
+								INCLK0_INPUT_FREQUENCY = INCLOCK_PERIOD,
+								LOCK_HIGH = "UNUSED",
+								LOCK_LOW = "UNUSED",
+								VALID_LOCK_MULTIPLIER = USED(locked) ? VALID_LOCK_MULTIPLIER : "UNUSED",
+								INVALID_LOCK_MULTIPLIER = USED(locked) ? INVALID_LOCK_MULTIPLIER : "UNUSED",
+								FEEDBACK_SOURCE = (OPERATION_MODE=="EXTERNAL_FEEDBACK")? "CLK3" : "UNUSED",
+								CLK0_MULTIPLY_BY = USED(CLOCK0_BOOST) ? (SWAP_CLOCK0() ? "UNUSED" : CLOCK0_BOOST) : "UNUSED",
+								CLK0_DIVIDE_BY = USED(CLOCK0_DIVIDE) ? (SWAP_CLOCK0() ? "UNUSED" : CLOCK0_DIVIDE) : "UNUSED",
+								CLK0_PHASE_SHIFT = (USED(OUTCLOCK_PHASE_SHIFT) & USED(clock0)) ? (SWAP_CLOCK0() ? "UNUSED" : OUTCLOCK_PHASE_SHIFT) : "UNUSED",
+								CLK0_TIME_DELAY = USED(CLOCK0_TIME_DELAY) ? (SWAP_CLOCK0() ? "UNUSED" : CLOCK0_TIME_DELAY) : "UNUSED",
+								CLK1_MULTIPLY_BY = USED(CLOCK1_BOOST) ? (SWAP_CLOCK1() ? "UNUSED" : CLOCK1_BOOST) : "UNUSED",
+								CLK1_DIVIDE_BY = USED(CLOCK1_DIVIDE) ? (SWAP_CLOCK1() ? "UNUSED" : CLOCK1_DIVIDE) : "UNUSED",
+								CLK1_PHASE_SHIFT = (USED(OUTCLOCK_PHASE_SHIFT) & USED(clock1)) ? (SWAP_CLOCK1() ? "UNUSED" : OUTCLOCK_PHASE_SHIFT) : "UNUSED",
+								CLK1_TIME_DELAY = USED(CLOCK1_TIME_DELAY) ? (SWAP_CLOCK1() ? "UNUSED" : CLOCK1_TIME_DELAY) : "UNUSED",
+								CLK2_MULTIPLY_BY = USED(CLOCK2_BOOST) ? CLOCK2_BOOST : "UNUSED",
+								CLK2_DIVIDE_BY = USED(CLOCK2_DIVIDE) ? CLOCK2_DIVIDE : "UNUSED",
+								CLK2_PHASE_SHIFT = (USED(OUTCLOCK_PHASE_SHIFT) & USED(clock2)) ? OUTCLOCK_PHASE_SHIFT : "UNUSED",
+								CLK2_TIME_DELAY = USED(CLOCK2_TIME_DELAY) ? CLOCK2_TIME_DELAY : "UNUSED",
+								CLK3_MULTIPLY_BY = USED(CLOCK_EXT_BOOST) ? CLOCK_EXT_BOOST : SWAP_CLOCK0() ? CLOCK0_BOOST : SWAP_CLOCK1() ? CLOCK1_BOOST :"UNUSED",
+								CLK3_DIVIDE_BY = USED(CLOCK_EXT_DIVIDE) ? CLOCK_EXT_DIVIDE : SWAP_CLOCK0() ? CLOCK0_DIVIDE : SWAP_CLOCK1() ? CLOCK1_DIVIDE : "UNUSED",
+								CLK3_PHASE_SHIFT = (USED(OUTCLOCK_PHASE_SHIFT) & (USED(clock_ext) # SWAP_CLOCK0() # SWAP_CLOCK1())) ? OUTCLOCK_PHASE_SHIFT :  "UNUSED",
+								CLK3_TIME_DELAY = USED(CLOCK_EXT_TIME_DELAY) ? CLOCK_EXT_TIME_DELAY : SWAP_CLOCK0() ? CLOCK0_TIME_DELAY : SWAP_CLOCK1() ? CLOCK1_TIME_DELAY : "UNUSED"
+							);
+	ELSE GENERATE %IF FAMILY_STRATIX()%
+		pll : altpll WITH	(
+								OPERATION_MODE = OPERATION_MODE,
+								QUALIFY_CONF_DONE = "OFF",
+								COMPENSATE_CLOCK = (OPERATION_MODE!="EXTERNAL_FEEDBACK")? WYS_COMPENSATE_CLOCK() : "UNUSED",
+								PRIMARY_CLOCK = "INCLK0",
+								WIDTH_CLOCK = 6,
+								INCLK0_INPUT_FREQUENCY = INCLOCK_PERIOD,
+								LOCK_HIGH = (LOCK_PARAMS()=="USED")? VALID_LOCK_CYCLES : "UNUSED",
+								LOCK_LOW = (LOCK_PARAMS()=="USED")? INVALID_LOCK_CYCLES : "UNUSED",
+								VALID_LOCK_MULTIPLIER = USED(locked) ? VALID_LOCK_MULTIPLIER : "UNUSED",
+								INVALID_LOCK_MULTIPLIER = USED(locked) ? INVALID_LOCK_MULTIPLIER : "UNUSED",
+								FEEDBACK_SOURCE = WYS_FEEDBACK_SOURCE(),
+								CLK0_MULTIPLY_BY = USED(CLOCK0_BOOST) ? (SWAP_CLOCK0() ? "UNUSED" : CLOCK0_BOOST) : "UNUSED",
+								CLK0_DIVIDE_BY = USED(CLOCK0_DIVIDE) ? (SWAP_CLOCK0() ? "UNUSED" : CLOCK0_DIVIDE) : "UNUSED",
+								CLK0_PHASE_SHIFT = (USED(OUTCLOCK_PHASE_SHIFT) & USED(clock0)) ? (SWAP_CLOCK0() ? "UNUSED" : OUTCLOCK_PHASE_SHIFT) : "UNUSED",
+								CLK0_TIME_DELAY = USED(CLOCK0_TIME_DELAY) ? (SWAP_CLOCK0() ? "UNUSED" : CLOCK0_TIME_DELAY) : "UNUSED",
+								CLK1_MULTIPLY_BY = USED(CLOCK1_BOOST) ? (SWAP_CLOCK1() ? "UNUSED" : CLOCK1_BOOST) : "UNUSED",
+								CLK1_DIVIDE_BY = USED(CLOCK1_DIVIDE) ? (SWAP_CLOCK1() ? "UNUSED" : CLOCK1_DIVIDE) : "UNUSED",
+								CLK1_PHASE_SHIFT = (USED(OUTCLOCK_PHASE_SHIFT) & USED(clock1)) ? (SWAP_CLOCK1() ? "UNUSED" : OUTCLOCK_PHASE_SHIFT) : "UNUSED",
+								CLK1_TIME_DELAY = USED(CLOCK1_TIME_DELAY) ? (SWAP_CLOCK1() ? "UNUSED" : CLOCK1_TIME_DELAY) : "UNUSED",
+								CLK2_MULTIPLY_BY = USED(CLOCK2_BOOST) ? CLOCK2_BOOST : "UNUSED",
+								CLK2_DIVIDE_BY = USED(CLOCK2_DIVIDE) ? CLOCK2_DIVIDE : "UNUSED",
+								CLK2_PHASE_SHIFT = (USED(OUTCLOCK_PHASE_SHIFT) & USED(clock2)) ? OUTCLOCK_PHASE_SHIFT : "UNUSED",
+								CLK2_TIME_DELAY = USED(CLOCK2_TIME_DELAY) ? CLOCK2_TIME_DELAY : "UNUSED",
+								EXTCLK0_MULTIPLY_BY = USED(CLOCK_EXT_BOOST) ? CLOCK_EXT_BOOST : SWAP_CLOCK0() ? CLOCK0_BOOST : SWAP_CLOCK1() ? CLOCK1_BOOST :"UNUSED",
+								EXTCLK0_DIVIDE_BY = USED(CLOCK_EXT_DIVIDE) ? CLOCK_EXT_DIVIDE : SWAP_CLOCK0() ? CLOCK0_DIVIDE : SWAP_CLOCK1() ? CLOCK1_DIVIDE : "UNUSED",
+								EXTCLK0_PHASE_SHIFT = (USED(OUTCLOCK_PHASE_SHIFT) & (USED(clock_ext) # SWAP_CLOCK0() # SWAP_CLOCK1())) ? OUTCLOCK_PHASE_SHIFT :  "UNUSED",
+								EXTCLK0_TIME_DELAY = USED(CLOCK_EXT_TIME_DELAY) ? CLOCK_EXT_TIME_DELAY : SWAP_CLOCK0() ? CLOCK0_TIME_DELAY : SWAP_CLOCK1() ? CLOCK1_TIME_DELAY : "UNUSED"
+							);
+	END GENERATE;
+	END GENERATE;
+	END GENERATE; -- ELSE GENERATE
+	END GENERATE; -- ELSE GENERATE
+	END GENERATE; -- ELSE GENERATE
+	END GENERATE;
+								
+	-- wire primitives to make node finding easier
+	IF USED(clock0) & !SWAP_CLOCK0() GENERATE
+		outclock0 : WIRE;
+	END GENERATE;
+
+	IF USED(clock1) & !SWAP_CLOCK1() GENERATE
+		outclock1 : WIRE;
+	END GENERATE;
+
+	IF USED(clock2) & (FAMILY_MERCURY() # FAMILY_STRATIX()) GENERATE
+		outclock2 : WIRE;
+	END GENERATE;
+
+	IF (USED(clock_ext) & (FAMILY_MERCURY() # FAMILY_STRATIX())) # SWAP_CLOCK0() # SWAP_CLOCK1() GENERATE
+		outclock_ext : WIRE;
+	END GENERATE;
+
+	IF USED(locked) GENERATE
+		_locked : WIRE;
+	END GENERATE;
+BEGIN
+	-- Cause: The VALID_LOCK_MULTIPLIER is set to a value other than 1 for the APEX II family
+	-- Action: Set the value of the parameter to 1 or do not set a value for the parameter
+	ASSERT (VALID_LOCK_MULTIPLIER == 1) # (FAMILY_APEXII() != 1)
+		REPORT "VALID_LOCK_MULTIPLIER(%) is being converted to 1, since this is the only supported value for %" VALID_LOCK_MULTIPLIER, DEVICE_FAMILY
+		SEVERITY INFO
+		HELP_ID ALTCKLOCK_LOCK_MULTIPLIER_CONVERSION;
+	
+	-- Cause: The INVALID_LOCK_MULTIPLIER is set to a value other than 5 for the APEX II family
+	-- Action: Set the value of the parameter to 5 or do not set a value for the parameter
+	ASSERT (INVALID_LOCK_MULTIPLIER == 5) # (FAMILY_APEXII() != 1)
+		REPORT "INVALID_LOCK_MULTIPLIER(%) is being converted to 5, since this is the only supported value for %" INVALID_LOCK_MULTIPLIER, DEVICE_FAMILY
+		SEVERITY INFO
+		HELP_ID ALTCLKLOCK_INVALID_LOCK_MULTIPLIER_CONVERSION;
+
+	-- Cause: The INTENDED_DEVICE_FAMILY parameter differs from the actual device family.  Therefore
+	--			behavioral simulations may be incorrect.
+	-- Action: Set the INTENDED_DEVICE_FAMILY to match the actual device family.
+	ASSERT (ACTUAL_INTENDED_DEVICE_FAMILY == DEVICE_FAMILY) # (FAMILY_STRATIX() == 1)
+	REPORT "INTENDED_DEVICE_FAMILY (%) does not match the actual device family (%)."
+			INTENDED_DEVICE_FAMILY, DEVICE_FAMILY
+	SEVERITY ERROR
+	HELP_ID ALTCLKLOCK_INTENDED_ACTUAL_DEVICE_MISMATCH;
+
+	-- Cause: Attempting to compile for a device family that doesn't have the PLL feature
+	-- Action: Use a device family that supports this feature, or don't use this megafunction
+	ASSERT ( FAMILY_HAS_PLL() )
+		REPORT "The altclklock Megafunction is not supported in this device family (%)" DEVICE_FAMILY
+		SEVERITY ERROR
+		HELP_ID ALTCLKLOCK_FAMILY;
+
+	-- Cause: Attempting to use a family other than FLEX10KE, APEX20K, APEX20KE, APEX II, or MERCURY
+	-- Action: Use an FLEX10KE, APEX20K, APEX20KE, or MERCURY, or don't use this Megafunction
+	ASSERT (FAMILY_FLEX10KE() # FAMILY_APEX20K() # FAMILY_APEX20KE() # FAMILY_APEXII() # FAMILY_MERCURY() # FAMILY_STRATIX())
+		REPORT "The altclklock Megafunction is currently only supported in the FLEX10KE, APEX20K, APEX20KE, APEXII, MERCURY, and STRATIX families"
+		SEVERITY ERROR
+		HELP_ID ALTCLKLOCK_USE_20K_OR_20KE;
+
+	-- Cause: Attempting to use a pin which is only supported by the APEX20KE & MERCURY with a device which is not an APEX20KE
+	-- Action: Go to Processing, Select Compiler Settings, Set the device to a member of the
+	--		   APEX20KE or MERCURY family.  Otherwise, if another device family is really desired, do not use this
+	--		   pin / parameter
+	ASSERT ( (USED(fbin) & (FAMILY_APEX20KE() # FAMILY_APEXII() # FAMILY_MERCURY() # FAMILY_STRATIX())) # !USED(fbin))
+		REPORT "'fbin' is only available for APEX20KE, APEX II,  and MERCURY device family"
+		SEVERITY WARNING
+		HELP_ID ALTCLKLOCK_APEX20KE_FEATURE_ERROR;
+
+	ASSERT ( (USED(inclocken) & (FAMILY_APEX20KE() # FAMILY_APEXII() # FAMILY_MERCURY() # FAMILY_STRATIX())) # !USED(inclocken))
+		REPORT "'inclocken' is only available for APEX20KE and MERCURY device family"
+		SEVERITY WARNING
+		HELP_ID ALTCLKLOCK_APEX20KE_FEATURE_ERROR;
+
+	-- Cause: The 'fbin' and OUTCLOCK_PHASE_SHIFT cannot be used at the same time
+	-- Action: Make a choice between using external feedback or a programmable phase shift
+	ASSERT(!((FAMILY_APEX20KE() # FAMILY_MERCURY() # FAMILY_APEXII() # FAMILY_STRATIX()) & USED(fbin) & USED(OUTCLOCK_PHASE_SHIFT)))
+		REPORT "It is illegal to use both 'fbin' and set a programmable phase shift"
+		SEVERITY WARNING
+		HELP_ID ALTCLKLOCK_EITHER_FBIN_OR_PHASE_SHIFT;
+
+	-- Cause: A clock setting has been specified, so this parameter is being ignored
+	-- Action: If the clock setting is desired, dont set this parameter
+	--		   otherwise, if this parameter is desired, dont specify a clock setting
+	ASSERT (!(USED(INCLOCK_SETTINGS) & USED(INCLOCK_PERIOD)))
+		REPORT "'INCLOCK_SETTINGS' was specified so 'INCLOCK_PERIOD' is being ignored"
+		SEVERITY WARNING
+		HELP_ID ALTCLKLOCK_CLOCK_SETTINGS_WARNING;
+	
+	ASSERT (!(USED(CLOCK0_SETTINGS) & USED(CLOCK0_BOOST)))
+		REPORT "'CLOCK0_SETTINGS' was specified so 'CLOCK0_BOOST' is being ignored"
+		SEVERITY WARNING
+		HELP_ID ALTCLKLOCK_CLOCK_SETTINGS_WARNING;
+
+	ASSERT (!(USED(CLOCK0_SETTINGS) & USED(CLOCK0_DIVIDE)))
+		REPORT "'CLOCK0_SETTINGS' was specified so 'CLOCK0_DIVIDE' is being ignored"
+		SEVERITY WARNING
+		HELP_ID ALTCLKLOCK_CLOCK_SETTINGS_WARNING;
+
+	ASSERT (!(USED(CLOCK1_SETTINGS) & USED(CLOCK1_BOOST)))
+		REPORT "'CLOCK1_SETTINGS' was specified so 'CLOCK1_BOOST' is being ignored"
+		SEVERITY WARNING
+		HELP_ID ALTCLKLOCK_CLOCK_SETTINGS_WARNING;
+
+	ASSERT (!(USED(CLOCK1_SETTINGS) & USED(CLOCK1_DIVIDE)))
+		REPORT "'CLOCK1_SETTINGS' was specified so 'CLOCK1_DIVIDE' is being ignored"
+		SEVERITY WARNING
+		HELP_ID ALTCLKLOCK_CLOCK_SETTINGS_WARNING;
+
+	ASSERT (!(USED(CLOCK2_SETTINGS) & USED(CLOCK2_DIVIDE) & FAMILY_MERCURY()))
+		REPORT "'CLOCK2_SETTINGS' was specified so 'CLOCK2_DIVIDE' is being ignored"
+		SEVERITY WARNING
+		HELP_ID ALTCLKLOCK_CLOCK_SETTINGS_WARNING;
+
+	ASSERT (!(USED(CLOCK2_SETTINGS) & USED(CLOCK2_BOOST) & FAMILY_MERCURY()))
+		REPORT "'CLOCK2_SETTINGS' was specified so 'CLOCK2_BOOST' is being ignored"
+		SEVERITY WANRING
+		HELP_ID ALTCLKLOCK_CLOCK_SETTINGS_WARNING;
+
+	ASSERT (!(USED(CLOCK_EXT_SETTINGS) & USED(CLOCK_EXT_DIVIDE) & FAMILY_MERCURY()))
+		REPORT "'CLOCK_EXT_SETTINGS' was specified so 'CLOCK_EXT_DIVIDE' is being ignored"
+		SEVERITY WARNING
+		HELP_ID ALTCLKLOCK_CLOCK_SETTINGS_WARNING;
+
+	ASSERT (!(USED(CLOCK_EXT_SETTINGS) & USED(CLOCK_EXT_BOOST) & FAMILY_MERCURY()))
+		REPORT "'CLOCK_EXT_SETTINGS' was specified so 'CLOCK_EXT_BOOST' is being ignored"
+		SEVERITY WARNING
+		HELP_ID ALTCLKLOCK_CLOCK_SETTINGS_WARNING;
+
+	-- Cause: Attempting to use a parameter which is only supported by the APEX20KE/MERCURY  with a device which is not
+	--			a member of the APEX20KE or MERCURY family.  Therefore this parameter is being ignored
+	-- Action: Use a member of the APEX20KE or MERCURY family or do not use this parameter
+	ASSERT ( (USED(VALID_LOCK_CYCLES) & (FAMILY_APEXII() # FAMILY_APEX20KE() # FAMILY_MERCURY() # FAMILY_STRATIX())) # !USED(VALID_LOCK_CYCLES))
+		REPORT "Ignoring 'VALID_LOCK_CYCLES' parameter since it is only available for the APEX20KE and MERCURY device families"
+		SEVERITY WARNING
+		HELP_ID ALTCLKLOCK_APEX20KE_FEATURE_WARNING;
+
+	ASSERT ( (USED(INVALID_LOCK_CYCLES) & (FAMILY_APEX20KE() # FAMILY_APEXII() # FAMILY_MERCURY() # FAMILY_STRATIX())) # !USED(INVALID_LOCK_CYCLES))
+		REPORT "Ignoring 'INVALID_LOCK_CYCLES' parameter since it is only available for the APEX20KE and MERCURY device families"
+		SEVERITY WARNING
+		HELP_ID ALTCLKLOCK_APEX20KE_FEATURE_WARNING;
+
+	ASSERT ( (USED(OPERATION_MODE) & (FAMILY_APEX20KE() # FAMILY_APEXII() # FAMILY_MERCURY() # FAMILY_STRATIX())) # !USED(OPERATION_MODE))
+		REPORT "Ignoring 'OPERATION_MODE' parameter since it is only available for the APEX20KE and MERCURY device familes"
+		SEVERITY WARNING
+		HELP_ID ALTCLKLOCK_APEX20KE_FEATURE_WARNING;
+
+	ASSERT( (USED(OUTCLOCK_PHASE_SHIFT) & (FAMILY_APEX20KE() # FAMILY_APEXII() # FAMILY_MERCURY() # FAMILY_STRATIX())) # !USED(OUTCLOCK_PHASE_SHIFT))
+		REPORT "Ignoring 'OUTCLOCK_PHASE_SHIFT' parameter since it is only available for the APEX20KE and MERCURY device families"
+		SEVERITY WARNING
+		HELP_ID ALTCLKLOCK_APEX20KE_FEATURE_WARNING;
+
+	-- Cause: Attempting to use a pin or parameter which is only supported by the Mercury family.
+	-- Action: Use a meber of the MERCURY family or do not use this pin or parameter
+	ASSERT (!USED(clock2) # FAMILY_MERCURY() # FAMILY_STRATIX())
+		REPORT "'clock2' port is only available for the MERCURY device family."
+		SEVERITY WARNING
+		HELP_ID ALTCLKLOCK_MERCURY_FEATURE_WARNING;
+	
+	ASSERT (!USED(clock_ext) # FAMILY_MERCURY() # FAMILY_STRATIX())
+		REPORT "'clock_ext' port is only available for the MERCURY device family."
+		SEVERITY WARNING
+		HELP_ID ALTCLKLOCK_MERCURY_FEATURE_WARNING;
+
+	ASSERT (!USED(CLOCK0_TIME_DELAY) # FAMILY_MERCURY() # FAMILY_STRATIX())
+		REPORT "CLOCK0_TIME_DELAY parameter is only available for the MERCURY device family."
+		SEVERITY WARNING
+		HELP_ID ALTCLKLOCK_MERCURY_FEATURE_WARNING;
+
+	ASSERT (!USED(CLOCK1_TIME_DELAY) # FAMILY_MERCURY() # FAMILY_STRATIX())
+		REPORT "CLOCK1_TIME_DELAY parameter is only available for the MERCURY device family."
+		SEVERITY WARNING
+		HELP_ID ALTCLKLOCK_MERCURY_FEATURE_WARNING;
+
+	ASSERT (!USED(CLOCK2_BOOST) # FAMILY_MERCURY() # FAMILY_STRATIX())
+		REPORT "CLOCK2_BOOST parameter is only available for the MERCURY device family."
+		SEVERITY WARNING
+		HELP_ID ALTCLKLOCK_MERCURY_FEATURE_WARNING;
+
+	ASSERT (!USED(CLOCK2_DIVIDE) # FAMILY_MERCURY() # FAMILY_STRATIX())
+		REPORT "CLOCK2_DIVIDE parameter is only available for the MERCURY device family."
+		SEVERITY WARNING
+		HELP_ID ALTCLKLOCK_MERCURY_FEATURE_WARNING;
+
+	ASSERT (!USED(CLOCK2_SETTINGS) # FAMILY_MERCURY() # FAMILY_STRATIX())
+		REPORT "CLOCK2_SETTINGS parameter is only available for the MERCURY device family."
+		SEVERITY WARNING
+		HELP_ID ALTCLKLOCK_MERCURY_FEATURE_WARNING;
+
+	ASSERT (!USED(CLOCK2_TIME_DELAY) # FAMILY_MERCURY() # FAMILY_STRATIX())
+		REPORT "CLOCK2_TIME_DELAY parameter is only available for the MERCURY device family."
+		SEVERITY WARNING
+		HELP_ID ALTCLKLOCK_MERCURY_FEATURE_WARNING;
+
+	ASSERT (!USED(CLOCK_EXT_BOOST) # FAMILY_MERCURY() # FAMILY_STRATIX())
+		REPORT "CLOCK_EXT_BOOST parameter is only available for the MERCURY device family."
+		SEVERITY WARNING
+		HELP_ID ALTCLKLOCK_MERCURY_FEATURE_WARNING;
+
+	ASSERT (!USED(CLOCK_EXT_DIVIDE) # FAMILY_MERCURY() # FAMILY_STRATIX())
+		REPORT "CLOCK_EXT_DIVIDE parameter is only available for the MERCURY device family."
+		SEVERITY WARNING
+		HELP_ID ALTCLKLOCK_MERCURY_FEATURE_WARNING;
+
+	ASSERT (!USED(CLOCK_EXT_SETTINGS) # FAMILY_MERCURY() # FAMILY_STRATIX())
+		REPORT "CLOCK_EXT_SETTINGS parameter is only available for the MERCURY device family."
+		SEVERITY WARNING
+		HELP_ID ALTCLKLOCK_MERCURY_FEATURE_WARNING;
+
+	ASSERT (!USED(CLOCK_EXT_TIME_DELAY) # FAMILY_MERCURY() # FAMILY_STRATIX())
+		REPORT "CLOCK_EXT_TIME_DELAY parameter is only available for the MERCURY device family."
+		SEVERITY WARNING
+		HELP_ID ALTCLKLOCK_MERCURY_FEATURE_WARNING;
+
+
+	-- Cause: OPERATION_MODE is set to an illegal value
+	-- Action: Set the operation mode to one of the legal values: "NORMAL", "ZERO_DELAY_BUFFER", or "EXTERNAL_FEEDBACK"
+	ASSERT !(FAMILY_APEX20KE() # FAMILY_MERCURY() # FAMILY_APEXII() # FAMILY_STRATIX()) # ((OPERATION_MODE=="NORMAL") # (OPERATION_MODE=="ZERO_DELAY_BUFFER") #
+													(OPERATION_MODE=="EXTERNAL_FEEDBACK"))
+		REPORT "OPERATION_MODE(%) is set to an illegal mode."
+		SEVERITY ERROR
+		HELP_ID ALTCLKLOCK_ILLEGAL_OPERATION_MODE;
+
+	-- Cause: CLOCK_EXT_TIME_DELAY parameter is set even though the operation mode is EXTERNAL_FEEDBACK
+	-- Action: Do not use the CLOCK_EXT_TIME_DELAY parameter in external feedback mode
+	ASSERT !(FAMILY_MERCURY() & (OPERATION_MODE=="EXTERNAL_FEEDBACK") & USED(CLOCK_EXT_TIME_DELAY))
+		REPORT "When in EXTERNAL_FEDDBACK_MODE, the CLOCK_EXT_TIME_DELAY parameter is ignored."
+		SEVERITY WARNING
+		HELP_ID ALTCLKLOCK_MERCURY_CLOCK_EXT_TIME_DELAY_IGNORE;
+
+	-- Common connections
+	IF FAMILY_STRATIX() == 1 GENERATE
+		pll.inclk[0] = inclock;
+	ELSE GENERATE
+		pll.clk = inclock;
+	END GENERATE;
+
+	-- only connect what is needed
+	IF USED(clock0) & !SWAP_CLOCK0() GENERATE
+		outclock0 = pll.clk0;
+		IF FAMILY_STRATIX() != 1 GENERATE
+			clock0 = GLOBAL(outclock0);
+		ELSE GENERATE
+			clock0 = outclock0;
+		END GENERATE;
+	ELSE GENERATE
+		clock0 = GND;
+	END GENERATE;
+	IF USED(clock1) & !SWAP_CLOCK1() GENERATE
+		outclock1 = pll.clk1;
+		IF FAMILY_STRATIX() != 1 GENERATE
+			clock1 = GLOBAL(outclock1);
+		ELSE GENERATE
+			clock1 = outclock1;
+		END GENERATE;
+	ELSE GENERATE
+		clock1 = GND;
+	END GENERATE;
+	IF USED(clock2) & (FAMILY_MERCURY() # FAMILY_STRATIX()) GENERATE
+		outclock2 = pll.clk2;
+		IF FAMILY_STRATIX() != 1 GENERATE
+			clock2 = GLOBAL(outclock2);
+		ELSE GENERATE
+			clock2 = outclock2;
+		END GENERATE;
+	ELSE GENERATE
+		clock2 = GND;
+	END GENERATE;
+	IF USED(clock_ext) & FAMILY_MERCURY() GENERATE
+		outclock_ext = pll.extclk;
+		clock_ext = outclock_ext;
+	ELSE GENERATE IF USED(clock_ext) GENERATE
+		IF (FAMILY_STRATIXII() # FAMILY_CYCLONEIII()) GENERATE
+			outclock_ext = pll.clk3;
+			clock_ext = outclock_ext;
+		ELSE GENERATE IF (FAMILY_CYCLONEII() ) GENERATE
+			outclock_ext = pll.clk2;
+			clock_ext = outclock_ext;
+		ELSE GENERATE IF (FAMILY_STRATIX() # FAMILY_CYCLONE() ) GENERATE
+			outclock_ext = pll.extclk0;
+			clock_ext = outclock_ext;
+		END GENERATE;
+		END GENERATE;
+		END GENERATE;
+	ELSE GENERATE
+		IF SWAP_CLOCK0() GENERATE
+			outclock_ext = pll.extclk0;
+			clock0 = outclock_ext;
+		ELSE GENERATE IF SWAP_CLOCK1() GENERATE
+			outclock_ext = pll.extclk0;
+			clock1 = outclock_ext;
+		ELSE GENERATE
+			clock_ext = GND;
+		END GENERATE;
+		END GENERATE;
+		END GENERATE;
+	END GENERATE;
+	IF USED(locked) GENERATE
+		_locked = pll.locked;
+		locked = _locked;
+	ELSE GENERATE
+		locked = GND;
+	END GENERATE;
+
+	ASSERT !((FAMILY_STRATIX() == 1) & USED(clock0) & USED(clock1) & !USED(clock_ext) & ((OPERATION_MODE == "ZERO_DELAY_BUFFER") # (OPERATION_MODE == "EXTERNAL_FEEDBACK")))
+		REPORT "For the Stratix device family it is illegal to use EXTERNAL_FEEDBACK or ZERO_DELAY_BUFFER mode without connecting the 'clock_ext' port."
+		SEVERITY ERROR
+		HELP_ID ALTPLL_CANNOT_CONVERT_TO_STRATIX;
+
+	IF (FAMILY_FLEX10KE()) GENERATE
+		IF ( USED(clock0) ) GENERATE
+			-- Cause: If CLOCK0 is used, CLOCK1 must be used and
+			--		CLOCK1_BOOST parameter must be 2
+			-- Action: Used only CLOCK1, or used both with
+			--		CLOCK1_BOOST parameter equal to 2
+			ASSERT ( USED(clock1) & CLOCK1_BOOST == 2 )
+				REPORT "CLOCK0 cannot be used alone, or value of CLOCK1_BOOST parameter must be 2"
+				SEVERITY ERROR
+				HELP_ID ALTCLKLOCK_BOOST_VALUE;
+
+			-- Cause: Legal value for CLOCK0_BOOST is 1
+			-- Action: Set CLOCK0_BOOST parameter to 1
+			ASSERT ( CLOCK0_BOOST == 1 )
+				REPORT "Legal value for CLOCK0_BOOST parameter is 1"
+				SEVERITY ERROR
+				HELP_ID ALTCLKLOCK_BOOST_VALUE;
+		ELSE GENERATE
+			-- Cause: Legal values for CLOCK1_BOOST are 1 and 2
+			-- Action: Set CLOCK1_BOOST parameter to 1 or 2
+			ASSERT ( CLOCK1_BOOST == 1 # CLOCK1_BOOST == 2)
+				REPORT "Legal value for CLOCK1_BOOST parameter is 1, or 2"
+				SEVERITY ERROR
+				HELP_ID ALTCLKLOCK_BOOST_VALUE;
+		END GENERATE;
+	END GENERATE;
+	
+	IF (FAMILY_APEX20K()) GENERATE
+		-- Cause: If both output clocks are used, then Apex20K requires that
+		--		the multiplication factor for clock0 be the same or less than
+		--		the multiplication factor for clock1.
+		-- Action: Set CLOCK1_BOOST parameter to same or less than
+		--		CLOCK0_BOOST, or use an Apex20KE device which doesn't have
+		--		these restrictions.
+		ASSERT ( USED(clock0) == 0 # USED(clock1) == 0 # CLOCK1_BOOST >= CLOCK0_BOOST)
+			REPORT "Illegal value for CLOCK0_BOOST parameter (%) -- value must be in the range 1 - CLOCK1_BOOST"
+				CLOCK0_BOOST
+			SEVERITY ERROR
+			HELP_ID ALTCLKLOCK_CLOCK1_BOOST;
+	
+		-- Cause: Legal values for CLOCKx_BOOST are 1, 2, 4
+		-- Action: Set CLOCKx_BOOST parameters to 1 or 2 or 4, or use an
+		--		Apex20KE device which allows more values.
+		ASSERT ( (CLOCK0_BOOST == 1 # CLOCK0_BOOST == 2 # CLOCK0_BOOST == 4)
+				& (CLOCK1_BOOST == 1 # CLOCK1_BOOST == 2 # CLOCK1_BOOST == 4) )
+			REPORT "Value of CLOCK0_BOOST and CLOCK1_BOOST parameters must be 1, 2 or 4"
+			SEVERITY ERROR
+			HELP_ID ALTCLKLOCK_BOOST_VALUE;
+
+
+		-- Avoid warnings about unused inputs
+		locked = inclocken & fbin & GND;
+	END GENERATE;
+
+	-- optional inputs
+	IF (FAMILY_APEX20KE() # FAMILY_APEXII() # FAMILY_MERCURY() # FAMILY_STRATIX()) GENERATE
+		IF (USED(fbin)) GENERATE
+			pll.fbin = fbin;
+		END GENERATE;
+		IF (USED(inclocken)) GENERATE
+			IF FAMILY_STRATIX() != 1 GENERATE
+				pll.ena = inclocken;
+			ELSE GENERATE
+				pll.pllena = inclocken;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+	
+	IF !USED(locked) GENERATE
+		locked = GND;
+	END GENERATE;
+	IF !USED(clock1) GENERATE
+		clock1 = GND;
+	END GENERATE;
+	IF !USED(clock_ext) GENERATE
+		clock_ext = GND;
+	END GENERATE;
+	IF !USED(clock0) GENERATE
+		clock0 = GND;
+	END GENERATE;
+	IF !USED(clock2) GENERATE
+		clock2 = GND;
+	END GENERATE;
+END;

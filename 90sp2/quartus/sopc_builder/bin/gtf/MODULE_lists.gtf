@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<!-- MODULE_lists.gtf - this "subroutine" returns lists of modules mastered
+                        by the indicated CPU
+
+     Inputs:
+       CPU                     - the name of the CPU module in the PTF
+       MEMORY_MODULES_ONLY     - if true, only include memory devices in the lists returned
+       IGNORE_DUAL_PORT_SLAVES - if true, ignore all slaves of dual-port memory modules except the first,
+       				 provided only one master is a CPU (or both are the same)
+       CHECK_EXCLUDE_SYSTEM_H  - if true, don't include modules with SYSTEM_BUILDER_INFO/exclude_from_system_h = 1
+
+     Outputs:
+       MODULE_SLAVE_LIST      - a list of all modules (only memory modules if indicated);
+                                each item in the list is in the format "%MODULE%/SLAVE %SLAVE%"
+       MODULE_SLAVE_NAME_LIST - a parallel list to MODULE_SLAVE_LIST with the externalized
+                                name of each module (as the user would see it); it is the
+                                module name only if the module only occurs once in
+                                MODULE_SLAVE_LIST, otherwise it is in the format "%MODULE%_%SLAVE%"
+       MODULE_CLASS_LIST      - a list of the classes of all the modules in MODULE_SLAVE_LIST
+                                (each class is only listed once)
+-->
+
+<generate_set>
+
+    <if condition="IGNORE_DUAL_PORT_SLAVES">
+        <!-- make a list of all CPUs (other than the current one) -->
+	<set_variable variable="CPU_LIST" to=""/>
+        <for_each variable="MODULE" ptf_path="SYSTEM/MODULE">
+	    <if condition="ne( %MODULE%, %CPU% )">
+	        <set_variable variable="IS_CPU"
+	    	   	      ptf_path="SYSTEM/MODULE %MODULE%/WIZARD_SCRIPT_ARGUMENTS/CPU_Architecture"/>
+	        <if condition="%IS_CPU%">
+                    <set_variable variable="CPU_LIST"
+                                  to="list_add( %CPU_LIST%, %MODULE% )"/>
+	        </if>
+	    </if>
+	</for_each>
+    </if>
+
+
+    <!-- make MODULE_SLAVE_LIST -->
+    <set_variable variable="MODULE_SLAVE_LIST" to=""/>
+    <set_variable variable="MODULE_CLASS_LIST" to=""/>
+    <for_each variable="MODULE" ptf_path="SYSTEM/MODULE">
+        <if condition="and( ne( %MODULE%, %CPU% ), ptf_module_is_mastered_by( %MODULE%, %CPU% ) )">
+            <for_each variable="SLAVE" ptf_path="SYSTEM/MODULE %MODULE%/SLAVE">
+                <set_variable variable="IS_ENABLED"
+                              ptf_path="SYSTEM/MODULE %MODULE%/SLAVE %SLAVE%/SYSTEM_BUILDER_INFO/Is_Enabled"/>
+                <if condition="ne( %IS_ENABLED%, 0 )"> <!-- defaults to 1 -->
+                    <switch>
+                        <if condition="not( ptf_module_slave_is_mastered_by( %MODULE%, %SLAVE%, %CPU% ) )">
+                            <break/>
+                        </if>
+                    
+                        <if condition="%CHECK_EXCLUDE_SYSTEM_H%">
+                            <set_variable variable="EXCLUDE_FROM_SYSTEM_H"
+                                          ptf_path="SYSTEM/MODULE %MODULE%/SYSTEM_BUILDER_INFO/exclude_from_system_h"/>
+                            <if condition="%EXCLUDE_FROM_SYSTEM_H%">
+                                <break/>
+                            </if>                           
+                        </if>
+
+                        <set_variable variable="IS_MEMORY_DEVICE"
+                                      ptf_path="SYSTEM/MODULE %MODULE%/SLAVE %SLAVE%/SYSTEM_BUILDER_INFO/Is_Memory_Device"/>
+                        <if condition="and( %MEMORY_MODULES_ONLY%, not( %IS_MEMORY_DEVICE% ) )">
+			    <break/>
+			</if>
+
+                        <set_variable variable="CPU_ARCHITECTURE"
+                                      ptf_path="SYSTEM/MODULE %MODULE%/WIZARD_SCRIPT_ARGUMENTS/CPU_Architecture"/>
+                        <!-- CPU's OCI may be a memory device, but we're not interested in it -->
+                        <if condition="%CPU_ARCHITECTURE%">
+			    <break/>
+			</if>
+
+			<if condition="IGNORE_DUAL_PORT_SLAVES">
+			    <set_variable variable="DUAL_PORT"
+				          ptf_path="SYSTEM/MODULE %MODULE%/WIZARD_SCRIPT_ARGUMENTS/dual_port"/>
+	                    <if condition="%DUAL_PORT%">
+                                <for_each variable="OTHER_CPU" list="%CPU_LIST%">
+                                    <if condition="ptf_module_is_mastered_by( %MODULE%, %OTHER_CPU% )">
+                                        <set_variable variable="MASTERED_BY_OTHER_CPU" to="1"/>
+					<break/>
+                                    </if>
+                                </for_each>
+				<if condition="not( %MASTERED_BY_OTHER_CPU% )">
+	                            <!-- get the first slave of the module -->
+	                            <set_variable variable="FIRST_SLAVE" ptf_path="SYSTEM/MODULE %MODULE%/SLAVE"/>
+	                            <if condition="ne( %FIRST_SLAVE%, %SLAVE% )">
+	                                <!-- ignore all slaves of dual-port memories except the first -->
+				        <!-- (this is safe because SOPC Builder requires that dual-port slaves have the same base address when mastered by only one CPU -->
+				        <break/>
+				    </if>
+				</if>
+			    </if>
+			</if>
+				    
+                        <set_variable variable="MODULE_SLAVE_LIST"
+                                      to='list_add( %MODULE_SLAVE_LIST%, "%MODULE%/SLAVE %SLAVE%" )'/>
+
+                        <!-- only add the module's class if it's not there already -->
+                        <set_variable variable="CLASS" ptf_path="SYSTEM/MODULE %MODULE%/class"/>
+	                <if condition="eq( %CLASS%, no_legacy_module )">
+                        <set_variable variable="CLASS"
+                            ptf_path="SYSTEM/MODULE %MODULE%/gtf_class_name"/>
+	                </if>
+                        <set_variable variable="MODULE_CLASS_LIST"
+                                      to="list_add_if_unique( %MODULE_CLASS_LIST%, %CLASS% )"/>
+                    </switch>
+                </if>
+            </for_each>
+        </if>
+    </for_each>
+
+    <!-- and now make a list (parallel to MODULE_SLAVE_LIST)
+         of the external name for each MODULE_SLAVE
+         ...we couldn't just do that above, because we strip the slave name
+            off if there is only one slave for a module -->
+    <set_variable variable="MODULE_SLAVE_NAME_LIST" to=""/>
+    <for_each variable="MODULE_SLAVE" list="%MODULE_SLAVE_LIST%">
+        <switch>
+            <!-- if there is only one slave for that module, strip off the
+                 "/SLAVE <slavename>" part -->
+            <set_variable variable="MODULE_NAME"
+                          to='regex( "(.+)/SLAVE .+", 1, %MODULE_SLAVE% )'/>
+            <if condition='eq( 1, list_count_matches( %MODULE_SLAVE_LIST%, "%MODULE_NAME%/SLAVE .+" ) )'>
+                <set_variable variable="MODULE_SLAVE_NAME" to="%MODULE_NAME%"/>
+                <break/>
+            </if>
+
+            <!-- otherwise, MODULE_SLAVE_NAME equals MODULE_SLAVE
+                 (with "/SLAVE " replaced by "_") -->
+            <set_variable variable="MODULE_SLAVE_NAME"
+                          to='regex_replace_all( "/SLAVE ", "_", %MODULE_SLAVE% )'/>
+        </switch>
+
+        <set_variable variable="MODULE_SLAVE_NAME_LIST"
+                      to="list_add( %MODULE_SLAVE_NAME_LIST%, %MODULE_SLAVE_NAME% )"/>
+    </for_each>
+
+</generate_set>

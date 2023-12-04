@@ -1,0 +1,20 @@
+# Add ::quartus::ddr_timing_model to the table of packages
+lappend quartus(package_table) {ddr_timing_model quartus_sta hidden}
+
+if {[lsearch -exact [list quartus quartus_sta] $quartus(nameofexecutable)] != -1} {
+
+    # Make ::quartus::ddr_timing_model available to load
+    set qpkg_script_auto [file join [file dirname [info script]] ddr_timing_model.tcl]
+    if {[file exist $qpkg_script_auto]} {
+       source $qpkg_script_auto
+    }
+    unset qpkg_script_auto
+
+}
+
+if {[lsearch -exact [list quartus] $quartus(nameofexecutable)] != -1} {
+
+    # Load ::quartus::ddr_timing_model by default
+    package require ::quartus::ddr_timing_model
+
+}

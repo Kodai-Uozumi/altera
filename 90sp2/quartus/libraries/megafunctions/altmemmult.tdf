@@ -1,0 +1,105 @@
+------------------------------------------------------------------
+-- altmemmult parameterized megafunction
+-- Generated with 'clearbox' loader - do not edit
+------------------------------------------------------------------
+
+
+-- Copyright (C) 1991-2009 Altera Corporation
+--  Your use of Altera Corporation's design tools, logic functions 
+--  and other software and tools, and its AMPP partner logic 
+--  functions, and any output files from any of the foregoing 
+--  (including device programming or simulation files), and any 
+--  associated documentation or information are expressly subject 
+--  to the terms and conditions of the Altera Program License 
+--  Subscription Agreement, Altera MegaCore Function License 
+--  Agreement, or other applicable license agreement, including, 
+--  without limitation, that your use is for the sole purpose of 
+--  programming logic devices manufactured by Altera and sold by 
+--  Altera or its authorized distributors.  Please refer to the 
+--  applicable agreement for further details.
+
+--  Version 9.0 Build 235 06/17/2009
+
+OPTIONS NAME_SUBSTITUTION = ON;
+
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+
+PARAMETERS
+(
+	COEFF_REPRESENTATION = "SIGNED",
+	COEFFICIENT0 = "UNUSED",
+	DATA_REPRESENTATION = "SIGNED",
+	MAX_CLOCK_CYCLES_PER_RESULT = 1,
+	NUMBER_OF_COEFFICIENTS = 1,
+	RAM_BLOCK_TYPE = "AUTO",
+	TOTAL_LATENCY,
+	WIDTH_C,
+	WIDTH_D,
+	WIDTH_R,
+	WIDTH_S = 1,
+	CBXI_PARAMETER = "NOTHING"
+);
+FUNCTION @CBXI_PARAMETER (clock, coeff_in[WIDTH_C-1..0], data_in[WIDTH_D-1..0], sclr, sel[WIDTH_S-1..0], sload_coeff, sload_data)
+RETURNS (load_done, result[WIDTH_R-1..0], result_valid);
+
+
+SUBDESIGN altmemmult
+(
+	clock		:	INPUT;
+	coeff_in[WIDTH_C-1..0]		:	INPUT = GND;
+	data_in[WIDTH_D-1..0]		:	INPUT;
+	load_done		:	OUTPUT;
+	result[WIDTH_R-1..0]		:	OUTPUT;
+	result_valid		:	OUTPUT;
+	sclr		:	INPUT = GND;
+	sel[WIDTH_S-1..0]		:	INPUT = GND;
+	sload_coeff		:	INPUT = GND;
+	sload_data		:	INPUT = GND;
+)
+VARIABLE
+	IF CBXI_PARAMETER != "NOTHING" GENERATE
+		auto_generated : @CBXI_PARAMETER WITH ( CBXI_PARAMETER = "NOTHING" );
+	END GENERATE;
+BEGIN
+	ASSERT (CBXI_PARAMETER != "NOTHING")
+	REPORT "Valid clear box generator not found or Errors encountered during clear box generation"
+	SEVERITY ERROR;
+	IF (CBXI_PARAMETER != "NOTHING") GENERATE
+		IF USED(clock) GENERATE
+			auto_generated.clock = clock;
+		END GENERATE;
+		IF USED(coeff_in) GENERATE
+			auto_generated.coeff_in[] = coeff_in[];
+		END GENERATE;
+		IF USED(data_in) GENERATE
+			auto_generated.data_in[] = data_in[];
+		END GENERATE;
+		IF USED(load_done) GENERATE
+			load_done = auto_generated.load_done;
+		ELSE GENERATE
+			load_done = GND;
+		END GENERATE;
+		IF USED(result) GENERATE
+			result[] = auto_generated.result[];
+		ELSE GENERATE
+			result[] = GND;
+		END GENERATE;
+		IF USED(result_valid) GENERATE
+			result_valid = auto_generated.result_valid;
+		ELSE GENERATE
+			result_valid = GND;
+		END GENERATE;
+		IF USED(sclr) GENERATE
+			auto_generated.sclr = sclr;
+		END GENERATE;
+		IF USED(sel) GENERATE
+			auto_generated.sel[] = sel[];
+		END GENERATE;
+		IF USED(sload_coeff) GENERATE
+			auto_generated.sload_coeff = sload_coeff;
+		END GENERATE;
+		IF USED(sload_data) GENERATE
+			auto_generated.sload_data = sload_data;
+		END GENERATE;
+	END GENERATE;
+END;

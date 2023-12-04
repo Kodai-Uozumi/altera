@@ -1,0 +1,417 @@
+<?xml version="1.0"?>
+<!--
+* File name:   staw_tasks.xml
+*
+* Description: File to define the Tasks window contents.
+*              in the Quartus II TimeQuest Timing Analyzer.
+*
+*              Copyright (c) Altera Corporation 2005-2008.
+*              All rights reserved.
+*
+*******************************************************************************
+*
+* $Revision: #1 $
+*
+*******************************************************************************
+-->
+<tasks>
+	<task>
+		<id>open_project</id>
+		<name>Open Project...</name>
+		<bold/>
+		<item_bitmap>open_project</item_bitmap>
+		<status_ok_if>project_is_open</status_ok_if>
+		<action type="menu">
+			Open Project...
+		</action>
+	</task>
+	<task>
+		<name>Netlist Setup</name>
+		<subtasks>
+			<task>
+				<id>create_netlist</id>
+				<name>Create Timing Netlist</name>
+				<bold/>
+				<properties>
+				</properties>
+				<status_ok_if>netlist_is_created</status_ok_if>
+				<prereq>open_project</prereq>
+				<action type="tcl" run_in="sta">
+					create_timing_netlist -model slow
+				</action>
+			</task>
+			<task>
+				<id>load_sdc_file</id>
+				<name>Read SDC File</name>
+				<bold/>
+				<status_ok_if>sdc_file_is_loaded</status_ok_if>
+				<prereq>create_netlist</prereq>
+				<action type="tcl" run_in="sta">
+					read_sdc
+				</action>
+			</task>
+			<task>
+				<id>update_netlist</id>
+				<name>Update Timing Netlist</name>
+				<bold/>
+				<status_ok_if>netlist_is_up_to_date</status_ok_if>
+				<prereq>load_sdc_file</prereq>
+				<action type="tcl" run_in="sta">
+					update_timing_netlist
+				</action>
+			</task>
+		</subtasks>
+	</task>
+	<task>
+		<name>Reports</name>
+		<subtasks>
+			<task>
+				<name>Slack</name>
+				<subtasks>
+					<task>
+						<id>generate_setup_summary_report</id>
+						<name>Report Setup Summary</name>
+						<item_bitmap>report_table</item_bitmap>
+						<status_ok_if type="report_panel_exists">Summary (Setup)</status_ok_if>
+						<prereq>update_netlist</prereq>
+						<action type="tcl" run_in="sta">
+							create_timing_summary -setup -panel_name "Summary (Setup)"
+						</action>
+					</task>
+					<task>
+						<id>generate_hold_summary_report</id>
+						<name>Report Hold Summary</name>
+						<item_bitmap>report_table</item_bitmap>
+						<status_ok_if type="report_panel_exists">Summary (Hold)</status_ok_if>
+						<prereq>update_netlist</prereq>
+						<action type="tcl" run_in="sta">
+							create_timing_summary -hold -panel_name "Summary (Hold)"
+						</action>
+					</task>
+					<task>
+						<id>generate_recovery_summary_report</id>
+						<name>Report Recovery Summary</name>
+						<item_bitmap>report_table</item_bitmap>
+						<status_ok_if type="report_panel_exists">Summary (Recovery)</status_ok_if>
+						<prereq>update_netlist</prereq>
+						<action type="tcl" run_in="sta">
+							create_timing_summary -recovery -panel_name "Summary (Recovery)"
+						</action>
+					</task>
+					<task>
+						<id>generate_removal_summary_report</id>
+						<name>Report Removal Summary</name>
+						<item_bitmap>report_table</item_bitmap>
+						<status_ok_if type="report_panel_exists">Summary (Removal)</status_ok_if>
+						<prereq>update_netlist</prereq>
+						<action type="tcl" run_in="sta">
+							create_timing_summary -removal -panel_name "Summary (Removal)"
+						</action>
+					</task>
+					<task>
+						<id>generate_min_pulse_report</id>
+						<name>Report Minimum Pulse Width</name>
+						<item_bitmap>report_table</item_bitmap>
+						<status_ok_if type="report_panel_exists">Minimum Pulse Width</status_ok_if>
+						<prereq>update_netlist</prereq>
+						<action type="tcl" run_in="sta">
+							report_min_pulse_width -nworst 100 -panel_name "Minimum Pulse Width"
+						</action>
+					</task>
+				</subtasks>
+			</task>
+			<task>
+				<name>Datasheet</name>
+				<subtasks>
+					<task>
+						<id>report_clock_fmax_summary</id>
+						<name>Report Fmax Summary</name>
+						<item_bitmap>report_table</item_bitmap>
+						<status_ok_if type="report_panel_exists">Fmax Summary</status_ok_if>
+						<prereq>update_netlist</prereq>
+						<action type="tcl" run_in="sta">
+							report_clock_fmax_summary -panel_name "Fmax Summary"
+						</action>
+					</task>
+					<task>
+						<name>Report Datasheet</name>
+						<item_bitmap>report_table</item_bitmap>
+						<status_ok_if type="report_panel_exists">Datasheet Report</status_ok_if>
+						<prereq>update_netlist</prereq>
+						<action type="tcl" run_in="sta">	
+							report_datasheet -panel_name "Datasheet Report"
+						</action>
+					</task>
+				</subtasks>
+			</task>
+			<task>
+				<name>Device Specific</name>
+				<subtasks>
+					<task>
+						<id>generate_tccs_report</id>
+						<name>Report TCCS</name>
+						<item_bitmap>report_table</item_bitmap>
+						<status_ok_if type="report_panel_exists">TCCS</status_ok_if>
+						<prereq>update_netlist</prereq>
+						<action type="tcl" run_in="sta">
+							report_tccs -panel_name "TCCS"
+						</action>
+					</task>
+					<task>
+						<id>generate_rskm_report</id>
+						<name>Report RSKM</name>
+						<item_bitmap>report_table</item_bitmap>
+						<status_ok_if type="report_panel_exists">RSKM</status_ok_if>
+						<prereq>update_netlist</prereq>
+						<action type="tcl" run_in="sta">
+							report_rskm -panel_name "RSKM"
+						</action>
+					</task>
+					<task>
+						<id>generate_ddr_report</id>
+						<name>Report DDR</name>
+						<item_bitmap>report_table</item_bitmap>
+						<status_ok_if type="report_panel_exists">DDR</status_ok_if>
+						<prereq>update_netlist</prereq>
+						<action type="tcl" run_in="sta">
+							report_ddr -panel_name "DDR"
+						</action>
+					</task>
+					<task>
+						<id>generate_metastability_report</id>
+						<name>Report Metastability</name>
+						<item_bitmap>report_table</item_bitmap>
+						<status_ok_if type="report_panel_exists">Metastability Summary</status_ok_if>
+						<prereq>update_netlist</prereq>
+						<action type="tcl" run_in="sta">
+							report_metastability -panel_name "Metastability Summary"
+						</action>
+					</task>
+				</subtasks>
+			</task>
+			<task>
+				<name>Diagnostic</name>
+				<subtasks>
+					<task>
+						<id>generate_clock_report</id>
+						<name>Report Clocks</name>
+						<item_bitmap>report_table</item_bitmap>
+						<status_ok_if type="report_panel_exists">Clocks Summary</status_ok_if>
+						<prereq>update_netlist</prereq>
+						<action type="tcl" run_in="sta">
+							report_clocks -panel_name "Clocks Summary"
+						</action>
+					</task>
+					<task>
+						<id>generate_clock_transfers_report</id>
+						<name>Report Clock Transfers</name>
+						<item_bitmap>report_table</item_bitmap>
+						<status_ok_if type="report_panel_exists">Clock Transfers</status_ok_if>
+						<prereq>update_netlist</prereq>
+						<action type="tcl" run_in="sta">
+							report_clock_transfers -panel_name "Clock Transfers"
+						</action>
+					</task>
+					<task>
+						<id>generate_unconstrained_report</id>
+						<name>Report Unconstrained Paths</name>
+						<item_bitmap>report_table</item_bitmap>
+						<status_ok_if type="report_panel_exists">Unconstrained Paths</status_ok_if>
+						<prereq>update_netlist</prereq>
+						<action type="tcl" run_in="sta">	
+							report_ucp -panel_name "Unconstrained Paths"
+						</action>
+					</task>
+					<task>
+						<id>generate_sdc_report</id>
+						<name>Report SDC</name>
+						<item_bitmap>report_table</item_bitmap>
+						<status_ok_if type="report_panel_exists">SDC Assignments</status_ok_if>
+						<prereq>update_netlist</prereq>
+						<action type="tcl" run_in="sta">	
+							report_sdc -panel_name "SDC Assignments"
+						</action>
+					</task>
+					<task>
+						<name>Report Ignored Constraints</name>
+						<item_bitmap>report_table</item_bitmap>
+						<status_ok_if type="report_panel_exists">Ignored Constraints</status_ok_if>
+						<prereq>update_netlist</prereq>
+						<action type="tcl" run_in="sta">	
+							report_sdc -ignored -panel_name "Ignored Constraints"
+						</action>
+					</task>
+					<task>
+						<name>Check Timing</name>
+						<item_bitmap>report_table</item_bitmap>
+						<status_ok_if type="report_panel_exists">Check Timing</status_ok_if>
+						<prereq>update_netlist</prereq>
+						<action type="tcl" run_in="sta">	
+							check_timing -panel_name "Check Timing"
+						</action>
+					</task>
+					<task>
+						<id>report_partitions</id>
+						<name>Report Partitions</name>
+						<item_bitmap>report_table</item_bitmap>
+						<status_ok_if type="report_panel_exists">Partition Timing Report</status_ok_if>
+						<prereq>update_netlist</prereq>
+						<action type="tcl" run_in="sta">
+							report_partitions -panel_name "Partition Timing Report"
+						</action>
+					</task>										
+				</subtasks>
+			</task>
+			<task>
+				<name>Custom Reports</name>
+				<subtasks>
+					<task>
+						<name>Report Timing...</name>
+						<item_bitmap>dialog_box</item_bitmap>
+						<prereq>update_netlist</prereq>
+						<action type="menu">
+							Report Timing...
+						</action>
+					</task>
+					<task>
+						<name>Report Minimum Pulse Width...</name>
+						<item_bitmap>dialog_box</item_bitmap>
+						<prereq>update_netlist</prereq>
+						<action type="menu">
+							Report Minimum Pulse Width...
+						</action>
+					</task>
+					<task>
+						<name>Report False Path...</name>
+						<item_bitmap>dialog_box</item_bitmap>
+						<prereq>update_netlist</prereq>
+						<action type="menu">
+							Report False Path...
+						</action>
+					</task>
+					<task>
+						<name>Report Path...</name>
+						<item_bitmap>dialog_box</item_bitmap>
+						<prereq>update_netlist</prereq>
+						<action type="menu">
+							Report Path...
+						</action>
+					</task>
+					<task>
+						<name>Report Exceptions...</name>
+						<item_bitmap>dialog_box</item_bitmap>
+						<prereq>update_netlist</prereq>
+						<action type="menu">
+							Report Exceptions...
+						</action>
+					</task>
+					<task>
+						<name>Report Bottlenecks...</name>
+						<item_bitmap>dialog_box</item_bitmap>
+						<prereq>update_netlist</prereq>
+						<action type="menu">
+							Report Bottlenecks...
+						</action>
+					</task>
+					<task>
+						<name>Report Net Timing...</name>
+						<item_bitmap>dialog_box</item_bitmap>
+						<prereq>update_netlist</prereq>
+						<action type="menu">
+							Report Net Timing...
+						</action>
+					</task>
+					<task>
+						<name>Create Slack Histogram...</name>
+						<item_bitmap>dialog_box</item_bitmap>
+						<prereq>update_netlist</prereq>
+						<action type="menu">
+							Create Slack Histogram...
+						</action>
+					</task>
+				</subtasks>
+			</task>
+			<task>
+				<name>Macros</name>
+				<subtasks>
+					<task>
+						<id>generate_all_summary_tables</id>
+						<name>Report All Summaries</name>
+						<item_bitmap>report_table</item_bitmap>
+						<prereq>update_netlist</prereq>
+						<action type="tcl" run_in="sta">
+							qsta_utility::generate_all_summary_tables
+						</action>
+					</task>
+					<task>
+						<id>generate_failing_tables</id>
+						<name>Report Top Failing Paths</name>
+						<item_bitmap>report_table</item_bitmap>
+						<status_ok_if type="report_panel_exists">Top Failing Paths</status_ok_if>
+						<prereq>update_netlist</prereq>
+						<action type="tcl" run_in="sta">
+							qsta_utility::generate_top_failures_per_clock "Top Failing Paths" 200
+						</action>
+					</task>
+					<task>
+						<id>generate_all_i/o_timing_reports</id>
+						<name>Report All I/O Timings</name>
+						<item_bitmap>report_table</item_bitmap>
+						<status_ok_if type="report_panel_exists">Report Timing (I/O)</status_ok_if>
+						<prereq>update_netlist</prereq>
+						<action type="tcl" run_in="sta">
+							qsta_utility::generate_all_io_timing_reports "Report Timing (I/O)" 1000
+						</action>
+					</task>
+					<task>
+						<id>generate_all_core_timing_reports</id>
+						<name>Report All Core Timings</name>
+						<item_bitmap>report_table</item_bitmap>
+						<status_ok_if type="report_panel_exists">Report Timing (Core)</status_ok_if>
+						<prereq>update_netlist</prereq>
+						<action type="tcl" run_in="sta">
+							qsta_utility::generate_all_core_timing_reports "Report Timing (Core)" 1000
+						</action>
+					</task>
+					<task>
+						<id>generate_clock_histograms</id>
+						<name>Create All Clock Histograms</name>
+						<item_bitmap>report_table</item_bitmap>
+						<status_ok_if type="report_panel_exists">All Clock Histograms</status_ok_if>
+						<prereq>update_netlist</prereq>
+						<action type="tcl" run_in="sta">
+							qsta_utility::generate_all_histograms "All Clock Histograms"
+						</action>
+					</task>
+				</subtasks>
+			</task>
+		</subtasks>
+	</task>
+	<task>
+		<id>write_sdc</id>
+		<name>Write SDC File...</name>
+		<bold/>
+		<item_bitmap>dialog_box</item_bitmap>
+		<prereq>load_sdc_file</prereq>
+		<action type="menu">
+			Write SDC File...
+		</action>
+	</task>
+	<task>
+		<id>reset_design</id>
+		<name>Reset Design</name>
+		<prereq>create_netlist</prereq>
+		<action type="tcl" run_in="sta">
+			reset_design
+		</action>
+	</task>
+	<task>
+		<id>set_operating_conditions</id>
+		<name>Set Operating Conditions...</name>
+		<item_bitmap>dialog_box</item_bitmap>
+		<prereq>create_netlist</prereq>
+		<action type="menu">
+			Set Operating Conditions...
+		</action>
+	</task>
+</tasks>

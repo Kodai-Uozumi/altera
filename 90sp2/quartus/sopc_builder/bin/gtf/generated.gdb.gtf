@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<template name="generated.gdb">
+
+    <call gtf="%GTF_DIR%/check_version.gtf"/>
+
+    <call gtf="%GTF_DIR%/CPU.gtf"/>
+
+    <call gtf="%GTF_DIR%/file_heading.mk.gtf"/>
+
+    <include source="%GTF_DIR%/warning.mk"/>
+
+    <set_variable variable="MEMORY_MODULES_ONLY" to="1"/>
+    <export variable="MEMORY_MODULES_ONLY"/>
+    <call gtf="%GTF_DIR%/MODULE_lists.gtf"/>
+
+    <!-- the memory segments... -->
+
+    <!-- one for each MODULE/SLAVE -->
+
+    <for_each variable="MODULE_SLAVE" index_variable="MODULE_SLAVE_LIST_INDEX" list="%MODULE_SLAVE_LIST%">
+        <export variable="MODULE_SLAVE"/>
+        <call gtf="%GTF_DIR%/BASE_ADDRESS_and_ADDRESS_SPAN.gtf"/>
+
+        <set_variable variable="MODULE_SLAVE_NAME" to="list_get( %MODULE_SLAVE_NAME_LIST%, %MODULE_SLAVE_LIST_INDEX% )"/>
+
+        <text>
+
+# %MODULE_SLAVE_NAME%
+mem %BASE_ADDRESS% %BASE_ADDRESS%+%ADDRESS_SPAN% cache
+        </text>
+    </for_each>
+
+</template>

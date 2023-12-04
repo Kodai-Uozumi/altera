@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<!-- file_heading.h.gtf
+         This "subroutine" generates the standard heading text for .c or .h
+         files (or any other type of file that uses "/* ... */" for comments).
+         It expects the following variables to have been exported:
+                FILE_NAME
+                CPU
+                PTF_NAME
+                TIMESTAMP
+         The FILE_DESCRIPTION variable is optional.
+-->
+
+<generate_set>
+
+    <if condition="not( %FILE_DESCRIPTION% )">
+        <set_variable variable="FILE_DESCRIPTION" to=""/>
+    </if>
+
+    <text>
+/* %FILE_NAME% %FILE_DESCRIPTION%
+ *
+ * Machine generated for a CPU named "%CPU%" as defined in:
+ * %PTF_NAME%
+ *
+ * Generated: %TIMESTAMP%
+ *
+ */
+    </text>
+
+    <!-- clear the variable to prevent side-effects if more than one
+         file calling this is generated at once -->
+    <set_variable variable="FILE_DESCRIPTION" to=""/>
+
+</generate_set>

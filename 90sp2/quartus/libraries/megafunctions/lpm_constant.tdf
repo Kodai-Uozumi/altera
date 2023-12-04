@@ -1,0 +1,73 @@
+ --------------------------------------------------------------------
+--
+--	LPM_CONSTANT Parameterized Megafunction
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 1.0
+--
+--------------------------------------------------------------------
+OPTIONS NAME_SUBSTITUTION = ON;
+
+PARAMETERS
+(
+	LPM_WIDTH,
+	LPM_CVALUE,
+	ENABLE_RUNTIME_MOD = "NO",
+	CBXI_PARAMETER = "NOTHING"
+);
+
+FUNCTION @CBXI_PARAMETER ()
+	RETURNS (result[LPM_WIDTH-1..0]);
+
+DEFINE CBX_SUPPORT_ONLY() = ((LPM_WIDTH >= 32) # (ENABLE_RUNTIME_MOD == "YES")) ? 1 : 0;
+
+SUBDESIGN lpm_constant
+(
+	result[LPM_WIDTH-1..0]		: OUTPUT;
+)
+VARIABLE
+	IF ((CBX_SUPPORT_ONLY() == 1) & (CBXI_PARAMETER != "NOTHING")) GENERATE
+		ag : @CBXI_PARAMETER WITH (CBXI_PARAMETER = "NOTHING");
+	END GENERATE;
+
+BEGIN
+
+	ASSERT (LPM_WIDTH > 0)
+			REPORT "Value of LPM_WIDTH parameter value must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID LPM_CONSTANT_WIDTH;
+
+	IF ((CBX_SUPPORT_ONLY() == 1) &  (CBXI_PARAMETER != "NOTHING")) GENERATE
+		IF USED(result) GENERATE
+			result[] = ag.result[];
+		END GENERATE;
+	ELSE GENERATE
+		FOR each_bit IN 0 TO LPM_WIDTH-1 GENERATE
+			IF ((2^each_bit & LPM_CVALUE) == 0) GENERATE
+				result[each_bit] = GND;
+			ELSE GENERATE
+				result[each_bit] = VCC;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+	
+	IF !USED(result) GENERATE
+		result[] = GND;
+	END GENERATE;
+END;
+

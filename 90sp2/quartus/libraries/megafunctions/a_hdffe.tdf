@@ -1,0 +1,59 @@
+-- TITLE "DFFE that powers-up high, and with async clear";
+PARAMETERS
+(
+	NOT_GATE_PUSH_BACK="OFF",
+	DEVICE_FAMILY
+);
+
+INCLUDE "aglobal90.inc";
+INCLUDE "a_hdffe.inc";
+
+SUBDESIGN a_hdffe
+(
+	d		: input = GND;
+	clk		: input;
+	clrn	: input = VCC;
+	ena		: input = VCC;
+	q		: output;
+)
+
+VARIABLE
+-- The logic option "NOT_GATE_PUSH_BACK" must be set to "OFF"
+-- to get an asynchronously clearable DFF that powers-up high.
+-- This trick won't work in FLEX6000 if clrn is used.
+	IF (NOT_GATE_PUSH_BACK == "OFF"
+		 # (FAMILY_HAS_NATIVE_ALOAD() == 0 & USED(clrn))) GENERATE
+		ldffe : dffe;
+	ELSE GENERATE
+		ldffe : a_hdffe WITH (NOT_GATE_PUSH_BACK="OFF");
+	END GENERATE;
+
+BEGIN
+	ldffe.clk = clk;
+	IF (NOT_GATE_PUSH_BACK == "OFF" & (FAMILY_HAS_NATIVE_ALOAD() == 1 # USED(clrn) == 0)) GENERATE
+		ldffe.d = !d;
+		IF (USED(clrn)) GENERATE
+			ldffe.prn = clrn;
+		END GENERATE;
+		ldffe.ena = ena;
+		q = !ldffe.q;
+	ELSE GENERATE
+		
+		ASSERT (FAMILY_HAS_NATIVE_ALOAD() == 1 # USED(clrn) == 0)
+			REPORT "Current device family (%) does not support the power-up high feature in asynchronously clearable registers"
+				DEVICE_FAMILY
+			SEVERITY WARNING
+			HELP_ID A_HDFF_UNNAMED;
+
+		ldffe.d = d;
+		IF (USED(clrn)) GENERATE
+			ldffe.clrn = clrn;
+		END GENERATE;
+		ldffe.ena = ena;
+		q = ldffe.q;
+	END GENERATE;
+	IF !USED(q) GENERATE
+		q = GND;
+	END GENERATE;
+END;
+

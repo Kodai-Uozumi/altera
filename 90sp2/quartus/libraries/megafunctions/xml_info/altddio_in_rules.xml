@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<ROOT>
+		<INCLUDE FILE="mfam_family_macros.xml" />
+		<MACROS>
+			<MACRO NAME="m_family_support_sset_sclr" >
+				<DEFINITION>
+					mfam_family_stratixii || mfam_family_stratixiii || mfam_family_base_stratix
+				</DEFINITION>
+			</MACRO>
+		</MACROS>
+		<PARAMETER_RULES>
+			<PARAMETER NAME="POWER_UP_HIGH" VALUE="ON|OFF|UNUSED" TYPE="STRING" >
+				<FORCE_VALUE V="UNUSED" WHEN="is_used(aclr) || is_used(aset)" />
+			</PARAMETER>
+		</PARAMETER_RULES>
+		<PORT_RULES>
+			<PORT NAME="datain" TYPE="INPUT" USAGE="USED"/>
+			<PORT NAME="inclock" TYPE="INPUT" USAGE="USED"/>
+			<PORT NAME="inclocken" TYPE="INPUT" USAGE="VARIABLE"/>
+			<PORT NAME="dataout_h" TYPE="OUTPUT" USAGE="USED"/>
+			<PORT NAME="dataout_l" TYPE="OUTPUT" USAGE="USED"/>
+			<PORT NAME="aclr" TYPE="INPUT" USAGE="VARIABLE"/>
+			<PORT NAME="aset" TYPE="INPUT" USAGE="VARIABLE">
+				<STATE V="UNUSED" WHEN="is_used(aclr)" />
+			</PORT>	
+			<PORT NAME="sset" TYPE="INPUT" USAGE="VARIABLE">
+				<STATE V="UNUSED" WHEN="is_used(sclr) || !m_family_support_sset_sclr" />
+			</PORT>	
+			<PORT NAME="sclr" TYPE="INPUT" USAGE="VARIABLE">
+				<STATE V="UNUSED" WHEN="!m_family_support_sset_sclr" />
+			</PORT>
+		</PORT_RULES>
+</ROOT>

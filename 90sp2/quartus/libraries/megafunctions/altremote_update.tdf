@@ -1,0 +1,109 @@
+------------------------------------------------------------------
+-- altremote_update parameterized megafunction
+-- Generated with 'clearbox' loader - do not edit
+------------------------------------------------------------------
+
+
+-- Copyright (C) 1991-2009 Altera Corporation
+--  Your use of Altera Corporation's design tools, logic functions 
+--  and other software and tools, and its AMPP partner logic 
+--  functions, and any output files from any of the foregoing 
+--  (including device programming or simulation files), and any 
+--  associated documentation or information are expressly subject 
+--  to the terms and conditions of the Altera Program License 
+--  Subscription Agreement, Altera MegaCore Function License 
+--  Agreement, or other applicable license agreement, including, 
+--  without limitation, that your use is for the sole purpose of 
+--  programming logic devices manufactured by Altera and sold by 
+--  Altera or its authorized distributors.  Please refer to the 
+--  applicable agreement for further details.
+
+--  Version 9.0 Build 235 06/17/2009
+
+OPTIONS NAME_SUBSTITUTION = ON;
+
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+
+PARAMETERS
+(
+	in_data_width = 12,
+	operation_mode = "remote",
+	out_data_width = 12,
+	sim_init_config = "factory",
+	sim_init_page_select = 0,
+	sim_init_status = 0,
+	sim_init_watchdog_value = 0,
+	CBXI_PARAMETER = "NOTHING"
+);
+FUNCTION @CBXI_PARAMETER (clock, data_in[in_data_width-1..0], param[2..0], read_param, read_source[1..0], reconfig, reset, reset_timer, write_param)
+RETURNS (busy, data_out[out_data_width-1..0], pgmout[2..0]);
+
+
+SUBDESIGN altremote_update
+(
+	busy		:	OUTPUT;
+	clock		:	INPUT;
+	data_in[in_data_width-1..0]		:	INPUT = GND;
+	data_out[out_data_width-1..0]		:	OUTPUT;
+	param[2..0]		:	INPUT = GND;
+	pgmout[2..0]		:	OUTPUT;
+	read_param		:	INPUT = GND;
+	read_source[1..0]		:	INPUT = GND;
+	reconfig		:	INPUT = GND;
+	reset		:	INPUT;
+	reset_timer		:	INPUT = GND;
+	write_param		:	INPUT = GND;
+)
+VARIABLE
+	IF CBXI_PARAMETER != "NOTHING" GENERATE
+		auto_generated : @CBXI_PARAMETER WITH ( CBXI_PARAMETER = "NOTHING" );
+	END GENERATE;
+BEGIN
+	ASSERT (CBXI_PARAMETER != "NOTHING")
+	REPORT "Valid clear box generator not found or Errors encountered during clear box generation"
+	SEVERITY ERROR;
+	IF (CBXI_PARAMETER != "NOTHING") GENERATE
+		IF USED(busy) GENERATE
+			busy = auto_generated.busy;
+		ELSE GENERATE
+			busy = GND;
+		END GENERATE;
+		IF USED(clock) GENERATE
+			auto_generated.clock = clock;
+		END GENERATE;
+		IF USED(data_in) GENERATE
+			auto_generated.data_in[] = data_in[];
+		END GENERATE;
+		IF USED(data_out) GENERATE
+			data_out[] = auto_generated.data_out[];
+		ELSE GENERATE
+			data_out[] = GND;
+		END GENERATE;
+		IF USED(param) GENERATE
+			auto_generated.param[] = param[];
+		END GENERATE;
+		IF USED(pgmout) GENERATE
+			pgmout[] = auto_generated.pgmout[];
+		ELSE GENERATE
+			pgmout[] = GND;
+		END GENERATE;
+		IF USED(read_param) GENERATE
+			auto_generated.read_param = read_param;
+		END GENERATE;
+		IF USED(read_source) GENERATE
+			auto_generated.read_source[] = read_source[];
+		END GENERATE;
+		IF USED(reconfig) GENERATE
+			auto_generated.reconfig = reconfig;
+		END GENERATE;
+		IF USED(reset) GENERATE
+			auto_generated.reset = reset;
+		END GENERATE;
+		IF USED(reset_timer) GENERATE
+			auto_generated.reset_timer = reset_timer;
+		END GENERATE;
+		IF USED(write_param) GENERATE
+			auto_generated.write_param = write_param;
+		END GENERATE;
+	END GENERATE;
+END;

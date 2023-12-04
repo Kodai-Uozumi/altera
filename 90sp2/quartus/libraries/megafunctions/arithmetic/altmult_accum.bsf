@@ -1,0 +1,603 @@
+/*
+WARNING: Do NOT edit the input and output ports in this file in a text
+editor if you plan to continue editing the block that represents it in
+the Block Editor! File corruption is VERY likely to occur.
+*/
+/*
+Copyright (C) 1991-2003 Altera Corporation
+Any  megafunction  design,  and related netlist (encrypted  or  decrypted),
+support information,  device programming or simulation file,  and any other
+associated  documentation or information  provided by  Altera  or a partner
+under  Altera's   Megafunction   Partnership   Program  may  be  used  only
+to program  PLD  devices (but not masked  PLD  devices) from  Altera.   Any
+other  use  of such  megafunction  design,  netlist,  support  information,
+device programming or simulation file,  or any other  related documentation
+or information  is prohibited  for  any  other purpose,  including, but not
+limited to  modification,  reverse engineering,  de-compiling, or use  with
+any other  silicon devices,  unless such use is  explicitly  licensed under
+a separate agreement with  Altera  or a megafunction partner.  Title to the
+intellectual property,  including patents,  copyrights,  trademarks,  trade
+secrets,  or maskworks,  embodied in any such megafunction design, netlist,
+support  information,  device programming or simulation file,  or any other
+related documentation or information provided by  Altera  or a megafunction
+partner, remains with Altera, the megafunction partner, or their respective
+licensors. No other licenses, including any licenses needed under any third
+party's intellectual property, are provided herein.
+*/
+(header "symbol" (version "1.1"))
+(symbol
+	(rect 64 64 280 464)
+	(text "ALTMULT_ACCUM" (rect 48 0 159 16)(font "Arial" (font_size 10)))
+	(text "inst" (rect 8 384 25 396)(font "Arial" ))
+	(port
+		(pt 0 24)
+		(input)
+		(text "dataa[(WIDTH_A) - (1)..0]" (rect 0 -16 108 -4)(font "Arial" ))
+		(text "dataa[]" (rect 24 16 62 30)(font "Arial" (font_size 8)))
+		(line (pt 0 24)(pt 16 24)(line_width 3))
+	)
+	(port
+		(pt 0 88)
+		(input)
+		(text "datab[(WIDTH_B) - (1)..0]" (rect 0 -16 108 -4)(font "Arial" ))
+		(text "datab[]" (rect 24 80 62 94)(font "Arial" (font_size 8)))
+		(line (pt 0 88)(pt 16 88)(line_width 3))
+	)
+	(port
+		(pt 0 184)
+		(input)
+		(text "addnsub" (rect 0 -16 35 -4)(font "Arial" ))
+		(text "addnsub" (rect 24 176 73 190)(font "Arial" (font_size 8)))
+		(line (pt 0 184)(pt 16 184)(line_width 1))
+	)
+	(port
+		(pt 0 152)
+		(input)
+		(text "accum_sload" (rect 0 -16 55 -4)(font "Arial" ))
+		(text "accum_sload" (rect 24 144 99 158)(font "Arial" (font_size 8)))
+		(line (pt 0 152)(pt 16 152)(line_width 1))
+	)
+	(port
+		(pt 0 72)
+		(input)
+		(text "signa" (rect 0 -16 22 -4)(font "Arial" ))
+		(text "signa" (rect 24 64 54 78)(font "Arial" (font_size 8)))
+		(line (pt 0 72)(pt 16 72)(line_width 1))
+	)
+	(port
+		(pt 0 136)
+		(input)
+		(text "signb" (rect 0 -16 22 -4)(font "Arial" ))
+		(text "signb" (rect 24 128 54 142)(font "Arial" (font_size 8)))
+		(line (pt 0 136)(pt 16 136)(line_width 1))
+	)
+	(port
+		(pt 0 264)
+		(input)
+		(text "clock0" (rect 0 -16 27 -4)(font "Arial" ))
+		(text "clock0" (rect 21 256 57 270)(font "Arial" (font_size 8)))
+		(line (pt 0 264)(pt 16 264)(line_width 1))
+	)
+	(port
+		(pt 0 296)
+		(input)
+		(text "clock1" (rect 0 -16 27 -4)(font "Arial" ))
+		(text "clock1" (rect 21 288 57 302)(font "Arial" (font_size 8)))
+		(line (pt 0 296)(pt 16 296)(line_width 1))
+	)
+	(port
+		(pt 0 328)
+		(input)
+		(text "clock2" (rect 0 -16 27 -4)(font "Arial" ))
+		(text "clock2" (rect 21 320 57 334)(font "Arial" (font_size 8)))
+		(line (pt 0 328)(pt 16 328)(line_width 1))
+	)
+	(port
+		(pt 0 360)
+		(input)
+		(text "clock3" (rect 0 -16 27 -4)(font "Arial" ))
+		(text "clock3" (rect 21 352 57 366)(font "Arial" (font_size 8)))
+		(line (pt 0 360)(pt 16 360)(line_width 1))
+	)
+	(port
+		(pt 0 280)
+		(input)
+		(text "ena0" (rect 0 -16 20 -4)(font "Arial" ))
+		(text "ena0" (rect 21 272 49 286)(font "Arial" (font_size 8)))
+		(line (pt 0 280)(pt 16 280)(line_width 1))
+	)
+	(port
+		(pt 0 312)
+		(input)
+		(text "ena1" (rect 0 -16 20 -4)(font "Arial" ))
+		(text "ena1" (rect 21 304 49 318)(font "Arial" (font_size 8)))
+		(line (pt 0 312)(pt 16 312)(line_width 1))
+	)
+	(port
+		(pt 0 344)
+		(input)
+		(text "ena2" (rect 0 -16 20 -4)(font "Arial" ))
+		(text "ena2" (rect 21 336 49 350)(font "Arial" (font_size 8)))
+		(line (pt 0 344)(pt 16 344)(line_width 1))
+	)
+	(port
+		(pt 0 376)
+		(input)
+		(text "ena3" (rect 0 -16 20 -4)(font "Arial" ))
+		(text "ena3" (rect 21 368 49 382)(font "Arial" (font_size 8)))
+		(line (pt 0 376)(pt 16 376)(line_width 1))
+	)
+	(port
+		(pt 88 400)
+		(input)
+		(text "aclr0" (rect 80 352 94 376)(font "Arial" (font_size 8))(vertical))
+		(text "aclr0" (rect 80 352 94 380)(font "Arial" (font_size 8))(vertical))
+		(line (pt 88 400)(pt 88 384))
+	)
+	(port
+		(pt 104 400)
+		(input)
+		(text "aclr1" (rect 96 352 110 376)(font "Arial" (font_size 8))(vertical))
+		(text "aclr1" (rect 96 352 110 380)(font "Arial" (font_size 8))(vertical))
+		(line (pt 104 400)(pt 104 384))
+	)
+	(port
+		(pt 120 400)
+		(input)
+		(text "aclr2" (rect 112 352 126 376)(font "Arial" (font_size 8))(vertical))
+		(text "aclr2" (rect 112 352 126 380)(font "Arial" (font_size 8))(vertical))
+		(line (pt 120 400)(pt 120 384))
+	)
+	(port
+		(pt 136 400)
+		(input)
+		(text "aclr3" (rect 128 352 142 376)(font "Arial" (font_size 8))(vertical))
+		(text "aclr3" (rect 128 352 142 380)(font "Arial" (font_size 8))(vertical))
+		(line (pt 136 400)(pt 136 384))
+	)
+	(port
+		(pt 0 104)
+		(input)
+		(text "scaninb[WIDTH_B-1..0]" (rect 24 96 154 110)(font "Arial" (font_size 8)))
+		(text "scaninb[]" (rect 24 96 75 110)(font "Arial" (font_size 8)))
+		(line (pt 0 104)(pt 16 104)(color 0 128 255)(line_width 3))
+	)
+	(port
+		(pt 0 120)
+		(input)
+		(text "sourceb" (rect 24 112 71 126)(font "Arial" (font_size 8)))
+		(text "sourceb" (rect 24 112 71 126)(font "Arial" (font_size 8)))
+		(line (pt 0 120)(pt 16 120))
+	)
+	(port
+		(pt 0 56)
+		(input)
+		(text "sourcea" (rect 24 32 71 46)(font "Arial" (font_size 8)))
+		(text "sourcea" (rect 24 48 71 62)(font "Arial" (font_size 8)))
+		(line (pt 0 56)(pt 16 56))
+	)
+	(port
+		(pt 0 40)
+		(input)
+		(text "scanina[WIDTH_A-1..0]" (rect 24 24 156 38)(font "Arial" (font_size 8)))
+		(text "scanina[]" (rect 24 32 75 46)(font "Arial" (font_size 8)))
+		(line (pt 0 40)(pt 16 40)(color 0 128 255)(line_width 3))
+	)
+	(port
+		(pt 0 168)
+		(input)
+		(text "accum_sload_upper_data[WIDTH_UPPER_DATA-1..0]" (rect 24 208 328 222)(font "Arial" (font_size 8)))
+		(text "accum_sload_upper_data[]" (rect 24 160 178 174)(font "Arial" (font_size 8)))
+		(line (pt 0 168)(pt 16 168)(color 0 128 255)(line_width 3))
+	)
+	(port
+		(pt 0 200)
+		(input)
+		(text "mult_round" (rect 24 200 86 214)(font "Arial" (font_size 8)))
+		(text "mult_round" (rect 24 192 86 206)(font "Arial" (font_size 8)))
+		(line (pt 0 200)(pt 16 200))
+	)
+	(port
+		(pt 0 216)
+		(input)
+		(text "mult_saturation" (rect 24 216 110 230)(font "Arial" (font_size 8)))
+		(text "mult_saturation" (rect 24 208 110 222)(font "Arial" (font_size 8)))
+		(line (pt 0 216)(pt 16 216))
+	)
+	(port
+		(pt 0 232)
+		(input)
+		(text "accum_round" (rect 24 232 101 246)(font "Arial" (font_size 8)))
+		(text "accum_round" (rect 24 224 101 238)(font "Arial" (font_size 8)))
+		(line (pt 0 232)(pt 16 232))
+	)
+	(port
+		(pt 0 248)
+		(input)
+		(text "accum_saturation" (rect 24 248 125 262)(font "Arial" (font_size 8)))
+		(text "accum_saturation" (rect 24 240 125 254)(font "Arial" (font_size 8)))
+		(line (pt 0 248)(pt 16 248))
+	)
+	(port
+		(pt 216 136)
+		(output)
+		(text "result[(WIDTH_RESULT) - (1)..0]" (rect -104 -16 34 -4)(font "Arial" ))
+		(text "result[]" (rect 162 128 200 142)(font "Arial" (font_size 8)))
+		(line (pt 216 136)(pt 200 136)(line_width 3))
+	)
+	(port
+		(pt 216 152)
+		(output)
+		(text "overflow" (rect -104 -16 -68 -4)(font "Arial" ))
+		(text "overflow" (rect 152 144 203 158)(font "Arial" (font_size 8)))
+		(line (pt 216 152)(pt 200 152)(line_width 1))
+	)
+	(port
+		(pt 216 40)
+		(output)
+		(text "scanouta[(WIDTH_A) - (1)..0]" (rect -104 -16 19 -4)(font "Arial" ))
+		(text "scanouta[]" (rect 144 32 204 46)(font "Arial" (font_size 8)))
+		(line (pt 216 40)(pt 200 40)(line_width 3))
+	)
+	(port
+		(pt 216 104)
+		(output)
+		(text "scanoutb[(WIDTH_B) - (1)..0]" (rect -104 -16 19 -4)(font "Arial" ))
+		(text "scanoutb[]" (rect 144 96 204 110)(font "Arial" (font_size 8)))
+		(line (pt 216 104)(pt 200 104)(line_width 3))
+	)
+	(port
+		(pt 216 272)
+		(output)
+		(text "mult_is_saturated" (rect 166 224 266 238)(font "Arial" (font_size 8)))
+		(text "mult_is_saturated" (rect 104 264 204 278)(font "Arial" (font_size 8)))
+		(line (pt 216 272)(pt 200 272))
+	)
+	(port
+		(pt 216 288)
+		(output)
+		(text "accum_is_saturated" (rect 166 280 281 294)(font "Arial" (font_size 8)))
+		(text "accum_is_saturated" (rect 96 280 211 294)(font "Arial" (font_size 8)))
+		(line (pt 216 288)(pt 200 288))
+	)
+	(parameter
+		"WIDTH_A"
+		""
+		"The width of the 'dataa' port."
+	)
+	(parameter
+		"WIDTH_B"
+		""
+		"The width of the 'datab' port."
+	)
+	(parameter
+		"WIDTH_RESULT"
+		""
+		"The width of the 'result' port."
+	)
+	(parameter
+		"WIDTH_UPPER_DATA"
+		"1"
+		"The width of the 'accum_sload_upper_data' port."
+	)
+	(parameter
+		"INPUT_REG_A"
+		"\"UNREGISTERED\""
+		"The clock port for the A input register."
+		"\"CLOCK0\"" "\"CLOCK1\"" "\"CLOCK2\"" "\"CLOCK3\"" "\"UNREGISTERED\"" 
+	)
+	(parameter
+		"INPUT_ACLR_A"
+		"\"ACLR0\""
+		"The asynchronous clear port for the A input register."
+		"\"ACLR0\"" "\"ACLR1\"" "\"ACLR2\"" "\"ACLR3\"" 
+	)
+	(parameter
+		"INPUT_SOURCE_A"
+		"\"DATAA\""
+		"Specifies whether the source of input A of multiplier is 'dataa' or 'scanina'."
+		"\"DATAA\"" "\"SCANA\"" "\"VARIABLE\"" 
+	)
+	(parameter
+		"INPUT_REG_B"
+		"\"UNREGISTERED\""
+		"The clock port for the B input register."
+		"\"CLOCK0\"" "\"CLOCK1\"" "\"CLOCK2\"" "\"CLOCK3\"" "\"UNREGISTERED\"" 
+	)
+	(parameter
+		"INPUT_ACLR_B"
+		"\"ACLR0\""
+		"The asynchronous clear port for the B input register."
+		"\"ACLR0\"" "\"ACLR1\"" "\"ACLR2\"" "\"ACLR3\"" 
+	)
+	(parameter
+		"INPUT_SOURCE_B"
+		"\"DATAB\""
+		"Specifies whether the source of input B of multiplier is 'datab' or 'scaninb'."
+		"\"DATAB\"" "\"SCANB\"" "\"VARIABLE\"" 
+	)
+	(parameter
+		"ADDNSUB_REG"
+		"\"UNREGISTERED\""
+		"The clock port for the 'addnsub' input register."
+		"\"CLOCK0\"" "\"CLOCK1\"" "\"CLOCK2\"" "\"CLOCK3\"" "\"UNREGISTERED\"" 
+	)
+	(parameter
+		"ADDNSUB_ACLR"
+		"\"ACLR0\""
+		"The asynchronous clear port for the 'addnsub' input register."
+		"\"ACLR0\"" "\"ACLR1\"" "\"ACLR2\"" "\"ACLR3\"" 
+	)
+	(parameter
+		"ADDNSUB_PIPELINE_REG"
+		"\"UNREGISTERED\""
+		"The clock port for the 'addnsub' pipeline register."
+		"\"CLOCK0\"" "\"CLOCK1\"" "\"CLOCK2\"" "\"CLOCK3\"" "\"UNREGISTERED\"" 
+	)
+	(parameter
+		"ADDNSUB_PIPELINE_ACLR"
+		"\"ACLR0\""
+		"The asynchronous clear port for the 'addnsub' pipeline register."
+		"\"ACLR0\"" "\"ACLR1\"" "\"ACLR2\"" "\"ACLR3\"" 
+	)
+	(parameter
+		"ACCUM_DIRECTION"
+		"\"ADD\""
+		"Specifies whether the multiplier output should be added or subtracted from the accumulator feedback path."
+		"\"ADD\"" "\"SUB\"" 
+	)
+	(parameter
+		"ACCUM_SLOAD_REG"
+		"\"UNREGISTERED\""
+		"The clock port for the 'accum_sload' input register."
+		"\"CLOCK0\"" "\"CLOCK1\"" "\"CLOCK2\"" "\"CLOCK3\"" "\"UNREGISTERED\"" 
+	)
+	(parameter
+		"ACCUM_SLOAD_ACLR"
+		"\"ACLR0\""
+		"The asynchronous clear port for the 'accum_sload' input register."
+		"\"ACLR0\"" "\"ACLR1\"" "\"ACLR2\"" "\"ACLR3\"" 
+	)
+	(parameter
+		"ACCUM_SLOAD_PIPELINE_REG"
+		"\"UNREGISTERED\""
+		"The clock port for the 'accum_sload' pipeline_register."
+		"\"CLOCK0\"" "\"CLOCK1\"" "\"CLOCK2\"" "\"CLOCK3\"" "\"UNREGISTERED\"" 
+	)
+	(parameter
+		"ACCUM_SLOAD_PIPELINE_ACLR"
+		"\"ACLR0\""
+		"The asynchronous clear port for the 'accum_sload' pipeline register."
+		"\"ACLR0\"" "\"ACLR1\"" "\"ACLR2\"" "\"ACLR3\"" 
+	)
+	(parameter
+		"ACCUM_SLOAD_UPPER_DATA_REG"
+		"\"UNREGISTERED\""
+		"The clock port for the 'accum_sload_upper_data' input register."
+		"\"CLOCK0\"" "\"CLOCK1\"" "\"CLOCK2\"" "\"CLOCK3\"" "\"UNREGISTERED\"" 
+	)
+	(parameter
+		"ACCUM_SLOAD_UPPER_DATA_ACLR"
+		"\"ACLR0\""
+		"The asynchronous clear port for the 'accum_sload_upper_data' input register."
+		"\"ACLR0\"" "\"ACLR1\"" "\"ACLR2\"" "\"ACLR3\"" 
+	)
+	(parameter
+		"ACCUM_SLOAD_UPPER_DATA_PIPELINE_REG"
+		"\"UNREGISTERED\""
+		"The clock port for the 'accum_sload_upper_data' pipeline_register."
+		"\"CLOCK0\"" "\"CLOCK1\"" "\"CLOCK2\"" "\"CLOCK3\"" "\"UNREGISTERED\"" 
+	)
+	(parameter
+		"ACCUM_SLOAD_UPPER_DATA_PIPELINE_ACLR"
+		"\"ACLR0\""
+		"The asynchronous clear port for the 'accum_sload_upper_data' pipeline register."
+		"\"ACLR0\"" "\"ACLR1\"" "\"ACLR2\"" "\"ACLR3\"" 
+	)
+	(parameter
+		"MULTIPLIER_ROUNDING"
+		"\"NO\""
+		"Specifies whether the multiplier is rounding or not."
+		"\"NO\"" "\"YES\"" "\"VARIABLE\"" 
+	)
+	(parameter
+		"MULTIPLIER_SATURATION"
+		"\"NO\""
+		"Specifies whether the multiplier is saturating or not."
+		"\"NO\"" "\"YES\"" "\"VARIABLE\"" 
+	)
+	(parameter
+		"PORT_MULT_IS_SATURATED"
+		"\"UNUSED\""
+		"Specifies whether the output port mult_is_saturated is used or not."
+		"\"UNUSED\"" "\"USED\"" 
+	)
+	(parameter
+		"ACCUMULATOR_ROUNDING"
+		"\"NO\""
+		"Specifies whether the accumulator is rounding or not."
+		"\"NO\"" "\"YES\"" "\"VARIABLE\"" 
+	)
+	(parameter
+		"ACCUMULATOR_SATURATION"
+		"\"NO\""
+		"Specifies whether the accumulator is saturating or not."
+		"\"NO\"" "\"YES\"" "\"VARIABLE\"" 
+	)
+	(parameter
+		"PORT_ACCUM_IS_SATURATED"
+		"\"UNUSED\""
+		"Specifies whether the output port accum_is_saturated is used or not."
+		"\"UNUSED\"" "\"USED\"" 
+	)
+	(parameter
+		"MULT_ROUND_REG"
+		"\"UNREGISTERED\""
+		"The clock port for the 'mult_round' input register."
+		"\"CLOCK0\"" "\"CLOCK1\"" "\"CLOCK2\"" "\"CLOCK3\"" "\"UNREGISTERED\"" 
+	)
+	(parameter
+		"MULT_ROUND_ACLR"
+		"\"ACLR0\""
+		"The asynchronous clear port for the 'mult_round' input register."
+		"\"ACLR0\"" "\"ACLR1\"" "\"ACLR2\"" "\"ACLR3\"" 
+	)
+	(parameter
+		"ACCUM_ROUND_REG"
+		"\"UNREGISTERED\""
+		"The clock port for the 'accum_round' input register."
+		"\"CLOCK0\"" "\"CLOCK1\"" "\"CLOCK2\"" "\"CLOCK3\"" "\"UNREGISTERED\"" 
+	)
+	(parameter
+		"ACCUM_ROUND_ACLR"
+		"\"ACLR0\""
+		"The asynchronous clear port for the 'accum_round' input register."
+		"\"ACLR0\"" "\"ACLR1\"" "\"ACLR2\"" "\"ACLR3\"" 
+	)
+	(parameter
+		"ACCUM_ROUND_PIPELINE_REG"
+		"\"UNREGISTERED\""
+		"The clock port for the 'accum_round' pipeline_register."
+		"\"CLOCK0\"" "\"CLOCK1\"" "\"CLOCK2\"" "\"CLOCK3\"" "\"UNREGISTERED\"" 
+	)
+	(parameter
+		"ACCUM_ROUND_PIPELINE_ACLR"
+		"\"ACLR0\""
+		"The asynchronous clear port for the 'accum_round' pipeline register."
+		"\"ACLR0\"" "\"ACLR1\"" "\"ACLR2\"" "\"ACLR3\"" 
+	)
+	(parameter
+		"MULT_SATURATION_REG"
+		"\"UNREGISTERED\""
+		"The clock port for the 'mult_saturation' input register."
+		"\"CLOCK0\"" "\"CLOCK1\"" "\"CLOCK2\"" "\"CLOCK3\"" "\"UNREGISTERED\"" 
+	)
+	(parameter
+		"MULT_SATURATION_ACLR"
+		"\"ACLR0\""
+		"The asynchronous clear port for the 'mult_saturation' input register."
+		"\"ACLR0\"" "\"ACLR1\"" "\"ACLR2\"" "\"ACLR3\"" 
+	)
+	(parameter
+		"ACCUM_SATURATION_REG"
+		"\"UNREGISTERED\""
+		"The clock port for the 'accum_saturation' input register."
+		"\"CLOCK0\"" "\"CLOCK1\"" "\"CLOCK2\"" "\"CLOCK3\"" "\"UNREGISTERED\"" 
+	)
+	(parameter
+		"ACCUM_SATURATION_ACLR"
+		"\"ACLR0\""
+		"The asynchronous clear port for the 'accum_saturation' input register."
+		"\"ACLR0\"" "\"ACLR1\"" "\"ACLR2\"" "\"ACLR3\"" 
+	)
+	(parameter
+		"ACCUM_SATURATION_PIPELINE_REG"
+		"\"UNREGISTERED\""
+		"The clock port for the 'accum_saturation' pipeline_register."
+		"\"CLOCK0\"" "\"CLOCK1\"" "\"CLOCK2\"" "\"CLOCK3\"" "\"UNREGISTERED\"" 
+	)
+	(parameter
+		"ACCUM_SATURATION_PIPELINE_ACLR"
+		"\"ACLR0\""
+		"The asynchronous clear port for the 'accum_saturation' pipeline register."
+		"\"ACLR0\"" "\"ACLR1\"" "\"ACLR2\"" "\"ACLR3\"" 
+	)
+	(parameter
+		"REPRESENTATION_A"
+		"\"UNSIGNED\""
+		"Specifies the number representation of the 'dataa' port."
+		"\"UNSIGNED\"" "\"SIGNED\"" 
+	)
+	(parameter
+		"SIGN_REG_A"
+		"\"UNREGISTERED\""
+		"The clock port for the 'signa' input register."
+		"\"CLOCK0\"" "\"CLOCK1\"" "\"CLOCK2\"" "\"CLOCK3\"" "\"UNREGISTERED\"" 
+	)
+	(parameter
+		"SIGN_ACLR_A"
+		"\"ACLR0\""
+		"The asynchronous clear port for the 'signa' input register."
+		"\"ACLR0\"" "\"ACLR1\"" "\"ACLR2\"" "\"ACLR3\"" 
+	)
+	(parameter
+		"SIGN_PIPELINE_REG_A"
+		"\"UNREGISTERED\""
+		"The clock port for the 'signa' pipeline register."
+		"\"CLOCK0\"" "\"CLOCK1\"" "\"CLOCK2\"" "\"CLOCK3\"" "\"UNREGISTERED\"" 
+	)
+	(parameter
+		"SIGN_PIPELINE_ACLR_A"
+		"\"ACLR0\""
+		"The asynchronous clear port for the 'signa' pipeline register."
+		"\"ACLR0\"" "\"ACLR1\"" "\"ACLR2\"" "\"ACLR3\"" 
+	)
+	(parameter
+		"SIGN_REG_B"
+		"\"UNREGISTERED\""
+		"The clock port for the 'signb' input register."
+		"\"CLOCK0\"" "\"CLOCK1\"" "\"CLOCK2\"" "\"CLOCK3\"" "\"UNREGISTERED\"" 
+	)
+	(parameter
+		"SIGN_ACLR_B"
+		"\"ACLR0\""
+		"The asynchronous clear port for the 'signb' input register."
+		"\"ACLR0\"" "\"ACLR1\"" "\"ACLR2\"" "\"ACLR3\"" 
+	)
+	(parameter
+		"REPRESENTATION_B"
+		"\"UNSIGNED\""
+		"The number representation of the 'datab' port."
+		"\"UNSIGNED\"" "\"SIGNED\"" 
+	)
+	(parameter
+		"SIGN_PIPELINE_REG_B"
+		"\"UNREGISTERED\""
+		"The clock port for the 'signb' pipeline register."
+		"\"CLOCK0\"" "\"CLOCK1\"" "\"CLOCK2\"" "\"CLOCK3\"" "\"UNREGISTERED\"" 
+	)
+	(parameter
+		"SIGN_PIPELINE_ACLR_B"
+		"\"ACLR0\""
+		"The asynchronous clear port for the 'signb' pipeline register."
+		"\"ACLR0\"" "\"ACLR1\"" "\"ACLR2\"" "\"ACLR3\"" 
+	)
+	(parameter
+		"MULTIPLIER_REG"
+		"\"UNREGISTERED\""
+		"The clock port for the multiplier output register."
+		"\"CLOCK0\"" "\"CLOCK1\"" "\"CLOCK2\"" "\"CLOCK3\"" "\"UNREGISTERED\"" 
+	)
+	(parameter
+		"MULTIPLIER_ACLR"
+		"\"ACLR0\""
+		"The asynchronous clear port for the multiplier output register."
+		"\"ACLR0\"" "\"ACLR1\"" "\"ACLR2\"" "\"ACLR3\"" 
+	)
+	(parameter
+		"OUTPUT_REG"
+		"\"CLOCK0\""
+		"The clock port for the accumulator register."
+		"\"CLOCK0\"" "\"CLOCK1\"" "\"CLOCK2\"" "\"CLOCK3\"" 
+	)
+	(parameter
+		"OUTPUT_ACLR"
+		"\"ACLR0\""
+		"The asynchronous clear port for the accumulator register."
+		"\"ACLR0\"" "\"ACLR1\"" "\"ACLR2\"" "\"ACLR3\"" 
+	)
+	(parameter
+		"EXTRA_MULTIPLIER_LATENCY"
+		"0"
+		"Latency to add to the multiplier portion of the accumulator."
+	)
+	(parameter
+		"EXTRA_ACCUMULATOR_LATENCY"
+		"0"
+		"Latency to add the the adder portion of the accumulator."
+	)
+	(drawing
+		(rectangle (rect 16 16 200 384)(line_width 1))
+	)
+	(annotation_block (parameter)(rect 280 -736 608 80))
+)

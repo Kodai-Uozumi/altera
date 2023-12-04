@@ -1,0 +1,383 @@
+--------------------------------------------------------------------
+--
+--	ALTROM Parameterized Megafunction
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 2.0
+--
+--------------------------------------------------------------------
+OPTIONS NAME_SUBSTITUTION = ON;
+INCLUDE "memmodes.inc";			% Constants defining ROM mode flags %
+INCLUDE "lpm_decode.inc";
+INCLUDE "lpm_mux.inc";
+INCLUDE "altqpram";
+INCLUDE "altsyncram";
+
+PARAMETERS
+(
+	WIDTH,
+	AD_WIDTH,
+	NUMWORDS = 2^AD_WIDTH,
+	FILE,
+	REGISTERINPUTMODE = "DEFAULT",
+	MAXIMUM_DEPTH = 2048,
+	DEVICE_FAMILY,
+	SUPPRESS_MEMORY_CONVERSION_WARNINGS = "OFF",
+	CBXI_PARAMETER = "NOTHING"
+);
+INCLUDE "aglobal90.inc";	% device family definitions %
+
+FUNCTION @CBXI_PARAMETER (address[AD_WIDTH-1..0], clocki, clocko)
+	RETURNS (q[WIDTH-1..0]);
+
+CONSTANT 10K_SLICE_SIZE = (USED(MAXIMUM_DEPTH) & (MAXIMUM_DEPTH != 0)) ? MAXIMUM_DEPTH : FAMILY_EAB_MAX_DEPTH();
+CONSTANT MAX_NUMWORDS = 2^AD_WIDTH;
+CONSTANT WORDS_PER_EAB = (MAX_NUMWORDS >= 10K_SLICE_SIZE) ?
+							10K_SLICE_SIZE : MAX_NUMWORDS;
+CONSTANT BITS_PER_EAB = (MAX_NUMWORDS >= 10K_SLICE_SIZE) ?
+							1 : 10K_SLICE_SIZE div WORDS_PER_EAB;
+
+CONSTANT ROM_DEPTH_IN_EABS	= (MAX_NUMWORDS > 10K_SLICE_SIZE) ?
+								CEIL(NUMWORDS div 10K_SLICE_SIZE)	% Wider than 10K_SLICE_SIZE %
+								: 1;	% Width <= 10K_SLICE_SIZE %
+-- ROM width in EABs	= CEIL(WIDTH div BITS_PER_EAB);
+CONSTANT EXTRA_ADDR_BITS	= AD_WIDTH - LOG2(WORDS_PER_EAB);
+
+% Figure out EAB mode if FLEX10K %
+DEFINE ROM_MODES(dummy) =
+	  (USED(clocki) ? (REGISTERINPUTMODE == "ALL" # REGISTERINPUTMODE == "DEFAULT" ? ROM_REG_ADDR # ROM_REG_CTRL
+						: (REGISTERINPUTMODE == "ADDRESS_CONTROL" ? ROM_REG_ADDR # ROM_REG_CTRL
+							: 0))
+		: 0)
+	# (USED(clocko) ? ROM_REG_DATAOUT : 0);
+
+% Are the address inputs registered? %
+DEFINE ADDR_IS_REGD(dummy) =
+	(USED(clocki) & ( REGISTERINPUTMODE == "ALL"
+					# REGISTERINPUTMODE == "DEFAULT"
+					# REGISTERINPUTMODE == "ADDRESS_CONTROL"));
+DEFINE STRATIX_ROM_POSSIBLE() = USED(clocki) ? 1 : 0; 
+DEFINE STRATIX_ROM_NOT_IMPOSSIBLE() = (USED(clocki) # USED(clocko)) ? 1 : 0;
+
+SUBDESIGN altrom
+(
+	address[AD_WIDTH-1..0]	: INPUT;
+	clocki					: INPUT = VCC;
+	clocko					: INPUT = VCC;
+	q[WIDTH-1..0]			: OUTPUT;
+)
+VARIABLE
+	IF CBXI_PARAMETER == "NOTHING" GENERATE
+		IF (FAMILY_USES_ALTQPRAM() != 1) GENERATE
+			IF (FAMILY_HAS_EAB() == 1) GENERATE
+				IF (FAMILY_STRATIX() == 1) GENERATE
+					IF STRATIX_ROM_POSSIBLE() GENERATE
+						rom_block : altsyncram WITH (
+							OPERATION_MODE = "ROM",
+							WIDTH_A = WIDTH,
+							WIDTHAD_A = AD_WIDTH,											
+							NUMWORDS_A = NUMWORDS,
+							INIT_FILE = USED(FILE) ? FILE : "UNUSED",
+							MAXIMUM_DEPTH = USED(MAXIMUM_DEPTH) ? MAXIMUM_DEPTH : "UNUSED",
+							OUTDATA_REG_A = USED(clocko) ? "CLOCK1" : "UNREGISTERED",
+							ADDRESS_ACLR_A = "NONE",
+							OUTDATA_ACLR_A = "NONE",
+							ENABLE_POF = "ON"																													
+						);
+					ELSE GENERATE
+						IF STRATIX_ROM_NOT_IMPOSSIBLE() GENERATE
+							rom_block : altsyncram WITH (
+								OPERATION_MODE = "ROM",
+								WIDTH_A = WIDTH,
+								WIDTHAD_A = AD_WIDTH,											
+								NUMWORDS_A = NUMWORDS,
+								INIT_FILE = USED(FILE) ? FILE : "UNUSED",
+								MAXIMUM_DEPTH = USED(MAXIMUM_DEPTH) ? MAXIMUM_DEPTH : "UNUSED",
+								OUTDATA_REG_A = "UNREGISTERED",
+								ADDRESS_ACLR_A = "NONE",
+								OUTDATA_ACLR_A = "NONE",
+								ENABLE_POF = "ON"																													
+							);
+						END GENERATE;					
+					END GENERATE;
+				ELSE GENERATE
+				content	: MEMORY
+				(
+					width			= WIDTH;
+					depth			= NUMWORDS;
+					segmentsize		= WORDS_PER_EAB;
+					mode			= ROM_MODES(0) # ROM_INITIALIZED # ROM_READONLY;
+					file			= File;
+				)
+				OF SEGMENTS
+				(
+					segment[ROM_DEPTH_IN_EABS-1..0][WIDTH-1..0]
+				);
+
+				IF (EXTRA_ADDR_BITS > 0) GENERATE
+					IF (ADDR_IS_REGD(0)) GENERATE
+						reg_iaddr[EXTRA_ADDR_BITS-1..0]	: DFF;
+					END GENERATE;
+					IF (USED(clocko)) GENERATE
+						reg_oaddr[EXTRA_ADDR_BITS-1..0]	: DFF;
+					END GENERATE;
+					mux			: lpm_mux WITH (LPM_WIDTH=WIDTH,
+												LPM_SIZE=ROM_DEPTH_IN_EABS,
+												LPM_WIDTHS=EXTRA_ADDR_BITS);
+				END GENERATE;
+				END GENERATE;			
+			END GENERATE;
+		ELSE % MERCURY % GENERATE
+			altqpram_rom		:	altqpram	WITH
+											(
+												OPERATION_MODE = "ROM",
+												INIT_FILE = USED(File) ? File : "UNUSED",
+												WIDTH_READ_A = WIDTH,
+												WIDTHAD_READ_A = AD_WIDTH,
+												NUMWORDS_READ_A = NUMWORDS,
+												-- registering
+												RDADDRESS_REG_A = USED(clocki) ? "INCLOCK_A" : "UNREGISTERED",
+												OUTDATA_REG_A = USED(clocko) ? "OUTCLOCK_A" : "UNREGISTERED",
+												-- clearing
+												-- disable this feature since this function doesnt allow it
+												RDADDRESS_ACLR_A = "NONE",
+												OUTDATA_ACLR_A = "NONE",
+												MAXIMUM_DEPTH = USED(MAXIMUM_DEPTH) ? MAXIMUM_DEPTH : "UNUSED"
+											);
+		END GENERATE;
+	ELSE GENERATE
+		-- Go with the clearbox implementation
+		ag : @CBXI_PARAMETER WITH (CBXI_PARAMETER = "NOTHING");
+	END GENERATE;
+	
+BEGIN
+
+	-- CAUSE : 	The design contains altrom megafunction, but the selected device or device family
+	-- 			is the Stratix device family. The altrom megafunction does not support Stratix device family. The Quartus II
+	--			software is attempting to convert the altrom megafunction implementations to altsyncram megafunction.
+	--			However the power up states will be different for Stratix devices.
+	-- ACTION : No action is necessary. To avoid receiving this message in future, set SUPPRESS_MEMORY_CONVERSION_WARNINGS to ON
+	ASSERT ((FAMILY_STRATIX() & STRATIX_ROM_POSSIBLE() & SUPPRESS_MEMORY_CONVERSION_WARNINGS == "ON") # FAMILY_STRATIX() != 1 # !STRATIX_ROM_POSSIBLE())
+		REPORT "altrom does not support % device family -- attempting best-case memory conversions, but power-up states will be different for % devices" DEVICE_FAMILY, DEVICE_FAMILY
+		SEVERITY WARNING
+		HELP_ID FAMILY_STRATIX_CONVERSION_WARNING;
+
+	-- CAUSE : 	The design contains altrom megafunction, but the selected device or device family
+	-- 			is the Stratix device family. The altrom megafunction does not support Stratix device family. The Quartus II
+	--			software is not able to convert the altrom megafunction implementations to altsyncram megafunction, and is not 
+	--			able to implement it using benchmarking mode, because the ROM is asynchronous.
+	-- ACTION : Use at least one clock for input or output and compile again to allow the Quartus II software to attempt to implement using benchmarking mode. 
+	ASSERT ((FAMILY_STRATIX() & (STRATIX_ROM_POSSIBLE() # STRATIX_ROM_NOT_IMPOSSIBLE())) # FAMILY_STRATIX() != 1)				
+		REPORT "Can't convert ROM for % device family using altsyncram megafunction because % supports only synchronous ROM" DEVICE_FAMILY, DEVICE_FAMILY 
+		SEVERITY ERROR
+		HELP_ID FAMILY_STRATIX_ROM_NOT_POSSIBLE;
+
+	-- CAUSE : 	The design contains altrom megafunction, but the selected device or device family
+	-- 			is the Stratix device family. The altrom megafunction does not support Stratix device family. The Quartus II
+	--			software is not able to convert the altrom megafunction implementations to altsyncram megafunction, because the RAM inputs are
+	--			not synchronous. The Quartus II software is attempting to implement single-port RAM using benchmarking mode and by using existing clocks
+	-- 			to make it synchronous. 
+	-- ACTION : No action is required.
+	ASSERT ((FAMILY_STRATIX() & !STRATIX_ROM_POSSIBLE() & !STRATIX_ROM_NOT_IMPOSSIBLE()) # FAMILY_STRATIX() != 1 # STRATIX_ROM_POSSIBLE())				
+		REPORT "Can't convert ROM for % device family using altsyncram megafunction -- implementing ROM using benchmarking mode by moving output registers to the input side. Power-up states and behavior may be different." DEVICE_FAMILY
+		SEVERITY WARNING
+		HELP_ID FAMILY_STRATIX_RAM_NOT_IMPOSSIBLE;
+
+
+	ASSERT FAMILY_STRATIX() == 1 # !USED(MAXIMUM_DEPTH) # (MAXIMUM_DEPTH == 0) # ( (10K_SLICE_SIZE MOD 2 == 0) & (MAXIMUM_DEPTH >= 2^7) & (MAXIMUM_DEPTH <= FAMILY_EAB_MAX_DEPTH()))
+		REPORT "MAXIMUM_DEPTH(%) is at an illegal value." MAXIMUM_DEPTH
+		SEVERITY ERROR
+		HELP_ID ALTDPRAM_MAXIMUM_DEPTH;
+
+	ASSERT (WIDTH > 0)
+			REPORT "Value of WIDTH parameter must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID ROM_WIDTH;
+
+	ASSERT (AD_WIDTH > 0)
+			REPORT "Value of AD_WIDTH parameter must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID ROM_AD_WIDTH;
+
+	ASSERT (NUMWORDS > 0)
+			REPORT "Value of NUMWORDS parameter must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID ROM_NUMWORDS;
+
+	ASSERT (NUMWORDS > 2^(AD_WIDTH-1) & NUMWORDS <= 2^AD_WIDTH)
+			REPORT "Value of NUMWORDS parameter requires % address lines, but AD_WIDTH value, which defines the number of address lines, is %"
+				CEIL(LOG2(NUMWORDS)), AD_WIDTH
+			SEVERITY ERROR
+			HELP_ID ROM_NUMWORDS_TOO_BIG;
+
+
+	ASSERT (  (REGISTERINPUTMODE == "ALL")
+			# (REGISTERINPUTMODE == "ADDRESS_CONTROL")
+			# (REGISTERINPUTMODE == "DEFAULT"))
+			REPORT "Illegal value for REGISTERINPUTMODE parameter (%) -- value must be ALL, ADDRESS_CONTROL, or DEFAULT" 
+				REGISTERINPUTMODE
+			SEVERITY ERROR
+			HELP_ID ROM_INVALID_INPUT_MODE;
+
+	ASSERT (USED(clocki) # (REGISTERINPUTMODE == "DEFAULT"))
+			REPORT "Value of REGISTERINPUTMODE parameter (%) is not consistent with the use of the clocki port"
+				REGISTERINPUTMODE
+			SEVERITY ERROR
+			HELP_ID ROM_REG_INPUT_NEEDS_CLOCK;
+
+	ASSERT (FAMILY_IS_KNOWN() == 1)
+			REPORT "Megafunction altrom does not recognize the current device family (%) -- ensure that you are using the newest version of the megafunction"
+				DEVICE_FAMILY
+			SEVERITY WARNING
+			HELP_ID ALTROM_FAMILY_UNKNOWN;
+
+	IF CBXI_PARAMETER == "NOTHING" GENERATE
+
+		IF (FAMILY_USES_ALTQPRAM()) GENERATE
+			-- Dont connect any clocks unless absolutely necessary
+			IF USED(clocki) GENERATE
+				altqpram_rom.inclock_a = clocki;
+			END GENERATE;
+			IF USED(clocko) GENERATE
+				altqpram_rom.outclock_a = clocko;
+			END GENERATE;
+
+			-- now connect the inputs and outputs
+			altqpram_rom.rdaddress_a[] = address[];
+			q[] = altqpram_rom.q_a[];
+		ELSE GENERATE
+			IF (FAMILY_STRATIX() == 1) GENERATE
+				IF STRATIX_ROM_POSSIBLE() GENERATE
+					-- clock0 has to be connected
+					rom_block.clock0 = clocki;
+					IF USED(clocko) GENERATE
+						rom_block.clock1 = clocko;
+					END GENERATE;
+					-- connect inputs and outputs
+					rom_block.address_a[] = address[];
+					q[] = rom_block.q_a[];
+				ELSE GENERATE
+					IF STRATIX_ROM_NOT_IMPOSSIBLE() GENERATE
+						IF USED(clocki) GENERATE
+							rom_block.clock0 = clocki;
+							IF USED(clocko) GENERATE
+								rom_block.clock1 = clocko;
+							END GENERATE;
+						ELSE GENERATE
+							rom_block.clock0 = clocko;
+							-- CAUSE: Clock found on the output port is shifted to the input address port to make it work for Stratix
+							-- ACTION: None.
+							ASSERT (0)
+							REPORT "Clocko port is used as clock for the address input port"
+							SEVERITY INFO;					
+						END GENERATE;
+						rom_block.address_a[] = address[];
+						q[] = rom_block.q_a[];
+					END GENERATE;
+				END GENERATE;
+			ELSE GENERATE		
+			IF (FAMILY_HAS_EAB() == 1) GENERATE
+				IF (EXTRA_ADDR_BITS > 0) GENERATE
+
+					% Registered address and control inputs? %
+					IF (ADDR_IS_REGD(0)) GENERATE
+						reg_iaddr[].clk = clocki;
+						reg_iaddr[].d = address[AD_WIDTH-1..AD_WIDTH-EXTRA_ADDR_BITS];
+					END GENERATE;
+					IF (USED(clocko)) GENERATE
+						reg_oaddr[].clk = clocko;
+						IF (ADDR_IS_REGD(0)) GENERATE
+							reg_oaddr[].d = reg_iaddr[].q;
+						ELSE GENERATE
+							reg_oaddr[].d = address[AD_WIDTH-1..AD_WIDTH-EXTRA_ADDR_BITS];
+						END GENERATE;
+					END GENERATE;
+
+					% Connect multiplexer ports %
+					IF (USED(clocko)) GENERATE
+						mux.sel[] = reg_oaddr[].q;
+					ELSE GENERATE
+						IF (ADDR_IS_REGD(0)) GENERATE
+							mux.sel[] = reg_iaddr[].q;
+						ELSE GENERATE
+							% Nothing is registered %
+							mux.sel[] = address[AD_WIDTH-1..AD_WIDTH-EXTRA_ADDR_BITS];
+						END GENERATE;
+					END GENERATE;
+					
+				END GENERATE;
+
+				-- Connect ROM ports
+
+				FOR bank IN 0 TO ROM_DEPTH_IN_EABS-1 GENERATE
+					FOR bit IN 0 TO WIDTH-1 GENERATE
+						segment[bank][bit].a[] 	= address[LOG2(WORDS_PER_EAB)-1..0];
+						
+						% Using output clock? %
+						IF (USED(ClockI)) GENERATE
+							segment[bank][bit].clki = clocki;
+						END GENERATE;
+
+						% Using output clock? %
+						IF (USED(ClockO)) GENERATE
+							segment[bank][bit].clko = clocko;
+						END GENERATE;
+					END GENERATE;
+
+					% define multiplexer inputs %
+					IF (EXTRA_ADDR_BITS > 0) GENERATE
+						mux.data[bank][] = segment[bank][].q;
+					END GENERATE;
+				END GENERATE;
+
+				% define the output group %
+				IF (EXTRA_ADDR_BITS > 0) GENERATE
+					q[] = mux.result[];
+				ELSE GENERATE
+					q[] = segment[0][].q;
+				END GENERATE;
+			ELSE GENERATE
+
+				ASSERT (FAMILY_HAS_EAB() == 1)
+					REPORT "Current device family (%) does not support implementation of ROM"
+						DEVICE_FAMILY
+					SEVERITY ERROR
+					HELP_ID ROM_AVAILABILITY;
+
+			END GENERATE;
+			END GENERATE;
+		END GENERATE;
+	ELSE GENERATE
+		IF USED(address) GENERATE
+			ag.address[] = address[];
+		END GENERATE;
+		IF USED(clocki) GENERATE
+			ag.clocki = clocki;
+		END GENERATE;
+		IF USED(clocko) GENERATE
+			ag.clocko = clocko;
+		END GENERATE;
+		IF USED(q) GENERATE
+			q[] = ag.q[];
+		END GENERATE;
+	END GENERATE;
+	IF !USED(q) GENERATE
+		q[] = GND;
+	END GENERATE;
+END;
+

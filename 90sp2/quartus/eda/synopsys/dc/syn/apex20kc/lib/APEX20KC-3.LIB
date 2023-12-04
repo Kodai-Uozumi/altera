@@ -1,0 +1,2731 @@
+library(apex20kc-3) {
+ SCALE_MAX_FANOUT = 1;
+ SCALE_MAX_KCL = 1.25;
+ SCALE_MAX_TRANSITION = 1;
+ time_unit : "1ns" ;
+ voltage_unit : "1V" ;
+ current_unit : "1A" ;
+ pulling_resistance_unit : "1ohm" ;
+ capacitive_load_unit (1,pf);
+ default_fanout_load : 0.00000
+ default_max_fanout : 36.00000
+ default_inout_pin_cap : 0.000000
+ default_inout_pin_fall_res : 0.000000
+ default_inout_pin_rise_res : 0.000000
+ default_input_pin_cap : 0.000000
+ default_intrinsic_fall : 0.000000
+ default_intrinsic_rise : 0.000000
+ default_output_pin_cap : 0.000000
+ default_output_pin_fall_res : 0.000000
+ default_output_pin_rise_res : 0.000000
+ default_slope_fall : 0.000000
+ default_slope_rise : 0.000000
+
+ k_process_drive_fall : 1.000000
+ k_process_drive_rise : 1.000000
+ k_process_intrinsic_fall : 1.000000
+ k_process_intrinsic_rise : 1.000000
+ k_process_pin_cap : 0.000000
+ k_process_slope_fall : 0.000000
+ k_process_slope_rise : 0.000000
+ k_process_wire_cap : 0.000000
+ k_process_wire_res : 0.000000
+
+ k_temp_drive_fall : 0.000000
+ k_temp_drive_rise : 0.000000
+ k_temp_intrinsic_fall : 0.000000
+ k_temp_intrinsic_rise : 0.000000
+ k_temp_pin_cap : 0.000000
+ k_temp_slope_fall : 0.000000
+ k_temp_slope_rise : 0.000000
+ k_temp_wire_cap : 0.000000
+ k_temp_wire_res : 0.000000
+
+ k_volt_drive_fall : 0.000000
+ k_volt_drive_rise : 0.000000
+ k_volt_intrinsic_fall : 0.000000
+ k_volt_intrinsic_rise : 0.000000
+ k_volt_pin_cap : 0.000000
+ k_volt_slope_fall : 0.000000
+ k_volt_slope_rise : 0.000000
+ k_volt_wire_cap : 0.000000
+ k_volt_wire_res : 0.000000
+
+ k_process_setup_rise : 1.0
+ k_process_setup_fall : 1.0
+ k_process_hold_rise : 1.0
+ k_process_hold_fall : 1.0
+ k_temp_setup_rise : 0.0
+ k_temp_setup_fall : 0.0
+ k_temp_hold_rise : 0.0
+ k_temp_hold_fall : 0.0
+ k_volt_setup_rise : 0.0
+ k_volt_setup_fall : 0.0
+ k_volt_hold_rise : 0.0
+ k_volt_hold_fall : 0.0
+
+ nom_process : 1.000000
+ nom_temperature : 25.000000
+ nom_voltage : 5.000000
+
+ operating_conditions ("MAXIMUM") {
+    process : 1.70
+    temperature : 70.00
+    voltage : 4.75
+    tree_type : "worst_case_tree"
+ }
+
+ operating_conditions ("TYPICAL") {
+    process : 1.00
+    temperature : 25.00
+    voltage : 5.00
+    tree_type : "worst_case_tree"
+ }
+
+ operating_conditions ("MINIMUM") {
+    process : 0.40
+    temperature : 0.00
+    voltage : 5.25
+    tree_type : "worst_case_tree"
+ }
+ default_operating_conditions : "TYPICAL"
+
+ wire_load(ALL) {
+   resistance : 1.0 ;
+   capacitance : 1.0 ;
+   area : 0.0 ;
+   slope : 0.0 ;
+   fanout_length(1,0.63);
+   fanout_length(2,0.77);
+   fanout_length(3,0.89);
+   fanout_length(4,1.00);
+   fanout_length(5,1.10);
+   fanout_length(6,1.18);
+   fanout_length(7,1.26);
+   fanout_length(8,1.34);
+   fanout_length(9,1.41);
+   fanout_length(10,1.48);
+   fanout_length(11,1.55);
+   fanout_length(12,1.61);
+   fanout_length(13,1.67);
+   fanout_length(14,1.73);
+   fanout_length(15,1.79);
+   fanout_length(16,1.84);
+   fanout_length(17,1.90);
+   fanout_length(18,1.95);
+   fanout_length(19,2.00);
+   fanout_length(20,2.05);
+   fanout_length(21,2.10);
+   fanout_length(22,2.14);
+   fanout_length(23,2.19);
+   fanout_length(24,2.24);
+   fanout_length(25,2.28);
+   fanout_length(26,2.32);
+   fanout_length(27,2.37);
+   fanout_length(28,2.41);
+   fanout_length(29,2.45);
+   fanout_length(30,2.49);
+   fanout_length(31,2.53);
+   fanout_length(32,2.57);
+   fanout_length(33,2.61);
+   fanout_length(34,2.65);
+   fanout_length(35,2.68);
+   fanout_length(36,2.72);
+   fanout_length(37,2.76);
+   fanout_length(38,2.79);
+   fanout_length(39,2.83);
+   fanout_length(40,2.86);
+   fanout_length(41,2.90);
+   fanout_length(42,2.93);
+   fanout_length(43,2.97);
+   fanout_length(44,3.00);
+   fanout_length(45,3.03);
+   fanout_length(46,3.07);
+   fanout_length(47,3.10);
+   fanout_length(48,3.13);
+   fanout_length(49,3.16);
+   fanout_length(50,3.19);
+   fanout_length(51,3.22);
+   fanout_length(52,3.26);
+   fanout_length(53,3.29);
+   fanout_length(54,3.32);
+   fanout_length(55,3.35);
+   fanout_length(56,3.38);
+   fanout_length(57,3.41);
+   fanout_length(58,3.44);
+   fanout_length(59,3.46);
+   fanout_length(60,3.49);
+   fanout_length(61,3.52);
+   fanout_length(62,3.55);
+   fanout_length(63,3.58);
+   fanout_length(64,3.61);
+   fanout_length(65,3.63);
+   fanout_length(66,3.66);
+   fanout_length(67,3.69);
+   fanout_length(68,3.71);
+   fanout_length(69,3.74);
+   fanout_length(70,3.77);
+   fanout_length(71,3.79);
+   fanout_length(72,3.82);
+   fanout_length(73,3.85);
+   fanout_length(74,3.87);
+   fanout_length(75,3.90);
+   fanout_length(76,3.92);
+   fanout_length(77,3.95);
+   fanout_length(78,3.97);
+   fanout_length(79,4.00);
+   fanout_length(80,4.02);
+   fanout_length(81,4.05);
+   fanout_length(82,4.07);
+   fanout_length(83,4.10);
+   fanout_length(84,4.12);
+   fanout_length(85,4.15);
+   fanout_length(86,4.17);
+   fanout_length(87,4.20);
+   fanout_length(88,4.22);
+   fanout_length(89,4.24);
+   fanout_length(90,4.27);
+   fanout_length(91,4.29);
+   fanout_length(92,4.31);
+   fanout_length(93,4.34);
+   fanout_length(94,4.36);
+   fanout_length(95,4.38);
+   fanout_length(96,4.40);
+   fanout_length(97,4.43);
+   fanout_length(98,4.45);
+   fanout_length(99,4.47);
+   fanout_length(100,4.49);
+   fanout_length(101,4.52);
+   fanout_length(102,4.54);
+   fanout_length(103,4.56);
+   fanout_length(104,4.58);
+   fanout_length(105,4.60);
+   fanout_length(106,4.63);
+   fanout_length(107,4.65);
+   fanout_length(108,4.67);
+   fanout_length(109,4.69);
+   fanout_length(110,4.71);
+   fanout_length(111,4.73);
+   fanout_length(112,4.75);
+   fanout_length(113,4.77);
+   fanout_length(114,4.80);
+   fanout_length(115,4.82);
+   fanout_length(116,4.84);
+   fanout_length(117,4.86);
+   fanout_length(118,4.88);
+   fanout_length(119,4.90);
+   fanout_length(120,4.92);
+   fanout_length(121,4.94);
+   fanout_length(122,4.96);
+   fanout_length(123,4.98);
+   fanout_length(124,5.00);
+   fanout_length(125,5.02);
+   fanout_length(126,5.04);
+   fanout_length(127,5.06);
+   fanout_length(128,5.08);
+   fanout_length(129,5.10);
+   fanout_length(130,5.12);
+   fanout_length(131,5.14);
+   fanout_length(132,5.16);
+   fanout_length(133,5.18);
+   fanout_length(134,5.20);
+   fanout_length(135,5.22);
+   fanout_length(136,5.23);
+   fanout_length(137,5.25);
+   fanout_length(138,5.27);
+   fanout_length(139,5.29);
+   fanout_length(140,5.31);
+   fanout_length(141,5.33);
+   fanout_length(142,5.35);
+   fanout_length(143,5.37);
+   fanout_length(144,5.39);
+   fanout_length(145,5.40);
+   fanout_length(146,5.42);
+   fanout_length(147,5.44);
+   fanout_length(148,5.46);
+   fanout_length(149,5.48);
+   fanout_length(150,5.50);
+   fanout_length(151,5.51);
+   fanout_length(152,5.53);
+   fanout_length(153,5.55);
+   fanout_length(154,5.57);
+   fanout_length(155,5.59);
+   fanout_length(156,5.60);
+   fanout_length(157,5.62);
+   fanout_length(158,5.64);
+   fanout_length(159,5.66);
+   fanout_length(160,5.67);
+   fanout_length(161,5.69);
+   fanout_length(162,5.71);
+   fanout_length(163,5.73);
+   fanout_length(164,5.74);
+   fanout_length(165,5.76);
+   fanout_length(166,5.78);
+   fanout_length(167,5.80);
+   fanout_length(168,5.81);
+   fanout_length(169,5.83);
+   fanout_length(170,5.85);
+   fanout_length(171,5.87);
+   fanout_length(172,5.88);
+   fanout_length(173,5.90);
+   fanout_length(174,5.92);
+   fanout_length(175,5.93);
+   fanout_length(176,5.95);
+   fanout_length(177,5.97);
+   fanout_length(178,5.98);
+   fanout_length(179,6.00);
+   fanout_length(180,6.02);
+   fanout_length(181,6.03);
+   fanout_length(182,6.05);
+   fanout_length(183,6.07);
+   fanout_length(184,6.08);
+   fanout_length(185,6.10);
+   fanout_length(186,6.12);
+   fanout_length(187,6.13);
+   fanout_length(188,6.15);
+   fanout_length(189,6.16);
+   fanout_length(190,6.18);
+   fanout_length(191,6.20);
+   fanout_length(192,6.21);
+   fanout_length(193,6.23);
+   fanout_length(194,6.24);
+   fanout_length(195,6.26);
+   fanout_length(196,6.28);
+   fanout_length(197,6.29);
+   fanout_length(198,6.31);
+   fanout_length(199,6.32);
+ }
+default_wire_load : "ALL";
+
+ type (bus1) {
+   base_type : array;
+   data_type : bit;
+   bit_width : 1;
+   bit_from : 0;
+   bit_to : 0;
+   downto : true;
+ }
+ type (bus2) {
+   base_type : array;
+   data_type : bit;
+   bit_width : 2;
+   bit_from : 1;
+   bit_to : 0;
+   downto : true;
+ }
+ type (bus3) {
+   base_type : array;
+   data_type : bit;
+   bit_width : 3;
+   bit_from : 2;
+   bit_to : 0;
+   downto : true;
+ }
+ type (bus4) {
+   base_type : array;
+   data_type : bit;
+   bit_width : 4;
+   bit_from : 3;
+   bit_to : 0;
+   downto : true;
+ }
+ type (bus5) {
+   base_type : array;
+   data_type : bit;
+   bit_width : 5;
+   bit_from : 4;
+   bit_to : 0;
+   downto : true;
+ }
+ type (bus6) {
+   base_type : array;
+   data_type : bit;
+   bit_width : 6;
+   bit_from : 5;
+   bit_to : 0;
+   downto : true;
+ }
+ type (bus7) {
+   base_type : array;
+   data_type : bit;
+   bit_width : 7;
+   bit_from : 6;
+   bit_to : 0;
+   downto : true;
+ }
+ type (bus8) {
+   base_type : array;
+   data_type : bit;
+   bit_width : 8;
+   bit_from : 7;
+   bit_to : 0;
+   downto : true;
+ }
+ type (bus9) {
+   base_type : array;
+   data_type : bit;
+   bit_width : 9;
+   bit_from : 8;
+   bit_to : 0;
+   downto : true;
+ }
+ type (bus10) {
+   base_type : array;
+   data_type : bit;
+   bit_width : 10;
+   bit_from : 9;
+   bit_to : 0;
+   downto : true;
+ }
+ type (bus11) {
+   base_type : array;
+   data_type : bit;
+   bit_width : 11;
+   bit_from : 10;
+   bit_to : 0;
+   downto : true;
+ }
+ type (bus12) {
+   base_type : array;
+   data_type : bit;
+   bit_width : 12;
+   bit_from : 11;
+   bit_to : 0;
+   downto : true;
+ }
+ type (bus13) {
+   base_type : array;
+   data_type : bit;
+   bit_width : 13;
+   bit_from : 12;
+   bit_to : 0;
+   downto : true;
+ }
+ type (bus14) {
+   base_type : array;
+   data_type : bit;
+   bit_width : 14;
+   bit_from : 13;
+   bit_to : 0;
+   downto : true;
+ }
+ type (bus15) {
+   base_type : array;
+   data_type : bit;
+   bit_width : 15;
+   bit_from : 14;
+   bit_to : 0;
+   downto : true;
+ }
+ type (bus16) {
+   base_type : array;
+   data_type : bit;
+   bit_width : 16;
+   bit_from : 15;
+   bit_to : 0;
+   downto : true;
+ }
+ type (bus17) {
+   base_type : array;
+   data_type : bit;
+   bit_width : 17;
+   bit_from : 16;
+   bit_to : 0;
+   downto : true;
+ }
+ type (bus18) {
+   base_type : array;
+   data_type : bit;
+   bit_width : 18;
+   bit_from : 17;
+   bit_to : 0;
+   downto : true;
+ }
+ type (bus19) {
+   base_type : array;
+   data_type : bit;
+   bit_width : 19;
+   bit_from : 18;
+   bit_to : 0;
+   downto : true;
+ }
+ type (bus20) {
+   base_type : array;
+   data_type : bit;
+   bit_width : 20;
+   bit_from : 19;
+   bit_to : 0;
+   downto : true;
+ }
+ type (bus21) {
+   base_type : array;
+   data_type : bit;
+   bit_width : 21;
+   bit_from : 20;
+   bit_to : 0;
+   downto : true;
+ }
+ type (bus22) {
+   base_type : array;
+   data_type : bit;
+   bit_width : 22;
+   bit_from : 21;
+   bit_to : 0;
+   downto : true;
+ }
+ type (bus23) {
+   base_type : array;
+   data_type : bit;
+   bit_width : 23;
+   bit_from : 22;
+   bit_to : 0;
+   downto : true;
+ }
+ type (bus24) {
+   base_type : array;
+   data_type : bit;
+   bit_width : 24;
+   bit_from : 23;
+   bit_to : 0;
+   downto : true;
+ }
+ type (bus25) {
+   base_type : array;
+   data_type : bit;
+   bit_width : 25;
+   bit_from : 24;
+   bit_to : 0;
+   downto : true;
+ }
+ type (bus26) {
+   base_type : array;
+   data_type : bit;
+   bit_width : 26;
+   bit_from : 25;
+   bit_to : 0;
+   downto : true;
+ }
+ type (bus27) {
+   base_type : array;
+   data_type : bit;
+   bit_width : 27;
+   bit_from : 26;
+   bit_to : 0;
+   downto : true;
+ }
+ type (bus28) {
+   base_type : array;
+   data_type : bit;
+   bit_width : 28;
+   bit_from : 27;
+   bit_to : 0;
+   downto : true;
+ }
+ type (bus29) {
+   base_type : array;
+   data_type : bit;
+   bit_width : 29;
+   bit_from : 28;
+   bit_to : 0;
+   downto : true;
+ }
+ type (bus30) {
+   base_type : array;
+   data_type : bit;
+   bit_width : 30;
+   bit_from : 29;
+   bit_to : 0;
+   downto : true;
+ }
+ type (bus31) {
+   base_type : array;
+   data_type : bit;
+   bit_width : 31;
+   bit_from : 30;
+   bit_to : 0;
+   downto : true;
+ }
+ type (bus32) {
+   base_type : array;
+   data_type : bit;
+   bit_width : 32;
+   bit_from : 31;
+   bit_to : 0;
+   downto : true;
+ }
+
+
+ cell(ACARRY) {
+   dont_use : true;
+   dont_touch : true;
+   area : 0.000;
+   pin(Y) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "IN1";
+     timing() {
+       intrinsic_rise : 0.2700 ;
+       intrinsic_fall : 0.2700 ;
+       related_pin : "IN1";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(ACASCADE) {
+   dont_use : true;
+   dont_touch : true;
+   area : 0.000;
+   pin(Y) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "IN1";
+     timing() {
+       intrinsic_rise : 0.3800 ;
+       intrinsic_fall : 0.3800 ;
+       related_pin : "IN1";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(DFFS) {
+   area : 0.000;
+   ff (IQ,IQN) {
+     next_state : "D"
+     clocked_on : "CLK";
+   }
+   pin(Q) {
+     direction : output;
+     function : "IQ"
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     timing() {
+        timing_type : rising_edge ;
+		intrinsic_rise : 0.4500 ;
+		intrinsic_fall : 0.4500 ;
+		related_pin : "CLK";
+     }
+   }
+   pin(D) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+     timing() { 
+         timing_type : setup_rising;
+         intrinsic_rise : 0.8000 ;
+         intrinsic_fall : 0.8000 ;
+         related_pin : "CLK";
+     }
+     timing() { 
+         timing_type : hold_rising;
+         intrinsic_rise : 1.0000 ;
+         intrinsic_fall : 1.0000 ;
+         related_pin : "CLK";
+     }
+   }
+   pin(CLK) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+     clock : true ;
+   }
+ }
+ cell(DFF) {
+   area : 0.000;
+   ff (IQ,IQN) {
+     next_state : "D"
+     clocked_on : "CLK";
+     clear : "CLRN'";
+     clear_preset_var1 : L;
+     preset : "PRN'"
+     clear_preset_var2 : L;
+   }
+   pin(Q) {
+     direction : output;
+     function : "IQ"
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     timing() {
+        timing_type : rising_edge ;
+		intrinsic_rise : 0.4500 ;
+		intrinsic_fall : 0.4500 ;
+		related_pin : "CLK";
+     }
+     timing() {
+        timing_type : clear ;
+        timing_sense : positive_unate ;
+		intrinsic_rise : 0.4000 ;
+		intrinsic_fall : 0.4000 ;
+		related_pin : "CLRN";
+     }
+     timing() {
+        timing_type : preset ;
+        timing_sense : negative_unate ;
+		intrinsic_rise : 0.6000 ;
+		intrinsic_fall : 0.6000 ;
+		related_pin : "PRN";
+     }
+   }
+   pin(D) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+     timing() { 
+         timing_type : setup_rising;
+         intrinsic_rise : 0.8000 ;
+         intrinsic_fall : 0.8000 ;
+         related_pin : "CLK";
+     }
+     timing() { 
+         timing_type : hold_rising;
+         intrinsic_rise : 1.0000 ;
+         intrinsic_fall : 1.0000 ;
+         related_pin : "CLK";
+     }
+   }
+   pin(CLK) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+     clock : true ;
+   }
+   pin(CLRN) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(PRN) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(DFFE) {
+   area : 0.000;
+   ff (IQ,IQN) {
+     next_state : "(ENA&D)+(ENA'&IQ)"
+     clocked_on : "CLK";
+     clear : "CLRN'";
+     clear_preset_var1 : L;
+     preset : "PRN'"
+     clear_preset_var2 : L;
+   }
+   pin(Q) {
+     direction : output;
+     function : "IQ"
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     timing() {
+        timing_type : rising_edge ;
+		intrinsic_rise : 0.4500 ;
+		intrinsic_fall : 0.4500 ;
+		related_pin : "CLK";
+     }
+     timing() {
+        timing_type : clear ;
+        timing_sense : positive_unate ;
+		intrinsic_rise : 0.4000 ;
+		intrinsic_fall : 0.4000 ;
+		related_pin : "CLRN";
+     }
+     timing() {
+        timing_type : preset ;
+        timing_sense : negative_unate ;
+		intrinsic_rise : 0.6000 ;
+		intrinsic_fall : 0.6000 ;
+		related_pin : "PRN";
+     }
+   }
+   pin(D) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+     timing() { 
+         timing_type : setup_rising;
+         intrinsic_rise : 0.8000 ;
+         intrinsic_fall : 0.8000 ;
+         related_pin : "CLK";
+     }
+     timing() { 
+         timing_type : hold_rising;
+         intrinsic_rise : 1.0000 ;
+         intrinsic_fall : 1.0000 ;
+         related_pin : "CLK";
+     }
+   }
+   pin(CLK) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+     clock : true ;
+   }
+   pin(CLRN) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(PRN) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(ENA) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+     timing() { 
+         timing_type : setup_rising;
+         intrinsic_rise : 0.0000 ;
+         intrinsic_fall : 0.0000 ;
+         related_pin : "CLK";
+     }
+     timing() { 
+         timing_type : hold_rising;
+         intrinsic_rise : 0.0000 ;
+         intrinsic_fall : 0.0000 ;
+         related_pin : "CLK";
+     }
+   }
+ }
+ cell(AGLOBAL) {
+   dont_use : true;
+   dont_touch : true;
+   area : 0.000;
+   pin(Y) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "IN1";
+     timing() {
+       intrinsic_rise : 0.5000 ;
+       intrinsic_fall : 0.5000 ;
+       related_pin : "IN1";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(ALCELL) {
+   dont_use : true;
+   dont_touch : true;
+   area : 1.000;
+   pin(Y) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "IN1";
+     timing() {
+       intrinsic_rise : 0.8500 ;
+       intrinsic_fall : 0.8500 ;
+       related_pin : "IN1";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(LATCH) {
+   area : 1.000;
+   latch (IQ,IQN) {
+     data_in : "D"
+     enable : "ENA"
+   }
+   pin(Q) {
+     direction : output;
+     function : "IQ"
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     timing() {
+        timing_sense : positive_unate ;
+		intrinsic_rise : 0.4500 ;
+		intrinsic_fall : 0.4500 ;
+		related_pin : "D";
+     }
+     timing() {
+        timing_type : rising_edge ;
+		intrinsic_rise : 0.4500 ;
+		intrinsic_fall : 0.4500 ;
+		related_pin : "ENA";
+     }
+   }
+   pin(D) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+     timing() { 
+         timing_type : setup_falling;
+         intrinsic_rise : 0.8000 ;
+         intrinsic_fall : 0.8000 ;
+         related_pin : "ENA";
+     }
+     timing() { 
+         timing_type : hold_falling;
+         intrinsic_rise : 1.0000 ;
+         intrinsic_fall : 1.0000 ;
+         related_pin : "ENA";
+     }
+   }
+   pin(ENA) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+     clock : true ;
+   }
+ }
+ cell(AMCELL) {
+   dont_use : true;
+   dont_touch : true;
+   area : 1.000;
+   pin(Y) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "IN1";
+     timing() {
+       intrinsic_rise : 0.8500 ;
+       intrinsic_fall : 0.8500 ;
+       related_pin : "IN1";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(OPNDRN) {
+   dont_use : true;
+   dont_touch : true;
+   area : 1.000;
+   pin(Y) {
+     direction : output;
+     driver_type : open_drain;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "IN1";
+     timing() {
+       intrinsic_rise : 2.2100 ;
+       intrinsic_fall : 2.2100 ;
+       related_pin : "IN1";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(ATBL_1) {
+   area : 0.000;
+   pin(Y) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "!IN1";
+     timing() {
+       intrinsic_rise : 0.0000 ;
+       intrinsic_fall : 0.0000 ;
+       related_pin : "IN1";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(ATBL_2) {
+   area : 0.500;
+   pin(Y) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "(IN1+IN2)";
+     timing() {
+       intrinsic_rise : 0.0000 ;
+       intrinsic_fall : 0.0000 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 0.0000 ;
+       intrinsic_fall : 0.0000 ;
+       related_pin : "IN2";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN2) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(ATBL_3) {
+   area : 0.500;
+   pin(Y) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "(IN1&IN2)";
+     timing() {
+       intrinsic_rise : 0.0000 ;
+       intrinsic_fall : 0.0000 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 0.0000 ;
+       intrinsic_fall : 0.0000 ;
+       related_pin : "IN2";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN2) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(ATBL_4) {
+   area : 0.750;
+   pin(Y) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "(IN1&IN2&IN3)";
+     timing() {
+       intrinsic_rise : 0.8500 ;
+       intrinsic_fall : 0.8500 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 0.8500 ;
+       intrinsic_fall : 0.8500 ;
+       related_pin : "IN2";
+     }
+     timing() {
+       intrinsic_rise : 0.8500 ;
+       intrinsic_fall : 0.8500 ;
+       related_pin : "IN3";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN2) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN3) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(ATBL_5) {
+   area : 1.000;
+   pin(Y) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "(IN1&IN2&IN3&IN4)";
+     timing() {
+       intrinsic_rise : 0.8500 ;
+       intrinsic_fall : 0.8500 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 0.8500 ;
+       intrinsic_fall : 0.8500 ;
+       related_pin : "IN2";
+     }
+     timing() {
+       intrinsic_rise : 0.8500 ;
+       intrinsic_fall : 0.8500 ;
+       related_pin : "IN3";
+     }
+     timing() {
+       intrinsic_rise : 0.8500 ;
+       intrinsic_fall : 0.8500 ;
+       related_pin : "IN4";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN2) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN3) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN4) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(ATBL_6) {
+   area : 0.750;
+   pin(Y) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "(IN1&(IN2+IN3))";
+     timing() {
+       intrinsic_rise : 0.8500 ;
+       intrinsic_fall : 0.8500 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 0.8500 ;
+       intrinsic_fall : 0.8500 ;
+       related_pin : "IN2";
+     }
+     timing() {
+       intrinsic_rise : 0.8500 ;
+       intrinsic_fall : 0.8500 ;
+       related_pin : "IN3";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN2) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN3) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(ATBL_7) {
+   area : 1.000;
+   pin(Y) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "(IN1&IN2&(IN3+IN4))";
+     timing() {
+       intrinsic_rise : 0.8500 ;
+       intrinsic_fall : 0.8500 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 0.8500 ;
+       intrinsic_fall : 0.8500 ;
+       related_pin : "IN2";
+     }
+     timing() {
+       intrinsic_rise : 0.8500 ;
+       intrinsic_fall : 0.8500 ;
+       related_pin : "IN3";
+     }
+     timing() {
+       intrinsic_rise : 0.8500 ;
+       intrinsic_fall : 0.8500 ;
+       related_pin : "IN4";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN2) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN3) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN4) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(ATBL_8) {
+   area : 1.000;
+   pin(Y) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "(IN1&(IN2+IN3+IN4))";
+     timing() {
+       intrinsic_rise : 0.8500 ;
+       intrinsic_fall : 0.8500 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 0.8500 ;
+       intrinsic_fall : 0.8500 ;
+       related_pin : "IN2";
+     }
+     timing() {
+       intrinsic_rise : 0.8500 ;
+       intrinsic_fall : 0.8500 ;
+       related_pin : "IN3";
+     }
+     timing() {
+       intrinsic_rise : 0.8500 ;
+       intrinsic_fall : 0.8500 ;
+       related_pin : "IN4";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN2) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN3) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN4) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(ATBL_9) {
+   area : 1.000;
+   pin(Y) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "((IN1+IN2)&(IN3+IN4))";
+     timing() {
+       intrinsic_rise : 0.8500 ;
+       intrinsic_fall : 0.8500 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 0.8500 ;
+       intrinsic_fall : 0.8500 ;
+       related_pin : "IN2";
+     }
+     timing() {
+       intrinsic_rise : 0.8500 ;
+       intrinsic_fall : 0.8500 ;
+       related_pin : "IN3";
+     }
+     timing() {
+       intrinsic_rise : 0.8500 ;
+       intrinsic_fall : 0.8500 ;
+       related_pin : "IN4";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN2) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN3) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN4) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(ATBL_10) {
+   area : 1.000;
+   pin(Y) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "(IN1&(IN2+IN3&IN4))";
+     timing() {
+       intrinsic_rise : 0.8500 ;
+       intrinsic_fall : 0.8500 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 0.8500 ;
+       intrinsic_fall : 0.8500 ;
+       related_pin : "IN2";
+     }
+     timing() {
+       intrinsic_rise : 0.8500 ;
+       intrinsic_fall : 0.8500 ;
+       related_pin : "IN3";
+     }
+     timing() {
+       intrinsic_rise : 0.8500 ;
+       intrinsic_fall : 0.8500 ;
+       related_pin : "IN4";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN2) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN3) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN4) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(TFFS) {
+   area : 0.000;
+   ff (IQ,IQN) {
+     next_state : "T^IQ"
+     clocked_on : "CLK";
+   }
+   pin(Q) {
+     direction : output;
+     function : "IQ"
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     timing() {
+        timing_type : rising_edge ;
+		intrinsic_rise : 0.4500 ;
+		intrinsic_fall : 0.4500 ;
+		related_pin : "CLK";
+     }
+   }
+   pin(T) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+     timing() { 
+         timing_type : setup_rising;
+         intrinsic_rise : 0.8000 ;
+         intrinsic_fall : 0.8000 ;
+         related_pin : "CLK";
+     }
+     timing() { 
+         timing_type : hold_rising;
+         intrinsic_rise : 1.0000 ;
+         intrinsic_fall : 1.0000 ;
+         related_pin : "CLK";
+     }
+   }
+   pin(CLK) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+     clock : true ;
+   }
+ }
+ cell(TFF) {
+   area : 0.000;
+   ff (IQ,IQN) {
+     next_state : "T^IQ"
+     clocked_on : "CLK";
+     clear : "CLRN'";
+     clear_preset_var1 : L;
+     preset : "PRN'"
+     clear_preset_var2 : L;
+   }
+   pin(Q) {
+     direction : output;
+     function : "IQ"
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     timing() {
+        timing_type : rising_edge ;
+		intrinsic_rise : 0.4500 ;
+		intrinsic_fall : 0.4500 ;
+		related_pin : "CLK";
+     }
+     timing() {
+        timing_type : clear ;
+        timing_sense : positive_unate ;
+		intrinsic_rise : 0.4000 ;
+		intrinsic_fall : 0.4000 ;
+		related_pin : "CLRN";
+     }
+     timing() {
+        timing_type : preset ;
+        timing_sense : negative_unate ;
+		intrinsic_rise : 0.6000 ;
+		intrinsic_fall : 0.6000 ;
+		related_pin : "PRN";
+     }
+   }
+   pin(T) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+     timing() { 
+         timing_type : setup_rising;
+         intrinsic_rise : 0.8000 ;
+         intrinsic_fall : 0.8000 ;
+         related_pin : "CLK";
+     }
+     timing() { 
+         timing_type : hold_rising;
+         intrinsic_rise : 1.0000 ;
+         intrinsic_fall : 1.0000 ;
+         related_pin : "CLK";
+     }
+   }
+   pin(CLK) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+     clock : true ;
+   }
+   pin(CLRN) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(PRN) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(TFFE) {
+   area : 0.000;
+   ff (IQ,IQN) {
+     next_state : "(ENA&(T^IQ))+(ENA'&IQ)"
+     clocked_on : "CLK";
+     clear : "CLRN'";
+     clear_preset_var1 : L;
+     preset : "PRN'"
+     clear_preset_var2 : L;
+   }
+   pin(Q) {
+     direction : output;
+     function : "IQ"
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     timing() {
+        timing_type : rising_edge ;
+		intrinsic_rise : 0.4500 ;
+		intrinsic_fall : 0.4500 ;
+		related_pin : "CLK";
+     }
+     timing() {
+        timing_type : clear ;
+        timing_sense : positive_unate ;
+		intrinsic_rise : 0.4000 ;
+		intrinsic_fall : 0.4000 ;
+		related_pin : "CLRN";
+     }
+     timing() {
+        timing_type : preset ;
+        timing_sense : negative_unate ;
+		intrinsic_rise : 0.6000 ;
+		intrinsic_fall :  0.6000 ;
+		related_pin : "PRN";
+     }
+   }
+   pin(T) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+     timing() { 
+         timing_type : setup_rising;
+         intrinsic_rise : 0.8000 ;
+         intrinsic_fall : 0.8000 ;
+         related_pin : "CLK";
+     }
+     timing() { 
+         timing_type : hold_rising;
+         intrinsic_rise : 1.0000 ;
+         intrinsic_fall : 1.0000 ;
+         related_pin : "CLK";
+     }
+   }
+   pin(CLK) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+     clock : true ;
+   }
+   pin(CLRN) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(PRN) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(ENA) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+     timing() { 
+         timing_type : setup_rising;
+         intrinsic_rise : 0.0000 ;
+         intrinsic_fall : 0.0000 ;
+         related_pin : "CLK";
+     }
+     timing() { 
+         timing_type : hold_rising;
+         intrinsic_rise :  0.0000 ;
+         intrinsic_fall :  0.0000 ;
+         related_pin : "CLK";
+     }
+   }
+ }
+ cell(ATRIBUF) {
+   area : 0.000;
+   pin(Y) {
+     direction : output;
+     three_state : "!OE";
+     function : "IN1";
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     timing() {
+       intrinsic_rise : 2.2100 ;
+       intrinsic_fall : 2.2100 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       timing_type : three_state_disable;
+       intrinsic_rise : 2.4500 ;
+       intrinsic_fall : 2.4500 ;
+       related_pin : "OE";
+     }
+     timing() {
+       intrinsic_rise : 2.4500 ;
+       intrinsic_fall : 2.4500 ;
+       related_pin : "OE";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(OE) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(ASOFT) {
+   dont_use : true;
+   dont_touch : true;
+   area : 0.000;
+   pin(Y) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "IN1";
+     timing() {
+       intrinsic_rise : 0.8500 ;
+       intrinsic_fall : 0.8500 ;
+       related_pin : "IN1";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(FLEX_ADD) {
+   dont_use : true;
+   dont_touch : true;
+   area : 0.500;
+   pin(S) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "(IN1^IN2)&!CI+!(IN1^IN2)&CI";
+     timing() {
+       intrinsic_rise : 1.1600 ;
+       intrinsic_fall : 1.1600 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 1.1600 ;
+       intrinsic_fall : 1.1600 ;
+       related_pin : "IN2";
+     }
+     timing() {
+       intrinsic_rise : 0.8200 ;
+       intrinsic_fall : 0.8200 ;
+       related_pin : "CI";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN2) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(CI) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(FLEX_ADD_CARRY) {
+   dont_use : true;
+   dont_touch : true;
+   area : 1.000;
+   pin(S) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "(IN1^IN2)&!CI+!(IN1^IN2)&CI";
+     timing() {
+       intrinsic_rise : 1.1600 ;
+       intrinsic_fall : 1.1600 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 1.1600 ;
+       intrinsic_fall : 1.1600 ;
+       related_pin : "IN2";
+     }
+     timing() {
+       intrinsic_rise : 0.8200 ;
+       intrinsic_fall : 0.8200 ;
+       related_pin : "CI";
+     }
+   }
+   pin(CO) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "IN1&IN2+CI&(IN1^IN2)";
+     timing() {
+       intrinsic_rise : 1.1600 ;
+       intrinsic_fall : 1.1600 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 1.1600 ;
+       intrinsic_fall : 1.1600 ;
+       related_pin : "IN2";
+     }
+     timing() {
+       intrinsic_rise : 0.8200 ;
+       intrinsic_fall : 0.8200 ;
+       related_pin : "CI";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN2) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(CI) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(FLEX_CARRY) {
+   dont_use : true;
+   dont_touch : true;
+   area : 0.500;
+   pin(CO) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "IN1&IN2+CI&(IN1^IN2)";
+     timing() {
+       intrinsic_rise : 0.8000 ;
+       intrinsic_fall : 0.8000 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 0.8000 ;
+       intrinsic_fall : 0.8000 ;
+       related_pin : "IN2";
+     }
+     timing() {
+       intrinsic_rise : 0.2700 ;
+       intrinsic_fall : 0.2700 ;
+       related_pin : "CI";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN2) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(CI) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(FLEX_INC) {
+   dont_use : true;
+   dont_touch : true;
+   area : 0.250;
+   pin(INC) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "!(CI^IN1)";
+     timing() {
+       intrinsic_rise : 1.1600 ;
+       intrinsic_fall : 1.1600 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 0.8200 ;
+       intrinsic_fall : 0.8200 ;
+       related_pin : "CI";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(CI) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(FLEX_INC_CARRY) {
+   dont_use : true;
+   dont_touch : true;
+   area : 0.50;
+   pin(INC) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "!(CI^IN1)";
+     timing() {
+       intrinsic_rise : 1.1600 ;
+       intrinsic_fall : 1.1600 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 0.8200 ;
+       intrinsic_fall : 0.8200 ;
+       related_pin : "CI";
+     }
+   }
+   pin(CO) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "CI+IN1";
+     timing() {
+       intrinsic_rise : 1.1600 ;
+       intrinsic_fall : 1.1600 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 0.8200 ;
+       intrinsic_fall : 0.8200 ;
+       related_pin : "CI";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(CI) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(FLEX_CARRY_INC) {
+   dont_use : true;
+   dont_touch : true;
+   area : 0.250;
+   pin(CO) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "CI+IN1";
+     timing() {
+       intrinsic_rise : 0.8000 ;
+       intrinsic_fall : 0.8000 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 0.2700 ;
+       intrinsic_fall : 0.2700 ;
+       related_pin : "CI";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(CI) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(FLEX_DEC) {
+   dont_use : true;
+   dont_touch : true;
+   area : 0.250;
+   pin(DEC) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "!(BI^IN1)";
+     timing() {
+       intrinsic_rise : 1.1600 ;
+       intrinsic_fall : 1.1600 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 0.8200 ;
+       intrinsic_fall : 0.8200 ;
+       related_pin : "BI";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(BI) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(FLEX_DEC_CARRY) {
+   dont_use : true;
+   dont_touch : true;
+   area : 0.500;
+   pin(DEC) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "!(BI^IN1)";
+     timing() {
+       intrinsic_rise : 1.1600 ;
+       intrinsic_fall : 1.1600 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 0.8200 ;
+       intrinsic_fall : 0.8200 ;
+       related_pin : "BI";
+     }
+   }
+   pin(BO) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "BI+(!IN1)";
+     timing() {
+       intrinsic_rise : 1.1600 ;
+       intrinsic_fall : 1.1600 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 0.8200 ;
+       intrinsic_fall : 0.8200 ;
+       related_pin : "BI";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(BI) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(FLEX_CARRY_DEC) {
+   dont_use : true;
+   dont_touch : true;
+   area : 0.250;
+   pin(BO) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "BI+(!IN1)";
+     timing() {
+       intrinsic_rise : 0.8000 ;
+       intrinsic_fall : 0.8000 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 0.2700 ;
+       intrinsic_fall : 0.2700 ;
+       related_pin : "BI";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(BI) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(FLEX_SUB) {
+   dont_use : true;
+   dont_touch : true;
+   area : 0.500;
+   pin(D) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "(IN1^IN2)&!BI+!(IN1^IN2)&BI";
+     timing() {
+       intrinsic_rise : 1.1600 ;
+       intrinsic_fall : 1.1600 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 1.1600 ;
+       intrinsic_fall : 1.1600 ;
+       related_pin : "IN2";
+     }
+     timing() {
+       intrinsic_rise : 0.8200 ;
+       intrinsic_fall : 0.8200 ;
+       related_pin : "BI";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN2) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(BI) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(FLEX_SUB_BORROW) {
+   dont_use : true;
+   dont_touch : true;
+   area : 1.000;
+   pin(D) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "(IN1^IN2)&!BI+!(IN1^IN2)&BI";
+     timing() {
+       intrinsic_rise : 1.1600 ;
+       intrinsic_fall : 1.1600 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 1.1600 ;
+       intrinsic_fall : 1.1600 ;
+       related_pin : "IN2";
+     }
+     timing() {
+       intrinsic_rise : 0.8200 ;
+       intrinsic_fall : 0.8200 ;
+       related_pin : "BI";
+     }
+   }
+   pin(BO) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "BI&IN2+!IN1&(BI^IN2)";
+     timing() {
+       intrinsic_rise : 1.1600 ;
+       intrinsic_fall : 1.1600 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 1.1600 ;
+       intrinsic_fall : 1.1600 ;
+       related_pin : "IN2";
+     }
+     timing() {
+       intrinsic_rise : 0.8200 ;
+       intrinsic_fall : 0.8200 ;
+       related_pin : "BI";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN2) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(BI) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(FLEX_BORROW) {
+   dont_use : true;
+   dont_touch : true;
+   area : 0.500;
+   pin(BO) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "BI&IN2+!IN1&(BI^IN2)";
+     timing() {
+       intrinsic_rise : 0.8000 ;
+       intrinsic_fall : 0.8000 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 0.8000 ;
+       intrinsic_fall : 0.8000 ;
+       related_pin : "IN2";
+     }
+     timing() {
+       intrinsic_rise : 0.2700 ;
+       intrinsic_fall : 0.2700 ;
+       related_pin : "BI";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN2) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(BI) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(FLEX_GT) {
+   dont_use : true;
+   dont_touch : true;
+   area : 0.750;
+   pin(GT) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "(IN1&!IN2)+(CI&!(IN1^IN2))";
+     timing() {
+       intrinsic_rise : 1.1600 ;
+       intrinsic_fall : 1.1600 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 1.1600 ;
+       intrinsic_fall : 1.1600 ;
+       related_pin : "IN2";
+     }
+     timing() {
+       intrinsic_rise : 0.8200 ;
+       intrinsic_fall : 0.8200 ;
+       related_pin : "CI";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN2) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(CI) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(FLEX_CARRYS_GT) {
+   dont_use : true;
+   dont_touch : true;
+   area : 0.750;
+   pin(CO) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "(IN1&!IN2)+(CI&!(IN1^IN2))";
+     timing() {
+       intrinsic_rise : 0.8000 ;
+       intrinsic_fall : 0.8000 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 0.8000 ;
+       intrinsic_fall : 0.8000 ;
+       related_pin : "IN2";
+     }
+     timing() {
+       intrinsic_rise : 0.2700 ;
+       intrinsic_fall : 0.2700 ;
+       related_pin : "CI";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN2) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(CI) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(FLEX_CARRY_GT) {
+   dont_use : true;
+   dont_touch : true;
+   area : 0.750;
+   pin(CO) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "(IN1&!IN2)+(CI&!(IN1^IN2))";
+     timing() {
+       intrinsic_rise : 0.8000 ;
+       intrinsic_fall : 0.8000 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 0.8000 ;
+       intrinsic_fall : 0.8000 ;
+       related_pin : "IN2";
+     }
+     timing() {
+       intrinsic_rise : 0.2700 ;
+       intrinsic_fall : 0.2700 ;
+       related_pin : "CI";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN2) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(CI) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(FLEX_LT) {
+   dont_use : true;
+   dont_touch : true;
+   area : 1.000;
+   pin(LT) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "!IN1&IN2+CI&!(IN1^IN2)";
+     timing() {
+       intrinsic_rise : 1.1600 ;
+       intrinsic_fall : 1.1600 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 1.1600 ;
+       intrinsic_fall : 1.1600 ;
+       related_pin : "IN2";
+     }
+     timing() {
+       intrinsic_rise : 0.8200 ;
+       intrinsic_fall : 0.8200 ;
+       related_pin : "CI";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN2) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(CI) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(FLEX_CARRYS_LT) {
+   dont_use : true;
+   dont_touch : true;
+   area : 1.000;
+   pin(CO) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "(!IN1&IN2)+CI&!(IN1^IN2)";
+     timing() {
+       intrinsic_rise : 0.8000 ;
+       intrinsic_fall : 0.8000 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 0.8000 ;
+       intrinsic_fall : 0.8000 ;
+       related_pin : "IN2";
+     }
+     timing() {
+       intrinsic_rise : 0.2700 ;
+       intrinsic_fall : 0.2700 ;
+       related_pin : "CI";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN2) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(CI) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(FLEX_CARRY_LT) {
+   dont_use : true;
+   dont_touch : true;
+   area : 1.000;
+   pin(CO) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "(!IN1&IN2)+CI&!(IN1^IN2)";
+     timing() {
+       intrinsic_rise : 0.8000 ;
+       intrinsic_fall : 0.8000 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 0.8000 ;
+       intrinsic_fall : 0.8000 ;
+       related_pin : "IN2";
+     }
+     timing() {
+       intrinsic_rise : 0.2700 ;
+       intrinsic_fall : 0.2700 ;
+       related_pin : "CI";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN2) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(CI) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(FLEX_GTEQ) {
+   dont_use : true;
+   dont_touch : true;
+   area : 1.000;
+   pin(GTEQ) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "IN1&!IN2+CI&!(IN1^IN2)";
+     timing() {
+       intrinsic_rise : 1.1600 ;
+       intrinsic_fall : 1.1600 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 1.1600 ;
+       intrinsic_fall : 1.1600 ;
+       related_pin : "IN2";
+     }
+     timing() {
+       intrinsic_rise : 0.8200 ;
+       intrinsic_fall : 0.8200 ;
+       related_pin : "CI";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN2) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(CI) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(FLEX_CARRYS_GTEQ) {
+   dont_use : true;
+   dont_touch : true;
+   area : 1.000;
+   pin(CO) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "IN1&!IN2+CI&!(IN1^IN2)";
+     timing() {
+       intrinsic_rise : 0.8000 ;
+       intrinsic_fall : 0.8000 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 0.8000 ;
+       intrinsic_fall : 0.8000 ;
+       related_pin : "IN2";
+     }
+     timing() {
+       intrinsic_rise : 0.2700 ;
+       intrinsic_fall : 0.2700 ;
+       related_pin : "CI";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN2) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(CI) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(FLEX_CARRY_GTEQ) {
+   dont_use : true;
+   dont_touch : true;
+   area : 1.000;
+   pin(CO) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "IN1&!IN2+CI&!(IN1^IN2)";
+     timing() {
+       intrinsic_rise : 0.8000 ;
+       intrinsic_fall : 0.8000 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 0.8000 ;
+       intrinsic_fall : 0.8000 ;
+       related_pin : "IN2";
+     }
+     timing() {
+       intrinsic_rise : 0.2700 ;
+       intrinsic_fall : 0.2700 ;
+       related_pin : "CI";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN2) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(CI) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(FLEX_LTEQ) {
+   dont_use : true;
+   dont_touch : true;
+   area : 1.000;
+   pin(LTEQ) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "!IN1&IN2+CI&!(IN1^IN2)";
+     timing() {
+       intrinsic_rise : 1.1600 ;
+       intrinsic_fall : 1.1600 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 1.1600 ;
+       intrinsic_fall : 1.1600 ;
+       related_pin : "IN2";
+     }
+     timing() {
+       intrinsic_rise : 0.8200 ;
+       intrinsic_fall : 0.8200 ;
+       related_pin : "CI";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN2) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(CI) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(FLEX_CARRYS_LTEQ) {
+   dont_use : true;
+   dont_touch : true;
+   area : 1.000;
+   pin(CO) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "!IN1&IN2+CI&!(IN1^IN2)";
+     timing() {
+       intrinsic_rise : 0.8000 ;
+       intrinsic_fall : 0.8000 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 0.8000 ;
+       intrinsic_fall : 0.8000 ;
+       related_pin : "IN2";
+     }
+     timing() {
+       intrinsic_rise : 0.2700 ;
+       intrinsic_fall : 0.2700 ;
+       related_pin : "CI";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN2) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(CI) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(FLEX_CARRY_LTEQ) {
+   dont_use : true;
+   dont_touch : true;
+   area : 1.000;
+   pin(CO) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "!IN1&IN2+CI&!(IN1^IN2)";
+     timing() {
+       intrinsic_rise : 0.8000 ;
+       intrinsic_fall : 0.8000 ;
+       related_pin : "IN1";
+     }
+     timing() {
+       intrinsic_rise : 0.8000 ;
+       intrinsic_fall : 0.8000 ;
+       related_pin : "IN2";
+     }
+     timing() {
+       intrinsic_rise : 0.2700 ;
+       intrinsic_fall : 0.2700 ;
+       related_pin : "CI";
+     }
+   }
+   pin(IN1) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(IN2) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(CI) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(FLEX_COUNT) {
+   dont_use : true;
+   dont_touch : true;
+   area : 0.500;
+   ff (IQ,IQN) {
+     next_state : "((((CI^IQ)&CEN)+(IQ&!CEN))&LOAD)+(DATA&!LOAD)"
+     clocked_on : "CLK";
+     clear : "RESET'";
+   }
+   pin(COUNT) {
+     direction : output;
+     function : "IQ"
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     timing() {
+        timing_type : clear ;
+        timing_sense : positive_unate ;
+		intrinsic_rise : 0.4000 ;
+		intrinsic_fall : 0.4000 ;
+		related_pin : "RESET";
+     }
+     timing() {
+        timing_type : rising_edge ;
+		intrinsic_rise : 0.4500 ;
+		intrinsic_fall : 0.4500 ;
+		related_pin : "CLK";
+     }
+   }
+   pin(CEN) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+     timing() { 
+         timing_type : setup_rising;
+         intrinsic_rise : 0.3200 ;
+         intrinsic_fall : 0.3200 ;
+         related_pin : "CLK";
+     }
+     timing() { 
+         timing_type : hold_rising;
+         intrinsic_rise : 1.0000 ;
+         intrinsic_fall :  1.0000 ;
+         related_pin : "CLK";
+     }
+   }
+   pin(RESET) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(CLK) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+     clock : true ;
+   }
+   pin(CI) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+     timing() { 
+         timing_type : setup_rising;
+         intrinsic_rise : 0.7700 ;
+         intrinsic_fall : 0.7700 ;
+         related_pin : "CLK";
+     }
+     timing() { 
+         timing_type : hold_rising;
+         intrinsic_rise : 1.0000 ;
+         intrinsic_fall :  1.0000 ;
+         related_pin : "CLK";
+     }
+   }
+   pin(DATA) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+     timing() { 
+         timing_type : setup_rising;
+         intrinsic_rise : 0.8000 ;
+         intrinsic_fall :  0.8000 ;
+         related_pin : "CLK";
+     }
+     timing() { 
+         timing_type : hold_rising;
+         intrinsic_rise :  1.0000 ;
+         intrinsic_fall :  1.0000 ;
+         related_pin : "CLK";
+     }
+   }
+   pin(LOAD) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+     timing() { 
+         timing_type : setup_rising;
+         intrinsic_rise : 0.8500 ;
+         intrinsic_fall : 0.8500 ;
+         related_pin : "CLK";
+     }
+     timing() { 
+         timing_type : hold_rising;
+         intrinsic_rise :  1.0000 ;
+         intrinsic_fall :  1.0000 ;
+         related_pin : "CLK";
+     }
+   }
+ }
+ cell(FLEX_CARRYSC_COUNT) {
+   dont_use : true;
+   dont_touch : true;
+   area : 0.500;
+   pin(CO) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "CI&!(COUNT^UPDN)";
+     timing() {
+       intrinsic_rise : 0.2700 ;
+       intrinsic_fall : 0.2700 ;
+       related_pin : "CI";
+     }
+     timing() {
+       intrinsic_rise : 0.5700 ;
+       intrinsic_fall : 0.5700 ;
+       related_pin : "COUNT";
+     }
+     timing() {
+       intrinsic_rise : 0.8000 ;
+       intrinsic_fall : 0.8000 ;
+       related_pin : "UPDN";
+     }
+   }
+   pin(CNTO) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "COUNT";
+     timing() {
+       intrinsic_rise : 0.5700 ;
+       intrinsic_fall : 0.5700 ;
+       related_pin : "COUNT";
+     }
+   }
+   pin(CI) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(COUNT) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(UPDN) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+ cell(AFLEX_CARRY_COUNT) {
+   dont_use : true;
+   dont_touch : true;
+   area : 0.500;
+   pin(CO) {
+     direction : output;
+     max_fanout : SCALE_MAX_FANOUT * 120.0000 ;
+     function : "CI&!(COUNT^UPDN)";
+     timing() {
+       intrinsic_rise : 0.2700 ;
+       intrinsic_fall : 0.2700 ;
+       related_pin : "CI";
+     }
+     timing() {
+       intrinsic_rise : 0.5700 ;
+       intrinsic_fall : 0.5700 ;
+       related_pin : "COUNT";
+     }
+     timing() {
+       intrinsic_rise : 0.8000 ;
+       intrinsic_fall : 0.8000 ;
+       related_pin : "UPDN";
+     }
+   }
+   pin(CI) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(COUNT) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+   pin(UPDN) {
+     direction : input;
+     capacitance : 0.0;
+     fanout_load : 0;
+   }
+ }
+
+}

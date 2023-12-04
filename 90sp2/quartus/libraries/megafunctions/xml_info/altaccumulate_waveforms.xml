@@ -1,0 +1,68 @@
+<?xml version="1.0" ?>
+<ROOT>
+	<MACROS>
+		<MACRO NAME="m_has_latency" DEFINITION="EXTRA_LATENCY > 0" />
+		<MACRO NAME="m_h1" >
+			<DEFINITION>
+				(2 exp WIDTH_IN) div 2
+			</DEFINITION>
+		</MACRO> 
+	</MACROS>
+	<HTML_TEXT>
+		<TITLE>Sample Waveforms for m_design_file_name</TITLE>
+		<HEADER>Sample behavioral waveforms for design file m_design_file_name</HEADER>
+		<INTRO>
+			<T>The following waveforms show the behavior of altaccumulate megafunction for the chosen set of parameters in design m_design_file_name. </T>
+			<T> The design m_design_file_name is a WIDTH_OUT bit </T>
+		
+			<IF> is_used(sign_data) </IF>
+			<THEN> dynamic signed </THEN>
+			<ELSE> LPM_REPRESENTATION </ELSE>
+		
+			<IF> is_used(add_sub) </IF>
+			<THEN> dynamically controlled adder/subtractor accumulator. </THEN>
+			<ELSE> accumulator. </ELSE>
+	
+			<T> Data input to the accumulator is of width WIDTH_IN. </T>
+
+			<IF> is_used(sload) </IF>
+			<THEN> The accumulator has a synchronous load port to load the data input directly to the accumulator. </THEN>
+	
+        		 <IF>m_has_latency</IF>
+		         <THEN> The output result has a latency of EXTRA_LATENCY.</THEN>
+		</INTRO>
+	</HTML_TEXT>
+	<WAVE_DATA>
+		<WAVE NAME="ALL" TIME_STEP="10" MAX_TIME="600 + EXTRA_LATENCY*40" >
+			<CAPTION>Wave showing altaccumulate operation.</CAPTION>
+
+			<STIM> force data 0 @0, 1 @90, -1 @170, 2 @250, 3 @310, 0 @350, 1 @390, m_h1 @470</STIM>
+			<STIM> force sload 0 @0, 1 @370 </STIM>
+			<STIM> force clock 0 @0, 1 @20, -repeat @40</STIM>
+			<STIM> force clken 0 @0, 1 @50 </STIM>	
+			<STIM> force add_sub 1 @0, 0 @210, 1 @370 </STIM>
+			<STIM> force sign_data 1 @0, 0 @210, 1 @370 </STIM>	
+			<STIM> force cin 0 @0, 1 @130, 0 @290 </STIM>
+			<IF> EXTRA_LATENCY == 0 </IF>
+			<THEN>
+				<STIM> force aclr 0 @0, 1 @210, 0 @250 </STIM>
+			</THEN>	
+			<ELSE>
+				<STIM> force aclr 0 @0, 1 @90, 0 @130 </STIM>		
+			</ELSE>
+		</WAVE>
+		<WAVE NAME="SIGN_DATA" TIME_STEP="10" MAX_TIME="400 + EXTRA_LATENCY*40" >
+			<CAPTION>Wave showing sign extension operation.</CAPTION>
+			<WAVE_CONDITION> (LPM_REPRESENTATION == "SIGNED" || is_used(sign_data)) and (WIDTH_IN lt WIDTH_OUT) </WAVE_CONDITION>
+			<STIM> force data 0 @0, m_h1 @90</STIM>
+			<STIM> force sload 0 @0 </STIM>
+			<STIM> force clock 0 @0, 1 @20, -repeat @40</STIM>
+			<STIM> force clken 1 @0 </STIM>	
+			<STIM> force add_sub 1 @0, 0 @210, 1 @370 </STIM>
+			<STIM> force sign_data 0 @0, 1 @130, 0 @370 </STIM>	
+			<STIM> force cin 0 @0, 1 @130, 0 @290 </STIM>
+			<STIM> force aclr 0 @0</STIM>
+		</WAVE>
+	</WAVE_DATA>
+</ROOT>
+

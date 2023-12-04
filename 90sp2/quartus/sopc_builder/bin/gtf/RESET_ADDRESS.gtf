@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<!-- RESET_ADDRESS.gtf - This "subroutine" returns the reset address for
+                         the indicated cpu.
+     Inputs:
+        CPU            - the name of the CPU's PTF module
+
+     Returns:
+        RESET_ADDRESS  - the reset address for the indicated CPU
+-->     
+
+<generate_set>
+
+    <!-- only set RESET_ADDRESS if it hasn't already been set
+         (since this GTF may be included multiple times) -->
+    <if condition="not( %RESET_ADDRESS% )">
+
+        <set_variable variable="RESET_SLAVE"
+                      ptf_path="SYSTEM/MODULE %CPU%/WIZARD_SCRIPT_ARGUMENTS/reset_slave"/>
+        <set_variable variable="RESET_SLAVE_MODULE" to="split( %RESET_SLAVE%, /, 0 )"/>
+        <set_variable variable="RESET_SLAVE_SLAVE"  to="split( %RESET_SLAVE%, /, 1 )"/>
+        <set_variable variable="RESET_BASE_ADDRESS"
+                      ptf_path="SYSTEM/MODULE %RESET_SLAVE_MODULE%/SLAVE %RESET_SLAVE_SLAVE%/SYSTEM_BUILDER_INFO/Base_Address"/>
+        <set_variable variable="RESET_OFFSET"
+                      ptf_path="SYSTEM/MODULE %CPU%/WIZARD_SCRIPT_ARGUMENTS/reset_offset"/>
+        <set_variable variable="RESET_ADDRESS" to="add( %RESET_BASE_ADDRESS%, %RESET_OFFSET% )"/>
+
+    </if>
+
+</generate_set>

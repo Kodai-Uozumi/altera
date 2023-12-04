@@ -1,0 +1,41 @@
+library verilog;
+use verilog.vl_types.all;
+entity stratixiv_hssi_pma_c_clkgenbuf_cmu is
+    port(
+        cgb_vccelxqyx   : out    vl_logic;
+        cgb_vssexqyx    : out    vl_logic;
+        cgb_x_en        : in     vl_logic_vector(1 downto 0);
+        clk0_0          : in     vl_logic;
+        clk0_1          : in     vl_logic;
+        clk90_0         : in     vl_logic;
+        clk90_1         : in     vl_logic;
+        clk180_0        : in     vl_logic;
+        clk180_1        : in     vl_logic;
+        clk270_0        : in     vl_logic;
+        clk270_1        : in     vl_logic;
+        cmu_sel         : in     vl_logic;
+        cpulse_ht       : out    vl_logic;
+        cpulse_x1       : out    vl_logic;
+        div5            : in     vl_logic;
+        dynamic_sw      : in     vl_logic;
+        gen2ngen1       : out    vl_logic;
+        hclk            : out    vl_logic;
+        hfclkn_ht       : out    vl_logic;
+        hfclkn_x1       : out    vl_logic;
+        hfclkp_ht       : out    vl_logic;
+        hfclkp_x1       : out    vl_logic;
+        ht_sel          : in     vl_logic;
+        lfclkn_ht       : out    vl_logic;
+        lfclkn_x1       : out    vl_logic;
+        lfclkp_ht       : out    vl_logic;
+        lfclkp_x1       : out    vl_logic;
+        m_sel           : in     vl_logic_vector(1 downto 0);
+        pcie_sw         : in     vl_logic;
+        pcie_sw_cdr     : out    vl_logic;
+        pclk            : out    vl_logic;
+        pdb             : in     vl_logic;
+        rst_n           : in     vl_logic;
+        vccelxqyx       : in     vl_logic;
+        vssexqyx        : in     vl_logic
+    );
+end stratixiv_hssi_pma_c_clkgenbuf_cmu;

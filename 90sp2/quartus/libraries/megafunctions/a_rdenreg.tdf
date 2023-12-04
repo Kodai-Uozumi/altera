@@ -1,0 +1,105 @@
+--------------------------------------------------------------------
+--
+--	A_RDENREG Parameterized Megafunction
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 1.0
+--
+--------------------------------------------------------------------
+
+PARAMETERS
+(
+	WIDTH,
+	D_ACLR = "NONE",	-- "NONE" or "ACLR"
+	E_ACLR = "NONE"		-- "NONE" or "ACLR" or "ACLRE"
+);
+
+INCLUDE "a_hdffe.inc";
+
+SUBDESIGN a_rdenreg
+(
+--	inclock
+	clk						: INPUT;
+--	inclocken
+	ena						: INPUT = VCC;
+--	rden
+	e						: INPUT = VCC;
+--	rdaddress[WIDTHAD-1..0]
+	d[WIDTH-1..0]			: INPUT;
+
+	aclr					: INPUT = GND;
+	aclre					: INPUT = GND;
+
+--	latched output address
+	q[WIDTH-1..0]			: OUTPUT;
+)
+
+VARIABLE
+
+	xlaff[WIDTH-1..0]	:	DFFE;
+	
+	-- Need to register rden separately if rdaddr is aclr-able
+	IF (D_ACLR != "NONE" & E_ACLR != D_ACLR) GENERATE
+		rdenff : a_hdffe;
+	END GENERATE;
+
+BEGIN
+
+	xlaff[].clk = clk;
+	
+	-- Connect rdaddress, but need to mask if rdaddress is aclr-able
+	IF (D_ACLR == "ACLR") GENERATE
+		xlaff[] = d[] & !aclr;
+	ELSE GENERATE
+		xlaff[] = d[];
+	END GENERATE;
+	
+	-- Connect the clock enable for the rdaddress register
+	IF (E_ACLR == "ACLRE") GENERATE
+		xlaff[].ena = ena & e & !aclre;
+	ELSE GENERATE
+		-- If rden regs is aclr-able, then must disable .ena port when aclr-ing
+		IF (E_ACLR == "ACLR") GENERATE
+			xlaff[].ena = ena & e & !aclr;
+		ELSE GENERATE
+			xlaff[].ena = ena & e;  -- If only rdaddress is aclr-able or none aclr-able
+		END GENERATE;
+	END GENERATE;
+
+	-- Do we need to connect the aclr port on the rdaddress reg?
+	IF (D_ACLR == "ACLR" & E_ACLR != "ACLR") GENERATE
+		xlaff[].clrn = !(aclr & rdenff.q);
+		
+		-- Need rden register too for these cases
+		rdenff.d = e;
+		rdenff.clk = clk;
+		IF (USED(ena)) GENERATE
+			rdenff.ena = ena;
+		END GENERATE;
+		IF (E_ACLR == "ACLRE") GENERATE
+			rdenff.clrn = !aclre;
+		END GENERATE;
+	END GENERATE;
+
+	-- Connect output
+	q[] = xlaff[];
+	IF !USED(q) GENERATE
+		q[] = GND;
+	END GENERATE;
+END;
+

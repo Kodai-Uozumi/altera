@@ -1,0 +1,191 @@
+/*
+WARNING: Do NOT edit the input and output ports in this file in a text
+editor if you plan to continue editing the block that represents it in
+the Block Editor! File corruption is VERY likely to occur.
+*/
+/*
+Copyright (C) 1991-2003 Altera Corporation
+Any  megafunction  design,  and related netlist (encrypted  or  decrypted),
+support information,  device programming or simulation file,  and any other
+associated  documentation or information  provided by  Altera  or a partner
+under  Altera's   Megafunction   Partnership   Program  may  be  used  only
+to program  PLD  devices (but not masked  PLD  devices) from  Altera.   Any
+other  use  of such  megafunction  design,  netlist,  support  information,
+device programming or simulation file,  or any other  related documentation
+or information  is prohibited  for  any  other purpose,  including, but not
+limited to  modification,  reverse engineering,  de-compiling, or use  with
+any other  silicon devices,  unless such use is  explicitly  licensed under
+a separate agreement with  Altera  or a megafunction partner.  Title to the
+intellectual property,  including patents,  copyrights,  trademarks,  trade
+secrets,  or maskworks,  embodied in any such megafunction design, netlist,
+support  information,  device programming or simulation file,  or any other
+related documentation or information provided by  Altera  or a megafunction
+partner, remains with Altera, the megafunction partner, or their respective
+licensors. No other licenses, including any licenses needed under any third
+party's intellectual property, are provided herein.
+*/
+(header "symbol" (version "1.1"))
+(symbol
+	(rect 64 64 504 280)
+	(text "ALTDQS" (rect 192 0 248 16)(font "Arial" (font_size 10)))
+	(text "inst" (rect 8 200 24 212)(font "Arial" ))
+	(port
+		(pt 0 32)
+		(input)
+		(text "inclk" (rect 0 24 20 36)(font "Arial" ))
+		(text "inclk" (rect 21 27 44 41)(font "Arial" (font_size 8)))
+		(line (pt 0 32)(pt 16 32)(line_width 1))
+	)
+	(port
+		(pt 0 96)
+		(input)
+		(text "oe" (rect 0 24 11 36)(font "Arial" ))
+		(text "oe" (rect 21 88 34 102)(font "Arial" (font_size 8)))
+		(line (pt 0 96)(pt 16 96)(line_width 1))
+	)
+	(port
+		(pt 0 112)
+		(input)
+		(text "outclk" (rect 0 24 27 36)(font "Arial" ))
+		(text "outclk" (rect 21 104 51 118)(font "Arial" (font_size 8)))
+		(line (pt 0 112)(pt 16 112)(line_width 1))
+	)
+	(port
+		(pt 0 128)
+		(input)
+		(text "outclkena" (rect 0 24 44 36)(font "Arial" ))
+		(text "outclkena" (rect 21 120 71 134)(font "Arial" (font_size 8)))
+		(line (pt 0 128)(pt 16 128)(line_width 1))
+	)
+	(port
+		(pt 0 176)
+		(input)
+		(text "dqs_areset" (rect 0 24 50 36)(font "Arial" ))
+		(text "dqs_areset" (rect 21 168 81 182)(font "Arial" (font_size 8)))
+		(line (pt 0 176)(pt 16 176)(line_width 1))
+	)
+	(port
+		(pt 0 160)
+		(input)
+		(text "dqs_sreset" (rect 0 24 50 36)(font "Arial" ))
+		(text "dqs_sreset" (rect 21 152 81 166)(font "Arial" (font_size 8)))
+		(line (pt 0 160)(pt 16 160)(line_width 1))
+	)
+	(port
+		(pt 0 64)
+		(input)
+		(text "dqs_datain_h[(NUMBER_OF_DQS) - (1)..0]" (rect 0 24 199 36)(font "Arial" ))
+		(text "dqs_datain_h[(NUMBER_OF_DQS) - (1)..0]" (rect 21 56 246 70)(font "Arial" (font_size 8)))
+		(line (pt 0 64)(pt 16 64)(line_width 3))
+	)
+	(port
+		(pt 0 80)
+		(input)
+		(text "dqs_datain_l[(NUMBER_OF_DQS) - (1)..0]" (rect 0 24 195 36)(font "Arial" ))
+		(text "dqs_datain_l[(NUMBER_OF_DQS) - (1)..0]" (rect 21 72 242 86)(font "Arial" (font_size 8)))
+		(line (pt 0 80)(pt 16 80)(line_width 3))
+	)
+	(port
+		(pt 440 128)
+		(output)
+		(text "dqinclk[(NUMBER_OF_DQS) - (1)..0]" (rect 0 24 170 36)(font "Arial" ))
+		(text "dqinclk[(NUMBER_OF_DQS) - (1)..0]" (rect 248 120 438 134)(font "Arial" (font_size 8)))
+		(line (pt 440 128)(pt 424 128)(line_width 3))
+	)
+	(port
+		(pt 440 72)
+		(bidir)
+		(text "dqs_padio[(NUMBER_OF_DQS) - (1)..0]" (rect 0 24 184 36)(font "Arial" ))
+		(text "dqs_padio[(NUMBER_OF_DQS) - (1)..0]" (rect 232 64 441 78)(font "Arial" (font_size 8)))
+		(line (pt 440 72)(pt 424 72)(line_width 3))
+	)
+	(parameter
+		"DLL_PHASE_SHIFT"
+		""
+		"Phase shift applied to the DQS strobes"
+	)
+	(parameter
+		"INPUT_FREQUENCY"
+		""
+		"Input frequency of the system clock and the DQS strobes"
+	)
+	(parameter
+		"SIM_VALID_LOCK"
+		""
+		"Number of half-cycles needed from the inclk input before the DLL locks onto the signal"
+	)
+	(parameter
+		"SIM_INVALID_LOCK"
+		""
+		"Number of half-cycles on the inclk input that the DLL can keep a lock"
+	)
+	(parameter
+		"NUMBER_OF_DQS"
+		""
+		"Number of DQS pins to implement"
+	)
+	(parameter
+		"DQS_OPEN_DRAIN_OUTPUT"
+		""
+		"Determines if the DQS pins should output with a open drain"
+	)
+	(parameter
+		"DQS_OUTPUT_ASYNC_RESET"
+		""
+		"Determines if the dqs_areset port clears, presets, or has no effect on the DQS output registers"
+	)
+	(parameter
+		"DQS_OUTPUT_POWER_UP"
+		""
+		"Power-up condition of the DQS output registers"
+	)
+	(parameter
+		"DQS_OUTPUT_SYNC_RESET"
+		""
+		"Determines if the dqs_sreset port clears, presets, or has no effect on the DQS output registers"
+	)
+	(parameter
+		"TIE_OFF_DQS_OUTPUT_CLOCK_ENABLE"
+		""
+		"Determines if outclkena should be tied off from the DQS output registers (has no effect on the register)"
+	)
+	(parameter
+		"DQS_OE_REGISTER"
+		""
+		"Determines if the DQS oe signal should be registered"
+	)
+	(parameter
+		"DQS_OE_ASYNC_RESET"
+		""
+		"Determines if the dqs_areset port clears, presets, or has no effect on the DQS oe register"
+	)
+	(parameter
+		"DQS_OE_POWER_UP"
+		""
+		"Power-up condition of the DQS output enable registers"
+	)
+	(parameter
+		"DQS_OE_SYNC_RESET"
+		""
+		"Determines if the dqs_sreset port clears, presets, or has no effect on the DQS oe register"
+	)
+	(parameter
+		"TIE_OFF_DQS_OE_CLOCK_ENABLE"
+		""
+		"Determines if outclkena should be tied off from the DQS output enable register (has no effect on the register)"
+	)
+	(parameter
+		"EXTEND_OE_DISABLE"
+		""
+		"Describes if a second DQS oe register should be used to hold the output drive at high impedance for an extra half-cycle when oe goes low"
+	)
+	(parameter
+		"CBXI_PARAMETER"
+		""
+		""
+	)
+	(drawing
+		(rectangle (rect 16 16 424 200)(line_width 1))
+	)
+	(annotation_block (parameter)(rect 480 -216 720 40))
+)

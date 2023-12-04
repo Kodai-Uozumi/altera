@@ -1,0 +1,130 @@
+#//START_MODULE_HEADER///////////////////////////////////////////////////////
+#
+#  Filename:    makefile.mak
+#
+#  Description: Makefile for the the VHDL & Verilog tutorials (Murray Hill)
+#
+#  Authors:     Robert Romano
+#
+#               Copyright (c)  Altera Corporation 2004-2005
+#               All rights reserved.
+#
+#
+#//END_MODULE_HEADER/////////////////////////////////////////////////////////
+
+#
+#  $Log:   /pvcs/quartus/install/qdesigns/vhdl_verilog_tutorial/makefile.ma_  $
+#**	
+#**	   Rev 25.0   08 Jul 2007 03:31:40   max
+#**	Quartus II 8.0 
+#**	SJ, Sat Jul  7 08:31:40 2007
+#**	
+#**	   Rev 24.1   22 Mar 2007 04:19:04   dsundara
+#**	move base dir setting to very beginning 
+#**	SJ, Wed Mar 21 09:19:05 2007
+#**	
+#**	   Rev 24.0   11 Feb 2007 02:25:22   max
+#**	Quartus II 7.2 
+#**	SJ, Sat Feb 10 06:25:23 2007
+#**	
+#**	   Rev 23.0   10 Sep 2006 00:22:30   max
+#**	Quartus II 7.1 
+#**	SJ, Sat Sep  9 05:22:29 2006
+#**	
+#**	   Rev 22.0   05 Feb 2006 00:02:06   max
+#**	Quartus II 6.1 
+#**	SJ, Sat Feb  4 04:02:05 2006
+#**	
+#**	   Rev 21.0   06 Aug 2005 23:59:02   max
+#**	Quartus II 6.0 
+#**	SJ, Sat Aug  6 04:59:03 2005
+#**	
+#**	   Rev 20.2   02 Aug 2005 05:51:24   rromano
+#**	Remove pdf tutorial files from being copied here
+#**	 
+#**	SJ, Mon Aug 01 10:51:24 2005
+#**	
+#**	   Rev 20.1   30 Jul 2005 11:42:30   rromano
+#**	Changed location of VHDL and Verilog PDF files
+#**	 
+#**	SJ, Fri Jul 29 16:42:31 2005
+#**	
+#**	   Rev 20.0   06 Feb 2005 05:58:54   max
+#**	Quartus II 5.1 
+#**	SJ, Sat Feb  5 09:58:55 2005
+#**	
+#**	   Rev 19.0   22 Oct 2004 11:36:42   max
+#**	Quartus II 5.0 
+#**	SJ, Thu Oct 21 16:36:43 2004
+#**	
+#**	   Rev 1.1   22 Oct 2004 06:30:50   rromano
+#**	ing of PDFs to this dir
+#**	 
+#**	SJ, Thu Oct 21 11:30:53 2004
+#**	
+#**	   Rev 1.0   22 Oct 2004 06:23:00   rromano
+#**	Initial revision.
+#**	 
+#**	SJ, Thu Oct 21 11:23:02 2004
+#
+
+###############################################################################
+# See Technote 209 for information on customing makefiles
+###############################################################################
+
+###############################################################################
+# Set up the base environment
+###############################################################################
+
+BASE_DIR = ../../..
+
+
+include $(BASE_DIR)/environ.gmake
+
+PVCS_DIR = $(PVCS_ROOT)/install/qdesigns/vhdl_verilog_tutorial
+
+###############################################################################
+# Set owned files and macros for targets
+###############################################################################
+
+OWNED_FILES = \
+	addersubtractor.v \
+	addersubtractor.vhd
+
+###############################################################################
+# Builtins.mak
+###############################################################################
+
+
+include $(BASE_DIR)/builtins.gmake
+
+ifneq ($(NO_PVCS),1)
+
+vpath %.cm_ $(PVCS_DIR)
+%.cmp : %.cm_
+	$(GET_FILE)
+
+vpath %.qs_ $(PVCS_DIR)
+%.qsf : %.qs_
+	$(GET_FILE)
+
+
+vpath %.cd_ $(PVCS_DIR)
+%.cdf : %.cd_
+	$(GET_FILE)
+
+vpath %.qp_ $(PVCS_DIR)
+%.qpf : %.qp_
+	$(GET_FILE)
+
+vpath %.vw_ $(PVCS_DIR)
+%.vwf : %.vw_
+	$(GET_FILE)
+
+endif
+
+###############################################################################
+# Now the targets
+###############################################################################
+
+all : $(OWNED_FILES)

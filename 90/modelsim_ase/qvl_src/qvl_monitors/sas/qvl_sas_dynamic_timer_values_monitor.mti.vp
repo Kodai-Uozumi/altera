@@ -1,0 +1,1706 @@
+//              Copyright 2006-2008 Mentor Graphics Corporation
+//                           All Rights Reserved.
+//
+//              THIS WORK CONTAINS TRADE SECRET AND PROPRIETARY
+//            INFORMATION WHICH IS THE PROPERTY OF MENTOR GRAPHICS
+//           CORPORATION OR ITS LICENSORS AND IS SUBJECT TO LICENSE
+//                                  TERMS.
+//
+//                   Questa Verification Library (QVL)
+//
+/*************************************************************************
+*
+* PURPOSE     This file is part of 0-In CheckerWare.
+*
+* DESCRIPTION This monitor tracks the SAS interface for compliance with
+*             Serial Attached SCSI specification and protocol.
+*             
+* REFERENCES   Serial Attached SCSI, Revision 1.1, Revision 04, Mar 13, 2004.
+*
+* INPUTS      
+*             areset                    - Asynchronous reset, active high
+*             reset                     - Synchronous reset, active high
+*
+*             tx_clk                    - Transmit clock. 
+*             tx_data_plus              - Transmit data plus
+*             tx_data_minus             - Transmit data minus
+*             tx_idle_signal            - Transmit Electrical Idle signal 
+*
+*             rx_clk                    - Receive clock.
+*             rx_data_plus              - Receive data plus
+*             rx_data_minus             - Receive data minus
+*             rx_idle_signal            - Receive Electrical Idle signal
+*             bypass_reset_sequence     - Bypassing the reset sequence
+*             start_speed_negotiation   - Starting point of RCD phase
+*
+*             tx_cominit_idle_time      - Transmitter COMINIT IDLE time period
+*             tx_comsas_idle_time       - Transmitter COMSAS IDLE time period
+*             tx_cominit_neg_time       - Tx COMINIT NEGATION time period
+*             tx_comsas_neg_time        - Tx COMSAS NEGATION time period
+*             rate_change_delay         - RATE CHANGE DELAY period
+*             spd_neg_lock_time         - SPEED NEG LOCK time period
+*             spd_neg_transmit_time     - SPEED NEG TRANSMIT time period
+*             hotplug_timeout           - HOTPLUG timeout period
+*             comsas_timeout            - COMSAS timeout period
+*             hard_reset_timeout        - HARD RESET timeout period
+*             ident_frame_timeout       - IDENTIFICATION FRAME timeout period
+*             break_timeout             - BREAK timeout period
+*             open_addr_res_timeout     - OPEN ADDRESS RESPONSE timeout period
+*             credit_timeout            - CREDIT timeout period
+*             ack_nak_timeout           - ACK/NAK timeout period
+*             close_timeout             - CLOSE timeout period
+*             done_timeout              - DONE timeout period
+*             rx_cominit_idle_time_min  - Rcvr COMINIT minimum idle time
+*             rx_cominit_idle_time_max  - Rcvr COMINIT maximum idle time
+*             rx_comsas_idle_time_min   - Rcvr COMSAS minimum idle time
+*             rx_comsas_idle_time_max   - Rcvr COMSAS maximum idle time
+*             rx_cominit_neg_time       - Rx COMINIT NEGATION time period
+*             rx_comsas_neg_time        - Rx COMSAS NEGATION time period
+*
+* MONITOR INSTANTIATION 
+*
+*     1. In a Initiator Device
+*        ---------------------
+*
+*       +---------------+                 +-----------------+
+*       |   INITIATOR   |  Transmit       |                 |
+*       |       +---+   |  Interface      |                 |
+*       |       | M |<--|---------------->|       TARGET    |
+*       |       | O |   |                 |       DEVICE    |
+*       |       | N |   |                 |                 |
+*       |       | I |   |                 |                 |
+*       |       | T |   |  Receive        |                 |
+*       |       | O |   |  Interface      |                 |
+*       |       | R |<--|<----------------|                 |
+*       |       +---+   |                 |                 |
+*       |               |                 |                 |
+*       +---------------+                 +-----------------+
+*
+*     2. In an Expander device
+*        ---------------------
+*      
+*       Note : Monitor is instantiated in the Expander device.
+*
+*       +---------------+                 +-----------------+
+*       |   EXPANDER    |  Transmit       |                 |
+*       |       +---+   |  Interface      |                 |
+*       |       | M |<--|---------------->|       TARGET    |
+*       |       | O |   |                 |       DEVICE    |
+*       |       | N |   |                 |                 |
+*       |       | I |   |                 |                 |
+*       |       | T |   |  Receive        |                 |
+*       |       | O |   |  Interface      |                 |
+*       |       | R |<--|<----------------|                 |
+*       |       +---+   |                 |                 |
+*       |               |                 |                 |
+*       +---------------+                 +-----------------+
+*
+*     3. In a Target device
+*        ------------------ 
+* 
+*       Note : Monitor is instantiated in the Target device.
+*
+*       +---------------+                 +-----------------+
+*       |   INITIATOR   |  Receive        |     TARGET      |
+*       |    DEVICE     |  Interface      |    +---+        |
+*       |               |---------------->|--->|   |        |
+*       |               |                 |    | M |        |
+*       |               |                 |    | O |        |
+*       |               |                 |    | N |        |
+*       |               |  Transmit       |    | I |        |
+*       |               |  Interface      |    | T |        |
+*       |               |<----------------|--->| O |        |
+*       |               |                 |    | R |        |
+*       |               |                 |    +---+        |
+*       +---------------+                 +-----------------+
+*
+*
+* LAST MODIFIED DATE : 01st July 2004
+*
+*****************************************************************************/
+
+`ifdef ZiCwDebug
+`define ZiCwDebugDelay1 #1
+`define ZiCwQuietIfNoCwDebug
+`else
+`define ZiCwDebugDelay1
+`define ZiCwQuietIfNoCwDebug -quiet
+`endif //ZiCwDebug
+
+`ifdef QVL_SVA_INTERFACE
+`define qvlmodule interface
+`define qvlendmodule endinterface
+`else
+`define qvlmodule module
+`define qvlendmodule endmodule
+`endif
+
+`ifdef QVL_ASSERT_ON
+`define OVL_ASSERT_ON
+`define OVL_SVA
+`endif
+
+`ifdef QVL_COVER_ON
+  `ifdef QVL_SV_COVERGROUP_OFF
+    // Do nothing
+  `else
+    `define QVL_SV_COVERGROUP
+  `endif
+  `ifdef QVL_MW_FINAL_COVER_OFF
+    // Do nothing
+  `else
+    `define QVL_MW_FINAL_COVER
+  `endif
+`endif
+
+`qvlmodule qvl_sas_dynamic_timer_values_monitor(
+                         reset,
+                         areset,
+                          
+                         tx_clk,
+                         tx_data_plus,
+                         tx_data_minus,
+			 tx_idle_signal,
+
+                         rx_clk,
+                         rx_data_plus,
+                         rx_data_minus,
+			 rx_idle_signal,
+                         bypass_reset_sequence,
+                         start_speed_negotiation,
+
+			 tx_cominit_idle_time,
+			 tx_comsas_idle_time,
+			 tx_cominit_neg_time,
+			 tx_comsas_neg_time,
+			 rate_change_delay,
+			 spd_neg_lock_time,
+			 spd_neg_transmit_time,
+			 hotplug_timeout,
+			 comsas_timeout,
+			 hard_reset_timeout,
+			 ident_frame_timeout,
+			 break_timeout,
+			 open_addr_res_timeout,
+			 credit_timeout,
+			 ack_nak_timeout,
+			 close_timeout,
+			 done_timeout,
+                         rx_cominit_idle_time_min,
+                         rx_cominit_idle_time_max,
+                         rx_comsas_idle_time_min,
+                         rx_comsas_idle_time_max,
+                         rx_cominit_neg_time,
+                         rx_comsas_neg_time  
+                        );
+
+  // Set this parameter to 1 if the checks in the monitor are to be used 
+  // as constraints for 0-In Search. 
+
+`ifdef QVL_ZIN
+  parameter Constraints_Mode = 1;
+`else
+  parameter Constraints_Mode = 0;
+`endif //QVL_ZIN
+  wire [31:0] pw_Constraints_Mode = Constraints_Mode;
+
+  // Configures the monitor to track a initiator/target device or an 
+  // expander/fanout expander device.  Set this parameter to 1 to track an 
+  // expander/fanout expander device.  By default the monitor tracks 
+  // initator/target device.
+
+  parameter SAS_DEVICE_TYPE = 0;
+  wire [31:0] pw_SAS_DEVICE_TYPE = SAS_DEVICE_TYPE;
+
+  // This parameter configures the monitor to either serial or parallel mode. 
+  // Set this parameter to 1 if the monitor is instantiated on a 10-bit parallel 
+  // interface. Set this parameter to 2, if the monitor is instantiated on a
+  // 20-bit parallel interface. By default the monitor is instantiated on a 
+  // serial interface.
+
+  parameter INTERFACE_TYPE = 0;
+  wire [31:0] pw_INTERFACE_TYPE = INTERFACE_TYPE;
+
+  // Configures the active edge of the tx_clk/rx_clk clocks. Set this 
+  // parameter to 1 if both edges of tx_clk/rx_clk clocks are active. Set 
+  // this parameter to 0 if tx_clk/rx_clk is active on only rising edge. 
+  // By default, tx_clk/rx_clk is active on only rising edge.
+
+  parameter DOUBLE_DATA_RATE = 0;
+  wire [31:0] pw_DOUBLE_DATA_RATE = DOUBLE_DATA_RATE;
+
+  // Configures the rate at which ALIGNs are transmitted after powerup.Set 
+  // this parameter to 1 if ALIGNs are transmitted at G2(3.0Gbps) rate. 
+  // By default, ALIGNs are transmitted at G1 (1.5Gbps) rate.
+
+  parameter TX_DEVICE_SPEED_RATE = 0;
+  wire [31:0] pw_TX_DEVICE_SPEED_RATE = TX_DEVICE_SPEED_RATE;
+
+  // Configures the rate at which ALIGNs are received after powerup.Set 
+  // this parameter to 1 if ALIGNs are received at G2(3.0Gbps) rate. 
+  // By default, ALIGNs are received at G1 (1.5Gbps) rate.
+
+  parameter RX_DEVICE_SPEED_RATE = 0;
+  wire [31:0] pw_RX_DEVICE_SPEED_RATE = RX_DEVICE_SPEED_RATE;
+
+  // Specifies the value of the encoded 10B data during electrical idle 
+  // conditions. This parameter is applicable only when INTERFACE_TYPE is set 
+  // to 1 (parallel mode of operation). The default value of the  parameter is 
+  // the value equivalent to 3FFh, the assumed 10-bit encoded value for 
+  // electrical idle.  In serial mode of operation, the monitor detects 
+  // electrical idle when both D+ and D- inputs are driven to same level.
+
+  parameter ELECTRICAL_IDLE_TIME_BIT_PATTERN = 10'h3ff;
+  wire [31:0] pw_ELECTRICAL_IDLE_TIME_BIT_PATTERN =
+                                           ELECTRICAL_IDLE_TIME_BIT_PATTERN;
+
+  // This parameter will determine the maximum rate supported by the device.
+  // If this is set to 1, maximum supported rate is G2.  If this is set to 0,
+  // Maximum supported rate is G1.   Bydefault this is set to 0.
+  // by the TX device. 
+
+  parameter TX_MAX_SUPPORTED_RATE = 0;
+  wire [31:0] pw_TX_MAX_SUPPORTED_RATE = TX_MAX_SUPPORTED_RATE;
+
+  // This parameter will determine the maximun rate supported by the device.
+  // If this is set to 1, maximum supported rate is G2.  If this is set to 0,
+  // Maximum supported rate is G1.   Bydefault this is set to 0.
+  // by the RX device.
+
+  parameter RX_MAX_SUPPORTED_RATE = 0;
+  wire [31:0] pw_RX_MAX_SUPPORTED_RATE = RX_MAX_SUPPORTED_RATE; 
+
+  // Configures the monitor to track repeatitive primitive sequences.
+  // Set this parameter to 0 to disable the tracking of repeated primitive 
+  // sequences.By default , monitor tracks repetitive primitive sequences.
+
+  parameter REPEATED_PRIMITIVE_SEQ = 1;
+  wire [31:0] pw_REPEATED_PRIMITIVE_SEQ = REPEATED_PRIMITIVE_SEQ;
+
+  // Configures the monitor to perform the transaction layer checks. Set this
+  // parameter to 0 to configure the monitor to disable transport layer
+  // checks.  By default, the transport layer checks are turned on.
+
+  parameter TRANSPORT_LAYER_CHECKS_ENABLE = 1;
+  wire [31:0] pw_TRANSPORT_LAYER_CHECKS_ENABLE = 
+                                           TRANSPORT_LAYER_CHECKS_ENABLE;
+
+  //Configures the monitor to perform scrambling. Set this parameter to 1 to
+  //configure the monitor to disable scrambling of 8bit data.  By default
+  //monitor performs scrambling of 8bit data.
+
+  parameter DISABLE_DESCRAMBLER = 0;
+  wire [31:0] pw_DISABLE_DESCRAMBLER = DISABLE_DESCRAMBLER;
+
+  // Configures the monitor to perform the checks during reset sequence.
+  // Set the parameter to 1 to configure the monitor to perform the 
+  // reset sequence checks.  By default, reset sequence checks are 
+  // turned off.
+
+  parameter PHY_RESET_SEQ_CHECK_ENABLE = 0;
+  wire [31:0] pw_PHY_RESET_SEQ_CHECK_ENABLE = PHY_RESET_SEQ_CHECK_ENABLE;
+
+  // Configures the monitor to perform the check for the reserved values.
+  // Set the parameter to 1 to configure the monitor to perform the check.
+  // By default, checks are performed for the reserved values.
+
+  parameter RESERVED_FIELD_CHECK_ENABLE = 1;
+  wire [31:0] pw_RESERVED_FIELD_CHECK_ENABLE = RESERVED_FIELD_CHECK_ENABLE;
+
+  // Parameter VENDOR_SPECIFIC_ENCODING_ENABLE = 0 configures the monitor to
+  // allow the usage of vendor specific encodings in the SSP and SMP frames.
+
+  parameter VENDOR_SPECIFIC_ENCODING_ENABLE = 0;
+  wire [31:0] pw_VENDOR_SPECIFIC_ENCODING_ENABLE =
+                                             VENDOR_SPECIFIC_ENCODING_ENABLE;
+
+  // ---------------------------------
+  // Internal Parameter declarations
+  // ---------------------------------
+
+  parameter ZI_PORT_WIDTH = (INTERFACE_TYPE === 0 ? 1 : 
+			     (INTERFACE_TYPE === 1 ? 10 :
+			     (INTERFACE_TYPE === 2 ? 20 : 20)));
+
+  parameter ZI_LINK_PORT_WIDTH = (INTERFACE_TYPE !== 0) ? 10 : 1;
+
+  // This parameter will determine where the first transmitted 10-bit
+  // will sit in the parallel 20-bit data.
+
+  parameter ZI_BIT_POSITION = 0;
+
+  // This parameter will determine the DOUBLE_DATA_RATE depending on
+  // the INTERFACE_TYPE
+
+  parameter ZI_FINAL_DDR = INTERFACE_TYPE === 2 ? 1 : DOUBLE_DATA_RATE;
+  wire [31:0] pw_ZI_FINAL_DDR = ZI_FINAL_DDR;
+			     
+  // Input declarations
+
+  input reset;
+  input areset;
+  input tx_clk;
+  input [ZI_PORT_WIDTH - 1:0] tx_data_plus;
+  input [ZI_PORT_WIDTH - 1:0] tx_data_minus;
+  input tx_idle_signal;
+  input rx_clk;
+  input [ZI_PORT_WIDTH - 1:0] rx_data_plus;
+  input [ZI_PORT_WIDTH - 1:0] rx_data_minus;
+  input rx_idle_signal;
+  input start_speed_negotiation;
+
+  input [31:0] tx_cominit_idle_time;
+  input [31:0] tx_comsas_idle_time;
+  input [31:0] rx_cominit_idle_time_min;
+  input [31:0] rx_cominit_idle_time_max; 
+  input [31:0] rx_comsas_idle_time_min;
+  input [31:0] rx_comsas_idle_time_max;
+  input [31:0] tx_cominit_neg_time;
+  input [31:0] tx_comsas_neg_time;
+  input [31:0] rx_cominit_neg_time;
+  input [31:0] rx_comsas_neg_time;
+  input [31:0] rate_change_delay;
+  input [31:0] spd_neg_lock_time;
+  input [31:0] spd_neg_transmit_time;
+  input [31:0] hotplug_timeout;
+  input [31:0] comsas_timeout;
+  input [31:0] hard_reset_timeout;
+  input [31:0] ident_frame_timeout;
+  input [31:0] break_timeout;
+  input [31:0] open_addr_res_timeout;
+  input [31:0] credit_timeout;
+  input [31:0] ack_nak_timeout;
+  input [31:0] close_timeout;
+  input [31:0] done_timeout;
+
+  // Configure this port to 1'b1 to track phy reset sequence, when 
+  // configured as 1'b0 the monitor assumes the link is in idle condition.
+
+  input bypass_reset_sequence;
+
+  // Wire declaration for 20 bit interface support.
+
+  reg [ZI_PORT_WIDTH - 1:0] temp_tx_data_plus_posedge;
+  reg [ZI_PORT_WIDTH - 1:0] temp_tx_data_plus_negedge;
+  reg [ZI_PORT_WIDTH - 1:0] temp_rx_data_plus_posedge; 
+  reg [ZI_PORT_WIDTH - 1:0] temp_rx_data_plus_negedge;
+
+  wire [ZI_PORT_WIDTH - 1:0] temp_tx_data_plus;
+  wire [ZI_PORT_WIDTH - 1:0] temp_rx_data_plus;
+
+  wire tx_data_select;
+  wire rx_data_select;
+
+  wire [ZI_LINK_PORT_WIDTH-1:0] tx_data_p;
+  wire [ZI_LINK_PORT_WIDTH-1:0] rx_data_p;
+
+  wire [ZI_LINK_PORT_WIDTH-1:0] tx_final_data_plus;
+  wire [ZI_LINK_PORT_WIDTH-1:0] rx_final_data_plus;
+
+  // These wire declarations are used for the support of G1 rate.
+
+  wire [ZI_LINK_PORT_WIDTH-1:0] data_in_odd_position;
+  wire [ZI_LINK_PORT_WIDTH-1:0] data_in_even_position;
+  wire transaction_in_g1;
+  wire transaction_in_g1rate;
+  wire [ZI_LINK_PORT_WIDTH-1:0] data_in_g1rate;
+  wire [ZI_LINK_PORT_WIDTH-1:0] tx_link_data;
+
+  // Wire declarations
+
+  //----------------------------------------------------------------------
+  // These signals are used to connect the Tx link monitor and the Rx
+  // link monitor instantiations.  `_from_rx` signals are output from the
+  // RX instantiation and the `_to_rx` signals are output from the TX
+  // instantiation.
+  //---------------------------------------------------------------------- 
+
+  //--------------------------------------------------------------------
+  // Following two signals shall be asserted only in 20-bit interface.
+  // If the 20-bit data is driven after half clock period (i.e during
+  // off time period) then this signal will get asserted.  It is a pulse.
+  //--------------------------------------------------------------------
+
+  wire negedge_com_tx;
+  wire negedge_com_rx;
+
+  // ---------------------------------------------------------------
+  // Following two signals are latched version of the above signals.
+  // ---------------------------------------------------------------
+
+  reg r_negedge_com_tx;
+  reg r_negedge_com_rx;
+  wire negedge_com_det_tx;
+  wire negedge_com_det_rx;
+
+  reg inv_level_select_tx;
+  reg inv_level_select_rx;
+
+  wire final_level_select_tx;
+  wire final_level_select_rx;
+
+  wire reset_expect;
+  wire [2:0] current_negotiated_rate;
+  wire collect_stats;
+
+  wire [2:0] disable_scr_count;
+  wire electrical_idle_detected;
+
+  wire start_rcd;
+  wire parallel_rcd;
+  wire start_speed_neg;
+
+  wire align0_xmtd_from_rx;
+  wire align0_xmtd_to_rx;
+
+  wire align1_xmtd_from_rx;
+  wire align1_xmtd_to_rx;
+
+  wire speed_neg_status;
+
+  wire cominit_det_to_rx;
+  wire cominit_det_from_rx;
+  wire comsas_det_to_rx;
+  wire comsas_det_from_rx;
+  wire iaf_sent_to_rx;
+  wire iaf_sent_from_rx;
+  wire hard_reset_to_rx;
+  wire hard_reset_from_rx;
+  wire soaf_to_rx;
+  wire soaf_from_rx;
+  wire eoaf_to_rx;
+  wire eoaf_from_rx; 
+  wire aip_to_rx;
+  wire aip_from_rx;
+  wire open_acc_to_rx;
+  wire open_acc_from_rx;
+  wire open_rej_to_rx;
+  wire open_rej_from_rx;
+  wire sof_det_to_rx;
+  wire sof_det_from_rx;
+  wire eof_det_to_rx;
+  wire eof_det_from_rx;
+  wire ack_det_to_rx;
+  wire ack_det_from_rx;
+  wire nak_det_to_rx;
+  wire nak_det_from_rx;
+  wire close_to_rx;
+  wire close_affl_to_rx;
+  wire close_from_rx;
+  wire close_affl_from_rx;
+  wire done_from_rx;
+  wire done_to_rx;
+  wire [7:0] info_unit_from_rx;
+  wire [7:0] info_unit_to_rx;
+  wire sata_xrdy_from_rx;
+  wire sata_xrdy_to_rx;
+  wire sata_rrdy_from_rx;
+  wire sata_rrdy_to_rx;
+  wire hold_from_rx;
+  wire hold_to_rx; 
+  wire holda_from_rx;
+  wire holda_to_rx;
+  wire wtrm_from_rx;
+  wire wtrm_to_rx;
+  wire rok_from_rx;
+  wire rok_to_rx;
+  wire rerr_from_rx;
+  wire rerr_to_rx;
+  wire sync_from_rx;
+  wire sync_to_rx;
+  wire sata_sof_from_rx;
+  wire sata_sof_to_rx;
+  wire sata_eof_to_rx;
+  wire sata_eof_from_rx;
+  wire [7:0] smp_req_fn_from_rx;
+  wire [7:0] smp_req_fn_to_rx;
+  wire [7:0] smp_res_fn_from_rx;
+  wire [7:0] smp_res_fn_to_rx; 
+  wire [2:0] protocol_from_rx;
+  wire [2:0] protocol_to_rx;
+  wire [31:0] read_data_from_rx;
+  wire [31:0] read_data_to_rx;
+  wire r_soaf_detected_from_rx;
+  wire r_soaf_detected_to_rx;
+  wire [3:0] addr_type_from_rx;
+  wire [3:0] addr_type_to_rx;
+  wire break_det_from_rx;
+  wire break_det_to_rx;
+  wire r_sof_det_from_rx;
+  wire r_sof_det_to_rx;
+  wire prim_violation_from_rx;
+  wire prim_violation_to_rx;
+  wire change_from_rx;
+  wire change_to_rx; 
+  wire ini_tar_from_rx;
+  wire ini_tar_to_rx;
+  wire cominit_sent_from_rx;
+  wire cominit_sent_to_rx;
+  wire comsas_sent_from_rx;
+  wire comsas_sent_to_rx;
+  wire rrdy_det_to_rx;
+  wire rrdy_det_from_rx;
+  wire sas_valid_to_rx;
+  wire dword_valid_to_rx;
+  wire sas_valid_from_rx; 
+  wire dword_valid_from_rx;
+  wire latched_hold_to_rx;
+  wire latched_hold_from_rx;
+
+  wire [15:0] tgt_prt_tag_to_rx;
+  wire [15:0] tgt_prt_tag_from_rx;
+
+  wire conn_sta_to_rx;
+  wire conn_sta_from_rx;
+
+  wire ssp_to_rx;
+  wire smp_to_rx;
+  wire stp_to_rx;
+  wire out_to_rx;
+
+  wire ssp_from_rx;
+  wire smp_from_rx;
+  wire stp_from_rx;
+  wire out_from_rx;
+
+  wire validg1_to_rx;
+  wire validg2_to_rx;
+  wire validg3_to_rx;
+  wire neg_to_rx;
+
+  wire validg1_from_rx;
+  wire validg2_from_rx;
+  wire validg3_from_rx;
+  wire neg_from_rx;
+
+  wire tx_empty;
+  wire rx_empty;
+
+  wire [133:0] signals_from_tx_to_rx;
+  wire [133:0] signals_from_rx_to_tx;
+  wire [133:0] signals_from_tx_to_rx_via_fifo;
+  wire [133:0] signals_from_rx_to_tx_via_fifo;
+
+  wire from_tx_to_rx_fifo_write;
+  wire from_rx_to_tx_fifo_write;
+
+  wire latched_hold_changed_tx;
+  wire cominit_det_changed_tx;
+  wire comsas_det_changed_tx;
+  wire cominit_sent_changed_tx;
+  wire comsas_sent_changed_tx;
+  wire smp_req_fn_valid_tx;
+  wire smp_res_fn_valid_tx;
+  wire protocol_valid_tx;
+  wire tgt_prt_tag_valid_tx;
+  wire info_unit_type_valid_tx;
+  wire data_frame_count_valid_tx;
+  wire addr_frame_type_valid_tx;
+  wire initiator_target_valid_tx;
+  wire latched_hold_changed_rx;
+  wire cominit_det_changed_rx;
+  wire comsas_det_changed_rx;
+  wire cominit_sent_changed_rx;
+  wire comsas_sent_changed_rx;
+  wire smp_req_fn_valid_rx;
+  wire smp_res_fn_valid_rx;
+  wire protocol_valid_rx;
+  wire tgt_prt_tag_valid_rx;
+  wire info_unit_type_valid_rx;
+  wire data_frame_count_valid_rx;
+  wire addr_frame_type_valid_rx;
+  wire initiator_target_valid_rx;
+  wire r_soaf_detected_to_rx_changed;
+  wire r_sof_det_to_rx_changed;
+  wire r_soaf_detected_from_rx_changed;
+  wire r_sof_det_from_rx_changed;
+  wire level_select_temp_tx;
+  wire level_select_temp_rx;
+
+  wire addr_fr_ty_err_from_rx;
+  wire addr_fr_ty_err_to_rx;
+  wire crc_err_from_rx;
+  wire crc_err_to_rx;
+  wire oaf_fr_sz_from_rx;
+  wire oaf_fr_sz_to_rx;
+  wire iaf_fr_sz_from_rx;
+  wire iaf_fr_sz_to_rx;
+  wire discard_fr_from_rx;
+  wire discard_fr_to_rx;
+  wire dat_prs_err_from_rx;
+  wire dat_prs_err_to_rx;
+
+  reg sas_vld1;
+  reg sas_vld2;
+  reg sas_vld_from_rx;
+  reg sas_vld_to_rx;
+
+  reg [2:0] data_counter;
+  reg transaction_in_g1rate_flag;
+
+  wire [ZI_LINK_PORT_WIDTH-1:0] com_detected_rx;
+  wire [ZI_LINK_PORT_WIDTH-1:0] com_detected_tx;
+  wire [ZI_LINK_PORT_WIDTH-1:0] temp_com_detected_rx;
+  wire [ZI_LINK_PORT_WIDTH-1:0] temp_com_detected_tx;
+
+  wire credit_exhausted_from_rx;
+  wire credit_exhausted_from_tx;
+
+`protected
+
+    MTI!#mv[mi,+5EzD]Qp{Yuj<vvAmAx-U+}rU2N1;'X=ZQOwQ1G7mo*WQ!~N^U+[3,B[UYlA[Zp!C
+    u+{v^2?&)TsvB{\-~$:?[p3Uj{xPkrXZ#,H@$?XsT-I]DZoiw=E]=ZA7XqVQwB^3'i_7K}^eBJRD
+    -Xf*!CV's[xy=Z+GW+<^o+DB6/uN^\VuLI>x={UYCx;@UWUjYGinW}Tr=sslTn$Q3]~5Q=p>U]#m
+    [KYwzRDJGmnUv;O[vsQQ$;o$5}dH=v7V7Aj\QY*s+<#rjV2ia1Y_Q<ZVr+<2X[pE@W[h(r)~$ou[
+    '+A'va}Y*OXGBpe[[+l$Z[_),=x*N3^+T'Y#oIX~}b^maOzw'3AAU^[IZn]xi^DH!C}U}[BAxzkT
+    3e;jDiVYD\1T]DpZD?JRH'7vW3*x^j?Y[^9oa--Ye_IYsV[P*,]!w5'ldI;RzkjoJ?=?vr'K#eB=
+    'BHBAAa^_ODR#r>V,&>zwC[@nAh[?Vv6E-EeZVGH*pbopHeV+7eB_exr{DuZTV@v+WDR57-G1YlH
+    Dkoy#CTpfI%,a$lx2Vi}5rKZ*Bws[s<TO,^*Z~kGQ^JQa[2l}f#S$]X]T5${![_]Ipm*?xX-HUp\
+    #T>IBU{e@Ci3*U}^o*}~_~=sQa55+Q!Bf|~+'5;RD30SGjoR1EeY1G+zA'WxVe+m5wOEOl-Jm$z@
+    DX;[*c7WlAu$i=7([u!j72~GrYEi;A^@{U^Q1$KYx_Qoo;xXi}+~@zDYksr!5u]~,ekXaw[l1;]i
+    mC[g[2pVQ,x1+=v=i7Kae>!+Gm-5l^;}Tj^$/le*O27J^$IEaDd9w>o7=3=X'*{kU,mur~w<V+]$
+    [p#YN>'*5Je\w5=W2dKeZ]l*X~I2V>D]-VliUBF_\7as;$;jz]j\U]>}Gna[\ri}rHXJs#+<7k^7
+    ^W5m,Uv$HEG=!Ap#Yr\~*$iLY7nj5H7[[uCskl_wR7-\T>jI@szHlOK^$Suoi\zZ$D|^<X]<nEil
+    /F=,EJg9_}\I^$;p:JQ_JsBDm|n5Z2FJ=Y!613osquThuGOBH+zijL7C*jipnlk]5mO-^u'XKG~T
+    xWJvjT~EUl?avW?>@K_IZlH-lW~}O5=2ukO[pocpYHxj7smDO;KTU\B5E=*EJe23HZs\;AD_{CG=
+    Z2rXEC*'R?U?G~3V]*lOI;T*2>UQ*DAO{12lo<pi1C{^OuoC}*;t%Z={,P7?~3Cxx2-j\x$r*}>A
+    \wG*C=#U^'~VJRmC+xn>$TE#^Tlus}*O2-U^BHWrv!B]k2/VO<YaHJOp<u!~+=\fsGle;$$^65?{
+    px=3JR*iWm7^7Xa=Q@skWeZGe^KRjiY3aCmBc;8B1{;Y1T+~e@?RwaGEWQ@EkVk4wCHDuB5Z$[1@
+    fJlol'iKjTr\[;p*\(iRli!o7VUR?-WET,VoeTnE?<p*T@RCHe}VVlY<Km^WB_c{VB}Ko$'5YG>Z
+    r{zR^ZR5JTWxI-Z#DCJC_}BxGlUux~s<C3T}?@Hvr\QM{]A><>aRxHa7L%V@51TS+'#'$@-u;IHV
+    F1-1Ck=*7@5\O?sI[O@EKN5+Rp@>r553-!Ok$O2B*XwH-e-SiARZL]A_n3TxK&f,\mxBTJx(Yisu
+    iAAGXUx#5O_RCC*_vzEZRlW,p3woYmB{uA-A}X;~p2=>A+$Hua]Rez,!QAIr,]nCk<>WsA3uH<G!
+    :XvHzvv[JBla[Zx,}x-oK,eYx}{175!vGEOwxD=I^Z<=C0I5*xTD5Iv7CBoQXzgJYzAk+lTc*HTO
+    Q!UK>}2T;_D?+_Q#r!*zTEku;>\mxivpLTe'1MDHV3l>X~aT-X;oK{jHV3HaJGrCI@Ajwj&O!]Gp
+    WAo|3XVXQ]#Z_*urzQ!<vI*1'\;Cvweu)<GAX3+_+^Qj;<_D2GsKnn_OJ^+j@NR{wjo\pn'ooG_w
+    OuoaljRG}vxRCBz^E=bpYu1ie'-,$p!_Xp[M"jYvTew$o3VCaV[2RIQ_n,HQGIl5REWvW{-Ivu<R
+    {#$2#_7]{KYOn~U+E#7sx/IU=Hv?TI=D1ZrvCIsl,n55B$I,1Ilno;TTQo~nn!Js#K/i=<=pKw@r
+    ;UospC;53=1koCIQ*2uUaAQ}?^iPJoj!O-~a^>!TrnYDUYxD~H<rwXuW[XEAQ'n#m>_G]B*_IxxV
+    TI7=Jj,pCu2}pYnY!xKo1D,1|nEK-rsQOnv3[D5Js~7Z^ZEEZx=Tl=rA>K<e~Bi}[}r}l@^B3?o=
+    msVaZ@rsA{Ye$[_C^suHup~+-[,+5k=?]xua1pWrEAXjklenEAs]vU'-!X>W@5?TwKT>uR#q!v$~
+    B9nez7,O-oOIUZ%B#E{UrrzoUGxI2YJDVnOPD@[*o;1YI3j[]u@G__E!^vv;T>+n=As!X7o\F#]u
+    n_v-O@']7C[V;+}mW7V_Y]_UkwIoI@YDmp@pmXD=@2*u~2Y-IGY@rZraCane~k]Y!QZXYc*<A>mr
+    [\Vnaw2-Gn-$Z_cpZUxCk{<]X'ux~22OC2W*OmraX2<e5DY**7xK+J\kEjB-GD;l!aus1+kV\*G>
+    =}Zu=i>]~+'!]@\K=Br=}5xr@1;Tp*UE\\zkH;m!$>C<<!X}U7Tqr21,Oxrs?Qj*RJ-JQ@^2IO^$
+    K+{kpFvBr}XEvkWzu$XrjA\*X~me+'GQAv#QQGEO]$1}A]EUX]|iI_-Q)V>A7hxW<1?+D;4RC@j'
+    UX-'VBE)#'WX6''T>2_0uvx\tEOp'@q#QXX]=w;rsO|O=s2-]@2XG]YDW_l1-5U^pwI.6W-DKX\,
+    TiV!=aX$!J<<zTpJ,G1,EW-R>F2]_2}$w=3Dru\ljm;^;>[XxW>5ul_;V\<vx=JX0-Bia#oV>PO_
+    R$JGmeopX]s[\{q^[?lV],?]n,\X^>$=RR+j]i<x';JxnJz[!-sR_@K_IXH#l=Kx;]iA{I@siJ@'
+    DOO--7197K$O7U,OoOX<vJJo#>1O[KY]'1Vp,~>;=K1zsJ]-$Q=+>_^$LUo3E~B2l9Z<IY@_2K/[
+    \R+{X+T|V>@G?'@n@1=jJBVB5m>XTI;[;'=!Wn+{{Alx:+x_DwC$anB1Jr3Con.NIEkG~G#E[YEG
+    HeYRH<mYWe$RBB+xi^@^k<7QA9K'n2xEW]Uz5}<svGsHm@1G3B'I}m]>Ip$TD!v>7+KXQ,_QIi,C
+    -x*zGB$RXxHr1Hw\Z^KS!jl-{^lrk_Ei+\i~/@_<$1?$HWXaI[CoknavrE;<\p}!-?}x?^_=Jx'v
+    O',nG5=;r,_H^_W+}!BQ>x[l-,>![1nn1ka2,Y]3=C=j5,QMpVUr;r~W;V}mC'=OknQj]G_2_j}[
+    wjz7;Hz>B]xx_1mQfYYH]={+JBB+3$>E{GTEsJO_p+OKJJ+~G+YTJczpkl7RXJV{w!^E[[RJm[9n
+    r$A3p1IYmXXK{@R^&KC$]1xvrQ~B<xDQaZnZOO<w$7>*^"~[Z~p-HlFrlrGmUv{^2ZwZllTWr+DN
+    >-^nZBIT?T'*<zaQQV#{>{;BnE5Q'o}+jU0#jY{Gx!_r,Ow]IK=RTIlYH=C1]\]]4XxkJ'x<$DTA
+    W{EmXzJx<ll^Wl_Rr@IG$Dl-{UBYAVIARE<o-tu=Q{~Ri$F@EV!1ZWARFv;-,$\\BSBm7C|B?7HO
+    'H=3I^AM$+Qk!x'r*+spzCA{'cpnz\zD-7EB5<zRr!uDWOx],=}}><jJJ<)lVj7Zan*~j#+N!sH'
+    ~$O!L#AY!4~EA}UanHE**KirzUQnTk+E1s$YHssJI>T\J?+\Q?IpiJd=,,5B^X7vKX2$<J{2nCG=
+    (wIGBBvA=h=WIQr^75@E3u9IZw=ivHT1Cpxa'sa}CzuvCexsD#]}AuwY#I~1rOJTVn2;>mDj;$i!
+    XlJ1@n;K<WT({YR=Y5li><mO*_uZE[z{2&-DHjT}QK'Oa;&-R[r%^Csi7v<W>S@XYw5a5R:=j{aR
+    <O-#rD<s=o^+^s>XTC]1o{O$3U]Q@AAi>]vY*_UHjx@]Yi{>Rsv1rKEViQi?zHz{TZ>HnGX<oHI\
+    JD<<U@]Ga!B7G,p7<\W~]>DAGOZfkv#-?Ha,dfi[ajFz||h,V-O!oUByTHRoup3'I3'aY'T3IJ>T
+    z-I''#AsO$Ck&f7@^iYxzpTs$Az!GCIk@C[2Z7>UTv=eD<RjU!d!*nD_T^eZ=E?eX!j'vUK'Y]ix
+    <m3o<Omd'!\W=_7s'@WG[mGu@OU{!TTQuvij=>o7JI=$QjAT4C@3Z+7D7}-J$Yr>HR]*j-]?mr7-
+    C<rkTEo1}YVj=*m7^9*oV+-rR[IC@A1a7'SKls<gj,?o2vp3vixIU<XDr}B!l}xTh7IoI~slE@ne
+    o'1-KGXjBzk+xEA'ZQ|iR=X7#wCsRn@'Z1@l{BeY[_@dH={5J_m[UB~KaD-n!U[](EHlKK\!-!H!
+    sxim2m_wT[J^Ihp<<-j$\H^x-ljpKwC!^,<'A5!O$H*_*^ErAG,AIQYa-#c=_w[p~v-[1!_2]E'v
+    ,v\6>DoO2[p_k5\7=,7nCRz=1r>*]X5EheuWejJCvhfOo$D5uDGypUs~C}Ws<Xv=O$3s<>]v&?j@
+    Upn=GQHAKWwHRiGY}prZ1^J-'KswBI0{+Gr'o}^lIIx1nvKCGC'>j,BYr_-$EzvKCj[7JYXz]QXU
+    {$pVaE='Yr}-ez@YAy7A=Vea~=[,Tu!\^Ie3@Ax,'}V^uw#7XI}=7,^Z[=K*i{<EB~J{^kOY{]_7
+    2{*e$D_BEDjuJ]GY$7'lZeV7IX5pB*\,WT-8wTZDy.p2\<vhkGov]_*T]X{+9a$H39yo2awzC7'e
+    eR@oKwD:3H;KZ5nWlZlmQm7V7iB3>'[CjC{;VT[{EH7[j3XQp]zYvOOB]H31xpDU#zu51v@$exDm
+    nE$e.g?zUGO",'~O^,7XhC${{QJ$ra^l[vjp2,!Q,3juW@N#Rx1SQ{25sY,;!w$GQVvTk6!okH^O
+    Di}T5-M\HZ#nwn,<l~GaOY{VGU7HA\[<*zk>ADK]XEU#A+1?5J#uGj5V_e#8n<IG3^V3Z'aAb_?!
+    WOjBU#ErTiv?wo31+#eAuI#]1L_BY*Ge-eD<Ds7<EzuTl+^p7mwaU'}sB7-B@7Asa$ZRA#Urn>j-
+    X1oGzIE@EA1'[^,rp;yk>Gie21W2jAE\]ID$u7ep?V#>5o2ozHpe!esB?HBlrvz]^X^0Cw@n;n32
+    ?={E5TaKO!'e7G5YKo,;xra{AnZK1DXwQ@BziC,I2R-]Ge<,lo#]$jDkz5sk+eeT\TO!VOmH7Vp!
+    >GZGI[jTKA-{X>rHFlo-=X_,rGzTrK[w<I\_j;\u[1Ga@fEXp}bkz+*jo+We5?#[]n>z'Y,[wD7o
+    VIw*YITR*CZx$\WmOOCr^3*I^wXbBW!BGC2>*k}$ajVXo5kQEi'iD;vu}3UQY*unv=>RWVXB?eU3
+    1\p!Za>#|,#@;/zlkj]E~oUrVaXCm${Uz$jn**J{!s3[rj]#=-~{$ZQA=GhiBeXB!Uk#UZ2}JV@5
+    oR-$lOxTrG[neE+fQi!E(G1nw*aR;\JU@Z[+Qmap>'5T;#<1BBEj-$AHTVF{e-<D@{-[maJA+^Rd
+    nj1UBz'2X+r$Hj=XURQ><p-Q,;T3$'$Elizn{vwnIOmXLB^G_-*OVYC<^W,1nf~G7l@DAA3Aml^C
+    bE~GG>Y!IN2D-GmGKBYCKv7,+3I,#^}?K]uB*2pCeWv-~',n{o5>m<rTT'=JUr#wDUvHRW7z+oKr
+    >T/,Hn@jIxZW*wR1G,Ki<1u-TxY<\'u[*}7z~J{W>v>fQ+T_{Y]UO\7\I<Du43_T@_ll=uBa;/si
+    KC;o^7kDOR3[sIrjBnCIKHx=Y+:pE$r.{Vn,9UvrKm$!2u]UI|']^=D<\l[srz,BW\jkCIOm*UQ,
+    K<28Y\<nI{R^}@AK@_]p1MI+Ovp=eoCI=I&O,}w_W27WXC{VWv3iA<@RY<v>^UY/AOv5]1{^BmAx
+    5,-K<[Zv#+lE}ok]]_DuJw\I"G{^?Oj>WZ[OHlD^uWRQr^^i*vPHaD<R+,Ias27oMB^U^Q,xO=p+
+    {u'~Gj!;RT1*U\xZW8=_R\}?zUrV\a]!oOE^j^3_\;lH2@}ns2*Uop*J$;|#NVUzJ}^^[{}]^wUp
+    zINMB{\suRC~THl1;_A<'$U~QzpZijD;n6PIYO?_R!$1-,RI@-]s$nTpG$i|w[-3x2+]xQ7+~l]I
+    =[_]bjiC#fuw_o7Izr_1XW:{RXUjw5@pk\\pJ\7weie!A[AlJO#K+M[7\YV<Jux(_URJ3\Q^pppm
+    lCU1a{!{hsRQDzD\{no{D,;l$Q\#}O'!!}G+E^aj5x!n';-H3{'?-E;mw<<1;ws=k>>m=HTfAaK$
+    35>QgW\!r$;x@2QH9Q,}B;Yv\UUU{jW=w@*ATG&xJ}An*1pJ]~~~>rZ|SEu[W\oW!jAoXEC#][J]
+    G/em[nND5+?CsE{kU>!crnZHT{m\^n^7jrY}uA2-\}';@_npjwaVy:+VUXRXx{C?n7k,BBS:RAe$
+    oUp~{IujIEp<O?aagm'7R[@n*s7#ZmIvr=f_E=+jQX1+a,-DuCa!=]xOXR[^3+'BnYp5{1vhk=K-
+    3E_[0-ox}>zz#g-RH+eOek,kln_e*W[^UTsUvsvg^Gmuj1v]]T!<#pWW2R!me+7[yE2=mR#'k*WO
+    =7^E+[7O<sU}>]!'Bv,;@V!2@TNZV<^^\iJ=E5XUR[EkGE[*z2_UUW5;Dnnc^iJ!j^?!}[e^$wE$
+    z+;u;-X[isT=:3_~J!aWUT+5i)2*G!\n^v3r#3wD{~u,z!,>1YbIvn'|Oxm;HD}V7SGXjJ?sRT]C
+    3K-Ym]ieOD3-pHlweip,,-trE1k*ev;FcCVZnl-Ck
+`endprotected
+
+  wire [31:0] tx_cominit_idle_time_muxed;
+  wire [31:0] tx_comsas_idle_time_muxed;
+  wire [31:0] rx_cominit_idle_time_muxed_min;
+  wire [31:0] rx_cominit_idle_time_muxed_max;
+  wire [31:0] rx_comsas_idle_time_muxed_min;
+  wire [31:0] rx_comsas_idle_time_muxed_max;
+  wire [31:0] tx_cominit_neg_time_muxed;
+  wire [31:0] tx_comsas_neg_time_muxed;
+  wire [31:0] rx_cominit_neg_time_muxed;
+  wire [31:0] rx_comsas_neg_time_muxed;
+  wire [31:0] rate_change_delay_muxed;
+  wire [31:0] spd_neg_lock_time_muxed;
+  wire [31:0] spd_neg_transmit_time_muxed;
+  wire [31:0] hotplug_timeout_muxed;
+  wire [31:0] comsas_timeout_muxed;
+  wire [31:0] hard_reset_timeout_muxed;
+  wire [31:0] ident_frame_timeout_muxed;
+  wire [31:0] break_timeout_muxed;
+  wire [31:0] open_addr_res_timeout_muxed;
+  wire [31:0] credit_timeout_muxed;
+  wire [31:0] ack_nak_timeout_muxed;
+  wire [31:0] close_timeout_muxed; 
+  wire [31:0] done_timeout_muxed; 
+
+`protected
+
+    MTI!#xKo7s#Rxmxlkl=]kAYpTRm>$Xx;A5DVe}m<TK$k!kI-u=Y/jzZ[)ZwV#jEX+KHo~JskW\zE
+    ;0;}n@^@{Zerr?e1I2I=+Bl#RBe*~\o}?-Baj^\IJz7!Y\IiW?rZ~[iD{n_R$T=ET=dzJp3!ACGv
+    AAR^+l*3&K[vkF"|lK*sU[Ow]>5o__+]sv@mmVu[?wAOFCc+|~[lJO-DAT}WumeW$m$X$U=Y@*xz
+    $#HO]x-J[v!$1I'uWNDO{xn+-@VOA+=+a>E@,jY+~To"a*ZnsQ,uxlA1?]@@Al!{[;Dpla~BI@~X
+    5BB}ivzo^q'D7+InZ2i'DoAD71ujRlW>DKp}xz-DHC],Go7D2\\_$JoxE2K{OJ!OIsvirT,AA33+
+    EB@HGpdJAHp#VHwO&@*[\JEu-#UsB?-A]E'vw\D7a^QAu}I12eBxu7r[GQ3Y[#B'!GkaCxpZ7\$*
+    OYWn+1x2_x5'}6|plr]R1AzO1;REsX?/"6=.wwW75E$ZwA,rI@XK+_\_e?HJ5]G#o+5sm'B\+zj[
+    y{>Xe3V?p43}Us^Ze7O@w=GC[mTTr7H7nV7_]aj=Y=xZ~_lwOnar{pzlxTomJV\G$jEDw~1>=Qd1
+    JKpHXpaD]kKo'B$l5Z<0;x~5Q!s~x;Vx5Rw>5RVkBv5zxJBRUA!n]Wo^new7*J~jjXDv,WUvz[\Y
+    I-E{W_\YFTvo'42I\$]a!!>>WU+I~rj^WHEvu;w]W>^VI?['R^7j}ZSZ}$rImXz#<KH=rH<)wYi2
+    []^Xl;3oL,lR3JTV7EL[s,jinR1lo@Ra5p^yZe1@[R7kl~CO}7+YA]2],JWm;\lWx?}]wATuX7,k
+    E-Vj^;!nk[A}4=UHTz+p\d[OzvlXo;827T2=2I#QDvKHEsx$@35x*Kl2O}rl$anT<H@k}<vo&.-^
+    >eXroez7'X!1I-k6>pAR>]?+uI\R=mXT\=<2;{HT<TU<j;+X_bjJ,{GT\kji
+`endprotected
+
+
+  qvl_sas_link_monitor # 
+               (0,                           // Constraints_mode
+                1,		             // TX_INTERFACE 	
+                SAS_DEVICE_TYPE,             // SAS_DEVICE_TYPE
+                INTERFACE_TYPE,              // INTERFACE_TYPE
+                ZI_FINAL_DDR,                   // DOUBLE_DATA_RATE
+                ELECTRICAL_IDLE_TIME_BIT_PATTERN, // ELECTRICAL_IDLE_VAL
+                TX_DEVICE_SPEED_RATE,        // DEVICE_SPEED_RATE
+                REPEATED_PRIMITIVE_SEQ,      // REPEAT_PRIMITIVE_SEQ_ENABLE
+                TRANSPORT_LAYER_CHECKS_ENABLE, 
+                                             //TRANSACTION_LAYER_CHECKS_ENABLE
+		TX_MAX_SUPPORTED_RATE,        // MAX RATE SUPPORTED BY DEVICE. 
+		DISABLE_DESCRAMBLER,  //Disable/Enable scrambler
+                PHY_RESET_SEQ_CHECK_ENABLE, // Reset Sequence Check Enable
+		RESERVED_FIELD_CHECK_ENABLE, // Reserved field check enable
+                VENDOR_SPECIFIC_ENCODING_ENABLE // Vendor specific encoding 
+               )
+                 TX (.clk(tx_clk),
+                     .areset(areset),
+                     .reset(reset),
+                     .data_plus(tx_link_data),
+                     .data_minus(tx_data_minus),
+                     .bypass_reset_seq(bypass_reset_sequence),
+		     .start_speed_negotiation(start_speed_negotiation),
+		     .tx_cominit_idle_time(tx_cominit_idle_time_muxed),
+		     .tx_comsas_idle_time(tx_comsas_idle_time_muxed),
+		     .rx_cominit_idle_time_min(rx_cominit_idle_time_muxed_min),
+		     .rx_cominit_idle_time_max(rx_cominit_idle_time_muxed_max),
+		     .rx_comsas_idle_time_min(rx_comsas_idle_time_muxed_min),
+		     .rx_comsas_idle_time_max(rx_comsas_idle_time_muxed_max),
+		     .tx_cominit_neg_time(tx_cominit_neg_time_muxed),
+		     .tx_comsas_neg_time(tx_comsas_neg_time_muxed),
+		     .rx_cominit_neg_time(rx_cominit_neg_time_muxed),
+		     .rx_comsas_neg_time(rx_comsas_neg_time_muxed),
+		     .hotplug_timeout(hotplug_timeout_muxed),
+		     .comsas_timeout(comsas_timeout_muxed),
+		     .hard_reset_timeout(hard_reset_timeout_muxed),
+		     .ident_frame_timeout(ident_frame_timeout_muxed),
+		     .break_timeout(break_timeout_muxed),
+		     .open_addr_res_timeout(open_addr_res_timeout_muxed),
+		     .credit_timeout(credit_timeout_muxed),
+		     .ack_nak_timeout(ack_nak_timeout_muxed),
+		     .close_timeout(close_timeout_muxed),
+		     .done_timeout(done_timeout_muxed),
+		     .electrical_idle(tx_idle_signal),
+                     .cominit_det(cominit_det_to_rx) ,
+                     .cominit_det_received(signals_from_rx_to_tx_via_fifo[96]),
+                     .comsas_det(comsas_det_to_rx),
+                     .comsas_det_received(signals_from_rx_to_tx_via_fifo[95]),
+                     .cominit_sent(cominit_sent_to_rx),
+                     .cominit_sent_received(signals_from_rx_to_tx_via_fifo[94]),
+                     .comsas_sent(comsas_sent_to_rx),
+                     .comsas_sent_received(signals_from_rx_to_tx_via_fifo[93]),
+                     .iaf_sent(iaf_sent_to_rx),
+                     .iaf_received(signals_from_rx_to_tx_via_fifo[92]),
+                     .hard_reset_detected(hard_reset_to_rx),
+                     .hard_reset_received(signals_from_rx_to_tx_via_fifo[91]),
+                     .soaf_detected(soaf_to_rx),
+                     .soaf_received(signals_from_rx_to_tx_via_fifo[90]),
+                     .eoaf_detected(eoaf_to_rx),
+                     .eoaf_received(signals_from_rx_to_tx_via_fifo[89]),
+                     .aip(aip_to_rx),
+                     .aip_received(signals_from_rx_to_tx_via_fifo[88]),
+                     .open_accept(open_acc_to_rx),
+                     .open_accept_received(signals_from_rx_to_tx_via_fifo[87]),
+                     .open_reject(open_rej_to_rx),
+                     .open_reject_received(signals_from_rx_to_tx_via_fifo[86]),
+                     .sof_det(sof_det_to_rx),
+                     .eof_det(eof_det_to_rx),
+                     .ack_det(ack_det_to_rx),
+                     .nak_det(nak_det_to_rx),
+                     .sof_det_received(signals_from_rx_to_tx_via_fifo[85]),
+                     .eof_det_received(signals_from_rx_to_tx_via_fifo[84]),
+                     .ack_det_received(signals_from_rx_to_tx_via_fifo[83]),
+                     .nak_det_received(signals_from_rx_to_tx_via_fifo[82]),
+                     .sata_sof_det(sata_sof_to_rx),
+                     .sata_sof_det_received(signals_from_rx_to_tx_via_fifo[73]),
+                     .sata_eof_det(sata_eof_to_rx),
+                     .sata_eof_det_received(signals_from_rx_to_tx_via_fifo[72]), 
+                     .sata_xrdy_det(sata_xrdy_to_rx),
+                     .sata_xrdy_det_received(signals_from_rx_to_tx_via_fifo[81]),
+                     .sata_rrdy_det(sata_rrdy_to_rx),
+                     .sata_rrdy_det_received(signals_from_rx_to_tx_via_fifo[80]),
+                     .hold_det(hold_to_rx),
+                     .hold_det_received(signals_from_rx_to_tx_via_fifo[79]),
+                     .holda_det(holda_to_rx),
+                     .holda_det_received(signals_from_rx_to_tx_via_fifo[78]),
+                     .wtrm_det(wtrm_to_rx),
+                     .wtrm_det_received(signals_from_rx_to_tx_via_fifo[77]),
+                     .r_ok_det(rok_to_rx),
+                     .r_ok_det_received(signals_from_rx_to_tx_via_fifo[76]),
+                     .r_err_det(rerr_to_rx),
+                     .r_err_det_received(signals_from_rx_to_tx_via_fifo[75]),
+                     .sync_det(sync_to_rx),
+                     .sync_det_received(signals_from_rx_to_tx_via_fifo[74]),
+                     .smp_res_fn(smp_res_fn_to_rx),
+                     .smp_res_fn_received(signals_from_rx_to_tx_via_fifo[63:56]),
+                     .smp_req_fn(smp_req_fn_to_rx),
+                     .smp_req_fn_received(signals_from_rx_to_tx_via_fifo[71:64]),
+                     .protocol(protocol_to_rx),
+                     .protocol_received(signals_from_rx_to_tx_via_fifo[55:53]),
+                     .close_det(close_to_rx),
+                     .close_det_received(signals_from_rx_to_tx_via_fifo[51]),
+		     .close_affliation_det(close_affl_to_rx),
+		     .close_affliation_det_received(signals_from_rx_to_tx_via_fifo[116]),
+                     .done_det(done_to_rx),
+                     .done_det_received(signals_from_rx_to_tx_via_fifo[52]),
+                     .info_unit_type(info_unit_to_rx),
+                     .info_unit_type_received(signals_from_rx_to_tx_via_fifo[49:42]),
+                     .data_frame_count(read_data_to_rx),
+                     .data_frame_count_received(signals_from_rx_to_tx_via_fifo[41:10]),
+                     .r_soaf_detected(r_soaf_detected_to_rx),
+                     .r_soaf_received(signals_from_rx_to_tx_via_fifo[9]),
+                     .addr_frame_type(addr_type_to_rx),
+                     .addr_frame_type_received(signals_from_rx_to_tx_via_fifo[7:4]),
+                     .break_det(break_det_to_rx),
+                     .break_det_received(signals_from_rx_to_tx_via_fifo[3]),
+                     .r_sof_detected(r_sof_det_to_rx),
+                     .r_sof_detected_received(signals_from_rx_to_tx_via_fifo[8]),
+                     .primitive_violation(prim_violation_to_rx),
+                     .primitive_violation_received(signals_from_rx_to_tx_via_fifo[2]),
+                     .change_det(change_to_rx),
+                     .change_det_received(signals_from_rx_to_tx_via_fifo[50]),
+                     .initiator_target(ini_tar_to_rx),
+                     .initiator_target_received(signals_from_rx_to_tx_via_fifo[1]),
+                     .latched_hold_det(latched_hold_to_rx),
+                     .latched_hold_det_changed(latched_hold_changed_tx),
+                     .latched_hold_det_received(signals_from_rx_to_tx_via_fifo[97]),
+                     .rrdy_det(rrdy_det_to_rx),
+                     .rrdy_det_received(signals_from_rx_to_tx_via_fifo[98]),
+                     .sas_valid(sas_valid_to_rx),
+		     .sas_valid_received(sas_vld_from_rx),
+                     //.sas_valid_received(signals_from_rx_to_tx_via_fifo[0]),
+                     //.sas_valid_received(INTERFACE_TYPE >= 1 ? sas_valid_from_rx : signals_from_rx_to_tx_via_fifo[0]),
+		     .dword_valid(dword_valid_to_rx),
+		     .dword_valid_received(signals_from_rx_to_tx_via_fifo[99]),
+		     .smp_req_fn_valid (smp_req_fn_valid_tx),
+	             .smp_res_fn_valid (smp_res_fn_valid_tx),
+		     .protocol_valid (protocol_valid_tx),
+		     .tgt_prt_tag_valid(tgt_prt_tag_valid_tx),
+		     .info_unit_type_valid (info_unit_type_valid_tx),
+		     .data_frame_count_valid(data_frame_count_valid_tx),
+		     .addr_frame_type_valid (addr_frame_type_valid_tx),
+		     .initiator_target_valid(initiator_target_valid_tx),
+		     .cominit_det_changed (cominit_det_changed_tx),
+		     .comsas_det_changed (comsas_det_changed_tx),
+		     .cominit_sent_changed (cominit_sent_changed_tx),
+		     .comsas_sent_changed (comsas_sent_changed_tx),
+		     .r_soaf_detected_changed (r_soaf_detected_to_rx_changed),
+		     .r_sof_det_changed (r_sof_det_to_rx_changed),
+		     .level_select_temp (level_select_temp_tx),
+		     .target_port_transfer_tag(tgt_prt_tag_to_rx),
+		     .target_port_transfer_tag_rcvd(signals_from_rx_to_tx_via_fifo[115:100]),
+		     .connection_status(conn_sta_to_rx),
+		     .connection_status_received(conn_sta_from_rx),//(signals_from_rx_to_tx_via_fifo[117]),
+                     .illegal_primitive_inside_ssp_connection(ssp_to_rx),
+                     .illegal_prim_ssp_rcvd(signals_from_rx_to_tx_via_fifo[121]),
+                     .illegal_primitive_inside_smp_connection(smp_to_rx),
+                     .illegal_prim_smp_rcvd(signals_from_rx_to_tx_via_fifo[120]),
+                     .illegal_primitive_inside_stp_connection(stp_to_rx),
+                     .illegal_prim_stp_rcvd(signals_from_rx_to_tx_via_fifo[119]),
+                     .illegal_primitive_outside_connection(out_to_rx),
+                     .illegal_prim_out_rcvd(signals_from_rx_to_tx_via_fifo[118]),
+		     .valid_g1_state(validg1_to_rx),
+		     .valid_g1_state_rcvd(signals_from_rx_to_tx_via_fifo[125]),
+		     .valid_g2_state(validg2_to_rx),
+		     .valid_g2_state_rcvd(signals_from_rx_to_tx_via_fifo[124]),
+		     .valid_g3_state(validg3_to_rx),
+		     .valid_g3_state_rcvd(signals_from_rx_to_tx_via_fifo[123]),
+		     .neg_state(neg_to_rx),
+		     .neg_state_rcvd(signals_from_rx_to_tx_via_fifo[122]),
+		     .transaction_in_g1rate(transaction_in_g1rate),
+		     .align0_xmtd(align0_xmtd_to_rx),
+		     .align1_xmtd(align1_xmtd_to_rx),
+                     .disable_scr_count(disable_scr_count),
+                     .electrical_idle_detected(electrical_idle_detected),
+		     .speed_neg_status(speed_neg_status),
+		     .next_start_rcd(start_rcd),
+		     .next_parallel_rcd(parallel_rcd),
+                     .start_speed_neg(start_speed_neg),
+                     .reset_expect(reset_expect),
+		     .current_negotiated_rate(current_negotiated_rate),
+                     .addr_frame_type_err(addr_fr_ty_err_to_rx),
+                     .addr_frame_type_err_rcvd
+                              (signals_from_rx_to_tx_via_fifo[133]),
+                     .crc_err(crc_err_to_rx), 
+                     .crc_err_rcvd(signals_from_rx_to_tx_via_fifo[132]),
+                     .oaf_max_frame_size_err(oaf_fr_sz_to_rx),
+                     .oaf_max_frame_size_err_rcvd
+                                (signals_from_rx_to_tx_via_fifo[131]),
+                     .iaf_max_frame_size_err(iaf_fr_sz_to_rx),
+                     .iaf_max_frame_size_err_rcvd
+                                           (signals_from_rx_to_tx_via_fifo[130]),
+                     .discard_frame(discard_fr_to_rx),
+                     .discard_frame_rcvd(signals_from_rx_to_tx_via_fifo[129]),
+                     .data_pres_err(dat_prs_err_to_rx),
+                     .data_pres_err_rcvd(signals_from_rx_to_tx_via_fifo[128]),
+                     .credit_exhausted(credit_exhausted_from_tx),
+                     .credit_exhausted_rcvd(credit_exhausted_from_rx),
+		     .collect_stats(collect_stats)
+                    ); 
+ 
+  qvl_sas_link_monitor # 
+               (Constraints_Mode,            // Constraints_mode
+                0,                           // TX_INTERFACE
+                SAS_DEVICE_TYPE,             // SAS_DEVICE_TYPE
+                INTERFACE_TYPE,              // INTERFACE_TYPE
+                ZI_FINAL_DDR,                   // DOUBLE_DATA_RATE
+                ELECTRICAL_IDLE_TIME_BIT_PATTERN,// ELECTRICAL_IDLE_VAL
+                RX_DEVICE_SPEED_RATE,        // DEVICE_SPEED_RATE
+                REPEATED_PRIMITIVE_SEQ,      // REPEAT_PRIMITIVE_SEQ_ENABLE
+                TRANSPORT_LAYER_CHECKS_ENABLE, 
+                                          // TRANSACTION_LAYER_CHECKS_ENABLE
+		RX_MAX_SUPPORTED_RATE,         // MAX. RATE SUPPORTED BY DEVICE
+		DISABLE_DESCRAMBLER,     //Disable/Enable scrambler
+                PHY_RESET_SEQ_CHECK_ENABLE,   // Reset Sequence Check Enable
+		RESERVED_FIELD_CHECK_ENABLE,  // Reserved field check enable
+                VENDOR_SPECIFIC_ENCODING_ENABLE // Vendor specific enable
+               )
+                         RX (.clk(rx_clk),
+                             .areset(areset),
+                             .reset(reset),
+                             .data_plus(rx_final_data_plus),
+                             .data_minus(rx_data_minus),
+                             .bypass_reset_seq(bypass_reset_sequence),
+			     .start_speed_negotiation(start_speed_negotiation),
+                             .tx_cominit_idle_time(tx_cominit_idle_time_muxed),
+                             .tx_comsas_idle_time(tx_comsas_idle_time_muxed),
+                             .rx_cominit_idle_time_min
+                                        (rx_cominit_idle_time_muxed_min),
+                             .rx_cominit_idle_time_max
+                                        (rx_cominit_idle_time_muxed_max),
+                             .rx_comsas_idle_time_min
+                                        (rx_comsas_idle_time_muxed_min),
+                             .rx_comsas_idle_time_max
+                                        (rx_comsas_idle_time_muxed_max), 
+                             .tx_cominit_neg_time(tx_cominit_neg_time_muxed),
+                             .tx_comsas_neg_time(tx_comsas_neg_time_muxed),
+                             .rx_cominit_neg_time(rx_cominit_neg_time_muxed),
+                             .rx_comsas_neg_time(rx_comsas_neg_time_muxed),
+                             .hotplug_timeout(hotplug_timeout_muxed),
+                             .comsas_timeout(comsas_timeout_muxed),
+                             .hard_reset_timeout(hard_reset_timeout_muxed),
+                             .ident_frame_timeout(ident_frame_timeout_muxed),
+                             .break_timeout(break_timeout_muxed),
+                             .open_addr_res_timeout(open_addr_res_timeout_muxed),
+                             .credit_timeout(credit_timeout_muxed),
+                             .ack_nak_timeout(ack_nak_timeout_muxed),
+                             .close_timeout(close_timeout_muxed),
+                             .done_timeout(done_timeout_muxed),
+			     .electrical_idle(rx_idle_signal),
+                             .cominit_det(cominit_det_from_rx),
+                             .cominit_det_received(signals_from_tx_to_rx_via_fifo[96]),
+                             .comsas_det(comsas_det_from_rx),
+                             .comsas_det_received(signals_from_tx_to_rx_via_fifo[95]),
+                             .cominit_sent(cominit_sent_from_rx),
+                             .cominit_sent_received(signals_from_tx_to_rx_via_fifo[94]),
+                             .comsas_sent(comsas_sent_from_rx),
+                             .comsas_sent_received(signals_from_tx_to_rx_via_fifo[93]),
+                             .iaf_sent(iaf_sent_from_rx),
+                             .iaf_received(signals_from_tx_to_rx_via_fifo[92]),
+                             .hard_reset_detected(hard_reset_from_rx),
+                             .hard_reset_received(signals_from_tx_to_rx_via_fifo[91]),
+                             .soaf_detected(soaf_from_rx),
+                             .soaf_received(signals_from_tx_to_rx_via_fifo[90]),
+                             .eoaf_detected(eoaf_from_rx),
+                             .eoaf_received(signals_from_tx_to_rx_via_fifo[89]),
+                             .aip(aip_from_rx),
+                             .aip_received(signals_from_tx_to_rx_via_fifo[88]),
+                             .open_accept(open_acc_from_rx),
+                             .open_accept_received(signals_from_tx_to_rx_via_fifo[87]),
+                             .open_reject(open_rej_from_rx),
+                             .open_reject_received(signals_from_tx_to_rx_via_fifo[86]),
+                             .sof_det(sof_det_from_rx),
+                             .eof_det(eof_det_from_rx),
+                             .ack_det(ack_det_from_rx),
+                             .nak_det(nak_det_from_rx),
+                             .sof_det_received(signals_from_tx_to_rx_via_fifo[85]),
+                             .eof_det_received(signals_from_tx_to_rx_via_fifo[84]),
+                             .ack_det_received(signals_from_tx_to_rx_via_fifo[83]),
+                             .nak_det_received(signals_from_tx_to_rx_via_fifo[82]),
+                             .sata_sof_det(sata_sof_from_rx),
+                             .sata_sof_det_received(signals_from_tx_to_rx_via_fifo[73]),
+                             .sata_eof_det(sata_eof_from_rx),
+                             .sata_eof_det_received(signals_from_tx_to_rx_via_fifo[72]),
+                             .sata_xrdy_det(sata_xrdy_from_rx),
+                             .sata_xrdy_det_received(signals_from_tx_to_rx_via_fifo[81]),
+                             .sata_rrdy_det(sata_rrdy_from_rx),
+                             .sata_rrdy_det_received(signals_from_tx_to_rx_via_fifo[80]),
+                             .hold_det(hold_from_rx),
+                             .hold_det_received(signals_from_tx_to_rx_via_fifo[79]),
+                             .holda_det(holda_from_rx),
+                             .holda_det_received(signals_from_tx_to_rx_via_fifo[78]),
+                             .wtrm_det(wtrm_from_rx),
+                             .wtrm_det_received(signals_from_tx_to_rx_via_fifo[77]),
+                             .r_ok_det(rok_from_rx),
+                             .r_ok_det_received(signals_from_tx_to_rx_via_fifo[76]),
+                             .r_err_det(rerr_from_rx),
+                             .r_err_det_received(signals_from_tx_to_rx_via_fifo[75]),
+                             .sync_det(sync_from_rx),
+                             .sync_det_received(signals_from_tx_to_rx_via_fifo[74]),
+                             .smp_res_fn(smp_res_fn_from_rx),
+                             .smp_res_fn_received(signals_from_tx_to_rx_via_fifo[63:56]),
+                             .smp_req_fn(smp_req_fn_from_rx),
+                             .smp_req_fn_received(signals_from_tx_to_rx_via_fifo[71:64]),
+                             .protocol(protocol_from_rx),
+                             .protocol_received(signals_from_tx_to_rx_via_fifo[55:53]),
+                             .info_unit_type(info_unit_from_rx),
+                        .info_unit_type_received(signals_from_tx_to_rx_via_fifo[49:42]),
+                             .close_det(close_from_rx),
+                             .close_det_received(signals_from_tx_to_rx_via_fifo[51]),
+			     .close_affliation_det(close_affl_from_rx),
+			     .close_affliation_det_received(signals_from_tx_to_rx_via_fifo[116]),
+                             .done_det(done_from_rx),
+                             .done_det_received(signals_from_tx_to_rx_via_fifo[52]),
+                             .data_frame_count(read_data_from_rx),
+                       .data_frame_count_received(signals_from_tx_to_rx_via_fifo[41:10]),
+                             .r_soaf_detected(r_soaf_detected_from_rx),
+                             .r_soaf_received(signals_from_tx_to_rx_via_fifo[9]),
+                             .addr_frame_type(addr_type_from_rx),
+                      .addr_frame_type_received(signals_from_tx_to_rx_via_fifo[7:4]),
+                             .break_det(break_det_from_rx),
+                             .break_det_received(signals_from_tx_to_rx_via_fifo[3]),
+                             .r_sof_detected(r_sof_det_from_rx),
+                             .r_sof_detected_received(signals_from_tx_to_rx_via_fifo[8]),
+                            .primitive_violation(prim_violation_from_rx),
+                        .primitive_violation_received(signals_from_tx_to_rx_via_fifo[2]),
+                             .change_det(change_from_rx),
+                             .change_det_received(signals_from_tx_to_rx_via_fifo[50]),
+                             .initiator_target(ini_tar_from_rx),
+                         .initiator_target_received(signals_from_tx_to_rx_via_fifo[1]),
+                             .latched_hold_det(latched_hold_from_rx),
+                             .latched_hold_det_changed(latched_hold_changed_rx),
+                          .latched_hold_det_received(signals_from_tx_to_rx_via_fifo[97]),
+                             .rrdy_det(rrdy_det_from_rx),
+                             .rrdy_det_received(signals_from_tx_to_rx_via_fifo[98]),
+                             .sas_valid(sas_valid_from_rx),
+			     .sas_valid_received(sas_vld_to_rx), 
+                             //.sas_valid_received(signals_from_tx_to_rx_via_fifo[0]),
+                             //.sas_valid_received(INTERFACE_TYPE >= 1 ? sas_valid_to_rx : signals_from_tx_to_rx_via_fifo[0]),
+			     .dword_valid(dword_valid_from_rx),
+			     .dword_valid_received(signals_from_tx_to_rx_via_fifo[99]),
+			     .smp_req_fn_valid (smp_req_fn_valid_rx),
+			     .smp_res_fn_valid (smp_res_fn_valid_rx),
+			     .protocol_valid (protocol_valid_rx),
+			     .tgt_prt_tag_valid(tgt_prt_tag_valid_rx),
+			     .info_unit_type_valid (info_unit_type_valid_rx),
+			     .data_frame_count_valid(data_frame_count_valid_rx),
+			     .addr_frame_type_valid (addr_frame_type_valid_rx),
+			     .initiator_target_valid(initiator_target_valid_rx),
+			     .cominit_det_changed (cominit_det_changed_rx),
+			     .comsas_det_changed (comsas_det_changed_rx),
+			     .cominit_sent_changed (cominit_sent_changed_rx),
+			     .comsas_sent_changed (comsas_sent_changed_rx),
+			     .r_soaf_detected_changed (r_soaf_detected_from_rx_changed),
+			     .r_sof_det_changed (r_sof_det_from_rx_changed),
+			     .level_select_temp (level_select_temp_rx),
+			     .target_port_transfer_tag(tgt_prt_tag_from_rx),
+			     .target_port_transfer_tag_rcvd(signals_from_tx_to_rx_via_fifo[115:100]),
+			     .connection_status(conn_sta_from_rx),
+			     .connection_status_received(conn_sta_to_rx),//(signals_from_tx_to_rx_via_fifo[117]),
+			     .illegal_primitive_inside_ssp_connection(ssp_from_rx),
+			     .illegal_prim_ssp_rcvd(signals_from_tx_to_rx_via_fifo[121]),
+			     .illegal_primitive_inside_smp_connection(smp_from_rx),
+			     .illegal_prim_smp_rcvd(signals_from_tx_to_rx_via_fifo[120]),
+			     .illegal_primitive_inside_stp_connection(stp_from_rx),
+			     .illegal_prim_stp_rcvd(signals_from_tx_to_rx_via_fifo[119]),
+			     .illegal_primitive_outside_connection(out_from_rx),
+			     .illegal_prim_out_rcvd(signals_from_tx_to_rx_via_fifo[118]),
+			     .valid_g1_state(validg1_from_rx),
+			     .valid_g1_state_rcvd(signals_from_tx_to_rx_via_fifo[125]),
+			     .valid_g2_state(validg2_from_rx),
+			     .valid_g2_state_rcvd(signals_from_tx_to_rx_via_fifo[124]),
+			     .valid_g3_state(validg3_from_rx),
+			     .valid_g3_state_rcvd(signals_from_tx_to_rx_via_fifo[123]),
+			     .neg_state(neg_from_rx),
+			     .neg_state_rcvd(signals_from_tx_to_rx_via_fifo[122]),
+			     .transaction_in_g1rate(1'b0),
+			     .align0_xmtd(align0_xmtd_from_rx),
+			     .align1_xmtd(align1_xmtd_from_rx),
+                             .disable_scr_count(),
+                             .electrical_idle_detected(),
+			     .speed_neg_status(speed_neg_status),
+			     .next_start_rcd(),
+			     .next_parallel_rcd(),
+                             .start_speed_neg(start_speed_neg),
+                             .reset_expect(reset_expect),
+			     .current_negotiated_rate(current_negotiated_rate),
+                             .addr_frame_type_err(addr_fr_ty_err_from_rx),
+                             .addr_frame_type_err_rcvd
+                                 (signals_from_tx_to_rx_via_fifo[133]),
+                             .crc_err(crc_err_from_rx), 
+                             .crc_err_rcvd(signals_from_tx_to_rx_via_fifo[132]),
+                             .oaf_max_frame_size_err(oaf_fr_sz_from_rx),
+                             .oaf_max_frame_size_err_rcvd
+                                 (signals_from_tx_to_rx_via_fifo[131]),
+                             .iaf_max_frame_size_err(iaf_fr_sz_from_rx),
+                             .iaf_max_frame_size_err_rcvd
+                                (signals_from_tx_to_rx_via_fifo[130]),
+                             .discard_frame(discard_fr_from_rx),
+                             .discard_frame_rcvd
+                                    (signals_from_tx_to_rx_via_fifo[129]),
+                             .data_pres_err(dat_prs_err_from_rx),
+                             .data_pres_err_rcvd
+                                   (signals_from_tx_to_rx_via_fifo[128]),
+                             .credit_exhausted(credit_exhausted_from_rx),
+                             .credit_exhausted_rcvd(credit_exhausted_from_tx),
+			     .collect_stats()
+                            );
+
+  //----------------------------------------------
+  // SAS speed negotiation module instantiation
+  //----------------------------------------------
+
+  qvl_sas_speed_negotiation #(INTERFACE_TYPE,
+				ZI_FINAL_DDR,
+				TX_MAX_SUPPORTED_RATE
+                               )                 
+               SPEED_NEGOTIATION (.clock(tx_clk),
+                                  .areset(areset),
+                                  .reset(reset), 
+				  .rate_change_delay(rate_change_delay_muxed),
+				  .spd_neg_lock_time(spd_neg_lock_time_muxed),
+				  .spd_neg_transmit_time(spd_neg_transmit_time_muxed),
+                                  .align0_rcvd
+					(signals_from_rx_to_tx_via_fifo[127]),
+                                  .align1_rcvd
+					(signals_from_rx_to_tx_via_fifo[126]), 
+                                  .align0_xmtd(align0_xmtd_to_rx),
+                                  .align1_xmtd(align1_xmtd_to_rx),
+                                  .sas_valid(sas_valid_to_rx),
+                                  .electrical_idle_detected
+                                        (electrical_idle_detected),
+                                  .transaction_in_g1rate
+                                       (transaction_in_g1rate),
+                                  .disable_scr_count(disable_scr_count),
+                                  .level_select(level_select_temp_tx),
+                                  .next_speed_negotiation_status(speed_neg_status),
+				  .start_rcd(start_rcd),
+				  .parallel_rcd(parallel_rcd),
+                                  .next_start_speed_neg(start_speed_neg),
+                                  .next_reset_expect(reset_expect),
+				  .current_negotiated_rate
+				       (current_negotiated_rate),
+                                  .collect_stats(collect_stats)
+                                  ); 
+
+  //**************************************************************
+  // FIFO module instantiations.  These FIFO modules are used to 
+  // synchronize the signals flow across the clock domains.
+  // Instantiation to TX monitor.
+  //**************************************************************
+
+  qvl_sas_fifo #(20, 134, ZI_FINAL_DDR) FROM_TX_TO_RX_FIFO 
+                       (.reset(reset),
+                        .areset(areset),
+                        .write_clk(tx_clk),
+                        .write_enable(from_tx_to_rx_fifo_write), 
+                        .read_clk(rx_clk),
+                        .read_enable(~tx_empty),
+                        .rd_level_select(level_select_temp_rx),
+                        .empty(tx_empty),
+                        .input_data(signals_from_tx_to_rx),
+                        .output_data(signals_from_tx_to_rx_via_fifo),
+			.transaction_in_g1rate(transaction_in_g1rate)
+                       );
+
+  //**************************************************************
+  // FIFO module instantiations.  These FIFO modules are used to
+  // synchronize the signals flow across the clock domains.
+  // Instantiation to RX monitor.
+  //**************************************************************
+
+  qvl_sas_fifo #(20, 134, ZI_FINAL_DDR) FROM_RX_TO_TX_FIFO
+                       (.reset(reset),
+                        .areset(areset),
+                        .write_clk(rx_clk),
+                        .write_enable(from_rx_to_tx_fifo_write),
+                        .read_clk(tx_clk),
+                        .read_enable(~rx_empty),
+                        .rd_level_select(level_select_temp_tx),
+                        .empty(rx_empty),
+                        .input_data(signals_from_rx_to_tx),
+                        .output_data(signals_from_rx_to_tx_via_fifo),
+			.transaction_in_g1rate(1'b0)
+                       );
+
+`protected
+
+    MTI!#/^AQDF+YasrmnKeBVmW53IG\Owj\OGwE?$\?^[Q3K1LH[V~$p~?^e[A$lHu\E~~eOw_7@Q[
+    n[kO$G*[E,T>:\O-@#UQVU72]Q3>m^vse53s'&~U[Cl{p5BJCA}Tz*;xY^aa{}NCY?kXD7_jk^]+
+    Unz}Cvmiwl,[CuZvXoj]@5r#Ex8$iC@Zxz]J'xl5UU?B>]~1OBek5-?^UrCQjU2,-ls@DVAv;A<i
+    OkuV{;eZvB@LCnW]+X1Bn+W@M>n1!Z1>T}MvV1{81D~@PE@TDn}njeCUz1r#z*v;*Dlx!g>Rj>:,
+    \op<jW#]5x*{vn?~\#}}9dvR5auCz^D@eGevHZ5V-{I+psyn,@~=\k~-YTX.VVv~NIH-Q!Y_1z}U
+    71i^s=uxa,XxsEXlOaO,v31DC%]zQ5'!n'1Xv{BHoCu1J<w'i=fGN)q|K9La+Pwrx$pT_Ky-$n3}
+    2aX}olB#wQrn.RJX2$GVivGiv257=,J=1ApVzlw}kfeBeI>>OEb\-}Zxp#Q'i1ieQYDeOj,atO3s
+    #NUC-Ce>WT:]}YGAn7xGVv5"y,UQ5\_=U-X*lYE7nmX3@3_k-,wwD^I'ryz{U<U_j1HR*j!DnA],
+    +-QX+wD5E~UD-T^!$;?,o{s;<Uv,V;E+KQXC!jQl~[i_5#R<<O6HDiXYa,nzxnWs\'TQm;!=!eoj
+    }1CK\mm@s757Gi}vz*DS-RXrn,Q7H[^Ks?a7*jWp0js;!Y!_2]Kou{CVY3]5QE}jm8qRu7p+G[wO
+    s$B)*Cu!}GAE_emZjrI,#<~^ka[e2DOCw1W]'ygqco+wX~5o\6N5;}ix<uEl<
+`endprotected
+
+  //--------------------------------------------------------------------------
+  // OVL SVA Assertions are included here
+  //--------------------------------------------------------------------------
+
+`include "qvl_sas_dynamic_timer_values_monitor_assertions.inc"
+
+`ifdef ZI_INLINED_PSL
+`include "0in_ac_inline_for_mod_zi_cw_sas_dynamic_timer_values_monitor.inc"
+`endif
+`ifdef ZI_INLINED_CHX
+`include "zi_cw_sas_dynamic_timer_values_monitor.zi_chx.inc"
+`else
+`ifdef ZI_INLINED_CHX_zi_cw_sas_dynamic_timer_values_monitor
+`include "zi_cw_sas_dynamic_timer_values_monitor.zi_chx.inc"
+`endif
+`endif
+
+
+
+
+`qvlendmodule // end module qvl_sas_dynamic_timer_values_monitor.v
+
+/*************************************************************************
+*
+* PURPOSE      This file is part of 0-In CheckerWare.
+*              It describes the FIFO submodule that is instantiated in the
+*              qvl_sas_dynamic_timer_values_monitor module.
+*
+* DESCRIPTION  This module has a FIFO that enqueues and dequeus all the
+*              signals that flow between Rx link & Tx link modules.
+*
+* Last Modified Date : 19th March 2003 
+**************************************************************************/
+
+`ifdef ZiCwDebug
+`define ZiCwDebugDelay1 #1
+`define ZiCwQuietIfNoCwDebug
+`else
+`define ZiCwDebugDelay1
+`define ZiCwQuietIfNoCwDebug -quiet
+`endif //ZiCwDebug
+
+`ifdef QVL_ASSERT_ON
+`define OVL_ASSERT_ON
+`define OVL_SVA
+`endif
+
+`qvlmodule qvl_sas_fifo
+           (reset,
+            areset,
+            write_clk,
+            write_enable,
+            read_clk,
+            read_enable,
+            rd_level_select,
+            empty,
+            input_data,
+            output_data,
+	    transaction_in_g1rate
+	    );
+ 
+  parameter ADD_WIDTH = 20;
+  wire [31:0] pw_ADD_WIDTH = ADD_WIDTH;
+  parameter DATA_BUS_WIDTH = 134;
+  wire [31:0] pw_DATA_BUS_WIDTH = DATA_BUS_WIDTH;
+  parameter DOUBLE_DATA_RATE = 0;
+  wire [31:0] pw_DOUBLE_DATA_RATE = DOUBLE_DATA_RATE;
+  parameter ALMOST_LIMIT = 4; // This is the minimum permissible value.
+  wire [31:0] pw_ALMOST_LIMIT = ALMOST_LIMIT;
+ 
+  input reset;
+  input areset;
+  input write_clk;
+  input write_enable;
+  input read_clk;
+  input read_enable;
+  input rd_level_select;
+  input [DATA_BUS_WIDTH-1:0] input_data;
+  output [DATA_BUS_WIDTH-1:0] output_data;
+  output empty;
+  input transaction_in_g1rate;
+
+`protected
+
+    MTI!#iVY{HvTnjQ\+VR,a@YYKel}7k,WQCYBu}#NkN"@YPFFelxo^+R?|vl#W:Cx!HqN_kjw^JxD
+    GjE*\_{v^UR;pAJ*cow_w-ls!+U{AD$AER#;C*\DlR=nU{C=#Z$I!tm{3Z'OnAxK{a!{$1[B~m-a
+    lJTw\Ej+CJDijn!oACM'B<W\]lB@D\r>zT<H{lG!p<]\l{vvJx*7*wBH9nU^J~{RpG>_@TD<],XZ
+    Z\lk#,n;er#H-,-AG#DX\@vz[TaK3'7@V=J3Z'?}}TLOm,aED]@CmTWY_X'HH$l{[)yExV,_<\ja
+    <J7/[C*aN=^Ka7~R$GY<U*ZX*^*wG|O#g^~Y[x7z7Vx2O?RnO[;lVzU{zRpQ!!'\H7>Wm=Vwu5{O
+    {e7>BImX*i'[Zu]I~JaIlBs[QK=_Wu_@[Q*#p7ZxrI+2[giNlvoJE_IQVYY}PYYQZ!s'o/AwCoqI
+    ~\s+UI="-]v<',kAkhe{BRitieJ{ba\#CRGE5=mECs^!Hi{,@Z{U[B-QXzsvQQKpeC\U\<_z7^]m
+    a=H1l3x>']\[wi^?!AD_z*m1kI\~GmC+sM^oK+1x}CoPiOk[n]rnJ5bD=ue[+rW_I=!0[_uk@R2p
+    K_]osjQrTo#u^pj5CNBu^Y.{nnrawurr?+Da]xZsORB{=Jevn[KY@7K5jV>[U\AJOoGO3A7B'#}7
+    ^}EQZWZd=m@>KapoliA?$Wsp"K7H!GX*X]YY^E\O5)QJ+<25==uH1;|hl$r'j3rJzv~1<'txnVU,
+    Y\imp\Y*oTTKH^^{nTz,_N1D_Go->5qZvz<+AwXAsXJ\G};s{}T:AnJ$=Uxxx$@JVw]YWoVura=7
+    ]@;[epp;k]B2v;vx,uuHQUl;CaHT:~C2Q@->~^wK#9eri3Q^77v23+5xxr_E~TY~0$CTH;spA?$\
+    ]~Hl'*CHE1nuJ}|msWKuYR@uo*ZQ>ei3r7;aX{]zC6l2l{5>]n@'w{C#Z*XE~ZQOH*KX{pD!l7M-
+    jB-mRG,Gsk-}sBV:2ol5'A!VjEjoP_@<2+,ke"W,*3Va\1sj33RK<2IX@,IkCZpAEl=J^igXU5pp
+    ?EXv=>skTZK1n~pelu-'w!D7D07w5QCUvC^ve=}xpU^'rB)oO1#VDY;N5U@UFTCJx"-Y2xJ${lR[
+    2=hCi=QW_wjmjDwp*(xDp7iYAT+<^_=}?V@{DDmXV?nHZ+!><5~or]cQ_Kk!7oZeBK$n}p-4u}k_
+    w]nE5Vp?8jGJ1#G>kkzKzCj{e>51oYPEs<Z\*Q5'OzjLTnuI^Au>BX,]'pAIWs]UIBr}IHrY[c,I
+    22E@}z}!z\=>,_{UnRWrH{EzwuQ~z7]pQ\t}3]rsbH+j}M''m?wC$n~'s3\YY;q?V~~GZ<DXD;Jx
+    &6({ws~31A#!UKB.C7@vb<1w7g7~pD_,*>~o2]!}iaw'QQo]A'xEG;ipY?jomR*_[7H'Yu'm~>[Z
+    pKtdOW]{+,GBYu|yzTG?v?jipJ{^slzTf1A3z~jl[F.=U\\=J\*<Y<UoiPl;I1Iu=#D2oZ,JeH$Y
+    _^#DjWaH;2?G7-u=2xEqd!HaE$8eJ<#jHslF!x}ri[Qmk77n-<!,-Dk1UHZ2!Q5U};7O]X6{V}BZ
+    VUnF)o<,^;rWUXxu$7[EXaHpvyG{w]_<CJu-O;ET<Dek}*=?nHqTa\JwInOYTr=O]Zp"CB1s2BT_
+    }F*~EK7;_{IJ2lB5{A{npi-w1^I{2-1s==QTsEJ>\Wp2]\G]C1Qm<[>+O~qi&xxR@Vzjez=HmG,T
+    \0#{3Z$&.[IDnG[mOA*n$xaoXYYo_ria}lT_rpw1iAv\mWv<;YkrrKrDpElE~\!_i,[X>#lKGv7{
+    #VGBD|[VK3;1oXe,!HW'@VWX3^(goVJU#X>E,l#!5w+kQQr,iBo#*U5*'?l-}eroNu]a{kTv{}@K
+    u'o+_iHvCw+mvwVoX^#T3$GGYA\Ux_.CRk+QvwKCKs5^2AlDxJCx!BiW>raJaDW_o7U3T\=vEG*~
+    ]pou$,v$[jA^Tlp}v2ERklZwou{[amE_w{Y~Rz+OE$UQX$iA'sQPCK}v3Q_GYY5A^**XCz'k(pDB
+    nx~}n/+'!{-{{o5T<2H1A+@lE<)aT$z~OZGnID7(21m@M>^?KlaR}'xZ<{aZj"'@Av{GaGl<
+`endprotected
+ 
+`ifdef ZI_INLINED_PSL
+`include "0in_ac_inline_for_mod_zi_cw_sas_fifo.inc"
+`endif
+`ifdef ZI_INLINED_CHX
+`include "zi_cw_sas_fifo.zi_chx.inc"
+`else
+`ifdef ZI_INLINED_CHX_zi_cw_sas_fifo
+`include "zi_cw_sas_fifo.zi_chx.inc"
+`endif
+`endif
+
+`qvlendmodule // qvl_sas_fifo
+
+
+
+
+
+/*************************************************************************
+* PURPOSE     This file is part of 0-In CheckerWare.
+*             It describes the speed negotiation block that is
+*             instantiated in the qvl_sas_dynamic_timer_values_monitor module.
+*
+* DESCRIPTION This module tracks the Speed Negitiation Sequence.
+*
+* Last Modified Date : 07th May 2004
+**************************************************************************/
+
+`ifdef ZiCwDebug
+`define ZiCwDebugDelay1 #1
+`define ZiCwQuietIfNoCwDebug
+`else
+`define ZiCwDebugDelay1
+`define ZiCwQuietIfNoCwDebug -quiet
+`endif //ZiCwDebug
+
+`ifdef QVL_ASSERT_ON
+`define OVL_ASSERT_ON
+`define OVL_SVA
+`endif
+
+`qvlmodule qvl_sas_speed_negotiation(clock,
+				   areset,
+				   reset,
+				   rate_change_delay,
+				   spd_neg_lock_time,
+				   spd_neg_transmit_time,
+				   align0_rcvd,
+				   align1_rcvd,
+                                   align0_xmtd,
+				   align1_xmtd,
+                                   disable_scr_count,
+                                   sas_valid,
+                                   electrical_idle_detected, 
+                                   transaction_in_g1rate,
+                                   level_select,
+				   start_rcd,
+				   parallel_rcd,
+                                   next_start_speed_neg,
+                                   next_speed_negotiation_status,
+                                   next_reset_expect,
+				   current_negotiated_rate,
+				   collect_stats
+                                  );
+
+  // ------------------------
+  // Parameter Declarations
+  // ------------------------
+
+  parameter INTERFACE_TYPE = 0;
+  wire [31:0] pw_INTERFACE_TYPE = INTERFACE_TYPE;
+
+  parameter DOUBLE_DATA_RATE = 0;  
+  wire [31:0] pw_DOUBLE_DATA_RATE = DOUBLE_DATA_RATE;
+
+  parameter MAX_SUPPORTED_RATE = 0;
+  wire [31:0] pw_MAX_SUPPORTED_RATE = MAX_SUPPORTED_RATE;
+
+  // -------------------------------------------
+  // Parameter declarations for state variables
+  // -------------------------------------------
+
+  parameter ZI_RCD_STATE = 0;
+  parameter ZI_AWAIT_ALIGN_STATE = 1;
+  parameter ZI_AWAIT_ALIGN1_STATE = 2;
+  parameter ZI_AWAIT_SNW_STATE = 3;
+  parameter ZI_PASS_STATE = 4;
+  parameter ZI_FAIL_STATE = 5;
+  parameter ZI_SNG_RCD_STATE = 6;
+  parameter ZI_SNG_FINAL_STATE = 7;
+  parameter ZI_IDLE_STATE = 8;
+
+  // --------------------------
+  // Input port declarations
+  // --------------------------
+
+  input clock;
+  input areset;
+  input reset;
+
+  input [31:0] rate_change_delay;
+  input [31:0] spd_neg_lock_time;
+  input [31:0] spd_neg_transmit_time;
+
+  input align0_rcvd;
+  input align1_rcvd;
+  input align0_xmtd;
+  input align1_xmtd;
+  input [2:0] disable_scr_count;
+  input sas_valid;
+  input electrical_idle_detected;
+  input transaction_in_g1rate;
+  
+  input level_select;
+  input start_rcd;
+  input parallel_rcd;
+
+  output next_start_speed_neg;
+  output next_reset_expect;
+  output [2:0] current_negotiated_rate;
+  input collect_stats;
+
+  // ----------------------------
+  // Output port declaration
+  // ----------------------------
+
+  output next_speed_negotiation_status;
+
+  // ------------------
+  // Wire declarations 
+  // ------------------
+
+`protected
+
+    MTI!#@Qu}-*aE2AeE=VwpI[DEp$<l_KorpCk37;BCiDir@1<T9)}u_O}Dn[12wA-+{H_a<D{Y325
+    \?^_X5o[@RX;57@{x1DYO?Gr#7<kTI#alxr>$;Ow-mp_Y>B&@aZoNKv-ln$JE@G2XjBpn'o?Zp!T
+    T!9j;~H&^oizLZx#$5<*;TRDBBU}WwQmG5,X3$w_@jOm=Ew1IeA*B^*rAE-j1uC-vkzTpiAA5IC_
+    XJY13I<UzOG7+]Q\z>]X'9I]-OGAD}=a<5L+xa#Av-ma}-,k-2ZD=mEC!VEWr}Xo*T@1A[a\CXm3
+    o*-(o,i$uTmrsv372}]<G@}UmUI1*sT^VVnxuEu~qz$E*{^#ZUjtie!rBA2J1RZjRVl@I~xR<*a@
+    E=Jud"*=<Z-h#[Cr"}W!X[u'CwDuZAIuJj-7mxBuX~*1#xK~,vDI_$kIapTU@5UDx~G$oD8g{[!u
+    vxTXp-pX~<2C-HJAm}XK~1>~:#V\1|Je~GGEJ$rp7WVHQ?A*}3]rHCIGmB\iZ3%Q>~V-OH@k^{#3
+    IY>J\Z^;n53]s-7]5YzZok'A*IJg]G}@jB#Qb{5XAm-@[zc2enem-5#2[Z,'WXR{<\7^kU,Qos*i
+    z]*5knJU5uB'#'1En\AH|,7B;I{)}}>'T5]Ci+T?$r,+VXz}vmO[j$5sa{o5iDT\<Aw[|-lw[x3_
+    ve@}E{.AUsw'VpIx5XK$72C5Z5HT*kV$1BYWvRsmDA^[Z,WQ7vYq~jEYe@<}}QzIEH}#JzIvx_rD
+    DxRUoX\K&^E-Ta>{=5EA^oH[!HAv?+zwXKx5kso5vnBll4a_wEGi$7z2Y'J8g^[ukGoDO;=QXmCH
+    pnr]!$hXQmzB]JQ?=^jOGRp*_35Nw\{r[7~UoU<;rJ-*_m++DG$A>7Tm2=X+3};5Benz\KG[C7$D
+    a,QlNjz*Oi+AJa7vrY==1k]mV=*T\E_zjjvB-1lzG;IiOqlm[1x$?~0J5$>,;mYVIHul_Rup~~~K
+    ,}Yb-aa@<$U~K^jG*7{!,unK!Tloe,4~UE2=RpJ>oYVW5<$zDRIZ,<_mBXx-oK@_zZ<Wj{!*Bsu^
+    GB!-l'J_rRJrZ55kjRjDx!e1h#V;rzJ_;gDVmk<Sq{(YsKENC*JO1UAl!a@-xXVpOGmRaT>\=BEl
+    ;C',+D<;pjwsQW>@Ee'5mjV0$E+pV3sGV,7?u-}Qk}UvD%QblAU@0U>Y]JVQ*j'mG"$]D3O-*__J
+    eD_Y5kA7x1LGEVU=$zYQ"^\}_2a-aE~sp_sW{4pO@$1'}s<YD~D_lvMs_vBa>\'K7_E\7VA>xl?R
+    2]G}TrKczx#a2<uIT>oZwrnmC~mvZ{D5OijvdFu[UR/[[0"v2@1i5<*Bp?*?QI-&e'EV]ka[?DVA
+    LVTQBz#Q2Ikv#f9o]<@,vx{I<2Qf~E]Evy"g|]5kaV^EW*=}\U+Q>OUu[{^V{G#'?EUl5t^5r?UY
+    ''7a+n6_,VWpu{Hh0n<RsVm-[1$GmKn32wInr[#<sep_QhaYT1G_}2oDn=T17no>e^R[<3owG![+
+    QB\!1@e15GTr1a=Ve-e^AE9Iq,\H,05!$s}o3-lOi\_j\so@@Y)s#\zl75j$e#obv~BR,UV'zDmA
+    O!GDGm57P$CX7ZsYIx?v^N1x,vMY=V<:EI5}R[[_Y@+^]iYx52rQ=*D1=?m^zsk!jEX~2=x7p#=1
+    (;T3+o=DpV=@YVB7Rex<j_YijY-Rsp<oB<5pxKp!!U$p*=_QoK{o,T.GirJ<E5irxA<Q=e~zpXj7
+    mve?wo<_$-KrI]Y/sb^}~Bk^1[j-3a|5Cp<$WAx}?K[eOWQiR@!B?R{X=Jp]KQHhirsY9Wvn?Op=
+    C$*}!5{{;]*A{R3-7UUW^3=BxteWX7\A+IIw=s>pw#+TuanV~vvb<[xwCTZuAvkBfv?+J\AWR_qi
+    B>jgEk119'T\A{{=nG#WB3}a2MWx]It5W2kdVWx\'nAEQ[IVX(oT{#*3mGV'zw\X_o)!1WDR'uz*
+    -YYv77Co?A3JTGBKw5Y\Z\[DHp^$eaJvcx3e'PAv3QW=j_k{Tr\^TZ-];DVn[WZl?o_\?_EU],I#
+    'D**1slgh{-$~_*>QNYK2R1jWIA[?H,W_-W7uKE\OKCi_EU+Q]r]nmAnwuVe_u~H@zZU~UkvKCG-
+    >]7GV#>U7p[#uGn[5,I_2X;$*x1O?J#1\=Dj}@G1,e7~l{;G{Bwj{=IZla,sXo_\[3@rEuTO-Cw5
+    p$!En-h=wmE_]@ve+eY#Rml0s\Ik%+}OnpImslYRp$OREUX1Is?!#fG$nY{1eE?Cu}oRWIo<[C|~
+    YTDV}Xr^5zR4Y]W$R*!nq?-B5$z^x35-u*|_JW*hdI_'$@}5H*\aK<X_[m'xYzQ{?:asQJ'^k\'H
+    'Qv3sO^jm{li~1m{HIp?~7ElKsQGwJnCx@WEUI$'+UW]}okw!p*{[*xY+J2zQ\a>QVY}dxRaCUpn
+    C{Yse]5OBQl!z7_J@EsHAC;vxJQ>,Wel[RB?ev<Qu2BX#u{*,.4IJ-?O$Y#V_m\xRKp5k<zZ_7vA
+    ei1pnQjgGoaxyX->1r+(Ex!xxnUTB='+{OKBI<CY<BvEf4wn1RpZ*3jaQ\fE5vVq~j~Y*$j-uATs
+    KV,iBez+]xXxzjrGWAji=\*ZpXA\EDG;V77@If'opRjZG^<pVBZrn@jx;\Eaj'w[e[+X,Y5?s^,?
+    Yrfg[ZE[!C[x_I,2ZE,AVk_,Kr-\A}eaw=^e^_#D4>=x^CEoa[mJG7K=Q[wHBI%#ECo53A{XUnaU
+    {D1sbEQ5#Ojz\fBuZZe<DDV>sOE1?;@su{,#[}s*1YC+B_Hp>}W5+TRXWopC*o)]x*l*K[a+o-OB
+    2@nBi$IK5m\$>^sAVsmFrjPr_z;'O=zkjYQo>l*~r*[=VIBL3ETx.)QTXe&Y5{EZ,z]puN|Y^@DQ
+    7{a*~]+GlX_UXRl&A[K=mYKZ}+[Y^3RB3o-+\o!R&>{7j:Cm<E]<5zDBB?J>$B&(j+*J^JCalo3;
+    [oiuHT3TOC}1yIET<Ij_Q7aeHA>loP]KeZme?@C}pX]<Ik'oEZSaRB-o2AzGY!l:)$J]sV2Is-w>
+    K@}Z_vY^zn*7]us@C8yJs#u]p#+K{o>}l<{Xp{rYIe$[lJ<vr{ZV1-~E^7ilxp{OB#}{C@pa{CES
+    .C},[nR\r#v-~8]rk3}}#C]_\rm,$mQ]ArB[?sXO>n<a,HKvB2o5ECozw2@B23x}>uBkY\!Xzii-
+    ^RE=iQN~E9}r3_I7l@zPW[+V$i_~$uzDvZ!>${-B#aX!4}>Kk;z#D'>D}J1JviD]{QJ\!_3lo'Cj
+    R[=U^Eoj_n5r5~V5*#[,~u1<Q=U;~jQKKV_wsv?~-3>a'm++r53!Qwa27r3_3Jxm_[<z#bPFg}WW
+    QA*G7A']<iR=nBtzCKIcJVv2q<Yx+''\BXUj7mHwI^O$nke}}HARVmT5_1-H_mD2\eD7RR=$QR;E
+    X$nGpQHx*m[uW:$CW_pm}<lC7@oI+{v?_xruHk^{vE37u~2Tn~Iw]kCHV,_~WAr{=OBG~K-_,]2\
+    I2eU@O\&\nJ+-lO\-$->_vev(gn}Ex1[z3]@ak!YJ-kvDs+a'}v7!RZpzC)cBm}pxRoU=!emn+~E
+    Y{32owUTIG[VRx25!C~vl_WX1o'^vJs^7pCJ2H}>:'(Ro![wEYuf1?oCo#\*OXoBCp3kYo'EBaQj
+    j55o(WjsIB_CXf,@WZ+a1ji5$-55iU]I1u}<>jxUx!_Ci38Yw{ue-B_zKuJ8J\CAj?E*V+EJ,a\^
+    =oT13A^K>\Yp5>Kv\5B7-*D>flV*O=}iCueX@B=XnIc5+m'Z[o1~[,Dl^!^jU]_q!<as5AmooQew
+    5ro,razKaX'\G?!A$VoW,@_slZ@;\\kZ[{vH*_UDzZWseH^7a1rDtMP12+1vXp'Z1#Ko[UXK]1jx
+    R_X3U+B\\$K_,u!I*>nheA_rnz;ET7Gi3e-w\!zxv\Zw;5p_['nX'G^[YOE15'pv<'=1I>AH=@x!
+    P\k-lQm~oI%j'}+KoWVsv{<-T{EUXE{K$e}RK;Q+lopRQlD-sjE]e<w_?\O3DH$@QY3n\![I5z7-
+    \z2xrRsS'DW3A-YsgIk'5C1n_H^]a1C2$!_5+^?>EliCHE7mDj35,$$;'!o+X@O^e*?X,l;+>SX^
+    kO0~6eo~G#DK}nwajQnX=Qep$e!KpXBH\j5={be=@#rMup{u+D1v?Us@[<v$l*HzrIKrism[e^O!
+    i+E#Y$J!_V{sRQX_,<Da]]]{spD$1we,.(YJVU-]J=TOIagepk;]#Vvvv2\l~\=Y5W!jOaml>X-?
+    +1k#C'x-C=zos@z)>U>I%+5]?=HH5upWxuEQ_"m,T{[HTWZ[nG=$mwo*xkno+u>=EDoVUj1BIBp2
+    H{:u,aUp$]a+{=EA]]-o7+XBG_HxwHXHeJR@5Jsz-ODe}sDLx[#'wD,G]7--nDBHqqwj]*1UmXB,
+    *}]V;?ps^RoZw#vkaBCmRn^YsXzHV{^}Iv$?{Qevk*X{J2kYnsW[jJ)x<Usbs=_1Y71;TVl,QCB]
+    ppwzUx{JKRo~37@<=\[23Gw5I\]!I_jCkCV!EB^,mTmC#,53s5VIM-HCua<rA#G7vRYYO1;-JsHa
+    p_~VrZO?azH}DlsX=<>u*#QY5%j_Hm]Rsu!v3x>pnRlOY3/7~1RHC,3R?[$\;{Y7,G1a=+WvG*\Q
+    qUQ}-$Km@+'\5aXnP2I?~de7*2G^EoO2;vM8EorTyCla+TzuOZ-r-JYB_C}5jD@x@!VYa^AY#VUs
+    oeCVRu+!BH+'*v{*C@=UGA7Q}W]m}7A=p^$@+nv{K4n}aE*iK-T$x=Z1{Ok_~p@_H!i-7r!B~Qzk
+    a2V>Y#/;{>R^[iWz,cp;OOv_e+O]@rl~>vVB$\I@O\$4@A1ik{CRi]XZ$xD2B2^j}kn=!Sfg~HU-
+    EAmW!s'-)Knsj}=YaI<w?+A~m~\~w5rj]JX;}KoG@k=^1:;q^,H#;1vBB'_iRp{#zWG*;=[V_=Zz
+    CR]Us2vCYvJZ7j^nvC^OX]X^V"!D+smx37=2a]x[*K2V1X[l#pi-A<6=+l5};}XEqeA1\2DG}w<c
+    KTZ;$m~rTj>G\Z}Zs'Tu@CZUho;'lR#rKBGVkXsErZ[n3[Z5vSraCI1TWp'CK7wlre]]YK~x=knI
+    K2u-A-ZeCJ'GU#k,sWn{Cn2wBW^~2DBD,wlOA{$DpYDO=R_2]~p:1VXWl*+1A>ea,5{OHxTK!H{!
+    +\AA^I5ukG7_*'u~$AspI@}QErY+!lmU;DO;IY~}Q~oj^<GG+x12wp$ulU'1tm7]HeHnJ*GHAvDO
+    n7~@e-p{KRR<?E73e=^[v.~nxrhaOaHK}@zIiA735RG;>oR-=uEv@TuooB,*I$k7sD[[AEIg[izv
+    zJ<#O#=XCr<kq3s[ka1eTRmjZ3<5T#jDr3CA]@$OjkR~uT}Xua7]]{YlZ~XlV[9EHG~e+ul,s+e\
+    >D@ZUlYo;*<+pDT9ao3^^jUKJEUpC*J^NIED]^}C[@Bs@RRTo9|x@U7Ouz<(EyV{[OwBu#ELxo{w
+    HA5;Z*p{Cx5\!a~T'@z2%kEvYI=pC^Ux\n9%O}2sV<CEBDza\>rIFKTHBQjQ],sjHR5X+=H~vnSI
+    r_O~=s[u_>AprW7V<,UXOKG=z>@ER}1a*j#+Ep?\3\H{EYs:_>5^U\r-,1X;%y:tvUTj5vTm[4>I
+    xuAQxIH,>C%vwwDX}}<TnS57+Xj_}xXGm>++IX*jY\[%fzXl2DV@~QX*{m{xkC}D'w[m!,<JH~aa
+    [1!e'THDrXl{^^^XQZl_vjU_7z<,T{l2?;1Qa<_IU?*oA-B@~57HlBXIJAeum$rYO3ETIYj^x]l[
+    <l$VpG3<7DY~}j,ZE-1?Q{7B*#{'i>[*[J1AoYV!wXx_a,JGV87>l5YsXeeuppQ3uIr]'oL'@=$H
+    lw,>Xp]'@j+e>RnUB_@hmCK#!_Q$r's@V'_uCXn<1<n],[jI!'Bo7;]ukG5=*@p<@>2=*T*iuIma
+    xOHKVe1[Tp1iz!*}u\+G[*=G\Q$zFVw_G#Y5#1$GnODmr$H]zpk^H3CBnU5$K(rRR\]Gx?Q>$ki[
+    pTVV-aivrj{j'R]DaGU<_XxfB?X''<@GATK$5W133\Eu5$<*Vj5z;v>wZ*s]_ET7Vwa1G-^!\ma>
+    +7*rc$Xx<@n[D:^eXle;^D;oC~wX'~Vskx7Ys7OsBkr!2IoCmkkz+p;aZJKoUQ@]^a@UllGDWr]A
+    @+J$YO>=e<_z{WwGIJmXj*H<*o!RZEcwsROk,#Z6O3E7A^^sDZjQ#rC'vU;Coo2j[QUE9_o'GGsw
+    TGeX;8-p$e^>n+irUr,R!{?DC5$1+<',<>6LP>wXae>!HD\J]<v<;O}^-;5?$]J}ZHn!o3T>'WXG
+    Ta{7}h3}DRRvl-(?V$\^_A_?1mI\xaIREQrH}#'e+7rE$<21sjYp'~j7p*oUnUBY;V#!*~hvIBx,
+    ;=u^UHuIOzDHX[mC[IDsH'ZX'*{_&rkzT#wH?HYJ^]nTD27[,V15]jlx,K]a''D[A<xQ+tI@I=ER
+    =KJv<WR{u!\El=9E{RuD+Wzo*#;n>s1URYE31V7sC1aei3uoHRUC~!UspXRZHZ[u[7+5xxU;a$oQ
+    <D'j'C<S{,w_A+}nsYR}R]U-DQ*s~vK+Y_HlQHT*v?ZX]W}G@]UE7BBDr3vXV^R[V+p_eX,=k[lE
+    ZE$a!xirAprxEjZ\Zzn_EB#7YOn}(\zwGjnYQup$Vo#n*<Hl+~>vkGkV-GoBYx+s<!RwEr[~HW-K
+    Xowa+u'*wrA>[Iw1$DK{>Ez5nK\73kEOQv5D=/$B+jh2s<n?vQ5^<G{69pB7n{1~H2,E+WB_sVO$
+    jkY]ZII2e0$_[X-{}\v@>+,axQcs!EWJ^~m^*!RAC3~Y*GxETVWY!>Z_Aa^OX},COHBAT\]rmO!K
+    so''A$5'e,$HX=[*\7VF,VKQ3C#eZ5]-ar@YZ$JX1n_,h*=a1_uoYH>vW4~=2kGJ[BBVn]v\!<Y>
+    B'SxC^-ODCV}kK+D2^T$TzCPR@Y*EW'wFr[vK!zGnW$Z2C7ra5!ajkxvv7$p1+p-ZRm$^*YG-X\^
+    BRX_]R2$mfjCO?kpX+wD=aD[v-+>^i^ijJ:3_w@RknleTvUQzZ^k'=Hj1X>hQ[lW4U}-Em'2I}E5
+    '<>X!?[pY^'Yp+,?3EI]=q3e3Z!a,=PYJ+Y?B7$azE*BJWoYkI[*K7DOv1@Z1u2Qzn]1j#CwBp2s
+    rO^;x3BxG,j5e_VA=T*2},25GA=V2_\"Yl21A,#,XU>21-!j0DG~1R|Z,{!Y<<;;zC_l~Q}sv1YT
+    $lG_*A3+OOGuw7VW\XvC5E'_VG\orwKHU^'kYJ'{-5#rC{AW=z1zm^=-<[+[1K;^BXmE8GU5?BQ_
+    $'7kO1*X<2a7I4EvpWOGaXk[iQeeGvswRj'AB$<V~=Xzzvl2_s4en]C[aV1ool~jp'<rA2=aY+J\
+    EEReGak1U_nQ{sT)nxrk5W}REZQTnD*}BK21ID^RqH_7u%{OmXXU@QFfR>XV{TpxXA\X$QHTBz!u
+    aYEvvrR[trzXKI>EaA<ZV]~Kzk,-5!VWv,!'XfCTr>v_+_JV-*z!V;W,zZ2Tnm<R-2T<U}9_-z>v
+    T-HGu[<rE~Yvu]#IDi;xsu{Z^asaHBI[RB~YV]36HTLE#>Q#7r?;x}E#E2jeWp_zYr@}}^OVC*Y5
+    5zi5BOTJT={Qo*!roa<oU;^m{B'p*Wa~rs'Gxw[o9.6}Z52Cn!o_3Vw_72?YVwjQaXw='_VgXxap
+    zH3G#vKETYDl[1]rD$*Kee[s1w2=5X<IKRKSpzmH?reI?UuG>QYZKsj~X>$R*Y}Y|U[R-7pA~7jD
+    5;wu!><z<llpUQ@R^_\uHBZ-3NP\T;Y6KRo5^1;#O[IB#_IsWpO[@>1opuxmP]<5wsV<{x1xs_Aa
+    _9J$U'Oml<Vz_T3pa{tq]m}HKlBD*^^2Y+7WxiG>waesn1DCL?sVW!s<UI-G;pKs\vi,7.D<Vair
+    's_$,5a=W\_l^1}jH[s=JU[rVY]wu<H$5^&2x+;75VOBvpO{+~2<1_Il!,'-n~nXSR_]?vns$#QI
+    ?o$D~Q^1,k5$];eAJ=eGYGOpn+UpuL_We$E!1;aTU}>[#^x5D2v7#\;Ev7Xa{l>]jW\l=nesHwvH
+    +1,i\*_2Hv^rVHTO=JFBarC5eBRV?{<E\AmG#=]+QDHow$'5?<UN.)\p\o($BT1Q]>{Yv!@MK,wG
+    mC57RO$^3oW2'k~av,Gz'Q7HkvE7I,<x"0HYv@.z-7R[ppHsvTkU*,*++m,?1v}OlY!Av1mwAI3=
+    ~5[oJ2o#\Jxe-<j,}p5$3X$w{TKDR#eHzmH|Xw_2uVeK[vJ[9N4zV$kr\vv\(2O,~[]3=h<V]Te@
+    Y1fI@sBSr3\l[R=$O[BJ-,AI7'kk}JIZs2Vnrm_noAR<l2np^a\x';QT3&BlsR^B<2[iTHQ~{OAC
+    zj;{R~+wW;evj@oevmE-Dwsj2j\'E1b1=]OR\TG$3{[$JZXA5\5KoD[6nQE[4*s;pCo\x'AQ1YHI
+    V;I+oC}3'3]2eAV*V[,?QmVW=iGxY[-IKEkeC^s;@xkA*iOEjwo-kQrYee6uY<=H1IJ>*ln'{m<C
+    uKw11T#Qm*{Hwji-]#DWGjzxK3]U-5o}{-OvD>Q#CiRxn5xs5>>^$,QX5iWWI=?J*Us_7_B45x;$
+    pK7~}B*GVpVC2l]Y[rrz,eHu8+BTum*2[?HJZ}norjDsJ[_{rOAvwi_OalO@Zl$]WuE>j0B3G+m7
+    ^\GR>pkHW,Qu_2T=TroQ2!wpTpJEupY#K1.ZU[@^wlJTj~R5OaQ#V3Zpn7AE~zmoK7\PKGTUR1V-
+    \IZo[w*I>]ZT\EH;Vs3pok=j_>^+Er2!CQk=AnJ=Ims,r$\orHB@IY=_,*Z*--THXEDZj7xw_A+D
+    *Ex?QIo1H}m@[*IT[r^+4E*#<)?X]En_#,QH+>1p+GVZWQP*!ajzZDw++n[[v}KC_7#7j-=Q;l3u
+    TQCY1s?GKm{2AOz4^_pK,#D2<]YH(IUB,fr@aj7$ejk7\>sHx1)1'UUf!o-s~z$pq-eW#,@Tm*EE
+    =X,rR1}7lv<Y7\XA=&J7kE5v]~}A[rIK,AWz7e(H$-_nxU-lwHO_mv1xIoa~=l[u=T!O<IJx!2!!
+    7#~nClnvu_s~}2^5?V_lEIEG@*>YGk3,@ZTaQEJmEtl\<5-RiDIu\o+]H+\EE@&u$'7e>lO+zHY*
+    R>XHA_pZ^Y>6xv!_;=Bw;[]mAYUaL{\!^^nKwt#<*UUx;I?sHGR*n@\7?za1Y'B_X7RoED3UxT?I
+    -j1-@_5XxR$2m]d2^sAzXnm-]YY-T=3'-rWVmmRXeil~_x1<QZ1oQJmK]I<]YQ5>RvpOnWA#EYo@
+    jVu3o_'#*=jxD\{7jxoqr+VCdwUnoow'x9ACBxVs_<u=@lwQ-U!<,]T1;x<T>*NGJV\^QGV5XoA}
+    GzJOCE?S[@*2ITfvC7]mH@I=AU;wx^^G(*C!J[^o3V^|#<ma=o;H3Ra{<\m-RK]BWv5joZ<r"-QA
+    UQaYV07o<~$>-!-$w+GHv-W[Os.uwCzVCkeQ#ze>R1_3r*YxeUQ'_<+KlRnA,XJRnOa;p{Qeol-G
+    URWpxBE.I~1@_}Z10GE3!mjm+Wzeeq#*'<5,J7ewmDi[\>)s~5[l~O2~Da$o]=-S4vk}eor;eZC>
+    wXEZ'In-UG'Yi@,}QX}UXO@@vQuC?GE;Iw\,3OY]@Oa_Jx=jI6g,,1\o2DkJs;vatu75U*7,@Q\!
+    !U,pC!pQ!mt\i<]ot<s{eC+xBCmUTCH\I~+YDH\w]j+Ul^EioDUrmlIH11Uz-D;RVj_BGZ1a<B3X
+    >[sxs3HG#QK~#$KvOOTRU_1'R3AYJGA-T3ssuD<V#QU^5's,YJnUXKv#R#7^G2$'Cvnr?rTvnHeI
+    ~OB<J*nK=IekRC]w*{p>CVT;^.lHoH^{@>~DanpQi,VHm$'}IC>Dp7o'QzC<@x{_>1klG=%:nU{D
+    wXDvbpBpj_]|m,K\\Ue2X\@$jD}U7k{CDQ+V%@InU#V}@GY{sue][kDwO#I-CG5_$kzEr!=KV2rv
+    }'r?I\r>j>jS#}B]=TOxGOesHXJ@XevX]237Y~Q;d!$7-sX}EB_}rj?OwY4xQ3DDjl7$a-H'!5Q{
+    jD#Cw1TKIVOxwOj),araz+zu55xT^=WlZV@-,~ZAo]1=*=o'C!=~D_=m@Yvx}^>VU$B=z=H_-UxI
+    vQs]$-n["7IAeRzoZ<ra$U=t5wQY2D\sZ*e_^M,]*VvuB[\Z;}UsA<GR;1[{axmsAIY\o\Q8p;'a
+    $v^\vX^u?j=Il$lD1+~B)x!=,Q2@RA7<xAC1we{Yk-=A!MB{n3-n1lm<$wUn\3#Q1i$jvAOjBD3a
+    Or\u{\-GC5~H_OflK,peE[W*>TU?HUm\D_A\=uQ1xw?YmoP~s+D'3YYj<mpB@vCH>>DU1v~GD[@L
+    CklxE2z*mCwAOG3;}suaI@H22_muBp7G$kKTeepKK*lnO2I[q1YJ@U,KCmA1~{eGD9Vw]Oz}xuo'
+    O-#De?@jDpl.OXG~DX}mnjW_E>T]4\al>c#lBmQDkJ[2~KAwVH]_>-J*Yr_37sa,XVM\O,XaAXjV
+    TTAr_Ts_oE_<{<mHU[?n,TY~EG+j#DC6hnB~J,kY#p=T1yo*Q[w-$YYvEUDv3'{*J,x7=.'OCG>n
+    7DiE7\aaW+^}xnn\~3YK[I[BkQ?-X;sx}-{wZp=7RpPsR,p=7R?r5Ov$Va_7UzXzx?TG*5UQ,Tx|
+    }>R>maVCe~x[2V#p.7\XGCZ-JB!7-1';$=?D5VCj+YaIT,VR}d1,3m~Dz[-wAoAoI!0>{,!\u^\h
+    VQe@'BI24K^CiE'@W|h*WOpcaEWCwe=Xv!K[+1'',uJztu$pxs*nIPk_3$I1Kv?B?2e;+,Un2,,*
+    \5XQ*<5[GKl*}2zx5;5~rYW\Z}eEw~N~7KJ\l*mklIU]BoK}x>W,->?[{1H_oisC[,CnHH$~jx2^
+    \E!D#~$o2@u5?BY]7^kCzDr(VW*p%'(1V@>R_;+5*^*\#;CD#BBckBIv5]'5@p'xAw3wEXGKv3~'
+    o5u^EVoYos724Kl*[]]5Za=OroT{\*mI\.C<e?v[>VE+eR=3KVz^!v_zTw!H\3z=}XliBKT{rR[}
+    XVWEZW{Tm$}X7#ZQxHZAjX*fXzOI[@7R=~;Z$$jm>[oZ^7l}H=aR_><JjRYGQ3-2)?{[j/pk2r=p
+    =w1RGp&uxs{LG~\i>Lj!1CW'urA'U!mpwo+QKR['#BkVKse@TejRTsn^<D>BV}C3IuWSDBUkB1\Z
+    $zA2=Xp_u={Q\r'BizGO8_-amm<+;xIuorsjvIYEj<5v3s.BUR}7K2-*;r{D{$KAE,~kYOk:aGjU
+    zX*w_k}AiOl={^?!An1A5@w^*e&{*B#Tr,A;*+H2Q+=hplI{TlJ3D!QG,rC$A,nBz,Uu^3x5osO$
+    )\15XtXr}!Xr+mmw<nI3ZsAE\^=u,*nl{TzXzl>1W}wAK1GJ='A+H5D,'<oiVwKIDrDVxr,w;Rl]
+    <UJGCEQ_'<3+1oIv-WaQw#?rBvkr5j'#eY\Q-z7#Arb-x15DO,\3pIDr]*T>E'^B3$-vQiZK7AsB
+    UW78w^KmAo@VYzR@a.ZD5[rX7!=-ei/C;ZnlnWK
+`endprotected
+
+  //--------------------------------------------------------------------------
+  // OVL SVA Assertions are included here
+  //--------------------------------------------------------------------------
+
+`include "qvl_sas_speed_negotiation_assertions.inc"
+
+
+
+`ifdef ZI_INLINED_PSL
+`include "0in_ac_inline_for_mod_zi_cw_sas_speed_negotiation.inc"
+`endif
+`ifdef ZI_INLINED_CHX
+`include "zi_cw_sas_speed_negotiation.zi_chx.inc"
+`else
+`ifdef ZI_INLINED_CHX_zi_cw_sas_speed_negotiation
+`include "zi_cw_sas_speed_negotiation.zi_chx.inc"
+`endif
+`endif
+
+`qvlendmodule // qvl_sas_speed_negotiation

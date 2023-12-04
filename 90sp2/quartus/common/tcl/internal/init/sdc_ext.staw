@@ -1,0 +1,83 @@
+set_time_format [-decimal_places <decimal_places>] [-unit <unit>]
+ -decimal_places <decimal_places>: Number of decimal places to use
+ -unit <unit>: Default time unit to use
+set_scc_mode [-size <size>] [-use_heuristic]
+ -size <size>: Maximum SCC loop size
+ -use_heuristic: Always use heuristic for SCC processing
+derive_pll_clocks [-create_base_clocks] [-use_tan_name]
+ -create_base_clocks: Creates base clocks on input clock ports of the design that are feeding the PLL
+ -use_tan_name: Use net names as clock names
+derive_clock_uncertainty [-add] [-overwrite]
+ -add: Adds results user-defined clock uncertainty assignments
+ -overwrite: Overwrites user-defined clock uncertainty assignments
+remove_clock [-all] [<clock_list>]
+ -all: Removes all clocks from the design
+ <clock_list>: Clock(s) to be removed
+get_registers [-no_duplicates] [-nocase] [-nowarn] [<filter>]
+ -no_duplicates: Do not match duplicated register names
+ -nocase: Specifies the matching of node names to be case-insensitive
+ -nowarn: Do not issue warnings messages about unmatched patterns
+ <filter>: Valid destinations (string patterns are matched using Tcl string matching)
+get_keepers [-no_duplicates] [-nocase] [-nowarn] [<filter>]
+ -no_duplicates: Do not match duplicated keeper names
+ -nocase: Specifies the matching of node names to be case-insensitive
+ -nowarn: Do not issue warnings messages about unmatched patterns
+ <filter>: Valid destinations (string patterns are matched using Tcl string matching)
+get_nodes [-no_duplicates] [-nocase] [-nowarn] [<filter>]
+ -no_duplicates: Do not match duplicated node names
+ -nocase: Specifies the matching of node names to be case-insensitive
+ -nowarn: Do not issue warnings messages about unmatched patterns
+ <filter>: Valid destinations (string patterns are matched using Tcl string matching)
+set_annotated_delay [-cell] [-ff] [-fr] [-from <names>] [-max] [-min] [-net] [-operating_conditions <operating_conditions>] [-rf] [-rr] [-to <names>] <delay>
+ -cell: Specifies that cell delay must be set
+ -ff: Specifies that FF delay must be set
+ -fr: Specifies that FR delay must be set
+ -from <names>: Valid source pins or ports (string patterns are matched using Tcl string matching)
+ -max: Specifies that only max delay should be set
+ -min: Specifies that only min delay should be set
+ -net: Specifies that net delay must be set
+ -operating_conditions <operating_conditions>: Operating conditions Tcl object
+ -rf: Specifies that RF delay must be set
+ -rr: Specifies that RR delay must be set
+ -to <names>: Valid destination pins or ports (string patterns are matched using Tcl string matching)
+ <delay>: The delay value in default time units
+remove_annotated_delay -all
+ -all: Specifies removal of all annotated delays
+set_net_delay -from <names> [-max] [-min] [-to <names>] <delay>
+ -from <names>: Valid source pins, ports, registers or nets(string patterns are matched using Tcl string matching)
+ -max: Specifies maximum delay
+ -min: Specifies minimum delay
+ -to <names>: Valid destination pins, ports, registers or nets (string patterns are matched using Tcl string matching)
+ <delay>: Required delay
+set_max_skew [-exclude <Tcl list>] [-from <names>] [-include <Tcl list>] [-to <names>] <skew>
+ -exclude <Tcl list>: A Tcl list of parameters to exclude during skew analysis. This list can include 1 or more of the following: utsu, uth, utco, from_clock, to_clock, clock_uncertainty, input_delay, output_delay
+ -from <names>: Valid sources (string patterns are matched using Tcl string matching)
+ -include <Tcl list>: Tcl list of parameters to include during skew analysis. This list can include 1 or more of the following: utsu, uth, utco, from_clock, to_clock, clock_uncertainty, input_delay, output_delay
+ -to <names>: Valid destinations (string patterns are matched using Tcl string matching)
+ <skew>: Required skew
+get_fanouts [-inverting_paths] [-no_logic] [-non_inverting_paths] [-through <names>] <filter>
+ -inverting_paths: Only follow inverting combinational paths
+ -no_logic: Do not follow combinational paths
+ -non_inverting_paths: Only follow non-inverting combinational paths
+ -through <names>: Valid through nodes (string patterns are matched using Tcl string matching)
+ <filter>: Valid starting nodes (string patterns are matched using Tcl string matching or collection)
+get_fanins [-asynch] [-clock] [-inverting_paths] [-no_logic] [-non_inverting_paths] [-synch] [-through <names>] <filter>
+ -asynch: Traverse through asynch edges
+ -clock: Traverse through clock edges
+ -inverting_paths: Only follow inverting combinational paths
+ -no_logic: Do not follow combinational paths
+ -non_inverting_paths: Only follow non-inverting combinational paths
+ -synch: Traverse through synch edges
+ -through <names>: Valid through nodes (string patterns are matched using Tcl string matching)
+ <filter>: Valid starting nodes (string patterns are matched using Tcl string matching or collection)
+get_partitions [-cell] [-hierarchical] [-nocase] [<filter>]
+ -cell: Returns a cell collection inside the partitions matching the <filter>
+ -hierarchical: Specifies if hierarchical searching method should be used
+ -nocase: Specifies the matching of node names to be case-insensitive
+ <filter>: Valid partitions (string patterns are matched using Tcl string matching)
+get_assignment_groups [-keepers] [-ports] [-registers] <name>
+ -keepers: Returns a keeper collection from the assignment group matching the <name>
+ -ports: Returns a port collection from the assignment group matching the <name>
+ -registers: Returns a register collection from the assignment group matching the <name>
+ <name>: Assignment group name
+EOF

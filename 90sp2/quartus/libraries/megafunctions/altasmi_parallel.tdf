@@ -1,0 +1,179 @@
+------------------------------------------------------------------
+-- altasmi_parallel parameterized megafunction
+-- Generated with 'clearbox' loader - do not edit
+------------------------------------------------------------------
+
+
+-- Copyright (C) 1991-2009 Altera Corporation
+--  Your use of Altera Corporation's design tools, logic functions 
+--  and other software and tools, and its AMPP partner logic 
+--  functions, and any output files from any of the foregoing 
+--  (including device programming or simulation files), and any 
+--  associated documentation or information are expressly subject 
+--  to the terms and conditions of the Altera Program License 
+--  Subscription Agreement, Altera MegaCore Function License 
+--  Agreement, or other applicable license agreement, including, 
+--  without limitation, that your use is for the sole purpose of 
+--  programming logic devices manufactured by Altera and sold by 
+--  Altera or its authorized distributors.  Please refer to the 
+--  applicable agreement for further details.
+
+--  Version 9.0 Build 235 06/17/2009
+
+OPTIONS NAME_SUBSTITUTION = ON;
+
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+
+PARAMETERS
+(
+	EPCS_TYPE = "EPCS4",
+	PAGE_SIZE = 1,
+	PORT_BULK_ERASE = "PORT_UNUSED",
+	PORT_FAST_READ = "PORT_UNUSED",
+	PORT_ILLEGAL_ERASE = "PORT_UNUSED",
+	PORT_ILLEGAL_WRITE = "PORT_UNUSED",
+	PORT_RDID_OUT = "PORT_UNUSED",
+	PORT_READ_ADDRESS = "PORT_UNUSED",
+	PORT_READ_RDID = "PORT_UNUSED",
+	PORT_READ_SID = "PORT_UNUSED",
+	PORT_READ_STATUS = "PORT_UNUSED",
+	PORT_SECTOR_ERASE = "PORT_UNUSED",
+	PORT_SECTOR_PROTECT = "PORT_UNUSED",
+	PORT_SHIFT_BYTES = "PORT_UNUSED",
+	PORT_WREN = "PORT_UNUSED",
+	PORT_WRITE = "PORT_UNUSED",
+	USE_EAB = "ON",
+	CBXI_PARAMETER = "NOTHING"
+);
+FUNCTION @CBXI_PARAMETER (addr[23..0], bulk_erase, clkin, datain[7..0], fast_read, rden, read, read_rdid, read_sid, read_status, sector_erase, sector_protect, shift_bytes, wren, write)
+RETURNS (busy, data_valid, dataout[7..0], epcs_id[7..0], illegal_erase, illegal_write, rdid_out[7..0], read_address[23..0], status_out[7..0]);
+
+
+SUBDESIGN altasmi_parallel
+(
+	addr[23..0]		:	INPUT;
+	bulk_erase		:	INPUT = GND;
+	busy		:	OUTPUT;
+	clkin		:	INPUT;
+	data_valid		:	OUTPUT;
+	datain[7..0]		:	INPUT = GND;
+	dataout[7..0]		:	OUTPUT;
+	epcs_id[7..0]		:	OUTPUT;
+	fast_read		:	INPUT = GND;
+	illegal_erase		:	OUTPUT;
+	illegal_write		:	OUTPUT;
+	rden		:	INPUT;
+	rdid_out[7..0]		:	OUTPUT;
+	read		:	INPUT = GND;
+	read_address[23..0]		:	OUTPUT;
+	read_rdid		:	INPUT = GND;
+	read_sid		:	INPUT = GND;
+	read_status		:	INPUT = GND;
+	sector_erase		:	INPUT = GND;
+	sector_protect		:	INPUT = GND;
+	shift_bytes		:	INPUT = GND;
+	status_out[7..0]		:	OUTPUT;
+	wren		:	INPUT = VCC;
+	write		:	INPUT = GND;
+)
+VARIABLE
+	IF CBXI_PARAMETER != "NOTHING" GENERATE
+		auto_generated : @CBXI_PARAMETER WITH ( CBXI_PARAMETER = "NOTHING" );
+	END GENERATE;
+BEGIN
+	ASSERT (CBXI_PARAMETER != "NOTHING")
+	REPORT "Valid clear box generator not found or Errors encountered during clear box generation"
+	SEVERITY ERROR;
+	IF (CBXI_PARAMETER != "NOTHING") GENERATE
+		IF USED(addr) GENERATE
+			auto_generated.addr[] = addr[];
+		END GENERATE;
+		IF USED(bulk_erase) GENERATE
+			auto_generated.bulk_erase = bulk_erase;
+		END GENERATE;
+		IF USED(busy) GENERATE
+			busy = auto_generated.busy;
+		ELSE GENERATE
+			busy = GND;
+		END GENERATE;
+		IF USED(clkin) GENERATE
+			auto_generated.clkin = clkin;
+		END GENERATE;
+		IF USED(data_valid) GENERATE
+			data_valid = auto_generated.data_valid;
+		ELSE GENERATE
+			data_valid = GND;
+		END GENERATE;
+		IF USED(datain) GENERATE
+			auto_generated.datain[] = datain[];
+		END GENERATE;
+		IF USED(dataout) GENERATE
+			dataout[] = auto_generated.dataout[];
+		ELSE GENERATE
+			dataout[] = GND;
+		END GENERATE;
+		IF USED(epcs_id) GENERATE
+			epcs_id[] = auto_generated.epcs_id[];
+		ELSE GENERATE
+			epcs_id[] = GND;
+		END GENERATE;
+		IF USED(fast_read) GENERATE
+			auto_generated.fast_read = fast_read;
+		END GENERATE;
+		IF USED(illegal_erase) GENERATE
+			illegal_erase = auto_generated.illegal_erase;
+		ELSE GENERATE
+			illegal_erase = GND;
+		END GENERATE;
+		IF USED(illegal_write) GENERATE
+			illegal_write = auto_generated.illegal_write;
+		ELSE GENERATE
+			illegal_write = GND;
+		END GENERATE;
+		IF USED(rden) GENERATE
+			auto_generated.rden = rden;
+		END GENERATE;
+		IF USED(rdid_out) GENERATE
+			rdid_out[] = auto_generated.rdid_out[];
+		ELSE GENERATE
+			rdid_out[] = GND;
+		END GENERATE;
+		IF USED(read) GENERATE
+			auto_generated.read = read;
+		END GENERATE;
+		IF USED(read_address) GENERATE
+			read_address[] = auto_generated.read_address[];
+		ELSE GENERATE
+			read_address[] = GND;
+		END GENERATE;
+		IF USED(read_rdid) GENERATE
+			auto_generated.read_rdid = read_rdid;
+		END GENERATE;
+		IF USED(read_sid) GENERATE
+			auto_generated.read_sid = read_sid;
+		END GENERATE;
+		IF USED(read_status) GENERATE
+			auto_generated.read_status = read_status;
+		END GENERATE;
+		IF USED(sector_erase) GENERATE
+			auto_generated.sector_erase = sector_erase;
+		END GENERATE;
+		IF USED(sector_protect) GENERATE
+			auto_generated.sector_protect = sector_protect;
+		END GENERATE;
+		IF USED(shift_bytes) GENERATE
+			auto_generated.shift_bytes = shift_bytes;
+		END GENERATE;
+		IF USED(status_out) GENERATE
+			status_out[] = auto_generated.status_out[];
+		ELSE GENERATE
+			status_out[] = GND;
+		END GENERATE;
+		IF USED(wren) GENERATE
+			auto_generated.wren = wren;
+		END GENERATE;
+		IF USED(write) GENERATE
+			auto_generated.write = write;
+		END GENERATE;
+	END GENERATE;
+END;

@@ -1,0 +1,44 @@
+#!/bin/sh
+perl - "$@" <<\ENDOFPERL
+#!perl
+
+
+require Strict;
+use strict;
+use mk_custom_sdk;
+
+
+#
+# 2000 August
+# dvb \ Altera Santa Cruz
+
+
+	#
+	# see if any of the arguments is "--help",
+	# and show some help if so. Otherwise, call main.
+	#
+
+	{
+	my $i;
+
+	for($i = 0; $i < scalar(@ARGV); $i++)
+		{
+		if($ARGV[$i] eq "--help")
+			{
+			usage();
+			exit 0;
+			}
+		}
+	}
+
+my $file_list_ref;
+
+mk_custom_sdk(\$file_list_ref,@ARGV);
+
+my $file;
+foreach $file (sort @$file_list_ref)
+	{
+	print "# made a file $file\n";
+	}
+
+# end of file

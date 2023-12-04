@@ -1,0 +1,336 @@
+//              Copyright 2006-2008 Mentor Graphics Corporation
+//                           All Rights Reserved.                           
+//                                                                          
+//              THIS WORK CONTAINS TRADE SECRET AND PROPRIETARY             
+//            INFORMATION WHICH IS THE PROPERTY OF MENTOR GRAPHICS          
+//           CORPORATION OR ITS LICENSORS AND IS SUBJECT TO LICENSE         
+//                                  TERMS.                                  
+//                                                                          
+//
+/***********************************************************************
+ * PURPOSE       This file is part of the 0-In CheckerWare.
+ *               It describes the Gigabit Ethernet GMII Monitor.
+ *
+ * DESCRIPTION   This monitor checks the 1 Gigabit Etherent frames for
+ *               alignment related violations and malformed packets by 
+ *               observing the GMII (1 Gigabit Media Independent I/F).
+ *               This module internally instantiates two link monitors,
+ *               one each for the Tx link and the Rx link respectively. 
+ *               
+ * REFERENCE     802.3 IEEE Standard for Information Technology, CSMA/CD
+ *               access method and physical layer specifications, 2002
+ *               802.3ae Amendment: Media Access Control (MAC) Parameters, 
+ *               Physical Layers, and Management Parameters for 10 Gb/s 
+ *               Operation, 2002.
+ *
+ * INPUTS        areset - asynchronous reset (active high)
+ *               reset  - synchronous reset (active high)
+ *               tx_clk - transmit interface clock
+ *               txd    - transmit data (8-bit SDR)
+ *               tx_en  - transmit enable 
+ *               tx_er  - transmit error
+ *               rx_clk - receive interface clock
+ *               rxd    - receive data (8-bit SDR)
+ *               rx_dv  - receive data valid
+ *               rx_er  - receive error
+ *               col    - collision detect
+ *               crs    - carrier sense
+ *
+ *
+ * MONITOR INSTANTIATION
+ *                  
+ *                                  + +
+ *                                  | |
+ *                                  | |
+ *                  +---------------+-+----------------+
+ *                  |    LLC - Logical Link Control    |
+ *                  +----------------------------------+
+ *                  |      MAC Control (optional)      |  L
+ *                  +----------------------------------+  I
+ *                  |    MAC - Media Access Control    |  N
+ *                  +----------------------------------+  K
+ *                  |   RS - Reconciliation Sublayer   |
+ *                  |                                  |  L
+ *                  |        +---------------+         |  A
+ *                  |        | GMII MONITOR  |         |  Y
+ *                  |        +------+-+------+         |  E
+ *                  |               | |                |  R
+ *                  +---------------+-+----------------+
+ *                                  | |
+ *                                  | | GMII
+ *                                  | |
+ *                  +---------------+-+----------------+  P
+ *                  |               | |                |  H
+ *                  |        +------+-+------+         |  Y
+ *                  |        | GMII MONITOR  |         | 
+ *                  |        +---------------+         |  L
+ *                  |                                  |  A
+ *                  |  PCS - Physical Coding Sublayer  |  Y
+ *                  +----------------------------------+  E
+ *                  | PMA - Physical Medium Attachment |  R
+ *                  +---------------+-+----------------+
+ *                                  | |
+ *                                  | |
+ *                                  + +
+ *
+ *
+ * LAST MODIFIED 07 December 2004
+ *
+ *********************************************************************/
+
+`ifdef ZiCwDebug
+`define ZiCwDebugDelay1 #1
+`else
+`define ZiCwDebugDelay1
+`endif //ZiCwDebug
+
+`ifdef QVL_SVA_INTERFACE
+`define qvlmodule interface
+`define qvlendmodule endinterface
+`else
+`define qvlmodule module
+`define qvlendmodule endmodule
+`endif
+
+
+`ifdef QVL_ASSERT_ON
+  `define OVL_ASSERT_ON
+  `define OVL_SVA
+`endif
+
+`ifdef QVL_COVER_ON
+ `ifdef QVL_SV_COVERGROUP_OFF
+  //DO nothing
+ `else
+  `define QVL_SV_COVERGROUP
+  `endif
+  `ifdef QVL_MW_FINAL_COVER_OFF
+   // Do nothing
+  `else
+  `define QVL_MW_FINAL_COVER
+  `endif 
+`endif
+
+`qvlmodule qvl_gigabit_ethernet_gmii_monitor (areset,
+                                            reset,
+                                            tx_clk,
+                                            txd,
+                                            tx_en,
+                                            tx_er,
+                                            rx_clk,
+                                            rxd,
+                                            rx_dv,
+                                            rx_er,
+                                            col,
+                                            crs
+                                           );
+
+  // Parameter Constraints_Mode = 0, will configure some checks in this
+  // monitor as constraints during formal analysis.
+
+  parameter Constraints_Mode = 0;
+  wire [31:0] pw_Constraints_Mode = Constraints_Mode;
+
+  // Parameter MAC_SIDE = 1, will indicate as to which side of the GMII link
+  // the monitor is instantiated. This parameter, along with the Constraints
+  // Mode parameter is used in constraining the correct side in case of the
+  // formal analysis.
+
+  parameter MAC_SIDE = 1;
+  wire [31:0] pw_MAC_SIDE = MAC_SIDE;
+
+  // Set this parameter to the desired length of Jumbo frames. The default
+  // length of Jumbo frames is taken to be 9K bytes (9126 bytes).
+
+  parameter JUMBO_FRAME_DATA_LENGTH = 9126;
+  wire [31:0] pw_JUMBO_FRAME_DATA_LENGTH = JUMBO_FRAME_DATA_LENGTH;
+
+  // Set this parameter to 0 to disable checking for usage of reserved 
+  // values in fields. By default, these checks will be performed.
+
+  parameter RESERVED_VALUE_CHECK_ENABLE = 1;
+  wire [31:0] pw_RESERVED_VALUE_CHECK_ENABLE = RESERVED_VALUE_CHECK_ENABLE;
+
+  // Set this parameter to 1 if the monitor is instantiated on a Half 
+  // Duplex link. The default value of 1 indicates that the monitor is 
+  // instantiated on a full duplex interface.
+
+  parameter HALF_DUPLEX = 0;
+  wire [31:0] pw_HALF_DUPLEX = HALF_DUPLEX;
+
+  parameter ZI_CONSTRAINT_MAC_SIDE = (Constraints_Mode == 1 &&
+				      MAC_SIDE == 1);
+  parameter ZI_CONSTRAINT_PHY_SIDE = (Constraints_Mode == 1 &&
+				      MAC_SIDE == 0);
+
+  
+  parameter ZI_PREAMBLE_FIELD = 8'h55;
+  parameter ZI_SFD_FIELD = 8'hD5;
+
+  input areset;
+  input reset;
+  input tx_clk;
+  input [7:0] txd;
+  input tx_en;
+  input tx_er;
+  input rx_clk;
+  input [7:0] rxd;
+  input rx_dv;
+  input rx_er;
+  input col;
+  input crs;
+
+  wire [1:0] tx_ctrl;
+  wire [1:0] rx_ctrl;
+  wire tx_interface_idle;
+  wire rx_interface_idle;
+
+  // Internal variables
+  reg r_crs;
+  reg r_col;
+  reg r_tx_en;
+  reg r_rx_dv;
+
+  // Wires for check enables
+  wire tx_en_asserted_when_crs_asserted_violation;
+  wire tx_en_asserted_when_col_asserted_violation;
+  wire col_asserted_when_crs_deasserted_violation;
+  wire tx_and_rx_interface_active_violation;
+  wire crs_deasserted_when_col_asserted;
+  wire reserved_values_on_tx_interface;
+  wire reserved_values_on_rx_interface;
+  wire carrier_extn_on_tx_not_following_frame;
+  wire carrier_extn_on_rx_not_following_frame;
+  wire tx_en_asserted_starting_with_non_preamble;
+  wire rx_dv_asserted_starting_with_non_preamble_or_sfd;
+
+  // Wires for fire signals
+  wire FIRE_GIGABIT_ETHERNET_GMII_TX_ASSERTED_WHEN_CARRIER_SENSED;
+  wire FIRE_GIGABIT_ETHERNET_GMII_TX_ASSERTED_WHEN_COLLISION_DETECTED;
+  wire FIRE_GIGABIT_ETHERNET_GMII_COLLISION_DETECTED_WITHOUT_CARRIER;
+  wire FIRE_GIGABIT_ETHERNET_GMII_CRS_DEASSERTED_DURING_COLLISION;
+  wire FIRE_GIGABIT_ETHERNET_GMII_TX_INTERFACE_ACTIVE_WHEN_RX_ACTIVE;
+  wire FIRE_GIGABIT_ETHERNET_GMII_RX_INTERFACE_ACTIVE_WHEN_TX_ACTIVE;
+  wire FIRE_GIGABIT_ETHERNET_GMII_RESERVED_VALUES_ON_TX_INTERFACE;
+  wire FIRE_GIGABIT_ETHERNET_GMII_RESERVED_VALUES_ON_RX_INTERFACE;
+  wire FIRE_GIGABIT_ETHERNET_GMII_CAR_EXTN_ON_TX_WITHOUT_FRAME;
+  wire FIRE_GIGABIT_ETHERNET_GMII_CAR_EXTN_ON_RX_WITHOUT_FRAME;
+  wire FIRE_GIGABIT_ETHERNET_GMII_TX_START_WITH_NON_PREAMBLE;
+  wire FIRE_GIGABIT_ETHERNET_GMII_RX_START_WITH_NON_PREAMBLE_OR_SFD;
+
+`protected
+
+    MTI!#v4CE#Wp7@GaX-T:i}aTGAoVO5QrO_!@7Z*O|};AWJ+Bp?hV_#X~w=H[QZwZ_Tw=HGw{][3I
+    a',)==B5}I|Re\VqZo[!2&^V#wY5_-e71T1[kBZ>]*I;-^Q_7A~'#'oeTs73KUy.%D\3B3\*_s3D
+    '{rY7man'&_^Wpg]Bj}'5[p4_#![zlAmm_[RdyY~CjB!BokEWRrVq;XCk6,+'2|Y@Y}G?[WsWpOI
+    e?^u=OA$IJ#R7WuDZom6I*'[y+-dI'H]En*p@[kYVHwTE+sxBXW~V5jnCIp>mnri*7{uT[XJ7?3;
+    pOvp=nDz!j#j::_[p!X<uYqaL_Dw~H}YIZs\lo;U>^+GWIK_5UC,x^nmsG\1[I>+<fECw+XQ{BRm
+    xim}7vlIv7Y'<OU{u!>Yr}[)nB1^v][-~ae@\auxsaH3Lio\@4:+s,Qu*TGw]iVIA!W[g2r!>2vk
+    va-m}S_RB,~rw<;o$J3D$Y,7#}ez$j=~OjBl$G[@A,C2s$$?!amrV#C'?po<_To~GpqA^v-]#{k@
+    '5I'v^[$Qj{aL-xZ^MY'*K^XBZ1,7ZoJjO,xC$x<=GxIKY5TeJUz_Co_Rle#UU;AznB_C7jBJJ'X
+    u>i$={bY$irB_+Q"}B[[\H{vlAZlRX3]iz*2tI^HOpmI_'[5_5M^<\Cm{{TrRG=YQ05Dv~Qp=}#T
+    u]}@<]~\*7$xlOu5<,z!<WRnJDMW^>p*Hp-KrTO\Y_iJp^/$D7XJD@Y2UY<vG[_UnDZOa1}l}7$C
+    EQB71XA~=>x;I<utap-j.U<Y^oV>KOAz~Q~Vk_Q!n:bzPsr@\,G$>w[B,e>!]NX<!k%DK<2~_a5s
+    X2u'{Qxr=mY~,Xz_lJs',Y_rjCEj@GuIU'TaHx\<O25!V1ZR-[7K[]5!TJ<zsTB2>^I|L%eC#,2T
+    v]lI>V<}<p[[?mhz0;n>^U]Xn0M{ar;2pTWJ*Gu\gZAp[{aU*[y]-oR]Jn3xI_zpROWzinZ*3eHC
+    rjV_K!1C<C}-'XuSH'~B=r!!_;COA<1oOj-<o#IQ'Is3u5Ark=HDSIk+'^Tv-*B[[vlmC;-~{_Av
+    zp[BJHE<,QlI[i};rpoQAvXrVJY*Q^oXWoj73,{2^sa-H$Cko1Xo2=\_sBwxX[nQ}>'GZle+I]7T
+    (YUQ-VOV]t2Ij'4s^>DzO[_NT<<32->,C=$wexX*rGB'?s+'VR\RSJw@U'R3UIBrDC}Y['jD1iXO
+    l;DxaFZl\$1w[HVsQ+C,%;=a}"HQYBT1CJqmoel$JW}JnOieZHW)E3u<27^2@\Q\2]!m[#Z\YW!v
+    *&[#rie2@zRh0w=@rIGiwG_B;K=n]i=\OxmGWTnYKH5{D}rk_SBl@@3\QuqjoCYLA5rI~TUH}nHG
+    m'-B'^j1_U*vuou[wIe[tG=Q23Aw3kqIpDvaji7eX2~*T][k*YKX>HQw=_!s7u}X<;!<1\xYKzn{
+    Ge=nI~=5#Z2'JYu$E3'zo_^CW*[pCBv-5<Gv7ja6MeA+Aj_DGl;mzRXY[DI#Vjz$reoTOG#+~u[-
+    jG}u{alzH{VwXwwX;*Z\D^CwAOIneKzRDI@!$~Isj{C}2ip;zv]C_L$WUv,n_w2x=?mxi$=C2rO>
+    7eu,2o^+@D==T]s~A;uz,\(r_JD[ojlwGO=,sI25;YEWqiY\R^iq2Ta>a\!CArYBl}I3;jC5\7n?
+    sEQBaE-uIDn1vQZ~^XmJ{D2vp}pC7QxA^iH;-Y1=>}{\c\$@e|u\m^2nw$O53Z?ri!~Q#CQp<OjZ
+    +O?Vs^z@xuR[u!UA{UeQVe![j,rW>]1_^lI@*wi{[D?+B[i[<THB{wr\;s-+HrT>w=0__Z*/1X+3
+    I(-5QG}E_Or'7XOm<I,*eVJ+}^_7HWc$D?7GXZ]BARK[<s\R}@<?x-r^lKILV~Q7B*'O}_Zn\[T+
+    evA!2T~p3C]iKB'r+$eZ]A$}\1BIJl3K3<[[K-Wp?(Y<*H\xwJnADW#V~AG-Ga-Bx;L!,Uu5{372
+    DR!6[5W[=,qR!EW3A\=_<
+`endprotected
+
+  // Tx and Rx link monitor instantiations
+ 
+  qvl_gigabit_ethernet_gmii_link_monitor
+    #(Constraints_Mode,            // Used to mark checks as constraints
+      MAC_SIDE,                    // Configures location of monitor instance
+      JUMBO_FRAME_DATA_LENGTH,     // Specifies Jumbo frame length
+      RESERVED_VALUE_CHECK_ENABLE, // Enables/Disables reserved value checking
+      1,                           // Indicates the direction of data - TX I/F
+      HALF_DUPLEX)                 // Configures GMII as Half/Full duplex
+ 
+      GMII_TX_MONITOR
+          (.areset(areset),
+           .reset(reset),
+           .clk(tx_clk),
+           .data(txd),
+           .ctrl(tx_ctrl),
+           .col(col),
+           .crs(crs)
+          );
+ 
+  qvl_gigabit_ethernet_gmii_link_monitor
+    #(Constraints_Mode,            // Used to mark checks as constraints
+      MAC_SIDE,                    // Configures location of monitor instance
+      JUMBO_FRAME_DATA_LENGTH,     // Specifies Jumbo frame length
+      RESERVED_VALUE_CHECK_ENABLE, // Enables/Disables reserved value checking
+      0,                           // Indicates the direction of data - RX I/F
+      HALF_DUPLEX)                 // Configures GMII as Half/Full duplex
+
+      GMII_RX_MONITOR                                              
+          (.areset(areset),
+           .reset(reset),
+           .clk(rx_clk),
+           .data(rxd),
+           .ctrl(rx_ctrl),
+           .col(col),
+           .crs(crs)
+          );
+  
+`protected
+
+    MTI!#pzKz~AwrvYTD\aDRDp~+[?vo@Q}1Iv^E|)BT$"Jp$[ks?IcfeCzV=Z715RQeQ;rWo;plwro
+    C52x'Ev>!2X]KT1-{nElVN>=!kE4F'3JH7mE{,5iH,x-WB-@E7?QisT5#spw$!7z]C27n0?sVBG^
+    R_@s!^'7Z{NC7<>Tjnj'2X<@^T+|F}GzQxeR{E*>KrDWTd-w,;nY-2nXPB.s1$x0wn;@$I;[Reml
+    =@o\su7k(KCT$nr*p1Z~Zm'7C#jo}2{W@ve2jrQ?]Iu7[9oTIm]~QYp_1w|\==w]}*w$'?U)a7nk
+    ^C3Brp*HkU]\K*331l#Q~{[}To-!?LxvE}=B=UKN<xixx*TKQC{$YsJpp}k5Xj={1#O,@zoQWts+
+    >~WoaBg$AVO;[Ea\wD{R\@;*7o~'eeZi7$'D"}po}%-$XB=TmD\+W@/>R<1GwD?ZtA<>v^#;oO$z
+    +7~o$]o5~\xwT}xx5cB;B#?EpG}QzBOp<^\;!B1TE;VWTm1zD[vmYjreD[YsRvO,{;2^B^$BXWdA
+    e#\>}a'jC#~Z1so,EUEO5?xOGkT~l'B5a-e@apUIOAI:tF,z}uA$l2o5PY-Up;R*7<}+K&k_=kAA
+    zKeB*kN,,=j)iCI'EnUo?=-IKz*pT'1z%e~O1J**ZGX,^'I*G%!{]*YV=x@'*=i}[+_eJx3U[k?7
+    om_+C!YU1iR_ie#>IQdpB}>=_Hua^oWTle\nB7z;a[E3+DYiO1!IwIZ{e>]"L>-v?SeD+,!}J>I-
+    j*O7v=5k5+4)*uolKw[zwCBuYVTC6xz53'$nGr-omJ5Yvn[Xu3Bk}CuB]4YuC2BO<7*#BpVm;?bw
+    >3l>7&a[VrBxIrm_HE-5#ICi\D?<\KseGpH1-wpUlA?\B!\7JBXE:m^~[j;YrNeXzDGCvj;=jI]?
+    <@OQY>QVC5e~=xk[o;J,YiFu]\*v{_,q0?[noI*{Z}=A,F,nZOh,?TlWYuYiGil,}3QEXl,i{X*U
+    X!rR^{_^!Z_LVaYA51kvxZUz;\uR2amOw_sol2IzLW+K$!RO[}@QnYkv]=psYzAa~D\jwQuoKo~$
+    =_,RUmUa5}?ru0-TImiw[WBA23WE_Xksj5@_B?[;C'{(M3QuWsY#Oj!pmR{3'g{L+zipV}UKsDB,
+    lWl##xG_{aQj:xwJo2ow5{o[XRsZ$r*\?%jLa}V-zVExUp1CZD_ZG>D;~VKR^ETWX7!7U,K]Ew[n
+    ;<Xu1p1]z!!;1+Vpv3]a;7\\y=^Y=rrB#Xv,iDEho^Jw[1~~CZ+zx1;a*QYG#vBrYj-n/Jokp7m_
+    @_U^~1nKz>5B]OC<[VT2}wRjGZ].n\_<or_Dpz^[nr3pEX1p9CBwI;Y;k1R$'D!J2E[aC>}BKw_j
+    H$nQ<];Z7RFpK^'4kGUIw[v1<5vxsA>1hmz<mT1K=.2VnlXD${lk\<vsJC,22VinD]1ssA_e##UA
+    +uO_{$NK^O$jMa^\ppoI-7J<*>Bo7RcB#zsJTKeAR_avko2Ru7e-wOrVgc~-HD^]uz'-}uDeQ>5p
+    j-cGK2!AQ~v}*?pH7@z@\iOekrj<aJ+mEH[j7Tmu\l+maA;MpEQ}#<z]wXYT<1'1[l5ITnzX!\>7
+    OXpkA=#s~R?^UoWKC#BICJBBY?xuD1eR*#$eOYK**}l^=!$m[Xvi1.MGzApCJ$k(dI-7!GvDR5kX
+    JR7\}a8Da{sNNs-wG*@p78VOKw*_\wvr^zCnA7;I-*]Zr'+awvwV@,G-IphSKI<@aH_jC=Hjm5\?
+    _{o=D2sw}Q^UG}$I,#{WpAE>{7ZueDx\rpBArQu?$uI1'_1OkrRWIp=E}5rn+s;]lrZ-_wn2o|3Q
+    pjT'~7v$kOzr{sJ>H_.q1j}CDv~;o=owV1QYZnp^xC\;eJxH?Is}NxO?#w_m?7=D,f%rOQ!zlVKO
+    'RRXYUJ,~vA,323=fCoBp{E_'{X+r?x?7j^,K)[;xm;]1'Iyd*jZ1[U>ZW}T=V{QZ#jn{N2D=u*i
+    J=uwGI,viuie~pe]zYl1u1uz[v\aGK~{Jw9a\1\#\T@yz2B]Iisos'oT_,zU|,pG{xV,$t(.YZ2A
+    2Ipw^D,392D=Ya1>$VkAkTo]ie%,1>AP\k$]^#Wa1IGQI}3Ok'#;r,m#rmWTRmBWVCWnU+Z<l#'?
+    pCBzu6PA*_@@}s<R;IW/,vAj_,Z,o5s[B3euwB!vH[
+`endprotected
+
+`include "qvl_gigabit_ethernet_gmii_monitor_assertions.inc"
+
+`ifdef ZI_INLINED_PSL
+`include "0in_ac_inline_for_mod_zi_cw_gigabit_ethernet_gmii_monitor.inc"
+`endif
+`ifdef ZI_INLINED_CHX
+`include "zi_cw_gigabit_ethernet_gmii_monitor.zi_chx.inc"
+`else
+`ifdef ZI_INLINED_CHX_zi_cw_gigabit_ethernet_gmii_monitor
+`include "zi_cw_gigabit_ethernet_gmii_monitor.zi_chx.inc"
+`endif
+`endif
+
+`qvlendmodule // qvl_gigabit_ethernet_gmii_monitor

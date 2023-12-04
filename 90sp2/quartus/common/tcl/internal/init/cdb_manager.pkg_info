@@ -1,0 +1,14 @@
+# Add ::quartus::cdb_manager to the table of packages
+lappend quartus(package_table) {cdb_manager quartus_tan hidden}
+
+if {[lsearch -exact [list quartus_cdb quartus_tan] $quartus(nameofexecutable)] != -1} {
+
+    # Make ::quartus::cdb_manager available to load
+    set qpkg_script_auto [file join [file dirname [info script]] cdb_manager.tcl]
+    if {[file exist $qpkg_script_auto]} {
+       source $qpkg_script_auto
+    }
+    unset qpkg_script_auto
+
+}
+

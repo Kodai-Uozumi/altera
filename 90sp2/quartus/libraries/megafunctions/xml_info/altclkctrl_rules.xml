@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+<ROOT>
+	<INCLUDE FILE="mfam_family_macros.xml" />
+	<MACROS>
+		<MACRO NAME="m_1bit_inclk" >
+			<DEFINITION>
+				(clock_type != "AUTO") and (clock_type != "Global Clock")
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_ena_disallowed" >
+			<DEFINITION>
+				mfam_family_cycloneii and (clock_type == "External Clock Output") ||
+				(clock_type == mfam_periphery_clock)
+			</DEFINITION>
+		</MACRO>
+	</MACROS>
+	<PARAMETERS>
+		<PARAMETER NAME="clock_inputs" TYPE="INTEGER" VALUE="1-4" >
+			<FORCE_VALUE TO="1" WHEN="m_1bit_inclk" />
+		</PARAMETER>
+		<PARAMETER NAME="clksel_width" TYPE="INTEGER" VALUE="1-2" >
+			<FORCE_VALUE TO="(clock_inputs gt 2) ? 2 : 1" />
+		</PARAMETER>
+		<PARAMETER NAME="ena_register_mode" >
+			<FORCE_RANGE TO="none|'falling edge'" WHEN="mfam_family_cycloneii" />
+			<FORCE_VALUE TO="none" WHEN="!(mfam_family_cycloneii || mfam_family_stratixiii) || !is_used(ena)" />
+			<FORCE_VALUE TO="'falling edge'" WHEN="mfam_family_cycloneii and (USE_WIZARD == ON)" />
+			<FORCE_RANGE TO="'falling edge'|'double register'" WHEN="mfam_family_stratixiii and (USE_WIZARD == ON)" />		
+		</PARAMETER>
+		<PARAMETER NAME="clock_type" >
+			<FORCE_RANGE TO="'Global clock'|'External Clock Output'" WHEN="mfam_family_cycloneii" />
+			<VALUE_RULE>
+				((clock_type == mfam_periphery_clock) and mfam_family_stratixiii) ||
+				(clock_type != mfam_periphery_clock) 
+			</VALUE_RULE>
+		</PARAMETER>
+	</PARAMETERS>
+	<PORTS>
+		<PORT NAME="ena" USAGE="VARIABLE" HIGH_PROBABILITY="75" INITIAL_VEC_STATE="1" >
+			<STATE TO="UNUSED" WHEN="m_ena_disallowed" />
+		</PORT>
+		<PORT NAME="inclk" WIDTH="clock_inputs" IS_CLOCK_PORT="TRUE" USAGE="USED" />
+		<PORT NAME="clkselect" WIDTH="clksel_width" USAGE="VARIABLE" >
+			<STATE TO="UNUSED" WHEN="clock_inputs == 1" ELSE="USED" />
+		</PORT>
+		<PORT NAME="outclk" USAGE="USED" />
+	</PORTS>
+</ROOT>

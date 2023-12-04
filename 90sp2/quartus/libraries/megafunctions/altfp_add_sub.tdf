@@ -1,0 +1,124 @@
+------------------------------------------------------------------
+-- altfp_add_sub parameterized megafunction
+-- Generated with 'clearbox' loader - do not edit
+------------------------------------------------------------------
+
+
+-- Copyright (C) 1991-2009 Altera Corporation
+--  Your use of Altera Corporation's design tools, logic functions 
+--  and other software and tools, and its AMPP partner logic 
+--  functions, and any output files from any of the foregoing 
+--  (including device programming or simulation files), and any 
+--  associated documentation or information are expressly subject 
+--  to the terms and conditions of the Altera Program License 
+--  Subscription Agreement, Altera MegaCore Function License 
+--  Agreement, or other applicable license agreement, including, 
+--  without limitation, that your use is for the sole purpose of 
+--  programming logic devices manufactured by Altera and sold by 
+--  Altera or its authorized distributors.  Please refer to the 
+--  applicable agreement for further details.
+
+--  Version 9.0 Build 235 06/17/2009
+
+OPTIONS NAME_SUBSTITUTION = ON;
+
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+
+PARAMETERS
+(
+	DENORMAL_SUPPORT = "YES",
+	DIRECTION = "ADD",
+	EXCEPTION_HANDLING = "YES",
+	OPTIMIZE = "SPEED",
+	PIPELINE = 11,
+	REDUCED_FUNCTIONALITY = "NO",
+	ROUNDING = "TO_NEAREST",
+	SPEED_OPTIMIZED = "STRATIX_ONLY",
+	WIDTH_EXP = 8,
+	WIDTH_MAN = 23,
+	CBXI_PARAMETER = "NOTHING"
+);
+FUNCTION @CBXI_PARAMETER (aclr, add_sub, clk_en, clock, dataa[WIDTH_EXP+WIDTH_MAN+1-1..0], datab[WIDTH_EXP+WIDTH_MAN+1-1..0])
+RETURNS (denormal, indefinite, nan, overflow, result[WIDTH_EXP+WIDTH_MAN+1-1..0], underflow, zero);
+
+
+SUBDESIGN altfp_add_sub
+(
+	aclr		:	INPUT = GND;
+	add_sub		:	INPUT = VCC;
+	clk_en		:	INPUT = VCC;
+	clock		:	INPUT;
+	dataa[WIDTH_EXP+WIDTH_MAN+1-1..0]		:	INPUT;
+	datab[WIDTH_EXP+WIDTH_MAN+1-1..0]		:	INPUT;
+	denormal		:	OUTPUT;
+	indefinite		:	OUTPUT;
+	nan		:	OUTPUT;
+	overflow		:	OUTPUT;
+	result[WIDTH_EXP+WIDTH_MAN+1-1..0]		:	OUTPUT;
+	underflow		:	OUTPUT;
+	zero		:	OUTPUT;
+)
+VARIABLE
+	IF CBXI_PARAMETER != "NOTHING" GENERATE
+		auto_generated : @CBXI_PARAMETER WITH ( CBXI_PARAMETER = "NOTHING" );
+	END GENERATE;
+BEGIN
+	ASSERT (CBXI_PARAMETER != "NOTHING")
+	REPORT "Valid clear box generator not found or Errors encountered during clear box generation"
+	SEVERITY ERROR;
+	IF (CBXI_PARAMETER != "NOTHING") GENERATE
+		IF USED(aclr) GENERATE
+			auto_generated.aclr = aclr;
+		END GENERATE;
+		IF USED(add_sub) GENERATE
+			auto_generated.add_sub = add_sub;
+		END GENERATE;
+		IF USED(clk_en) GENERATE
+			auto_generated.clk_en = clk_en;
+		END GENERATE;
+		IF USED(clock) GENERATE
+			auto_generated.clock = clock;
+		END GENERATE;
+		IF USED(dataa) GENERATE
+			auto_generated.dataa[] = dataa[];
+		END GENERATE;
+		IF USED(datab) GENERATE
+			auto_generated.datab[] = datab[];
+		END GENERATE;
+		IF USED(denormal) GENERATE
+			denormal = auto_generated.denormal;
+		ELSE GENERATE
+			denormal = GND;
+		END GENERATE;
+		IF USED(indefinite) GENERATE
+			indefinite = auto_generated.indefinite;
+		ELSE GENERATE
+			indefinite = GND;
+		END GENERATE;
+		IF USED(nan) GENERATE
+			nan = auto_generated.nan;
+		ELSE GENERATE
+			nan = GND;
+		END GENERATE;
+		IF USED(overflow) GENERATE
+			overflow = auto_generated.overflow;
+		ELSE GENERATE
+			overflow = GND;
+		END GENERATE;
+		IF USED(result) GENERATE
+			result[] = auto_generated.result[];
+		ELSE GENERATE
+			result[] = GND;
+		END GENERATE;
+		IF USED(underflow) GENERATE
+			underflow = auto_generated.underflow;
+		ELSE GENERATE
+			underflow = GND;
+		END GENERATE;
+		IF USED(zero) GENERATE
+			zero = auto_generated.zero;
+		ELSE GENERATE
+			zero = GND;
+		END GENERATE;
+	END GENERATE;
+END;

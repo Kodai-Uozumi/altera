@@ -1,0 +1,1037 @@
+<<<<versions>>>>
+1.0
+<<<</versions>>>>
+<<<<1.0>>>>
+<get_hardware_names>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_hardware_names [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::jtag 1.0
+
+------------
+Description:
+------------
+
+Retrieves a list of the names of the programming hardware attached to and 
+configured for the JTAG server.
+
+The hardware name is in the following format:
+<hardware type> [<port>].
+For example, in the hardware name USB-Blaster [USB-0], 
+USB-Blaster is the name of the programming hardware, and USB-0 is the 
+name of the port to which the hardware is connected.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# List all available programming hardware, and select the USB-Blaster.
+# (Note: this example assumes only one USB-Blaster is connected.)
+puts "Programming Hardware:"
+foreach hardware_name [get_hardware_names] {
+	puts $hardware_name
+	if { [string match "USB-Blaster*" $hardware_name] } {
+		set usbblaster_name $hardware_name
+	}
+}
+puts "\nSelect JTAG chain connected to $usbblaster_name.\n";
+
+# List all devices on the chain, and select the first device on the chain.
+puts "\nDevices on the JTAG chain:"
+foreach device_name [get_device_names -hardware_name $usbblaster_name] {
+	puts $device_name
+	if { [string match "@1*" $device_name] } {
+		set test_device $device_name
+	}
+}
+puts "\nSelect device: $test_device.\n";
+
+# Open device 
+open_device -hardware_name $usbblaster_name -device_name $test_device
+
+# Retrieve device id code.
+# IDCODE instruction value is 6; The ID code is 32 bits long.
+
+# IR and DR shift should be locked together to ensure that other applications 
+# will not change the instruction register before the id code value is shifted
+# out while the instruction register is still holding the IDCODE instruction.
+device_lock -timeout 10000
+device_ir_shift -ir_value 6 -no_captured_ir_value
+puts "IDCODE: 0x[device_dr_shift -length 32 -value_in_hex]"
+device_unlock
+
+# Close device
+close_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: No programming hardware is attached to the JTAG server or it is not configured properly.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_hardware_names>
+
+<get_device_names>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_device_names [-h | -help] [-long_help] -hardware_name <hardware name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -hardware_name <hardware name>: The name of the programming hardware that connects to the JTAG chain.  The name can be obtained from command: get_hardware_names.
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::jtag 1.0
+
+------------
+Description:
+------------
+
+Retrieves a list of names of the devices on the JTAG chain to which
+the specified programming hardware is connected.
+
+The name of the device is in the following format: 
+<number on circuit board>: <JTAG ID code>: <device name>. 
+For example, in the device name @1: 0x082000DD: EP20K200C, 
+@1 indicates that it is the first device on the circuit board, 
+0x082000DD is the JTAG ID code for the device, and EP20K200C is the device name.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# List all available programming hardwares, and select the USBBlaster.
+# (Note: this example assumes only one USBBlaster connected.)
+puts "Programming Hardwares:"
+foreach hardware_name [get_hardware_names] {
+	puts $hardware_name
+	if { [string match "USB-Blaster*" $hardware_name] } {
+		set usbblaster_name $hardware_name
+	}
+}
+puts "\nSelect JTAG chain connected to $usbblaster_name.\n";
+
+# List all devices on the chain, and select the first device on the chain.
+puts "\nDevices on the JTAG chain:"
+foreach device_name [get_device_names -hardware_name $usbblaster_name] {
+	puts $device_name
+	if { [string match "@1*" $device_name] } {
+		set test_device $device_name
+	}
+}
+puts "\nSelect device: $test_device.\n";
+
+# Open device 
+open_device -hardware_name $usbblaster_name -device_name $test_device
+
+# Retrieve device id code.
+# IDCODE instruction value is 6; The ID code is 32 bits long.
+
+# IR and DR shift should be locked together to ensure that other applications 
+# will not change the instruction register before the id code value is shifted
+# out while the instruction register is still holding the IDCODE instruction.
+device_lock -timeout 10000
+device_ir_shift -ir_value 6 -no_captured_ir_value
+puts "IDCODE: 0x[device_dr_shift -length 32 -value_in_hex]"
+device_unlock
+
+# Close device
+close_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: No device is detected in the specified JTAG chain.
+TCL_ERROR	1   	ERROR: The specified hardware is not found.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_device_names>
+
+<open_device>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: open_device [-h | -help] [-long_help] -device_name <device name> -hardware_name <hardware name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -device_name <device name>: The name of the device on the JTAG chain.  The name can be obtained from command: get_device_names
+        -hardware_name <hardware name>: The name of the programming hardware that connects to the JTAG chain.  The name can be obtained from command: get_hardware_names
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::jtag 1.0
+
+------------
+Description:
+------------
+
+Initiate a shared JTAG communication with the device. The command, close_device, 
+is called to end the communication with the device.  
+
+Only one device can be opened per process. Multiple devices can be opened in
+multiple processes.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# List all available programming hardwares, and select the USBBlaster.
+# (Note: this example assumes only one USBBlaster connected.)
+puts "Programming Hardwares:"
+foreach hardware_name [get_hardware_names] {
+	puts $hardware_name
+	if { [string match "USB-Blaster*" $hardware_name] } {
+		set usbblaster_name $hardware_name
+	}
+}
+puts "\nSelect JTAG chain connected to $usbblaster_name.\n";
+
+# List all devices on the chain, and select the first device on the chain.
+puts "\nDevices on the JTAG chain:"
+foreach device_name [get_device_names -hardware_name $usbblaster_name] {
+	puts $device_name
+	if { [string match "@1*" $device_name] } {
+		set test_device $device_name
+	}
+}
+puts "\nSelect device: $test_device.\n";
+
+# Open device 
+open_device -hardware_name $usbblaster_name -device_name $test_device
+
+# Retrieve device id code.
+# IDCODE instruction value is 6; The ID code is 32 bits long.
+
+# IR and DR shift should be locked together to ensure that other applications 
+# will not change the instruction register before the id code value is shifted
+# out while the instruction register is still holding the IDCODE instruction.
+device_lock -timeout 10000
+device_ir_shift -ir_value 6 -no_captured_ir_value
+puts "IDCODE: 0x[device_dr_shift -length 32 -value_in_hex]"
+device_unlock
+
+# Close device
+close_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: A device was opened. Only one device can be open at a time within this process. Close previously opened device first.
+TCL_ERROR	1   	ERROR: The specified device is not found.
+TCL_ERROR	1   	ERROR: The specified hardware is not found.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</open_device>
+
+<close_device>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: close_device [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::jtag 1.0
+
+------------
+Description:
+------------
+
+End the shared communication with the opened device.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# List all available programming hardwares, and select the USBBlaster.
+# (Note: this example assumes only one USBBlaster connected.)
+puts "Programming Hardwares:"
+foreach hardware_name [get_hardware_names] {
+	puts $hardware_name
+	if { [string match "USB-Blaster*" $hardware_name] } {
+		set usbblaster_name $hardware_name
+	}
+}
+puts "\nSelect JTAG chain connected to $usbblaster_name.\n";
+
+# List all devices on the chain, and select the first device on the chain.
+puts "\nDevices on the JTAG chain:"
+foreach device_name [get_device_names -hardware_name $usbblaster_name] {
+	puts $device_name
+	if { [string match "@1*" $device_name] } {
+		set test_device $device_name
+	}
+}
+puts "\nSelect device: $test_device.\n";
+
+# Open device 
+open_device -hardware_name $usbblaster_name -device_name $test_device
+
+# Retrieve device id code.
+# IDCODE instruction value is 6; The ID code is 32 bits long.
+
+# IR and DR shift should be locked together to ensure that other applications 
+# will not change the instruction register before the id code value is shifted
+# out while the instruction register is still holding the IDCODE instruction.
+device_lock -timeout 10000
+device_ir_shift -ir_value 6 -no_captured_ir_value
+puts "IDCODE: 0x[device_dr_shift -length 32 -value_in_hex]"
+device_unlock
+
+# Close device
+close_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: No device has been opened.
+TCL_ERROR	1   	ERROR: A device was locked.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</close_device>
+
+<device_lock>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: device_lock [-h | -help] [-long_help] -timeout <timeout>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -timeout <timeout>: The amount of time in millisecond to wait for the access to the device.
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::jtag 1.0
+
+------------
+Description:
+------------
+
+Obtain an exclusive JTAG communication to the device for the subsequent 
+IR and DR shift operations.  The device must be locked before any 
+instruction and/or data register shift operation.
+
+This should be used as little time as possible as it denies the access 
+of other applications to this chain. The command, unlock, should be 
+called as soon as possible to allow other applications to access the device.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# List all available programming hardwares, and select the USBBlaster.
+# (Note: this example assumes only one USBBlaster connected.)
+puts "Programming Hardwares:"
+foreach hardware_name [get_hardware_names] {
+	puts $hardware_name
+	if { [string match "USB-Blaster*" $hardware_name] } {
+		set usbblaster_name $hardware_name
+	}
+}
+puts "\nSelect JTAG chain connected to $usbblaster_name.\n";
+
+# List all devices on the chain, and select the first device on the chain.
+puts "\nDevices on the JTAG chain:"
+foreach device_name [get_device_names -hardware_name $usbblaster_name] {
+	puts $device_name
+	if { [string match "@1*" $device_name] } {
+		set test_device $device_name
+	}
+}
+puts "\nSelect device: $test_device.\n";
+
+# Open device 
+open_device -hardware_name $usbblaster_name -device_name $test_device
+
+# Retrieve device id code.
+# IDCODE instruction value is 6; The ID code is 32 bits long.
+
+# IR and DR shift should be locked together to ensure that other applications 
+# will not change the instruction register before the id code value is shifted
+# out while the instruction register is still holding the IDCODE instruction.
+device_lock -timeout 10000
+device_ir_shift -ir_value 6 -no_captured_ir_value
+puts "IDCODE: 0x[device_dr_shift -length 32 -value_in_hex]"
+device_unlock
+
+# Close device
+close_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: No device has been opened.
+TCL_ERROR	1   	ERROR: JTAG communication error is detected. It can be caused by the hardware failure and signal integrity in the JTAG chain. Try to restart.
+TCL_ERROR	1   	ERROR: A device was locked.
+TCL_ERROR	1   	ERROR: A device has been locked by another application; exclusive communication cannot be granted within the specified timeout period.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</device_lock>
+
+<device_unlock>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: device_unlock [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::jtag 1.0
+
+------------
+Description:
+------------
+
+Release the exclusive JTAG communication lock on the device.  
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# List all available programming hardwares, and select the USBBlaster.
+# (Note: this example assumes only one USBBlaster connected.)
+puts "Programming Hardwares:"
+foreach hardware_name [get_hardware_names] {
+	puts $hardware_name
+	if { [string match "USB-Blaster*" $hardware_name] } {
+		set usbblaster_name $hardware_name
+	}
+}
+puts "\nSelect JTAG chain connected to $usbblaster_name.\n";
+
+# List all devices on the chain, and select the first device on the chain.
+puts "\nDevices on the JTAG chain:"
+foreach device_name [get_device_names -hardware_name $usbblaster_name] {
+	puts $device_name
+	if { [string match "@1*" $device_name] } {
+		set test_device $device_name
+	}
+}
+puts "\nSelect device: $test_device.\n";
+
+# Open device 
+open_device -hardware_name $usbblaster_name -device_name $test_device
+
+# Retrieve device id code.
+# IDCODE instruction value is 6; The ID code is 32 bits long.
+
+# IR and DR shift should be locked together to ensure that other applications 
+# will not change the instruction register before the id code value is shifted
+# out while the instruction register is still holding the IDCODE instruction.
+device_lock -timeout 10000
+device_ir_shift -ir_value 6 -no_captured_ir_value
+puts "IDCODE: 0x[device_dr_shift -length 32 -value_in_hex]"
+device_unlock
+
+# Close device
+close_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: No device has been opened.
+TCL_ERROR	1   	ERROR: JTAG communication error is detected. It can be caused by the hardware failure and signal integrity in the JTAG chain. Try to restart.
+TCL_ERROR	1   	ERROR: A device has not been locked; exclusive communication must be obtained first.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</device_unlock>
+
+<device_ir_shift>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: device_ir_shift [-h | -help] [-long_help] -ir_value <instruction register value> [-no_captured_ir_value]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -ir_value <instruction register value>: Value of numeric oprand type to be written into the instruction register in the JTAG tap controller of the open device
+        -no_captured_ir_value: Option to not return the captured instruction register value. If this is specified, this IR scan may be packed together with the subsequent IR or DR scan until the device is unlocked or a captured value is requested
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::jtag 1.0
+
+------------
+Description:
+------------
+
+Writes the specified value into the instruction register of the JTAG 
+tap controller of the open device. Returns the captured instruction 
+register value. The captured value return can be disabled to improve 
+the JTAG communication speed by packing multiple IR or DR scans together.
+
+The instruction register length is determined automatically by the Quartus II
+JTAG server.
+
+The device must be locked first before this operation.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# List all available programming hardware, and select the USB-Blaster.
+# (Note: this example assumes only one USB-Blaster is connected.)
+puts "Programming Hardware:"
+foreach hardware_name [get_hardware_names] {
+	puts $hardware_name
+	if { [string match "USB-Blaster*" $hardware_name] } {
+		set usbblaster_name $hardware_name
+	}
+}
+puts "\nSelect JTAG chain connected to $usbblaster_name.\n";
+
+# List all devices on the chain, and select the first device on the chain.
+puts "\nDevices on the JTAG chain:"
+foreach device_name [get_device_names -hardware_name $usbblaster_name] {
+	puts $device_name
+	if { [string match "@1*" $device_name] } {
+		set test_device $device_name
+	}
+}
+puts "\nSelect device: $test_device.\n";
+
+# Open device 
+open_device -hardware_name $usbblaster_name -device_name $test_device
+
+# Retrieve device id code.
+# IDCODE instruction value is 6; The ID code is 32 bits long.
+
+# IR and DR shift should be locked together to ensure that other applications 
+# will not change the instruction register before the id code value is shifted
+# out while the instruction register is still holding the IDCODE instruction.
+device_lock -timeout 10000
+device_ir_shift -ir_value 6 -no_captured_ir_value
+puts "IDCODE: 0x[device_dr_shift -length 32 -value_in_hex]"
+device_unlock
+
+# Close device
+close_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: A device has not been locked; exclusive communication must be obtained first.
+TCL_ERROR	1   	ERROR: A device has been locked by another application; exclusive communication cannot be granted within the specified timeout period.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</device_ir_shift>
+
+<device_dr_shift>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: device_dr_shift [-h | -help] [-long_help] [-dr_value <data register value>] -length <data register length> [-no_captured_dr_value] [-value_in_hex]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -dr_value <data register value>: Value of string oprand type in either default binary or hexadecimal format to be written into the data register in the JTAG tap controller of the open device
+        -length <data register length>: Length of the data register in the JTAG tap controller in the open device
+        -no_captured_dr_value: Option not to return the data instruction register value. If this is specified, this DR scan may be packed together with the subsequent IR or DR scan until the device is unlocked or a captured value is requested
+        -value_in_hex: Option to specify that the value string is represented in hexadecimal format
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::jtag 1.0
+
+------------
+Description:
+------------
+
+Writes the specified value into the data register of the JTAG 
+tap controller of the open device. Returns the captured data 
+register value. The captured value return can be disabled to 
+improve the JTAG communication speed by packing multiple IR or DR 
+scans together.
+
+The value is specified using either a binary string or a hexadecimal
+string. The bit on the left most side is the first bit shifted in.  
+For example, using binary string "010001", the first bit shifted into 
+the dr register is 1; the last bit is 0.  The same string can be 
+represented in hexadecimal as "11".
+
+The device must be locked before you can perform this operation.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# List all available programming hardware, and select the USB-Blaster.
+# (Note: this example assumes only one USB-Blaster is connected.)
+puts "Programming Hardware:"
+foreach hardware_name [get_hardware_names] {
+	puts $hardware_name
+	if { [string match "USB-Blaster*" $hardware_name] } {
+		set usbblaster_name $hardware_name
+	}
+}
+puts "\nSelect JTAG chain connected to $usbblaster_name.\n";
+
+# List all devices on the chain, and select the first device on the chain.
+puts "\nDevices on the JTAG chain:"
+foreach device_name [get_device_names -hardware_name $usbblaster_name] {
+	puts $device_name
+	if { [string match "@1*" $device_name] } {
+		set test_device $device_name
+	}
+}
+puts "\nSelect device: $test_device.\n";
+
+# Open device 
+open_device -hardware_name $usbblaster_name -device_name $test_device
+
+# Retrieve device id code.
+# IDCODE instruction value is 6; The ID code is 32 bits long.
+
+# IR and DR shift should be locked together to ensure that other applications 
+# will not change the instruction register before the id code value is shifted
+# out while the instruction register is still holding the IDCODE instruction.
+device_lock -timeout 10000
+device_ir_shift -ir_value 6 -no_captured_ir_value
+puts "IDCODE: 0x[device_dr_shift -length 32 -value_in_hex]"
+device_unlock
+
+# Close device
+close_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Captured value cannot be disabled at the time when no value is shifted into data register.
+TCL_ERROR	1   	ERROR: A device has not been locked; exclusive communication must be obtained first.
+TCL_ERROR	1   	ERROR: A device has been locked by another application; exclusive communication cannot be granted within the specified timeout period.
+TCL_ERROR	1   	ERROR: The length of the value string specified does not match the length parameter specified.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</device_dr_shift>
+
+<device_run_test_idle>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: device_run_test_idle [-h | -help] [-long_help] [-num_clocks <state cycle count>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -num_clocks <state cycle count>: The number of times the Run_Test_Idle state is cycled through.  If not specified, this value is 1
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::jtag 1.0
+
+------------
+Description:
+------------
+
+Drive the JTAG controller into the Run_Test_Idle state for a number
+cycles specified with the -num_clocks option.
+
+The device must be locked before you can perform this operation.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# List all available programming hardware, and select the USB-Blaster.
+# (Note: this example assumes only one USB-Blaster is connected.)
+puts "Programming Hardware:"
+foreach hardware_name [get_hardware_names] {
+	puts $hardware_name
+	if { [string match "USB-Blaster*" $hardware_name] } {
+		set usbblaster_name $hardware_name
+	}
+}
+puts "\nSelect JTAG chain connected to $usbblaster_name.\n";
+
+# List all devices on the chain, and select the first device on the chain.
+puts "\nDevices on the JTAG chain:"
+foreach device_name [get_device_names -hardware_name $usbblaster_name] {
+	puts $device_name
+	if { [string match "@1*" $device_name] } {
+		set test_device $device_name
+	}
+}
+puts "\nSelect device: $test_device.\n";
+
+# Open device 
+open_device -hardware_name $usbblaster_name -device_name $test_device
+
+# Retrieve device id code.
+# IDCODE instruction value is 6; The ID code is 32 bits long.
+
+# IR and DR shift should be locked together to ensure that other applications 
+# will not change the instruction register before the id code value is shifted
+# out while the instruction register is still holding the IDCODE instruction.
+device_lock -timeout 10000
+device_ir_shift -ir_value 6 -no_captured_ir_value
+puts "IDCODE: 0x[device_dr_shift -length 32 -value_in_hex]"
+
+# Goto the Run_Test_Idle state and stay there for 8 cycles.
+device_run_test_idle -num_clocks 8
+device_unlock
+
+# Close device
+close_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: A device has not been locked; exclusive communication must be obtained first.
+TCL_ERROR	1   	ERROR: A device has been locked by another application; exclusive communication cannot be granted within the specified timeout period.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</device_run_test_idle>
+
+<device_virtual_ir_shift>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: device_virtual_ir_shift [-h | -help] [-long_help] -instance_index <instance index> -ir_value <instruction register value> [-no_captured_ir_value] [-show_equivalent_device_ir_dr_shift]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -instance_index <instance index>: The index of the virtual JTAG instance
+        -ir_value <instruction register value>: Value of numeric oprand type to be written into the instruction register in this instance
+        -no_captured_ir_value: Option to not return the captured instruction register value.  If this is specified, this IR scan may be packed together with the subsequent IR or DR scan until the device is unlocked or a captured value is requested
+        -show_equivalent_device_ir_dr_shift: Option to show equivalent device ir and dr shifts performed by this command
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::jtag 1.0
+
+------------
+Description:
+------------
+
+Writes the specified value into the instruction register of the 
+specified virtual JTAG instance in the open device. Returns the captured
+instruction register value. You can disable the captured value return
+to improve the JTAG communication speed by packing multiple IR or DR 
+scans together.
+
+The command also activates the target instance such that the consequent 
+virtual DR shift operations are applied to this instance before the device
+is unlocked.  Before any virtual DR shift operation, this command must be
+executed first to activate the instance.
+
+The device must be locked first before this operation.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# List all available programming hardwares, and select the USBBlaster.
+# (Note: this example assumes only one USBBlaster connected.)
+puts "Programming Hardwares:"
+foreach hardware_name [get_hardware_names] {
+	puts $hardware_name
+	if { [string match "USB-Blaster*" $hardware_name] } {
+		set usbblaster_name $hardware_name
+	}
+}
+puts "\nSelect JTAG chain connected to $usbblaster_name.\n";
+
+# List all devices on the chain, and select the first device on the chain.
+puts "\nDevices on the JTAG chain:"
+foreach device_name [get_device_names -hardware_name $usbblaster_name] {
+	puts $device_name
+	if { [string match "@1*" $device_name] } {
+		set test_device $device_name
+	}
+}
+puts "\nSelect device: $test_device.\n";
+
+# Open device 
+open_device -hardware_name $usbblaster_name -device_name $test_device
+
+# The follow virtual JTAG IR and DR shift sequence engage with
+# the example virtual JTAG instance.
+# 
+# Two instructions: SAMPLE (1) FEED (2)
+# SAMPLE instruction samples a 8-bit bus; the captured value shows the number of sample performed.
+# FEED instruction supplies a 8-bit value to the logic connected to this instance.
+# Both data registers corresponding to the IR are 8 bit wide.
+
+# Send SAMPLE instruction to IR, read captured IR for the sampling number.
+# Capture the DR register for the current sampled value.
+device_lock -timeout 10000
+puts "Current LED Value (sample #[device_virtual_ir_shift -instance_index 0 -ir_value 1]): [device_virtual_dr_shift -instance_index 0  -length 8 -value_in_hex]"
+device_unlock
+
+# Send FEED instruction to IR, read a two-digit hex string from the console, 
+# then send the new value to the DR register.
+puts "\nType in 2 digits in hexadecimal to update the LED:"
+gets stdin update_value
+device_lock -timeout 10000
+device_virtual_ir_shift -instance_index 0 -ir_value 2 -no_captured_ir_value
+device_virtual_dr_shift -instance_index 0  -length 8 -dr_value $update_value -value_in_hex -no_captured_dr_value
+device_unlock
+
+# Close device
+close_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: The specified virtual JTAG instance cannot be found.
+TCL_ERROR	1   	ERROR: One of the options, mfg_id, type_id and version is specified, but not all.  All of them are required.
+TCL_ERROR	1   	ERROR: A device has not been locked; exclusive communication must be obtained first.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</device_virtual_ir_shift>
+
+<device_virtual_dr_shift>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: device_virtual_dr_shift [-h | -help] [-long_help] [-dr_value <data register value>] -instance_index <instance index> -length <data register length> [-no_captured_dr_value] [-show_equivalent_device_ir_dr_shift] [-value_in_hex]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -dr_value <data register value>: Value of string oprand type in either default binary or hexadecimal format to be written into the data register in this instance
+        -instance_index <instance index>: The index of the virtual JTAG instance
+        -length <data register length>: Length of the data register in this instance
+        -no_captured_dr_value: Option to not return the data instruction register value
+        -show_equivalent_device_ir_dr_shift: Option to show equivalent device ir dr shifts performed by this command
+        -value_in_hex: Option to specify that the value string is represented in hexadecimal format
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::jtag 1.0
+
+------------
+Description:
+------------
+
+Writes the specified value into the data register of the JTAG 
+tap controller of the open device. Returns the captured data 
+register value. The captured value return can be disabled
+to improve the JTAG communication speed by packing multiple 
+IR or DR scans together.
+
+The value is specified using either a binary string or a 
+hexadecimal string. The bit on the left most side is the first 
+bit shifted in.  For example, using the binary string "010001", 
+the first bit shifted into the dr register is 1; the last bit 
+is 0.  The same string can be represented in hexadecimal as "11".
+
+The device must be locked first, and the target instance must be
+activated using the device_virtual_ir_shift command before this 
+operation. Moreover, the device should be locked before the virtual 
+IR shift operation to prevent another application from activating 
+another instance.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# List all available programming hardware, and select the USB-Blaster.
+# (Note: this example assumes only one USB-Blaster is connected.)
+puts "Programming Hardware:"
+foreach hardware_name [get_hardware_names] {
+	puts $hardware_name
+	if { [string match "USB-Blaster*" $hardware_name] } {
+		set usbblaster_name $hardware_name
+	}
+}
+puts "\nSelect JTAG chain connected to $usbblaster_name.\n";
+
+# List all devices on the chain, and select the first device on the chain.
+puts "\nDevices on the JTAG chain:"
+foreach device_name [get_device_names -hardware_name $usbblaster_name] {
+	puts $device_name
+	if { [string match "@1*" $device_name] } {
+		set test_device $device_name
+	}
+}
+puts "\nSelect device: $test_device.\n";
+
+# Open device 
+open_device -hardware_name $usbblaster_name -device_name $test_device
+
+# The follow virtual JTAG IR and DR shift sequence engage with
+# the example virtual JTAG instance.
+# 
+# Two instructions: SAMPLE (1) FEED (2)
+# SAMPLE instruction samples a 8-bit bus; the captured value shows the number of sample performed.
+# FEED instruction supplies a 8-bit value to the logic connected to this instance.
+# Both data registers corresponding to the IR are 8 bit wide.
+
+# Send SAMPLE instruction to IR, read captured IR for the sampling number.
+# Capture the DR register for the current sampled value.
+device_lock -timeout 10000
+puts "Current LED Value (sample #[device_virtual_ir_shift -instance_index 0 -ir_value 1]): [device_virtual_dr_shift -instance_index 0  -length 8 -value_in_hex]"
+device_unlock
+
+# Send FEED instruction to IR, read a two-digit hex string from the console, 
+# then send the new value to the DR register.
+puts "\nType in 2 digits in hexadecimal to update the LED:"
+gets stdin update_value
+
+device_lock -timeout 10000
+device_virtual_ir_shift -instance_index 0 -ir_value 2 -no_captured_ir_value
+device_virtual_dr_shift -instance_index 0  -length 8 -dr_value $update_value -value_in_hex -no_captured_dr_value
+device_unlock
+
+# Close device
+close_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Captured value cannot be disabled at the time when no value is shifted into data register.
+TCL_ERROR	1   	ERROR: The specified virtual JTAG instance cannot be found.
+TCL_ERROR	1   	ERROR: One of the options, mfg_id, type_id and version is specified, but not all.  All of them are required.
+TCL_ERROR	1   	ERROR: A device has not been locked; exclusive communication must be obtained first.
+TCL_ERROR	1   	ERROR: A device has been locked by another application; exclusive communication cannot be granted within the specified timeout period.
+TCL_ERROR	1   	ERROR: The length of the value string specified does not match the length parameter specified.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</device_virtual_dr_shift>
+
+<<<</1.0>>>>

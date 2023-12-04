@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<ROOT>
+		<INCLUDE FILE="mfam_family_macros.xml" />
+		<MACROS>
+			<MACRO NAME="m_family_support_sset_sclr" >
+				<DEFINITION>
+					mfam_family_stratixii || mfam_family_stratixiii || mfam_family_base_stratix
+				</DEFINITION>
+			</MACRO>
+			<MACRO NAME="m_family_use_oe_out" >
+				<DEFINITION>
+					mfam_family_has_oe_out 
+				</DEFINITION>
+			</MACRO>
+		</MACROS>
+		<PARAMETER_RULES>
+			<PARAMETER NAME="POWER_UP_HIGH" VALUE="ON|OFF|UNUSED" TYPE="STRING" >
+				<FORCE_VALUE V="UNUSED" WHEN="is_used(aclr) || is_used(aset)" />
+			</PARAMETER>
+			<PARAMETER NAME="OE_REG" VALUE="REGISTERED|UNREGISTERED|UNUSED" TYPE="STRING" >
+				<FORCE_VALUE V="UNUSED" WHEN="!is_used(oe)" />
+			</PARAMETER>
+			<PARAMETER NAME="EXTEND_OE_DISABLE" VALUE="ON|OFF|UNUSED" TYPE="STRING" >
+				<FORCE_VALUE V="UNUSED" WHEN="!is_used(oe) || (OE_REG == UNREGISTERED) || (OE_REG == UNUSED)" />
+			</PARAMETER>
+			<PARAMETER NAME="INVERT_OUTPUT" TYPE="STRING">
+				<FORCE_RANGE TO="OFF|UNUSED" WHEN="!mfam_family_cycloneii" />
+			</PARAMETER>
+		</PARAMETER_RULES>
+		<PORT_RULES>
+ 			<PORT NAME="datain_h" TYPE="INPUT" USAGE="USED"/>
+			<PORT NAME="datain_l" TYPE="INPUT" USAGE="USED"/>
+			<PORT NAME="dataout" TYPE="OUTPUT" USAGE="USED"/>
+			<PORT NAME="outclock" TYPE="INPUT" USAGE="USED"/>
+			<PORT NAME="oe" TYPE="INPUT" USAGE="VARIABLE"/>
+			<PORT NAME="aclr" TYPE="INPUT" USAGE="VARIABLE"/>
+			<PORT NAME="aset" TYPE="INPUT" USAGE="VARIABLE">
+				<STATE V="UNUSED" WHEN="is_used(aclr)" />
+			</PORT>	
+			<PORT NAME="sset" TYPE="INPUT" USAGE="VARIABLE">
+				<STATE V="UNUSED" WHEN="is_used(sclr) || !m_family_support_sset_sclr" />
+			</PORT>	
+			<PORT NAME="sclr" TYPE="INPUT" USAGE="VARIABLE">
+				<STATE V="UNUSED" WHEN="!m_family_support_sset_sclr" />
+			</PORT>
+			<PORT NAME="oe_out" TYPE="OUTPUT" USAGE="VARIABLE">
+				<STATE V="UNUSED" WHEN="!m_family_use_oe_out || !is_used(oe)" />
+			</PORT>
+	
+		</PORT_RULES>
+</ROOT>

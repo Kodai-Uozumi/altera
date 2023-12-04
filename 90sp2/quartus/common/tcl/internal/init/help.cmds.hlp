@@ -1,0 +1,416 @@
+<<<<versions>>>>
+1.0
+<<<</versions>>>>
+<<<<1.0>>>>
+<help>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: help [-h | -help] [-long_help] [-cmd <command name>] [-examples] [-pkg <package name>] [-quartus] [-tcl] [-timequestinfo] [-version <version number>] [<package or command name>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -cmd <command name>: Option to display long help for a Quartus II Tcl command
+        -examples: Option to display examples of Quartus II Tcl usage
+        -pkg <package name>: Option to display help for an available Quartus II Tcl package
+        -quartus: Option to display help on the predefined global "quartus" Tcl array
+        -tcl: Option to display overview on Quartus II Tcl usage
+        -timequestinfo: Option to display help on the predefined global "TimeQuestInfo" Tcl array
+        -version <version number>: Option to specify the package version for the specified Quartus II Tcl package or command
+        <package or command name>: Name of an available Quartus II Tcl package or command. This is functionally equivalent to the -pkg and -cmd options.
+<<</usage_only_section>>>
+
+------------
+Description:
+------------
+
+
+For convenience, you can omit the "::quartus::" package prefix when
+you query for help on a package. For example, you can type either of
+the following to view help for the ::quartus::project package:
+     help ::quartus::project
+     help project
+<<<argument_help_section>>>
+<<examples>>
+---------------------------------------------------------------------------
+
+----------------------
+Example Tcl Script
+----------------------
+
+#--------------------------------------------------------------#
+# 
+# The following Tcl script instructs the Quartus(R) II 
+# software to create a project (or open it if it already 
+# exists), make global assignments for family and device, 
+# and include timing and location settings.
+#
+# There are two ways to compile a project after making 
+# assignments. The first method, and the easiest, is 
+# to use the ::quartus::flow package and call the Tcl 
+# command "execute_flow -compile".
+# 
+# The second method is to call the Tcl command 
+# "export_assignments" to write assignment changes to the 
+# Quartus II Settings File (.qsf) before compiling the 
+# design. Calling "export_assignments" beforehand is 
+# necessary so that the command-line executables detect 
+# the assignment changes.
+# 
+# After compilation, with either method, the script then 
+# instructs the Quartus II software to write the project 
+# databases and to compile using the command-line executables. 
+# The script obtains the fmax result from the report database. 
+# Finally, the script closes the project.
+# 
+#--------------------------------------------------------------#
+
+# Since ::quartus::report is not pre-loaded
+# by quartus_sh, load this package now
+# before using the report Tcl API
+load_package report
+
+# Since ::quartus::flow is not pre-loaded
+# by quartus_sh, load this package now
+# before using the flow Tcl API
+# Type "help flow" to view information
+# about the package
+load_package flow
+
+#------ Get Actual Fmax data from the Report File ------#
+
+proc get_fmax_from_report {} {
+#-------------------------------------------------------#
+
+	global project_name
+
+	# Load the project report database
+	load_report $project_name
+
+	# Get the actual Fmax
+	set actual_fmax [get_timing_analysis_summary_results -clock_setup clock -actual]
+
+	# Now unload the project report database
+	unload_report $project_name
+
+	return $actual_fmax
+}
+
+#------ Set the project name to chiptrip ------#
+set project_name chiptrip
+
+#------ Create or open project ------#
+if [project_exists $project_name] {
+
+#------ Project already exists -- open project -------#
+	project_open $project_name
+} else {
+
+#------ Project does not exist -- create new project ------#
+	project_new $project_name
+}
+
+#------ Fmax requirement: 155.55MHz ------#
+set required_fmax 155.55MHz
+
+#------ Make a clock assignment with the Fmax requirement ------#
+create_base_clock clock -fmax $required_fmax
+
+#------ Make global assignments ------#
+set_global_assignment -name family STRATIX
+set_global_assignment -name device EP1S10F484C5
+set_global_assignment -name tsu_requirement 7.55ns
+
+#------ Make instance assignments ------#
+# The following is the same as doing:
+#   "set_instance_assignment -name location -to clock Pin_M20"
+set_location -to clock Pin_M20
+
+#------ Compile using ::quartus::flow ------#
+execute_flow -compile
+
+#------ Report Fmax from report ------#
+set actual_fmax [get_fmax_from_report]
+puts ""
+puts "-----------------------------------------------------"
+puts "Required Fmax: $required_fmax Actual Fmax: $actual_fmax"
+puts "-----------------------------------------------------"
+
+
+# -----------------------------------------------------------
+# An alternative method is presented in the following script
+# -----------------------------------------------------------
+
+#------ Set new Fmax requirement: 200MHz ------#
+set required_fmax 200MHz
+
+#------ Make a clock assignment with the new Fmax requirement ------#
+create_base_clock clock -fmax $required_fmax
+
+
+#------ Manually recompile and perform timing analysis again using qexec ------#
+
+# Write these assignments to the
+# Quartus II Settings File (.qsf) so that
+# the Quartus II command-line executables
+# can use these assignments during compilation
+export_assignments
+
+# Compile the project and
+# exit using "qexit" if there is an error
+if [catch {qexec "[file join $::quartus(binpath) quartus_fit] $project_name"} result] {
+	qexit -error
+}
+if [catch {qexec "[file join $::quartus(binpath) quartus_tan] $project_name"} result] {
+	qexit -error
+}
+
+#------ Report Fmax from report ------#
+set actual_fmax [get_fmax_from_report]
+puts ""
+puts "-----------------------------------------------------"
+puts "Required Fmax: $required_fmax Actual Fmax: $actual_fmax"
+puts "-----------------------------------------------------"
+
+#------ Close Project ------#
+project_close
+
+---------------------------------------------------------------------------
+<</examples>>
+<<quartus>>
+---------------------------------------------------------------------------
+
+---------
+Overview
+---------
+
+
+You can obtain information about a Quartus(R) II 
+executable that is currently running by using "quartus", 
+a predefined global Tcl array.
+
+---------------------  -------------------------------
+"quartus" <Array Key>  Description
+---------------------  -------------------------------
+
+1) args                List of arguments passed to the Tcl
+                       script.
+2) binpath             The /quartus/bin directory where the 
+                       current Quartus II executable resides.
+3) nameofexecutable    Name of the current Quartus II 
+                       executable.
+4) project             Name of the currently open project.
+5) settings            Name of the currently open revision. 
+6) version             Version of the current Quartus II 
+                       executable.
+7) is_report_loaded    The Tcl command "load_report" (in the 
+                       ::quartus::report package) sets this 
+                       field to 1. The command "unload_report" 
+                       sets it to 0.
+8) available_packages  List of Quartus II Tcl packages
+                       available in the current executable.
+9) qip_path            The directory where the current
+                       Quartus II IP file (.qip) resides.
+                       Note: The Quartus II Settings File (.qsf) must
+                       contain a QIP_FILE assignment that specifies
+                       the path to the current .qip file.
+10) ip_rootpath        The directory where the MegaCore(C) IP library
+                       resides. If the IP library is not installed,
+                       quartus(ip_rootpath) is an empty string. If the
+                       IP_ROOTDIR environment variable contains the location
+                       of the IP library, it will override the default
+                       value of quartus(ip_rootpath).
+
+--------------
+Example Usage
+--------------
+
+1) Type "$::quartus(<Array Key>)"
+   as a placeholder for <Array Value>.
+
+  Example: puts "$::quartus(project)"
+		   prints "one_wire" if one_wire project is currently open.
+		   In this example, the <Array Key> is "project" and
+		   the <Array Value> is "one_wire."
+
+---------------------------------------------------------------------------
+<</quartus>>
+<<tcl>>
+---------------------------------------------------------------------------
+
+
+---------
+Overview
+---------
+
+This Quartus(R) II executable supports a set of Quartus II 
+Tcl packages. Each package contains a set of unique Tcl 
+commands. However, the commands are not available unless 
+the associated Tcl package is loaded. Type "help" to view 
+a table of packages that are "loaded" and "not loaded".
+
+Quartus(R) II Tcl commands can take shortened options as
+long as there are no conflicts with other options. For example,
+any permutation of the -revision option for the "project_open"
+command will work; that is, -r, -re, -rev, -revi, -revis,
+-revisi, -revisio, and -revision all refer to the same option.
+
+----------------------
+Quartus II Tcl Usage
+----------------------
+
+1) Type "package require ::quartus::<package name> [<version>]"
+   to load a Quartus II Tcl package with the specified version. 
+   If <version> is not specified, the latest version of the 
+   package is loaded by default.
+
+   Example: package require ::quartus::project 1.0
+
+   This command is similar to the "load_package" command. The 
+   advantage of using "load_package" is that you can alternate 
+   freely between different versions of the same package. Type
+   "load_package <package name> [-version <version number>]"
+   to load a Quartus II Tcl package with the specified version.
+   If the "-version" option is not specified, the latest version 
+   of the package is loaded by default.
+
+   Example: load_package ::quartus::project -version 1.0
+
+2) Type "help <package name> [-version <version number>]"
+   to view help for a specified Quartus II package, which 
+   includes the list of available Tcl commands. For convenience, 
+   you can omit the "::quartus::" package prefix, and type 
+   "help <package name>". If you do not specify the 
+   "-version" option, help for the currently loaded package 
+   is displayed by default. If the package for which you want 
+   help is not loaded, help for the latest version of the 
+   package is displayed by default.
+
+   Examples: help ::quartus::project
+             help project
+             help project -version 1.0
+
+3) Type "<command name> -h" or "<command name> -help"
+   to view short help for a Quartus II Tcl command for 
+   which the package is loaded.
+
+   Examples: project_open -h
+             project_open -help
+
+4) Type "help <command name> [-version <version number>]"
+   or "<command name> -long_help" to view long help for a
+   Quartus II Tcl command. Only "<command name> -long_help" 
+   requires that the associated Tcl package is loaded.
+   If you do not specify the "-version" option, help 
+   for the currently loaded package is displayed by default. 
+   If the package for which you want help is not loaded, 
+   help for the latest version of the package is displayed 
+   by default.
+
+   Examples: project_open -long_help
+             help project_open
+             help project_open -version 1.0
+
+5) Type "help -quartus" to view help on the predefined 
+   global "quartus" Tcl array that can be accessed to view 
+   information about the Quartus II executable currently 
+   running.
+
+6) Type "help -timequestinfo" to view help on the predefined 
+   global "TimeQuestInfo" Tcl array that can be accessed to view 
+   information about delay model and speed grade information of a
+   TimeQuest design that is currently running.
+
+7) Type "help -examples" to view examples of Quartus II 
+   Tcl usage.
+
+---------------------------------------------------------------------------
+<</tcl>>
+<<timequestinfo>>
+---------------------------------------------------------------------------
+
+---------
+Overview
+---------
+
+You can obtain delay model and speed grade information of a TimeQuest 
+design that is currently running by using "TimeQuestInfo", 
+a predefined global Tcl array.
+
+---------------------------  -------------------------------
+"TimeQuestInfo" <Array Key>  Description
+---------------------------  -------------------------------
+
+1) nameofexecutable          Name of the current Quartus II executable.
+2) speed_grade               Speed grade of the current device.
+3) corner                    Current timing corner used for delay annotation.
+4) family					 Current device family.
+5) part						 Current device.
+6) project					 Current project name.
+7) revision					 Current revision name.
+
+-------------
+Example Usage
+-------------
+
+1) Type "$::TimeQuestInfo(<Array Key>)"
+as a placeholder for <Array Value>.
+
+Example: puts "$::TimeQuestInfo(corner)"
+         prints slow if delay annotation was performed by
+         using slow corner delay model.
+
+---------------------------------------------------------------------------
+<</timequestinfo>>
+<<</argument_help_section>>>
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+1) Type "help <package name>"
+   to view help for a Quartus II Tcl package.
+
+   Example: help ::quartus::project
+
+2) Type "help <command name>"
+   to view long help for a Quartus II Tcl command.
+
+   Example: help project_open
+
+3) Type "help -quartus"
+   to view help on the predefined global "quartus" Tcl array.
+
+   Example: help -quartus
+
+4) Type "help -examples"
+   to view examples of Quartus II Tcl usage.
+
+   Example: help -examples
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Quartus II Tcl command "<string>" is only available for use in the following executable<string>:<string>
+TCL_ERROR	1   	ERROR: Quartus II Tcl command "<string>" belongs to the "<string>" package which is currently not loaded. Please type "load_package <string>" to load the package before using this command.
+TCL_ERROR	1   	ERROR: Tcl command does not exist or is not supported by Quartus II Tcl help: <string>. Specify an available Quartus II Tcl command. Type "info commands" for a list of available commands.
+TCL_ERROR	1   	ERROR: Tcl command "<string>" version "<string>" does not exist or is not supported by Quartus II Tcl help. Specify an available Quartus II Tcl command. Type "info commands" for a list of available commands.
+TCL_ERROR	1   	ERROR: Tcl package does not exist or is not supported by Quartus II Tcl help: <string>. Specify an available Tcl package. Type "help" for a list of available packages.
+TCL_ERROR	1   	ERROR: Tcl package "<string>" version "<string>" does not exist or is not supported by Quartus II Tcl help. Specify an available Tcl package. Type "help" for a list of available packages.
+TCL_ERROR	1   	ERROR: Illegal Quartus II Tcl package or command: <string>. Specify an available Quartus II Tcl package or command.
+TCL_ERROR	1   	ERROR: Illegal Quartus II Tcl package or command: <string>, version <string>. Specify an available Quartus II Tcl package or command.
+TCL_ERROR	1   	ERROR: Quartus II Tcl package "<string>" is only available for use in the following executable<string>:<string>
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</help>
+
+<<<</1.0>>>>

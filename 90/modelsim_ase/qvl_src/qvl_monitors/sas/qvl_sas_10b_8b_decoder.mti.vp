@@ -1,0 +1,186 @@
+//              Copyright 2006-2008 Mentor Graphics Corporation
+//                           All Rights Reserved.
+//
+//              THIS WORK CONTAINS TRADE SECRET AND PROPRIETARY
+//            INFORMATION WHICH IS THE PROPERTY OF MENTOR GRAPHICS
+//           CORPORATION OR ITS LICENSORS AND IS SUBJECT TO LICENSE
+//                                  TERMS.
+//
+//                   Questa Verification Library (QVL)
+//
+/***********************************************************************
+* PURPOSE       This file is part of the 0-In CheckerWare.
+*
+* DESCRIPTION   This module performs 10b to 8b decoding.
+*
+* REFERENCE     Serial Attached SCSI, Revision 1.1, Revision 2, Nov 20, 2003.
+*
+* USAGE         This sub module is instantiated in the qvl_sas_link_monitor
+*               module.
+*
+* Last Modified : 24th Dec 2003
+*
+***********************************************************************/
+
+`ifdef ZiCwDebug
+`define ZiCwDebugDelay1 #1
+`define ZiCwQuietIfNoCwDebug
+`else
+`define ZiCwDebugDelay1
+`define ZiCwQuietIfNoCwDebug -quiet
+`endif //ZiCwDebug
+
+`ifdef QVL_SVA_INTERFACE
+`define qvlmodule interface
+`define qvlendmodule endinterface
+`else
+`define qvlmodule module
+`define qvlendmodule endmodule
+`endif
+
+`ifdef QVL_ASSERT_ON
+`define OVL_ASSERT_ON
+`define OVL_SVA
+`endif
+
+`ifdef QVL_COVER_ON
+  `ifdef QVL_SV_COVERGROUP_OFF
+    // Do nothing
+  `else
+    `define QVL_SV_COVERGROUP
+  `endif
+  `ifdef QVL_MW_FINAL_COVER_OFF
+    // Do nothing
+  `else
+    `define QVL_MW_FINAL_COVER
+  `endif
+`endif
+
+`qvlmodule qvl_sas_10b_8b_decoder (
+				 reset,
+				 areset,
+                                 clk,
+				 sas_10b_data,
+				 sas_valid,
+                                 electrical_idle_detected,
+				 sas_current_rd,
+
+				 sas_8b_data,
+				 sas_d_or_k_code,
+				 sas_10b_code_violation,
+				 disparity_error_bitmap
+				);
+
+  // Parameter declarations
+`ifdef QVL_ZIN
+  parameter Constraints_Mode = 1;
+`else
+  parameter Constraints_Mode = 0;
+`endif //QVL_ZIN
+  wire [31:0] pw_Constraints_Mode = Constraints_Mode;
+
+  parameter DOUBLE_DATA_RATE = 0;
+  wire [31:0] pw_DOUBLE_DATA_RATE = DOUBLE_DATA_RATE;
+
+  // Input declarations
+
+  input reset;
+  input areset;
+  input clk;
+
+  input [9:0] sas_10b_data;
+  input sas_valid;
+  input sas_current_rd;
+  input electrical_idle_detected;
+
+  // Output declarations
+
+  output [7:0] sas_8b_data;
+  output sas_d_or_k_code;
+  output sas_10b_code_violation;
+  output disparity_error_bitmap;
+
+  // Internal parameter declarations
+
+  parameter ZI_POSITIVE = 1'b1;
+  parameter ZI_NEGATIVE = 1'b0; 
+
+  // Register declarations
+
+  reg [7:0] next_sas_8b_data;
+  reg next_sas_10b_code_violation;
+  reg next_sas_d_or_k_code;
+  reg disparity_error_bitmap;
+  reg temp_sas_current_rd;
+
+`protected
+
+    MTI!#GzE1G<DW*@n3$>{J1^n5ork7;',WR_3!=Z7;x&:=J]iw[o[\Q\Y@j@BZsX<TrW*x?KE2r]B
+    =oxJGB!#|Jj#ACjp4,e##!>GJR7!2Op*BB;xQ+Xo~K'nrn^sui}eZBC*RmGi5$@~;};jQ;Q}[~]7
+    D>}Du}IT;nT1V@NDxUpOQU^:?qo.pGBBEO\@W'}^V#l;em[$$D#}{j?Z_XoYkhhkDWac,W{}2<>J
+    O}w7s_@zEU$e5R*HLU7Q1Ou+zqB#VD]QoVX+K~12}zECj~uslkVaD!C'a#VcBWB3YIYu-zp_YHe,
+    T7TEY5AjDinlLInsJpYll=NABreCVz@bIcHAW{_tiCRHKpwBySm|C=~UwRo-XDps%?U!j?]YuuCo
+    WBHW{WQ!3V^?Tv2}pI@;eOi,\iVcKRTIu5slR;@7QQJ\z!Vz2TAO}?m^}D}BB;-+L$]s*$ae7DY2
+    COoG@kG*-z1wx$5{_Axu'_iaH^kDr$@G$HA5]3o2w_\YE]ur27pDW9HEj~eI_!F73ZQk5}^C'o=G
+    -BUhkY#2U'ZG'ViK*N*2j}-1E@RT'X,ssG.4GkzWV^^r_u_iK^5#\W7ne<v{*nRJ=M)I1-T!BC]f
+    <_/"^v7^E<z5UR{2UoeTD#Vam{5X^ZI3\AnJH}]2AoY}"'#*1=mBzwUTHz*2xNCH2ClE-YH,o!r@
+    aJKvp7.ea1Dx!CKVn=>z}o'vn*+7VsYxwV_N$DJA_,,#D@8$'mv[2JWn>'}I3@z_!eJUY#Z'zKo@
+    wu<UC'$p;2>H_UY]#-\,B-kxy,oZ52<!~kwIXMVQB51uH2?RHp1OB-$senB@3wdDl#nZV#3-[{O.
+    FuD\*n5R<CYTr1nC3b:uw5{@se-4c2Emae_ZRA>_iVW_!,m2uh-e'A61v{AiEj@Ver^IuZ,K5IGE
+    '#!gEk<aBYu@tr=@{fCJ@Qwo1?4:7-![?sv#A{J!,1-KG.G/AUB[>weVC-<z/[K{Rt<Ou!Kz}G~I
+    KH[;Yw?vvlPilj[oP9lGVjVzx>^uvBRYm,']REk}Y3DVpa#V-XTw;}iw;I^5AUI3\J,'>^LB;D@l
+    ZG1LG{lzep]s~&7=KX[O_aOX]sC5r?=Z5Co-OvK[Uu?w;#Yn~!tAU5QI?xm@vj2\OG#^v*]wnx\I
+    xBknQo7$#GCTwRvXo,K!$~Z&7#j@=nY#1n[[Q[pua^zunt3XDD2oaD*eBll]G;1{aHE*=\7;$Xuw
+    ='P';'jRo<GHsYuT\IOK^XZ$3+<SzAWTI\oiZRR~c^EXC=>3zU-N5*Kjr>x1Ex^QG[OTInGJVBxG
+    U}e3vei15v,@]5'vRUj~'7=O-$koB~W\Yxx!8PpoT@wQ]prj<;-w[IW*+2k]\Y@EanfO1Jn5J5s5
+    D$p<D1\esJo_X;$Vl31!llz~]TO}A7$6\m{stVanAV-GO=*R<2a=Ikre3I@QO$]Gp}!'Qvpa}ko\
+    *1-^Q_w>j_[R#UxaTaDwp_U;{knWzeY<G^-=mvWHv]IsnU-w\BUjxZ$rWwsn!>sR7[+j'xwz]7@a
+    ;p!YUu]{xRk+YZ1B@$v2=5k1-[*Y7${$,E*Wv-OYBGw>Wz~!oUD+mm{ejg[CDkuxO~ORs^R!ECz#
+    @1i{@,E;pBK5JCu*_lBIY[{Y7o,#B\q\buxE[B1{[U'a2Y@!~pTNw5}Q~_?jI_NTRXvJ1zu{$Z^B
+    X<!wU['[Z;^O,zE7DOW,wE25mVasA=EK[oD$*]#Gu1]oHe?s~OeR3e[jGRkpCa_\Z<z1$uW,Aj#_
+    weo7GV#HsJaxROD$;}Vaj[m,<{ppZ,oRIO5'ZZz@z#UYCX#$xs*eTmzlwARLzR>z]**Jsez{aDQe
+    ZElU2[B^Y2vYiUDK*5N1^@OI2\{f~*^VZG-=]RHK}oIQjn[3HzKl7o=<m^Yi*v,;KwII'n\Ej5Vi
+    XQ_HI!\+_Gzx9@sQ;KxC[]HY<*V->=/>G>_T]v;'}CG7K@U[3$U{<oxCG#x.|,zu>Be?VFj~s1v-
+    1T5>u$!*E{&7wC1kVC]KHZ9^j1I#7a5[3[]7VK!7{sw1BiZ|2v3v[[\5tw>2aB'rVaRpD6!CEu[d
+    iExUCs{u}rizR37s$Ju^AUX~0zam$j}>BHCewI$<W^Z17uG,I7JQH~Uap]\-7jpzm;Bl#*KY7xQ[
+    '9)1ku{U-x$<}2o|\~B\/E>pJ!r[XUw<{oGe\$Z^abo+Hm!5{-TYW^oOKA_?oG&7{l,iXeDcl#XE
+    PZXA^To\r!HmIe@JZ,smJH*~{z{+uv[U2T\Xp$+T<^V_~}@;U,i,,VTI'B!{sm_@WYUDe3e\+[=@
+    [e^jzbX=l>o@Wz8]\$2*QBvD@l[I{5Il[,[l$H@,7kTRnm3v{T}/s,rJ?Vi!yUjns~pE{rHEB<Qj
+    !e',Z\i;-JaQok*H-H'aJ~pGiV;W,AejiE<X2I@LJvA<XQeIn>A;?1Txz,!vj;-1$+^T1_ms'WZ_
+    ?>=x5<x=l>!KHDeeXVl+zeZ!QzGoxmzjrXQpuDHln'{?cD+1,EZ5Aj@BQJGiY[i]~kQ?a*K'l2aH
+    o}ZKuAG='*ATa,AKo~}JuI;Wk?[@prmKu}1mswUT~upHkV[5<3Doo'm}Z9YG$u~-KKo@l]xUJoTq
+    smu+,Wl?rRTJoXZ[3U*Z~H@[_aJl<Y(*w>e'XpuC$RC#Q^Jo5Dv,31@Fk{\@rp'a(}U<@Bx}m=7j
+    mU\=<\BYUlp!j8KepTc@n-CsuQ!{rQ'_#nOvAu+AU23=-1xLdxQ[J'aRnT$m*&2$krp}YVX$2R<|
+    7\Xm5Tm7OvAv5uIitV-1+7@ve'3!J7mQ\(sVrrCBvD,a5iQ=T'7\7=eX{?[;IXe]!]aT]#ewxWo-
+    u>kCWHyE$+?t#'UU?+Y'p#=\l+u*@XDZeK[QWwU[/qQC'~I]HH15>,IY<rYJ*[[.pO^wUp\J9I?j
+    iv4-{zW]jsJ3oB@'jk#<>Gih[1]+R}JuzeK'ieoT[*-O>5R@HQ-]Twej]i\[Z-AW_UC?JD>>zo@2
+    $xR]Unrzli,Uo$@Iz7ip~ClBksk+zE@;1jC38Zx?jwQmuDI@}3^K[K[EWiUj<*HOC$'A5BT>;Uvm
+    B}A;Qdz$llja;2QW_i#R$_6KYxzY[<<~}s7]*Q})eR@<KD247ZTGdUA@I[ZDkj9z]O*7?B~\}kQa
+    jH[Y5-}esa\Z$XZJ^1=r_W@B^vV=5^{u'i{}#57v'#'DQI<I{*AwU7@|ox\28N./R,RAlB@<CBD!
+    v-o29YZYwCJvYekuQ(aHJEz_~HTrr~#]T}^W]ny[]7v'Il\~*^D[sn56QoD}j}n2!le5czX!Z;-o
+    2+(>xkD_sA-i>C'k}iUmxoecCrXm>T{jX}Oj12!Gei+!:kOiD$Gk=1s{EDXpm^23-$~oG;Q>lJ]i
+    x}<[jnvIX[$kU^ZE$A5]]W^In[{=GYQm@2*kERgUaDm->m'sD'eo@$=,YQ~x(J\nrxa{'?e${QQY
+    _EXE[SGWmOTe*YpC=]\Cn\a{X,N}x'VLve7oYR+HEBYQ_nzY2rApK\\pv<>oece=;Z5C<~}Q$uA=
+    {7?xDv0IzDrQEe[$iWw2-C@izOK^3=2mx}k}{ZTjUA$H+wu@}[=QKKH#V-sk73HNGX^D}dEsiwCG
+    Q!eZ[r=EoRA]5!>I>1vQsi>HQ<hB5?["U]Vs)|'m<32EQ#>'TD]Kr-NJCoKKpXZO}p![$OTFU5E-
+    'jm-+CaAC#^j>8siJ#vGaRn\<e3C}7x-l+Bkmr0'!]vZ7!,_9E-<T\}ens,i+{v{e~TViR@~'DQ3
+    j\Qv?_[[?NAow*@l+CywIQDuG{{R~,Ao@bzj]!a_Qv2Vm$=<YeTR2#xjKBx2]A1iUu'!7XQs@C)"
+    #rs>3OOiy1Q,Zx#]m#[QKVN=IB?LNl+57d~sFb}>lOZ_A~Jr~xK,l#V2RO'5!HN{YV_/],onr@7a
+    7Sl+5D~TRubK]iRy7JBm#_{k]Gv$=7]{'{V}1os==e]<]aUCV+1Q=TD}82_!k{T\psX!j1W^UeQ}
+    WRJ!K;R*<2l;CRE*iZs^G[CKxj2Z{B_~R?jr2]O$\XOA1vOs*HA}vO!5$2>E-zi*JwR\Aj5w\^+}
+    <=<{7!IR#NoiT-?_nwYi${;'-~I;}CNr\Cn$<_#xOxk@{I{*aEuCsuGop3W;xOXw-]aGjO2U\AI#
+    s1Wl9i--X1kA$?vujLE*xVp+,p1#lW+DB5kjR<\*!YS}#n5,v;{&7iB$2C+@^Ia
+`endprotected
+
+`ifdef ZI_INLINED_PSL
+`include "0in_ac_inline_for_mod_zi_cw_sas_10b_8b_decoder.inc"
+`endif
+`ifdef ZI_INLINED_CHX
+`include "zi_cw_sas_10b_8b_decoder.zi_chx.inc"
+`else
+`ifdef ZI_INLINED_CHX_zi_cw_sas_10b_8b_decoder
+`include "zi_cw_sas_10b_8b_decoder.zi_chx.inc"
+`endif
+`endif
+
+`qvlendmodule // End of module qvl_sas_10b_8b_decoder

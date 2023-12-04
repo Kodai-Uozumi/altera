@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<!-- check_version.gtf - This "subroutine" produces an error if the
+                         gtf-generate engine does not support this GTF script
+                         version.
+-->     
+
+<generate_set>
+
+    <set_variable variable="VERSION" to="1.1"/>
+
+    <if condition="not( version_supported( %VERSION% ) )">
+        <error>
+ERROR: version %VERSION% GTF scripts are not supported in this Nios II release.
+        </error>
+    </if>
+
+</generate_set>

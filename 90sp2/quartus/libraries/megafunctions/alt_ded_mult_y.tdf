@@ -1,0 +1,1123 @@
+-----------------------------------------------------------------------------------------------------------
+-- ALT_DED_MULT_Y.TDF
+--
+-- For constructing multipliers using the MAC blocks in Stratix
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+-----------------------------------------------------------------------------------------------------------
+CONSTANT CLOCK0 = "A_0";
+CONSTANT CLOCK1 = "A_1";
+CONSTANT CLOCK2 = "A_2";
+CONSTANT CLOCK3 = "A_3";
+CONSTANT CLEAR0 = "A_0";
+CONSTANT CLEAR1 = "A_1";
+CONSTANT CLEAR2 = "A_2";
+CONSTANT CLEAR3 = "A_3";
+CONSTANT NO_CLOCK = "NONE";
+
+PARAMETERS
+(
+	WIDTH_A,
+	WIDTH_B,
+	PIPELINE = 0,
+	LEVEL = 0,
+	REPRESENTATION_A = "UNSIGNED",
+	REPRESENTATION_B = "UNSIGNED",
+	INPUT_REG_A = NO_CLOCK,
+	INPUT_ACLR_A = NO_CLOCK,
+	INPUT_REG_B = NO_CLOCK,
+	INPUT_ACLR_B = NO_CLOCK,
+	OUTPUT_REG = NO_CLOCK,
+	OUTPUT_ACLR = NO_CLOCK,
+	SIGN_REG_A = NO_CLOCK,
+	SIGN_ACLR_A = NO_CLOCK,
+	SIGN_REG_B = NO_CLOCK,
+	SIGN_ACLR_B = NO_CLOCK,
+	PIPELINE_REG = NO_CLOCK,
+	PIPELINE_CLEAR = NO_CLOCK,
+	EXTERNAL_STAGE_COUNTER = 0,
+	DEDICATED_MULTIPLIER_CIRCUITRY = "YES",
+	SUB_DEDICATED_MULTIPLIER_CIRCUITRY = "YES",
+	DEVICE_FAMILY,
+	DSP_BLOCK_BALANCING = "Auto"
+);
+
+------------
+-- Macros --
+------------
+INCLUDE "aglobal90.inc";
+INCLUDE "dffpipe";
+INCLUDE "lpm_add_sub";
+INCLUDE "alt_ded_mult_y";
+INCLUDE "alt_mac_mult";
+INCLUDE "alt_mac_out";
+INCLUDE "stratix_mac_mult";
+INCLUDE "stratix_mac_out";
+INCLUDE "stratixii_mac_mult";
+INCLUDE "stratixii_mac_out";
+
+-- should the DSP block be used
+CONSTANT MODIFIED_USE_DED = !((DSP_BLOCK_BALANCING == "Auto") # (DSP_BLOCK_BALANCING == "Off") # (DSP_BLOCK_BALANCING == "Logic ELements")) ? "YES" : SUB_DEDICATED_MULTIPLIER_CIRCUITRY;
+DEFINE USE_DSP_BLOCK() = (MODIFIED_USE_DED == "YES") & FAMILY_HAS_DSP_BLOCK(); 
+-- some useful constants
+CONSTANT OUTPUT_ONLY_MODE = "OUTPUT_ONLY";
+CONSTANT BIG_MULT_MODE = "36_BIT_MULTIPLY";
+CONSTANT NONE = "UNUSED";
+CONSTANT UNSIGNED_REPRESENTATION = "UNSIGNED";
+CONSTANT SIGNED_REPRESENTATION = "SIGNED";
+-- This is the maximum width that can be handler by 36 bit multiplier mode
+DEFINE A_CAN_BE_SIGNED() = (USED(signa) # (!USED(signa) & (REPRESENTATION_A == "SIGNED")));
+DEFINE A_CAN_BE_UNSIGNED() = (USED(signa) # (!USED(signa) & (REPRESENTATION_A == "UNSIGNED")));
+DEFINE B_CAN_BE_SIGNED() = (USED(signb) # (!USED(signb) & (REPRESENTATION_B == "SIGNED")));
+DEFINE B_CAN_BE_UNSIGNED() = (USED(signb) # (!USED(signb) & (REPRESENTATION_B == "UNSIGNED")));
+DEFINE USING_MIXED_SIGNS() = (A_CAN_BE_SIGNED() & B_CAN_BE_UNSIGNED()) # (A_CAN_BE_UNSIGNED() & B_CAN_BE_SIGNED());
+DEFINE MAXIMUM_MULT_WIDTH() = USING_MIXED_SIGNS() ? 18 : 36;
+-- This is the maximum width that can be handled by the one level adder mode
+CONSTANT MAXIMUM_ONE_LEVEL_MULT_WIDTH = 18;
+-- pipeline
+DEFINE MIN(a, b) = a <= b ? a : b;
+DEFINE SPLITTING_STAGE() = (WIDTH_A > MAXIMUM_MULT_WIDTH()) # (WIDTH_B > MAXIMUM_MULT_WIDTH());
+DEFINE CONTRIBUTION_B(x) = (x <= MAXIMUM_MULT_WIDTH()) ? 3 : 1 + CONTRIBUTION_B(CEIL(x DIV 2));
+DEFINE CONTRIBUTION_A(x) = (x <= MAXIMUM_MULT_WIDTH()) ? 0 : 1 + CONTRIBUTION_A(CEIL(x DIV 2));
+DEFINE STAGE_COUNTER() = USED(EXTERNAL_STAGE_COUNTER) ? EXTERNAL_STAGE_COUNTER : CONTRIBUTION_B(WIDTH_B) + CONTRIBUTION_A(WIDTH_A);
+DEFINE N_STAGE() = STAGE_COUNTER();
+DEFINE N_INTERNAL_DFF() = MIN(N_STAGE(), PIPELINE);
+DEFINE N_EXTERNAL_DFF() = PIPELINE - N_INTERNAL_DFF();
+DEFINE PIPELINE_DELAY() = CEIL(N_STAGE() DIV 2);
+DEFINE STAGE_VAL(k) = (k*N_INTERNAL_DFF() + PIPELINE_DELAY());
+DEFINE STAGE_NUM(k) = FLOOR(STAGE_VAL(k) DIV N_STAGE());
+DEFINE STAGE_REM(k) = STAGE_VAL(k) MOD N_STAGE();
+-- should the stage k be pipelined
+DEFINE PUT_STAGE_HERE(k) = (PIPELINE > 0) & (STAGE_REM(k) >= STAGE_REM(k+1));
+-- Will this stage be trying to trim the A input to something more manageable?
+DEFINE SPLITTING_STAGE_A() = (WIDTH_A > MAXIMUM_MULT_WIDTH());
+-- Will this stage by trying to trim the B input to something more managebale?
+DEFINE SPLITTING_STAGE_B() = (WIDTH_B > MAXIMUM_MULT_WIDTH()) & !SPLITTING_STAGE_A();
+-- macros for deciding how to split up the multiplier
+DEFINE RIGHT_SPLIT() = !SPLITTING_STAGE() ? 1 : SPLITTING_STAGE_A() ? (WIDTH_A <= 2 * MAXIMUM_MULT_WIDTH() ? MAXIMUM_MULT_WIDTH() : CEIL(WIDTH_A DIV 2)) : (WIDTH_B <= 2 * MAXIMUM_MULT_WIDTH() ? MAXIMUM_MULT_WIDTH() : CEIL(WIDTH_B DIV 2));
+DEFINE LEFT_SPLIT() = !SPLITTING_STAGE() ? 1 : (SPLITTING_STAGE_A() ? WIDTH_A : WIDTH_B) - RIGHT_SPLIT();
+DEFINE USING_OUTPUT_ONLY_MODE() = (WYS_OPERATION_MODE() == OUTPUT_ONLY_MODE);
+DEFINE USING_BIG_MULT() = (WYS_OPERATION_MODE() == BIG_MULT_MODE);
+DEFINE WYS_OPERATION_MODE() = 	MAXIMUM_ONE_LEVEL_MULT_WIDTH < MAXIMUM_MULT_WIDTH() ? 
+								((((WIDTH_A > MAXIMUM_ONE_LEVEL_MULT_WIDTH) # (WIDTH_B > MAXIMUM_ONE_LEVEL_MULT_WIDTH)) & USE_DSP_BLOCK()) == 1 
+									? BIG_MULT_MODE : OUTPUT_ONLY_MODE)
+								: OUTPUT_ONLY_MODE;
+-- will the right subtree have a signed result
+DEFINE A_CONSTANT_SIGNED() = !USED(signa) & (REPRESENTATION_A == SIGNED_REPRESENTATION);
+DEFINE A_CONSTANT_UNSIGNED() = !USED(signa) & (REPRESENTATION_A == UNSIGNED_REPRESENTATION);
+DEFINE B_CONSTANT_SIGNED() = !USED(signb) & (REPRESENTATION_B == SIGNED_REPRESENTATION);
+DEFINE B_CONSTANT_UNSIGNED() = !USED(signb) & (REPRESENTATION_B == UNSIGNED_REPRESENTATION);
+DEFINE RIGHT_SUBTREE_RESULT_IS_SIGNED() = SPLITTING_STAGE_A() ? B_CONSTANT_SIGNED() : A_CONSTANT_SIGNED();
+DEFINE RIGHT_SUBTREE_RESULT_IS_UNSIGNED() = SPLITTING_STAGE_A() ? B_CONSTANT_UNSIGNED() : A_CONSTANT_UNSIGNED();
+DEFINE ACTUAL_LEFT_A() = SPLITTING_STAGE_A() ? LEFT_SPLIT() : WIDTH_A;
+DEFINE ACTUAL_LEFT_B() = SPLITTING_STAGE_B() ? LEFT_SPLIT() : WIDTH_B;
+DEFINE ACTUAL_RIGHT_A() = SPLITTING_STAGE_A() ? RIGHT_SPLIT() : WIDTH_A;
+DEFINE ACTUAL_RIGHT_B() = SPLITTING_STAGE_B() ? RIGHT_SPLIT() : WIDTH_B;
+DEFINE FINAL_STAGE() = (LEVEL == 0);
+DEFINE FIRST_STAGE() = !SPLITTING_STAGE();
+-- which clock and clear should be used to implement the pipeline
+DEFINE CLOCK_TRANSLATE_S(clock) = 	(clock == CLOCK0) ? "0" :
+									(clock == CLOCK1) ? "1" :
+									(clock == CLOCK2) ? "2" :
+									(clock == CLOCK3) ? "3" : NONE;
+DEFINE CLEAR_TRANSLATE_S(clear) =	CLOCK_TRANSLATE_S(clear);
+CONSTANT PIPELINE_CLOCK = PIPELINE_REG == NO_CLOCK ? "0" : CLOCK_TRANSLATE_S(PIPELINE_REG);
+CONSTANT PIPELINE_ACLR = PIPELINE_REG == NO_CLOCK ? "0" : CLEAR_TRANSLATE_S(PIPELINE_CLEAR);
+-- for handling the multiple clocks and clears
+DEFINE USING_CLOCK0() = USING_CLOCK("0");
+DEFINE USING_CLOCK1() = USING_CLOCK("1");
+DEFINE USING_CLOCK2() = USING_CLOCK("2");
+DEFINE USING_CLOCK3() = USING_CLOCK("3");
+DEFINE USING_CLEAR0() = USING_CLEAR("0");
+DEFINE USING_CLEAR1() = USING_CLEAR("1");
+DEFINE USING_CLEAR2() = USING_CLEAR("2");
+DEFINE USING_CLEAR3() = USING_CLEAR("3");
+DEFINE USING_CLOCK_PIPE(clock) =	(WYS_SIGNA_CLOCK() == clock) # (WYS_SIGNB_CLOCK() == clock) # (WYS_OUTPUT_CLOCK() == clock) #
+									(WYS_SIGNA_PIPELINE_CLOCK() == clock) # (WYS_SIGNB_PIPELINE_CLOCK() == clock);
+DEFINE USING_CLEAR_PIPE(clear) =	(WYS_SIGNA_CLEAR() == clear) # (WYS_SIGNB_CLEAR() == clear) # (WYS_OUTPUT_CLEAR() == clear) # 
+									(WYS_SIGNA_PIPELINE_CLEAR() == clear) # (WYS_SIGNB_PIPELINE_CLEAR() == clear);
+DEFINE USING_CLOCK0_PIPE() = USING_CLOCK_PIPE("0");
+DEFINE USING_CLOCK1_PIPE() = USING_CLOCK_PIPE("1");
+DEFINE USING_CLOCK2_PIPE() = USING_CLOCK_PIPE("2");
+DEFINE USING_CLOCK3_PIPE() = USING_CLOCK_PIPE("3");
+DEFINE USING_CLEAR0_PIPE() = USING_CLEAR_PIPE("0");
+DEFINE USING_CLEAR1_PIPE() = USING_CLEAR_PIPE("1");
+DEFINE USING_CLEAR2_PIPE() = USING_CLEAR_PIPE("2");
+DEFINE USING_CLEAR3_PIPE() = USING_CLEAR_PIPE("3");
+
+-- register placement calculations
+DEFINE EXTERNAL_DATAA_REGISTERS() = (INPUT_REG_A != NO_CLOCK) & PUT_STAGE_HERE(LEVEL);
+DEFINE EXTERNAL_DATAB_REGISTERS() = (INPUT_REG_B != NO_CLOCK) & PUT_STAGE_HERE(LEVEL);
+DEFINE EXTERNAL_OUTPUT_REGISTERS() = (OUTPUT_REG != NO_CLOCK) & PUT_STAGE_HERE(LEVEL + 2);
+DEFINE EXTERNAL_SIGNA_REGISTERS() = (SIGN_REG_A != NO_CLOCK) & PUT_STAGE_HERE(LEVEL);
+DEFINE EXTERNAL_SIGNB_REGISTERS() = (SIGN_REG_B != NO_CLOCK) & PUT_STAGE_HERE(LEVEL);
+-- clocking parameters to the wysiwyg
+DEFINE WYS_DATAA_CLOCK() = PUT_STAGE_HERE(LEVEL) ? PIPELINE_CLOCK : (INPUT_REG_A != NO_CLOCK) ? CLOCK_TRANSLATE_S(INPUT_REG_A) : NONE;
+DEFINE WYS_DATAB_CLOCK() = PUT_STAGE_HERE(LEVEL) ? PIPELINE_CLOCK : (INPUT_REG_B != NO_CLOCK) ? CLOCK_TRANSLATE_S(INPUT_REG_B) : NONE;
+DEFINE WYS_OUTPUT_CLOCK() = PUT_STAGE_HERE(LEVEL + 2) ? PIPELINE_CLOCK : (OUTPUT_REG != NO_CLOCK) ? CLOCK_TRANSLATE_S(OUTPUT_REG) : NONE;
+DEFINE WYS_SIGNA_CLOCK() = USED(signa) ? (PUT_STAGE_HERE(LEVEL) ? PIPELINE_CLOCK : (SIGN_REG_A != NO_CLOCK) ? CLOCK_TRANSLATE_S(SIGN_REG_A) : NONE) : NONE;
+DEFINE WYS_SIGNB_CLOCK() = USED(signb) ? (PUT_STAGE_HERE(LEVEL) ? PIPELINE_CLOCK : (SIGN_REG_B != NO_CLOCK) ? CLOCK_TRANSLATE_S(SIGN_REG_B) : NONE) : NONE;
+DEFINE WYS_SIGNA_PIPELINE_CLOCK() = (PUT_STAGE_HERE(LEVEL + 1) & USED(signa)) ? PIPELINE_CLOCK : NONE;
+DEFINE WYS_SIGNB_PIPELINE_CLOCK() = (PUT_STAGE_HERE(LEVEL + 1) & USED(signb)) ? PIPELINE_CLOCK : NONE;
+DEFINE WYS_OUTPUT_MULT_CLOCK() = PUT_STAGE_HERE(LEVEL + 1) ? PIPELINE_CLOCK : NONE;
+-- clearing parameters to the wysiwyg
+DEFINE WYS_OUTPUT_MULT_CLEAR() = PUT_STAGE_HERE(LEVEL + 1) & WYS_OUTPUT_MULT_CLOCK() != NONE ? PIPELINE_ACLR : NONE;
+DEFINE WYS_DATAA_CLEAR() = (WYS_DATAA_CLOCK() != NONE) ? (PUT_STAGE_HERE(LEVEL) ? PIPELINE_ACLR : (INPUT_ACLR_A != NO_CLOCK) ? CLEAR_TRANSLATE_S(INPUT_ACLR_A) : NONE) : NONE;
+DEFINE WYS_DATAB_CLEAR() = (WYS_DATAB_CLOCK() != NONE) ? (PUT_STAGE_HERE(LEVEL) ? PIPELINE_ACLR : (INPUT_ACLR_B != NO_CLOCK) ? CLEAR_TRANSLATE_S(INPUT_ACLR_B) : NONE) : NONE;
+DEFINE WYS_OUTPUT_CLEAR() = (WYS_OUTPUT_CLOCK() != NONE) ? (PUT_STAGE_HERE(LEVEL + 2) ? PIPELINE_ACLR : OUTPUT_REG != NO_CLOCK ? CLEAR_TRANSLATE_S(OUTPUT_ACLR) : NONE) : NONE;
+DEFINE WYS_SIGNA_CLEAR() = USED(signa) ? ((WYS_SIGNA_CLOCK() != NONE) ? ((PUT_STAGE_HERE(LEVEL) & USED(signa)) ? PIPELINE_ACLR : (SIGN_ACLR_A != NO_CLOCK) ? CLEAR_TRANSLATE_S(SIGN_ACLR_A) : NONE) : NONE) : NONE;
+DEFINE WYS_SIGNB_CLEAR() = USED(signb) ? ((WYS_SIGNB_CLOCK() != NONE) ? ((PUT_STAGE_HERE(LEVEL) & USED(signb)) ? PIPELINE_ACLR : (SIGN_ACLR_B != NO_CLOCK) ? CLEAR_TRANSLATE_S(SIGN_ACLR_B) : NONE) : NONE) : NONE;
+DEFINE WYS_SIGNA_PIPELINE_CLEAR() = USED(signa) ? ((WYS_SIGNA_PIPELINE_CLOCK() != NONE) ? ((PUT_STAGE_HERE(LEVEL + 1) & USED(signa)) ? PIPELINE_ACLR : NONE) : NONE) : NONE;
+DEFINE WYS_SIGNB_PIPELINE_CLEAR() = USED(signb) ? ((WYS_SIGNB_PIPELINE_CLOCK() != NONE) ? ((PUT_STAGE_HERE(LEVEL + 1) & USED(signb)) ? PIPELINE_ACLR : NONE) : NONE) : NONE;
+DEFINE USING_CLOCK(clock) = (FIRST_STAGE() & (	(WYS_DATAA_CLOCK() == clock) # (WYS_DATAB_CLOCK() == clock) # (WYS_SIGNA_CLOCK() == clock) # (WYS_SIGNB_CLOCK() == clock) #
+												(WYS_OUTPUT_CLOCK() == clock) # (PUT_STAGE_HERE(LEVEL + 1) & (PIPELINE_CLOCK == clock)))) #
+							(!FIRST_STAGE() & PUT_STAGE_HERE(LEVEL) & (PIPELINE_CLOCK == clock)) # (FINAL_STAGE() & (OUTPUT_REG == clock));
+DEFINE USING_CLEAR(clear) = (FIRST_STAGE() & (	(WYS_DATAA_CLEAR() == clear) # (WYS_DATAB_CLEAR() == clear) # (WYS_SIGNA_CLEAR() == clear) # (WYS_SIGNB_CLEAR() == clear) #
+												(WYS_OUTPUT_CLEAR() == clear) # (PUT_STAGE_HERE(LEVEL + 1) & (PIPELINE_ACLR == clear)))) #
+							(!FIRST_STAGE() & PUT_STAGE_HERE(LEVEL) & (PIPELINE_ACLR == clear)) # (FINAL_STAGE() & (OUTPUT_ACLR == clear));
+DEFINE CLOCK_TRANSLATE(clock) = (clock == CLOCK0) ? 0 : (clock == CLOCK1) ? 1 : (clock == CLOCK2) ? 2 : 3;
+DEFINE CLEAR_TRANSLATE(clear) = CLOCK_TRANSLATE(clear);
+CONSTANT PIPELINE_CLOCK_N =	PIPELINE_CLOCK == "0" ? 0 :
+							PIPELINE_CLOCK == "1" ? 1 :
+							PIPELINE_CLOCK == "2" ? 2 : 3;
+CONSTANT PIPELINE_ACLR_N = 	PIPELINE_ACLR == "0" ? 0 :
+							PIPELINE_ACLR == "1" ? 1 :
+							PIPELINE_ACLR == "2" ? 2 : 3;
+-- for passing down to the lcell converter
+DEFINE CONVERT_TO_STRING(x) =	(x == "0")	?	"A_0"	:
+								(x == "1")	?	"A_1"	:
+								(x == "2")	?	"A_2"	:
+								(x == "3")	?	"A_3"	:
+												"UNUSED";
+DEFINE MATCHING_REGISTERS_COUNT() = (!SPLITTING_STAGE() & (LEVEL + 2 < N_STAGE() - 1)) ? INSERT_MATCHING_COUNT_HELP(LEVEL + 3, N_STAGE() - 1) : 0;
+DEFINE INSERT_MATCHING_COUNT_HELP(present, final) = (PUT_STAGE_HERE(present) ? 1 : 0) + (present >= final ? 0 : INSERT_MATCHING_COUNT_HELP(present + 1, final));
+
+SUBDESIGN alt_ded_mult_y
+(
+	dataa[WIDTH_A - 1..0]				:	INPUT;
+	datab[WIDTH_B - 1..0]				:	INPUT;
+
+	clock[3..0]							:	INPUT = VCC;
+	ena[3..0]							:	INPUT = VCC;
+	aclr[3..0]							:	INPUT = GND;
+
+	signa								:	INPUT = GND;
+	signb								:	INPUT = GND;
+
+	result[WIDTH_A + WIDTH_B - 1..0]	:	OUTPUT;
+	scanouta[WIDTH_A - 1..0]			:	OUTPUT;
+	scanoutb[WIDTH_B - 1..0]			:	OUTPUT;
+	signa_out							:	OUTPUT;
+	signb_out							:	OUTPUT;
+)
+VARIABLE
+
+	IF FINAL_STAGE() GENERATE
+		-- add in some registers for simulating the scan chains
+		IF INPUT_REG_A == NO_CLOCK GENERATE
+			scan_chain_a[WIDTH_A - 1..0] : NODE;
+		ELSE GENERATE
+			scan_chain_a[WIDTH_A - 1..0] : DFFE;
+		END GENERATE;
+		IF INPUT_REG_B == NO_CLOCK GENERATE
+			scan_chain_b[WIDTH_B - 1..0] : NODE;
+		ELSE GENERATE
+			scan_chain_b[WIDTH_B - 1..0] : DFFE;
+		END GENERATE;
+	END GENERATE;
+
+	IF !SPLITTING_STAGE() GENERATE
+		-- may need to add extra latency here
+		pre_result : dffpipe WITH (DELAY = N_EXTERNAL_DFF() + MATCHING_REGISTERS_COUNT(), WIDTH = WIDTH_A + WIDTH_B);
+
+		-- in case the MAC block cant fit the registers which are needed
+		IF EXTERNAL_DATAA_REGISTERS() GENERATE
+			x_dataa[WIDTH_A - 1..0] : DFFE;
+		ELSE GENERATE
+			x_dataa[WIDTH_A - 1..0] : NODE;
+		END GENERATE;
+		IF EXTERNAL_DATAB_REGISTERS() GENERATE
+			x_datab[WIDTH_B - 1..0] : DFFE;
+		ELSE GENERATE
+			x_datab[WIDTH_B - 1..0] : NODE;
+		END GENERATE;
+		IF EXTERNAL_OUTPUT_REGISTERS() GENERATE
+			x_output[WIDTH_A + WIDTH_B - 1..0] : DFFE;
+		ELSE GENERATE
+			x_output[WIDTH_A + WIDTH_B - 1..0] : NODE;
+		END GENERATE;
+		IF EXTERNAL_SIGNA_REGISTERS() GENERATE
+			x_signa : DFFE;
+		ELSE GENERATE
+			x_signa : NODE;
+		END GENERATE;
+		IF EXTERNAL_SIGNB_REGISTERS() GENERATE
+			x_signb : DFFE;
+		ELSE GENERATE
+			x_signb : NODE;
+		END GENERATE;
+
+		IF !USING_BIG_MULT() GENERATE
+			IF USE_DSP_BLOCK() GENERATE
+				IF FAMILY_STRATIXII() == 1 GENERATE
+					-- this is the multiplier portion of the DSP block
+					multiplier_atom	: stratixii_mac_mult WITH	(
+																DATAA_WIDTH		= WIDTH_A,
+																DATAB_WIDTH		= WIDTH_B,
+																DATAA_CLOCK		= WYS_DATAA_CLOCK(),
+																DATAB_CLOCK		= WYS_DATAB_CLOCK(),
+																SIGNA_CLOCK		= WYS_SIGNA_CLOCK(),
+																SIGNB_CLOCK		= WYS_SIGNB_CLOCK(),
+																OUTPUT_CLOCK	= WYS_OUTPUT_MULT_CLOCK(),
+																DATAA_CLEAR		= WYS_DATAA_CLEAR(),
+																DATAB_CLEAR		= WYS_DATAB_CLEAR(),
+																SIGNA_CLEAR		= WYS_SIGNA_CLEAR(),
+																SIGNB_CLEAR		= WYS_SIGNB_CLEAR(),
+																OUTPUT_CLEAR	= WYS_OUTPUT_MULT_CLEAR()
+															);
+
+					-- output portion of the DSP block
+					output_atom : stratixii_mac_out WITH	(
+															OPERATION_MODE = WYS_OPERATION_MODE(),
+															DATAA_WIDTH = WIDTH_A + WIDTH_B,
+															SIGNA_CLOCK = WYS_SIGNA_CLOCK(),
+															SIGNB_CLOCK = WYS_SIGNB_CLOCK(),
+															OUTPUT_CLOCK = WYS_OUTPUT_CLOCK(),
+															SIGNA_CLEAR = WYS_SIGNA_CLEAR(),
+															SIGNB_CLEAR = WYS_SIGNB_CLEAR(),
+															OUTPUT_CLEAR = WYS_OUTPUT_CLEAR(),
+															SIGNA_PIPELINE_CLOCK = WYS_SIGNA_PIPELINE_CLOCK(),
+															SIGNB_PIPELINE_CLOCK = WYS_SIGNB_PIPELINE_CLOCK(),
+															SIGNA_PIPELINE_CLEAR = WYS_SIGNA_PIPELINE_CLEAR(),
+															SIGNB_PIPELINE_CLEAR = WYS_SIGNB_PIPELINE_CLEAR()
+														);
+				ELSE GENERATE
+						-- this is the multiplier portion of the DSP block
+					multiplier_atom	: stratix_mac_mult WITH	(
+																DATAA_WIDTH		= WIDTH_A,
+																DATAB_WIDTH		= WIDTH_B,
+																DATAA_CLOCK		= WYS_DATAA_CLOCK(),
+																DATAB_CLOCK		= WYS_DATAB_CLOCK(),
+																SIGNA_CLOCK		= WYS_SIGNA_CLOCK(),
+																SIGNB_CLOCK		= WYS_SIGNB_CLOCK(),
+																OUTPUT_CLOCK	= WYS_OUTPUT_MULT_CLOCK(),
+																DATAA_CLEAR		= WYS_DATAA_CLEAR(),
+																DATAB_CLEAR		= WYS_DATAB_CLEAR(),
+																SIGNA_CLEAR		= WYS_SIGNA_CLEAR(),
+																SIGNB_CLEAR		= WYS_SIGNB_CLEAR(),
+																OUTPUT_CLEAR	= WYS_OUTPUT_MULT_CLEAR()
+															);
+
+					-- output portion of the DSP block
+					output_atom : stratix_mac_out WITH	(
+															OPERATION_MODE = WYS_OPERATION_MODE(),
+															DATAA_WIDTH = WIDTH_A + WIDTH_B,
+															SIGNA_CLOCK = WYS_SIGNA_CLOCK(),
+															SIGNB_CLOCK = WYS_SIGNB_CLOCK(),
+															OUTPUT_CLOCK = WYS_OUTPUT_CLOCK(),
+															SIGNA_CLEAR = WYS_SIGNA_CLEAR(),
+															SIGNB_CLEAR = WYS_SIGNB_CLEAR(),
+															OUTPUT_CLEAR = WYS_OUTPUT_CLEAR(),
+															SIGNA_PIPELINE_CLOCK = WYS_SIGNA_PIPELINE_CLOCK(),
+															SIGNB_PIPELINE_CLOCK = WYS_SIGNB_PIPELINE_CLOCK(),
+															SIGNA_PIPELINE_CLEAR = WYS_SIGNA_PIPELINE_CLEAR(),
+															SIGNB_PIPELINE_CLEAR = WYS_SIGNB_PIPELINE_CLEAR()
+														);				
+				END GENERATE;
+			ELSE GENERATE
+				multiplier_atom : alt_mac_mult WITH	(
+														DATAA_WIDTH = WIDTH_A,
+														DATAB_WIDTH = WIDTH_B,
+														DATAA_CLOCK = CONVERT_TO_STRING(WYS_DATAA_CLOCK()),
+														DATAB_CLOCK = CONVERT_TO_STRING(WYS_DATAB_CLOCK()),
+														SIGNA_CLOCK = CONVERT_TO_STRING(WYS_SIGNA_CLOCK()),
+														SIGNB_CLOCK = CONVERT_TO_STRING(WYS_SIGNB_CLOCK()),
+														OUTPUT_CLOCK = CONVERT_TO_STRING(WYS_OUTPUT_MULT_CLOCK()),
+														DATAA_CLEAR = CONVERT_TO_STRING(WYS_DATAA_CLEAR()),
+														DATAB_CLEAR = CONVERT_TO_STRING(WYS_DATAB_CLEAR()),
+														SIGNA_CLEAR = CONVERT_TO_STRING(WYS_SIGNA_CLEAR()),
+														SIGNB_CLEAR = CONVERT_TO_STRING(WYS_SIGNB_CLEAR()),
+														OUTPUT_CLEAR = CONVERT_TO_STRING(WYS_OUTPUT_MULT_CLEAR())
+													);
+
+				output_atom : alt_mac_out WITH	(
+													OPERATION_MODE = WYS_OPERATION_MODE(),
+													DATAA_WIDTH = WIDTH_A + WIDTH_B,
+													SIGNA_CLOCK = CONVERT_TO_STRING(WYS_SIGNA_CLOCK()),
+													SIGNB_CLOCK = CONVERT_TO_STRING(WYS_SIGNB_CLOCK()),
+													OUTPUT_CLOCK = CONVERT_TO_STRING(WYS_OUTPUT_CLOCK()),
+													SIGNA_CLEAR = CONVERT_TO_STRING(WYS_SIGNA_CLEAR()),
+													SIGNB_CLEAR = CONVERT_TO_STRING(WYS_SIGNB_CLEAR()),
+													OUTPUT_CLEAR = CONVERT_TO_STRING(WYS_OUTPUT_CLEAR()),
+													SIGNA_PIPELINE_CLOCK = CONVERT_TO_STRING(WYS_SIGNA_PIPELINE_CLOCK()),
+													SIGNB_PIPELINE_CLOCK = CONVERT_TO_STRING(WYS_SIGNB_PIPELINE_CLOCK()),
+													SIGNA_PIPELINE_CLEAR = CONVERT_TO_STRING(WYS_SIGNA_PIPELINE_CLEAR()),
+													SIGNB_PIPELINE_CLEAR = CONVERT_TO_STRING(WYS_SIGNB_PIPELINE_CLEAR())
+												);
+			END GENERATE;
+		ELSE GENERATE
+			IF USE_DSP_BLOCK() GENERATE
+				IF FAMILY_STRATIXII() == 1 GENERATE
+					-- multiplier portion of the DSP block
+					multiplier_atom[3..0] :stratixii_mac_mult WITH	(
+																		DATAA_WIDTH				= MAXIMUM_ONE_LEVEL_MULT_WIDTH,
+																		DATAB_WIDTH				= MAXIMUM_ONE_LEVEL_MULT_WIDTH,
+																		DATAA_CLOCK				= WYS_DATAA_CLOCK(),
+																		DATAB_CLOCK				= WYS_DATAB_CLOCK(),
+																		SIGNA_CLOCK				= WYS_SIGNA_CLOCK(),
+																		SIGNB_CLOCK				= WYS_SIGNB_CLOCK(),
+																		SIGNA_PIPELINE_CLOCK	= WYS_SIGNA_PIPELINE_CLOCK(),
+																		SIGNA_PIPELINE_CLEAR	= WYS_SIGNA_PIPELINE_CLEAR(),
+																		SIGNB_PIPELINE_CLOCK	= WYS_SIGNB_PIPELINE_CLOCK(),
+																		SIGNB_PIPELINE_CLEAR	= WYS_SIGNB_PIPELINE_CLEAR(),
+																		OUTPUT_CLOCK			= WYS_OUTPUT_MULT_CLOCK(),
+																		DATAA_CLEAR				= WYS_DATAA_CLEAR(),
+																		DATAB_CLEAR				= WYS_DATAB_CLEAR(),
+																		SIGNA_CLEAR				= WYS_SIGNA_CLEAR(),
+																		SIGNB_CLEAR				= WYS_SIGNB_CLEAR(),
+																		OUTPUT_CLEAR			= WYS_OUTPUT_MULT_CLEAR()
+																	);
+
+					-- output portion of the DSP block
+					output_atom : stratixii_mac_out WITH	(
+															OPERATION_MODE = WYS_OPERATION_MODE(),
+															DATAA_WIDTH = MAXIMUM_MULT_WIDTH(),
+															DATAB_WIDTH = MAXIMUM_MULT_WIDTH(),
+															DATAC_WIDTH = MAXIMUM_MULT_WIDTH(),
+															DATAD_WIDTH = MAXIMUM_MULT_WIDTH(),
+															SIGNA_CLOCK = WYS_SIGNA_CLOCK(),
+															SIGNB_CLOCK = WYS_SIGNB_CLOCK(),
+															OUTPUT_CLOCK = WYS_OUTPUT_CLOCK(),
+															SIGNA_CLEAR = WYS_SIGNA_CLEAR(),
+															SIGNB_CLEAR = WYS_SIGNB_CLEAR(),
+															OUTPUT_CLEAR = WYS_OUTPUT_CLEAR(),
+															SIGNA_PIPELINE_CLOCK = WYS_SIGNA_PIPELINE_CLOCK(),
+															SIGNB_PIPELINE_CLOCK = WYS_SIGNB_PIPELINE_CLOCK(),
+															SIGNA_PIPELINE_CLEAR = WYS_SIGNA_PIPELINE_CLEAR(),
+															SIGNB_PIPELINE_CLEAR = WYS_SIGNB_PIPELINE_CLEAR()
+														);
+				ELSE GENERATE
+					-- multiplier portion of the DSP block
+					multiplier_atom[3..0] :stratix_mac_mult WITH	(
+																		DATAA_WIDTH				= MAXIMUM_ONE_LEVEL_MULT_WIDTH,
+																		DATAB_WIDTH				= MAXIMUM_ONE_LEVEL_MULT_WIDTH,
+																		DATAA_CLOCK				= WYS_DATAA_CLOCK(),
+																		DATAB_CLOCK				= WYS_DATAB_CLOCK(),
+																		SIGNA_CLOCK				= WYS_SIGNA_CLOCK(),
+																		SIGNB_CLOCK				= WYS_SIGNB_CLOCK(),
+																		SIGNA_PIPELINE_CLOCK	= WYS_SIGNA_PIPELINE_CLOCK(),
+																		SIGNA_PIPELINE_CLEAR	= WYS_SIGNA_PIPELINE_CLEAR(),
+																		SIGNB_PIPELINE_CLOCK	= WYS_SIGNB_PIPELINE_CLOCK(),
+																		SIGNB_PIPELINE_CLEAR	= WYS_SIGNB_PIPELINE_CLEAR(),
+																		OUTPUT_CLOCK			= WYS_OUTPUT_MULT_CLOCK(),
+																		DATAA_CLEAR				= WYS_DATAA_CLEAR(),
+																		DATAB_CLEAR				= WYS_DATAB_CLEAR(),
+																		SIGNA_CLEAR				= WYS_SIGNA_CLEAR(),
+																		SIGNB_CLEAR				= WYS_SIGNB_CLEAR(),
+																		OUTPUT_CLEAR			= WYS_OUTPUT_MULT_CLEAR()
+																	);
+
+					-- output portion of the DSP block
+					output_atom : stratix_mac_out WITH	(
+															OPERATION_MODE = WYS_OPERATION_MODE(),
+															DATAA_WIDTH = MAXIMUM_MULT_WIDTH(),
+															DATAB_WIDTH = MAXIMUM_MULT_WIDTH(),
+															DATAC_WIDTH = MAXIMUM_MULT_WIDTH(),
+															DATAD_WIDTH = MAXIMUM_MULT_WIDTH(),
+															SIGNA_CLOCK = WYS_SIGNA_CLOCK(),
+															SIGNB_CLOCK = WYS_SIGNB_CLOCK(),
+															OUTPUT_CLOCK = WYS_OUTPUT_CLOCK(),
+															SIGNA_CLEAR = WYS_SIGNA_CLEAR(),
+															SIGNB_CLEAR = WYS_SIGNB_CLEAR(),
+															OUTPUT_CLEAR = WYS_OUTPUT_CLEAR(),
+															SIGNA_PIPELINE_CLOCK = WYS_SIGNA_PIPELINE_CLOCK(),
+															SIGNB_PIPELINE_CLOCK = WYS_SIGNB_PIPELINE_CLOCK(),
+															SIGNA_PIPELINE_CLEAR = WYS_SIGNA_PIPELINE_CLEAR(),
+															SIGNB_PIPELINE_CLEAR = WYS_SIGNB_PIPELINE_CLEAR()
+														);
+				END GENERATE;
+			ELSE GENERATE
+				multiplier_atom[3..0] : alt_mac_mult WITH	(
+																DATAA_WIDTH = MAXIMUM_ONE_LEVEL_MULT_WIDTH,
+																DATAB_WIDTH = MAXIMUM_ONE_LEVEL_MULT_WIDTH,
+																DATAA_CLOCK = CONVERT_TO_STRING(WYS_DATAA_CLOCK()),
+																DATAB_CLOCK = CONVERT_TO_STRING(WYS_DATAB_CLOCK()),
+																SIGNA_CLOCK = CONVERT_TO_STRING(WYS_SIGNA_CLOCK()),
+																SIGNB_CLOCK = CONVERT_TO_STRING(WYS_SIGNB_CLOCK()),
+																SIGNA_PIPELINE_CLOCK = CONVERT_TO_STRING(WYS_SIGNA_PIPELINE_CLOCK()),
+																SIGNA_PIPELINE_CLEAR = CONVERT_TO_STRING(WYS_SIGNA_PIPELINE_CLEAR()),
+																SIGNB_PIPELINE_CLOCK = CONVERT_TO_STRING(WYS_SIGNB_PIPELINE_CLOCK()),
+																SIGNB_PIPELINE_CLEAR = CONVERT_TO_STRING(WYS_SIGNB_PIPELINE_CLEAR()),
+																OUTPUT_CLOCK = CONVERT_TO_STRING(WYS_OUTPUT_MULT_CLOCK()),
+																DATAA_CLEAR = CONVERT_TO_STRING(WYS_DATAA_CLEAR()),
+																DATAB_CLEAR = CONVERT_TO_STRING(WYS_DATAB_CLEAR()),
+																SIGNA_CLEAR = CONVERT_TO_STRING(WYS_SIGNA_CLEAR()),
+																SIGNB_CLEAR = CONVERT_TO_STRING(WYS_SIGNB_CLEAR()),
+																OUTPUT_CLEAR = CONVERT_TO_STRING(WYS_OUTPUT_MULT_CLEAR())
+															);
+				output_atom : alt_mac_out WITH	(
+													OPERATION_MODE = WYS_OPERATION_MODE(),
+													DATAA_WIDTH = MAXIMUM_MULT_WIDTH(),
+													DATAB_WIDTH = MAXIMUM_MULT_WIDTH(),
+													DATAC_WIDTH = MAXIMUM_MULT_WIDTH(),
+													DATAD_WIDTH = MAXIMUM_MULT_WIDTH(),
+													SIGNA_CLOCK = CONVERT_TO_STRING(WYS_SIGNA_CLOCK()),
+													SIGNB_CLOCK = CONVERT_TO_STRING(WYS_SIGNB_CLOCK()),
+													OUTPUT_CLOCK = CONVERT_TO_STRING(WYS_OUTPUT_CLOCK()),
+													SIGNA_CLEAR = CONVERT_TO_STRING(WYS_SIGNA_CLEAR()),
+													SIGNB_CLEAR = CONVERT_TO_STRING(WYS_SIGNB_CLEAR()),
+													OTUPUT_CLEAR = CONVERT_TO_STRING(WYS_OUTPUT_CLEAR()),
+													SIGNA_PIPELINE_CLOCK = CONVERT_TO_STRING(WYS_SIGNA_PIPELINE_CLOCK()),
+													SIGNB_PIPELINE_CLOCK = CONVERT_TO_STRING(WYS_SIGNB_PIPELINE_CLOCK()),
+													SIGNA_PIPELINE_CLEAR = CONVERT_TO_STRING(WYS_SIGNA_PIPELINE_CLEAR()),
+													SIGNB_PIPELINE_CLEAR = CONVERT_TO_STRING(WYS_SIGNB_PIPELINE_CLEAR())
+												);
+			END GENERATE;
+
+			-- these are for making the connections easier
+			a_input_extended[MAXIMUM_MULT_WIDTH() - 1..0] : NODE;
+			b_input_extended[MAXIMUM_MULT_WIDTH() - 1..0] : NODE;
+
+		END GENERATE;
+	ELSE GENERATE
+		-- For keeping track of the signa\signb for multiple levels
+		IF USED(signa) GENERATE
+			IF EXTERNAL_SIGNA_REGISTERS() GENERATE
+				x_signa : DFFE;
+			ELSE GENERATE
+				x_signa : NODE;
+			END GENERATE;
+		END GENERATE;
+
+		IF USED(signb) GENERATE
+			IF EXTERNAL_SIGNB_REGISTERS() GENERATE
+				x_signb : DFFE;
+			ELSE GENERATE
+				x_signb : NODE;
+			END GENERATE;
+		END GENERATE;
+
+		-- this is a splitting stage
+		left_mult :	alt_ded_mult_y WITH	(
+											WIDTH_A = ACTUAL_LEFT_A(),
+											WIDTH_B = ACTUAL_LEFT_B(),
+											PIPELINE = PIPELINE,
+											LEVEL = LEVEL + 1,
+											REPRESENTATION_A = REPRESENTATION_A,
+											REPRESENTATION_B = REPRESENTATION_B,
+											EXTERNAL_STAGE_COUNTER = STAGE_COUNTER(),
+											PIPELINE_REG = PIPELINE_REG,
+											PIPELINE_CLEAR = PIPELINE_CLEAR,
+											OUTPUT_REG = NO_CLOCK
+										);
+		right_mult : alt_ded_mult_y WITH(	
+											WIDTH_A = ACTUAL_RIGHT_A(),
+											WIDTH_B = ACTUAL_RIGHT_B(),
+											PIPELINE = PIPELINE,
+											LEVEL = LEVEL + 1,
+											REPRESENTATION_A = SPLITTING_STAGE_A() ? UNSIGNED_REPRESENTATION : REPRESENTATION_A,
+											REPRESENTATION_B = SPLITTING_STAGE_B() ? UNSIGNED_REPRESENTATION : REPRESENTATION_B,
+											EXTERNAL_STAGE_COUNTER = STAGE_COUNTER(),
+											PIPELINE_REG = PIPELINE_REG,
+											PIPELINE_CLEAR = PIPELINE_CLEAR,
+											OUTPUT_REG = NO_CLOCK
+										);
+		substage_adder : lpm_add_sub WITH	(
+												LPM_WIDTH = ACTUAL_LEFT_A() + ACTUAL_LEFT_B(),
+												LPM_DIRECTION = "ADD"
+											);
+		-- may need to pipeline the stage
+		IF PUT_STAGE_HERE(LEVEL) GENERATE
+			pipeline_registers[WIDTH_A + WIDTH_B - 1..0] : DFFE;
+		END GENERATE;
+
+		-- if this is the final stage then well need some external registers for doing the output registering
+		IF FINAL_STAGE() & OUTPUT_REG != NO_CLOCK GENERATE
+			x_output[WIDTH_A + WIDTH_B - 1..0] : DFFE;
+		ELSE GENERATE
+			x_output[WIDTH_A + WIDTH_B - 1..0] : NODE;
+		END GENERATE;
+	END GENERATE;
+BEGIN
+	ASSERT RIGHT_SUBTREE_RESULT_IS_SIGNED() !& RIGHT_SUBTREE_RESULT_IS_UNSIGNED()
+		REPORT "Failure in alt_ded_mult_y."
+		SEVERITY ERROR;
+	-- scan chains
+	IF FINAL_STAGE() GENERATE
+		IF INPUT_REG_A == NO_CLOCK GENERATE
+			scan_chain_a[] = dataa[];
+		ELSE GENERATE
+			scan_chain_a[].d = dataa[];
+			scan_chain_a[].(clk, ena, clrn) = (clock[CLOCK_TRANSLATE(INPUT_REG_A)], ena[CLOCK_TRANSLATE(INPUT_REG_A)], !aclr[CLEAR_TRANSLATE(INPUT_ACLR_A)]);
+		END GENERATE;
+		IF INPUT_REG_B == NO_CLOCK GENERATE
+			scan_chain_b[] = datab[];
+		ELSE GENERATE
+			scan_chain_b[].d = datab[];
+			scan_chain_b[].(clk, ena, clrn) = (clock[CLOCK_TRANSLATE(INPUT_REG_B)], ena[CLOCK_TRANSLATE(INPUT_REG_B)], !aclr[CLEAR_TRANSLATE(INPUT_ACLR_B)]);
+		END GENERATE;
+
+		scanouta[] = scan_chain_a[];
+		scanoutb[] = scan_chain_b[];
+	END GENERATE;
+
+	-- actual multiplier construction
+	IF !SPLITTING_STAGE() GENERATE
+		-- construct the external registers if necessary
+		IF EXTERNAL_DATAA_REGISTERS() GENERATE
+			x_dataa[].d = dataa[];
+			x_dataa[].(clk, ena, clrn) = (clock[CLOCK_TRANSLATE(INPUT_REG_A)], ena[CLOCK_TRANSLATE(INPUT_REG_A)], !aclr[CLEAR_TRANSLATE(INPUT_ACLR_A)]);
+		ELSE GENERATE
+			x_dataa[] = dataa[];
+		END GENERATE;
+		IF EXTERNAL_DATAB_REGISTERS() GENERATE
+			x_datab[].d = datab[];
+			x_datab[].(clk, ena, clrn) = (clock[CLOCK_TRANSLATE(INPUT_REG_B)], ena[CLOCK_TRANSLATE(INPUT_REG_B)], !aclr[CLEAR_TRANSLATE(INPUT_ACLR_B)]);
+		ELSE GENERATE
+			x_datab[] = datab[];
+		END GENERATE;
+		IF EXTERNAL_OUTPUT_REGISTERS() GENERATE
+			x_output[].d = pre_result.q[];
+			x_output[].(clk, ena, clrn) = (clock[CLOCK_TRANSLATE(OUTPUT_REG)], ena[CLOCK_TRANSLATE(OUTPUT_REG)], !aclr[CLEAR_TRANSLATE(OUTPUT_ACLR)]);
+		ELSE GENERATE
+			x_output[] = pre_result.q[];
+		END GENERATE;
+		IF EXTERNAL_SIGNA_REGISTERS() GENERATE
+			x_signa.d = signa;
+			x_signa.(clk, ena, clrn) = (clock[CLOCK_TRANSLATE(SIGN_REG_A)], ena[CLOCK_TRANSLATE(SIGN_REG_A)], !aclr[CLEAR_TRANSLATE(SIGN_ACLR_A)]);
+		ELSE GENERATE
+			IF USED(signa) GENERATE
+				x_signa = signa;
+			ELSE GENERATE
+				IF REPRESENTATION_A == UNSIGNED_REPRESENTATION GENERATE
+					x_signa = GND;
+				ELSE GENERATE
+					x_signa = VCC;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+		IF EXTERNAL_SIGNB_REGISTERS() GENERATE
+			x_signb.d = signb;
+			x_signb.(clk, ena, clrn) = (clock[CLOCK_TRANSLATE(SIGN_REG_B)], ena[CLOCK_TRANSLATE(SIGN_REG_B)], !aclr[CLEAR_TRANSLATE(SIGN_ACLR_B)]);
+		ELSE GENERATE
+			IF USED(signb) GENERATE
+				x_signb = signb;
+			ELSE GENERATE
+				IF REPRESENTATION_B == UNSIGNED_REPRESENTATION GENERATE
+					x_signb = GND;
+				ELSE GENERATE
+					x_signb = VCC;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+
+		IF !USING_BIG_MULT() GENERATE
+			-- possible pipeline signals
+			IF USING_CLOCK0() GENERATE
+				multiplier_atom.clk[0] = clock[0];
+				multiplier_atom.ena[0] = ena[0];
+			END GENERATE;
+			IF USING_CLOCK1() GENERATE
+				multiplier_atom.clk[1] = clock[1];
+				multiplier_atom.ena[1] = ena[1];
+			END GENERATE;
+			IF USING_CLOCK2() GENERATE
+				multiplier_atom.clk[2] = clock[2];
+				multiplier_atom.ena[2] = ena[2];
+			END GENERATE;
+			IF USING_CLOCK3() GENERATE
+				multiplier_atom.clk[3] = clock[3];
+				multiplier_atom.ena[3] = ena[3];
+			END GENERATE;
+			IF USING_CLEAR0() GENERATE
+				multiplier_atom.aclr[0] = aclr[0];
+			END GENERATE;
+			IF USING_CLEAR1() GENERATE
+				multiplier_atom.aclr[1] = aclr[1];
+			END GENERATE;
+			IF USING_CLEAR2() GENERATE
+				multiplier_atom.aclr[2] = aclr[2];
+			END GENERATE;
+			IF USING_CLEAR3() GENERATE
+				multiplier_atom.aclr[3] = aclr[3];
+			END GENERATE;
+			IF USING_CLOCK0_PIPE() GENERATE
+				output_atom.clk[0] = clock[0];
+				output_atom.ena[0] = ena[0];
+			END GENERATE;
+			IF USING_CLOCK1_PIPE() GENERATE
+				output_atom.clk[1] = clock[1];
+				output_atom.ena[1] = ena[1];
+			END GENERATE;
+			IF USING_CLOCK2_PIPE() GENERATE
+				output_atom.clk[2] = clock[2];
+				output_atom.ena[2] = ena[2];
+			END GENERATE;
+			IF USING_CLOCK3_PIPE() GENERATE
+				output_atom.clk[3] = clock[3];
+				output_atom.ena[3] = ena[3];
+			END GENERATE;
+			IF USING_CLEAR0_PIPE() GENERATE
+				output_atom.aclr[0] = aclr[0];
+			END GENERATE;
+			IF USING_CLEAR1_PIPE() GENERATE
+				output_atom.aclr[1] = aclr[1];
+			END GENERATE;
+			IF USING_CLEAR2_PIPE() GENERATE
+				output_atom.aclr[2] = aclr[2];
+			END GENERATE;
+			IF USING_CLEAR3_PIPE() GENERATE
+				output_atom.aclr[3] = aclr[3];
+			END GENERATE;
+
+			multiplier_atom.signa = x_signa;
+			output_atom.signa = x_signa;
+			multiplier_atom.signb = x_signb;
+			output_atom.signb = x_signb;
+			
+			multiplier_atom.dataa[] = x_dataa[];
+			multiplier_atom.datab[] = x_datab[];
+			output_atom.dataa[] = multiplier_atom.dataout[];
+			pre_result.d[] = output_atom.dataout[];
+		ELSE GENERATE
+			-- configure the inputs to the multiplier cells
+			a_input_extended[] = GND;
+			b_input_extended[] = GND;
+			a_input_extended[MAXIMUM_MULT_WIDTH() - 1..MAXIMUM_MULT_WIDTH() - WIDTH_A] = x_dataa[];
+			b_input_extended[MAXIMUM_MULT_WIDTH() - 1..MAXIMUM_MULT_WIDTH() - WIDTH_B] = x_datab[];
+			
+			-- connect the multiplier inputs
+			multiplier_atom[0].dataa[] = a_input_extended[MAXIMUM_ONE_LEVEL_MULT_WIDTH - 1..0];
+			multiplier_atom[0].datab[] = b_input_extended[MAXIMUM_ONE_LEVEL_MULT_WIDTH - 1..0];
+			multiplier_atom[1].dataa[] = a_input_extended[MAXIMUM_MULT_WIDTH() - 1..MAXIMUM_ONE_LEVEL_MULT_WIDTH];
+			multiplier_atom[1].datab[] = b_input_extended[MAXIMUM_MULT_WIDTH() - 1..MAXIMUM_ONE_LEVEL_MULT_WIDTH];
+			multiplier_atom[2].dataa[] = a_input_extended[MAXIMUM_MULT_WIDTH() - 1..MAXIMUM_ONE_LEVEL_MULT_WIDTH];
+			multiplier_atom[2].datab[] = b_input_extended[MAXIMUM_ONE_LEVEL_MULT_WIDTH - 1..0];
+			multiplier_atom[3].dataa[] = a_input_extended[MAXIMUM_ONE_LEVEL_MULT_WIDTH - 1..0];
+			multiplier_atom[3].datab[] = b_input_extended[MAXIMUM_MULT_WIDTH() - 1..MAXIMUM_ONE_LEVEL_MULT_WIDTH];
+
+			-- possible pipeline signal connection
+			IF USING_CLOCK0() GENERATE
+				multiplier_atom[].clk[0] = clock[0];
+				multiplier_atom[].ena[0] = ena[0];
+			END GENERATE;
+			IF USING_CLOCK1() GENERATE
+				multiplier_atom[].clk[1] = clock[1];
+				multiplier_atom[].ena[1] = ena[1];
+			END GENERATE;
+			IF USING_CLOCK2() GENERATE
+				multiplier_atom[].clk[2] = clock[2];
+				multiplier_atom[].ena[2] = ena[2];
+			END GENERATE;
+			IF USING_CLOCK3() GENERATE
+				multiplier_atom[].clk[3] = clock[3];
+				multiplier_atom[].ena[3] = ena[3];
+			END GENERATE;
+			IF USING_CLEAR0() GENERATE
+				multiplier_atom[].aclr[0] = aclr[0];
+			END GENERATE;
+			IF USING_CLEAR1() GENERATE
+				multiplier_atom[].aclr[1] = aclr[1];
+			END GENERATE;
+			IF USING_CLEAR2() GENERATE
+				multiplier_atom[].aclr[2] = aclr[2];
+			END GENERATE;
+			IF USING_CLEAR3() GENERATE
+				multiplier_atom[].aclr[3] = aclr[3];
+			END GENERATE;
+			IF USING_CLOCK0_PIPE() GENERATE
+				output_atom.clk[0] = clock[0];
+				output_atom.ena[0] = ena[0];
+			END GENERATE;
+			IF USING_CLOCK1_PIPE() GENERATE
+				output_atom.clk[1] = clock[1];
+				output_atom.ena[1] = ena[1];
+			END GENERATE;
+			IF USING_CLOCK2_PIPE() GENERATE
+				output_atom.clk[2] = clock[2];
+				output_atom.ena[2] = ena[2];
+			END GENERATE;
+			IF USING_CLOCK3_PIPE() GENERATE
+				output_atom.clk[3] = clock[3];
+				output_atom.ena[3] = ena[3];
+			END GENERATE;
+			IF USING_CLEAR0_PIPE() GENERATE
+				output_atom.aclr[0] = aclr[0];
+			END GENERATE;
+			IF USING_CLEAR1_PIPE() GENERATE
+				output_atom.aclr[1] = aclr[1];
+			END GENERATE;
+			IF USING_CLEAR2_PIPE() GENERATE
+				output_atom.aclr[2] = aclr[2];
+			END GENERATE;
+			IF USING_CLEAR3_PIPE() GENERATE
+				output_atom.aclr[3] = aclr[3];
+			END GENERATE;
+
+			-- connect the sign signals
+			multiplier_atom[].signa = x_signa;
+			output_atom.signa = x_signa;
+			multiplier_atom[].signb = x_signb;
+			output_atom.signb = x_signb;
+
+			-- connection of the multiplier atoms to the output atom
+			output_atom.dataa[] = multiplier_atom[0].dataout[];
+			output_atom.datab[] = multiplier_atom[1].dataout[];
+			output_atom.datac[] = multiplier_atom[2].dataout[];
+			output_atom.datad[] = multiplier_atom[3].dataout[];
+
+			pre_result.d[] = output_atom.dataout[2*MAXIMUM_MULT_WIDTH() - 1..2*MAXIMUM_MULT_WIDTH() - WIDTH_A - WIDTH_B];
+		END GENERATE;
+
+		IF PIPELINE_CLOCK == "0" GENERATE
+			pre_result.(clock, ena) = (clock[0], ena[0]);
+		ELSE GENERATE IF PIPELINE_CLOCK == "1" GENERATE
+			pre_result.(clock, ena) = (clock[1], ena[1]);
+		ELSE GENERATE IF PIPELINE_CLOCK == "2" GENERATE
+			pre_result.(clock, ena) = (clock[2], ena[2]);
+		ELSE GENERATE IF PIPELINE_CLOCK == "3" GENERATE
+			pre_result.(clock, ena) = (clock[3], ena[3]);
+		ELSE GENERATE
+			pre_result.(clock, ena) = (VCC, VCC);
+		END GENERATE; END GENERATE; END GENERATE; END GENERATE;
+		IF PIPELINE_ACLR == "0" GENERATE
+			pre_result.clrn = !aclr[0];
+		ELSE GENERATE IF PIPELINE_ACLR == "1" GENERATE
+			pre_result.clrn = !aclr[1];
+		ELSE GENERATE IF PIPELINE_ACLR == "2" GENERATE
+			pre_result.clrn = !aclr[2];
+		ELSE GENERATE IF PIPELINE_ACLR == "3" GENERATE
+			pre_result.clrn = !aclr[3];
+		ELSE GENERATE
+			pre_result.clrn = VCC;
+		END GENERATE; END GENERATE; END GENERATE; END GENERATE;
+
+		result[] = x_output[];
+	ELSE GENERATE -- splitting stage
+		-- possible external output registers
+		IF FINAL_STAGE() & OUTPUT_REG != NO_CLOCK GENERATE
+			IF PUT_STAGE_HERE(LEVEL) GENERATE
+				x_output[].d = pipeline_registers[].q;
+			ELSE GENERATE
+				x_output[].d = (substage_adder.result[], right_mult.result[RIGHT_SPLIT() - 1..0]);
+			END GENERATE;
+			x_output[].(clk, ena, clrn) = (clock[CLOCK_TRANSLATE(OUTPUT_REG)], ena[CLOCK_TRANSLATE(OUTPUT_REG)], !aclr[CLEAR_TRANSLATE(OUTPUT_ACLR)]);
+		ELSE GENERATE
+			IF PUT_STAGE_HERE(LEVEL) GENERATE
+				x_output[] = pipeline_registers[].q;
+			ELSE GENERATE
+				x_output[] = (substage_adder.result[], right_mult.result[RIGHT_SPLIT() - 1..0]);
+			END GENERATE;
+		END GENERATE;
+
+		-- set up both the multipliers
+		IF SPLITTING_STAGE_A() GENERATE
+			left_mult.dataa[] = dataa[WIDTH_A - 1..WIDTH_A - LEFT_SPLIT()];
+			left_mult.datab[] = datab[];
+			right_mult.dataa[] = dataa[RIGHT_SPLIT() - 1..0];
+			right_mult.datab[] = datab[];
+		ELSE GENERATE
+			left_mult.dataa[] = dataa[];
+			left_mult.datab[] = datab[WIDTH_B - 1..WIDTH_B - LEFT_SPLIT()];
+			right_mult.dataa[] = dataa[];
+			right_mult.datab[] = datab[RIGHT_SPLIT() - 1..0];
+		END GENERATE;
+
+		left_mult.clock[] = clock[];
+		right_mult.clock[] = clock[];
+		left_mult.ena[] = ena[];
+		right_mult.ena[] = ena[];
+		left_mult.aclr[] = aclr[];
+		right_mult.aclr[] = aclr[];
+
+		IF PUT_STAGE_HERE(LEVEL) GENERATE
+			IF PIPELINE_CLOCK == "0" GENERATE
+				pipeline_registers[].clk = clock[0];
+				pipeline_registers[].ena = ena[0];
+			ELSE GENERATE IF PIPELINE_CLOCK == "1" GENERATE
+				pipeline_registers[].clk = clock[1];
+				pipeline_registers[].ena = ena[1];
+			ELSE GENERATE IF PIPELINE_CLOCK == "2" GENERATE
+				pipeline_registers[].clk = clock[2];
+				pipeline_registers[].ena = ena[2];
+			ELSE GENERATE IF PIPELINE_CLOCK == "3" GENERATE
+				pipeline_registers[].clk = clock[3];
+				pipeline_registers[].ena = ena[3];
+			END GENERATE; END GENERATE; END GENERATE; END GENERATE;
+			IF PIPELINE_ACLR == "0" GENERATE
+				pipeline_registers[].clrn = !aclr[0];
+			ELSE GENERATE IF PIPELINE_ACLR == "1" GENERATE
+				pipeline_registers[].clrn = !aclr[1];
+			ELSE GENERATE IF PIPELINE_ACLR == "2" GENERATE
+				pipeline_registers[].clrn = !aclr[2];
+			ELSE GENERATE IF PIPELINE_ACLR == "3" GENERATE
+				pipeline_registers[].clrn = !aclr[3];
+			END GENERATE; END GENERATE; END GENERATE; END GENERATE;
+
+			pipeline_registers[].d = (substage_adder.result[], right_mult.result[RIGHT_SPLIT() - 1..0]);
+		END GENERATE;
+
+		result[] = x_output[];
+
+		substage_adder.dataa[] = left_mult.result[];
+		-- depending on the sign, it may be necessary to sign extend the right side adder input
+		IF RIGHT_SUBTREE_RESULT_IS_SIGNED() # RIGHT_SUBTREE_RESULT_IS_UNSIGNED() GENERATE
+			-- if the right subtree is signed need to sign extend it, otherwise pad it with GND
+			IF RIGHT_SUBTREE_RESULT_IS_SIGNED() GENERATE
+				substage_adder.datab[ACTUAL_LEFT_A() + ACTUAL_LEFT_B() - 1..ACTUAL_LEFT_A() + ACTUAL_LEFT_B() - (WIDTH_A + WIDTH_B - ACTUAL_RIGHT_A() - ACTUAL_RIGHT_B())] =
+					right_mult.result[ACTUAL_RIGHT_A() + ACTUAL_RIGHT_B() - 1];
+			ELSE GENERATE
+				substage_adder.datab[ACTUAL_LEFT_A() + ACTUAL_LEFT_B() - 1..ACTUAL_LEFT_A() + ACTUAL_LEFT_B() - (WIDTH_A + WIDTH_B - ACTUAL_RIGHT_A() - ACTUAL_RIGHT_B())] = GND;
+			END GENERATE;
+		ELSE GENERATE
+
+			-- dynamically control whether or not to perform a sign extension
+			IF SPLITTING_STAGE_A() GENERATE
+				substage_adder.datab[ACTUAL_LEFT_A() + ACTUAL_LEFT_B() - 1..ACTUAL_LEFT_A() + ACTUAL_LEFT_B() - (WIDTH_A + WIDTH_B - ACTUAL_RIGHT_A() - ACTUAL_RIGHT_B())] =
+					right_mult.result[ACTUAL_RIGHT_A() + ACTUAL_RIGHT_B() - 1] & left_mult.signb_out;
+			ELSE GENERATE
+				substage_adder.datab[ACTUAL_LEFT_A() + ACTUAL_LEFT_B() - 1..ACTUAL_LEFT_A() + ACTUAL_LEFT_B() - (WIDTH_A + WIDTH_B - ACTUAL_RIGHT_A() - ACTUAL_RIGHT_B())] =
+					right_mult.result[ACTUAL_RIGHT_A() + ACTUAL_RIGHT_B() - 1] & left_mult.signa_out;
+			END GENERATE;
+		END GENERATE;
+
+		-- This is the portion of the right subtree that overlaps the left subtree and needs to be added to it
+		substage_adder.datab[ACTUAL_RIGHT_A() + ACTUAL_RIGHT_B() - RIGHT_SPLIT() - 1..0] = right_mult.result[ACTUAL_RIGHT_A() + ACTUAL_RIGHT_B() - 1..RIGHT_SPLIT()];
+	END GENERATE;
+
+	-- This is for passing on the signa and signb ports to the parents of the node
+	IF USED(signa) GENERATE
+		IF !SPLITTING_STAGE() GENERATE
+			IF SIGN_REG_A == NO_CLOCK GENERATE
+				signa_out = dffpipe	(	.d[] = x_signa,
+										.clock = clock[PIPELINE_CLOCK_N],
+										.ena = ena[PIPELINE_CLOCK_N],
+										.clrn = !aclr[PIPELINE_ACLR_N]
+									)
+									WITH
+									(
+										WIDTH = 1,
+										DELAY = (PUT_STAGE_HERE(LEVEL) ? 1 : 0) + (PUT_STAGE_HERE(LEVEL + 1) ? 1 : 0) + (PUT_STAGE_HERE(LEVEL + 2) ? 1 : 0) + N_EXTERNAL_DFF() + MATCHING_REGISTERS_COUNT()
+									)
+									RETURNS
+									(
+										.q[]
+									);
+			ELSE GENERATE
+				signa_out = dffpipe	(	.d[] = DFFE(	.d = signa,
+																			.clk = clock[CLOCK_TRANSLATE(SIGN_REG_A)],
+																			.ena = ena[CLOCK_TRANSLATE(SIGN_REG_A)],
+																			.clrn = !aclr[CLEAR_TRANSLATE(SIGN_ACLR_A)]
+																		)
+																		RETURNS
+																		(
+																			.q
+																		),
+										.clock = clock[PIPELINE_CLOCK_N],
+										.ena = ena[PIPELINE_CLOCK_N],
+										.clrn = !aclr[PIPELINE_ACLR_N]
+									)
+									WITH
+									(
+										WIDTH = 1,
+										DELAY = (PUT_STAGE_HERE(LEVEL) ? 1 : 0) + (PUT_STAGE_HERE(LEVEL + 1) ? 1 : 0) + (PUT_STAGE_HERE(LEVEL + 2) ? 1 : 0) + N_EXTERNAL_DFF() + MATCHING_REGISTERS_COUNT()
+									)
+									RETURNS
+									(
+										.q[]
+									);
+			END GENERATE;
+		ELSE GENERATE -- This is a splitting stage
+			-- Pass down the signa if it makes sense to do so
+			-- For example dont pass it down to the right side if splitting the A stage since for that side the A input is guaranteed
+			-- to be unsigned for all cases
+			IF SPLITTING_STAGE_A() GENERATE
+				left_mult.signa = signa;
+			ELSE GENERATE
+				-- spltting the B stage so can go ahead and treat both A inputs to the multipliers as havin signa sign
+				left_mult.signa = signa;
+				right_mult.signa = signa;
+			END GENERATE;
+
+			-- first set up the signa to handle a possible input register
+			IF EXTERNAL_SIGNA_REGISTERS() GENERATE
+				x_signa.d = signa;
+				x_signa.clk = clock[CLOCK_TRANSLATE(SIGN_REG_A)];
+				x_signa.ena = ena[CLOCK_TRANSLATE(SIGN_REG_A)];
+				x_signa.clrn = !aclr[CLEAR_TRANSLATE(SIGN_ACLR_A)];
+			ELSE GENERATE
+				x_signa = signa;
+			END GENERATE;
+
+			-- now place a possible pipeline delay on the node
+			IF !SPLITTING_STAGE() GENERATE
+				IF PUT_STAGE_HERE(LEVEL) GENERATE
+					signa_out = dffe(	.d = x_signa,
+										.clk = clock[PIPELINE_CLOCK_N],
+										.ena = ena[PIPELINE_CLOCK_N],
+										.clrn = !aclr[PIPELINE_ACLR_N]
+									)
+									RETURNS
+									(
+										.q
+									);
+				ELSE GENERATE
+					signa_out = x_signa;
+				END GENERATE;
+			ELSE GENERATE
+				IF PUT_STAGE_HERE(LEVEL) GENERATE
+					signa_out = dffe(	.d = left_mult.signa_out,
+										.clk = clock[PIPELINE_CLOCK_N],
+										.ena = ena[PIPELINE_CLOCK_N],
+										.clrn = !aclr[PIPELINE_ACLR_N]
+									)
+									RETURNS
+									(
+										.q
+									);
+				ELSE GENERATE
+					signa_out = left_mult.signa_out;
+				END GENERATE;
+			END GENERATE;		
+		END GENERATE;
+	ELSE GENERATE
+		IF REPRESENTATION_A == "UNSIGNED" GENERATE
+			signa_out = GND;
+		ELSE GENERATE
+			signa_out = VCC;
+		END GENERATE;
+	END GENERATE;
+
+	-- Need to do the same for the signb port as well
+	IF USED(signb) GENERATE
+		IF !SPLITTING_STAGE() GENERATE
+			IF SIGN_REG_B == NO_CLOCK GENERATE
+				signb_out = dffpipe	(	.d[] = x_signb,
+										.clock = clock[PIPELINE_CLOCK_N],
+										.ena = ena[PIPELINE_CLOCK_N],
+										.clrn = !aclr[PIPELINE_ACLR_N]
+									)
+									WITH
+									(
+										WIDTH = 1,
+										DELAY = (PUT_STAGE_HERE(LEVEL) ? 1 : 0) + (PUT_STAGE_HERE(LEVEL + 1) ? 1 : 0) + (PUT_STAGE_HERE(LEVEL + 2) ? 1 : 0) + N_EXTERNAL_DFF() + MATCHING_REGISTERS_COUNT()
+									)
+									RETURNS
+									(
+										.q[]
+									);
+			ELSE GENERATE
+				signb_out = dffpipe	(	.d[] = DFFE(	.d = signb,
+																			.clk = clock[CLOCK_TRANSLATE(SIGN_REG_B)],
+																			.ena = ena[CLOCK_TRANSLATE(SIGN_REG_B)],
+																			.clrn = !aclr[CLEAR_TRANSLATE(SIGN_ACLR_B)]
+																		)
+																		RETURNS
+																		(
+																			.q
+																		),
+														.clock = clock[PIPELINE_CLOCK_N],
+														.ena = ena[PIPELINE_CLOCK_N],
+														.clrn = !aclr[PIPELINE_ACLR_N]
+									)
+									WITH
+									(
+										WIDTH = 1,
+										DELAY = (PUT_STAGE_HERE(LEVEL) ? 1 : 0) + (PUT_STAGE_HERE(LEVEL + 1) ? 1 : 0) + (PUT_STAGE_HERE(LEVEL + 2) ? 1 : 0) + N_EXTERNAL_DFF() + MATCHING_REGISTERS_COUNT()
+									)
+									RETURNS
+									(
+										.q[]
+									);
+			END GENERATE;
+		ELSE GENERATE -- This is a splitting stage
+			-- Pass down the signb if it makes sense to do so
+			-- For example dont pass it down to the right side if splitting the B stage since for that side the B input is guaranteed
+			-- to be unsigned for all cases
+			IF SPLITTING_STAGE_B() GENERATE
+				left_mult.signb = signb;
+			ELSE GENERATE
+				-- spltting the A stage so can go ahead and treat both A inputs to the multipliers as having signa sign
+				left_mult.signb = signb;
+				right_mult.signb = signb;
+			END GENERATE;		
+
+			-- first set up the signb to take into account a possible input register
+			IF EXTERNAL_SIGNB_REGISTERS() GENERATE
+				x_signb.d = signb;
+				x_signb.clk = clock[CLOCK_TRANSLATE(SIGN_REG_B)];
+				x_signb.ena = ena[CLOCK_TRANSLATE(SIGN_REG_B)];
+				x_signb.clrn = !aclr[CLEAR_TRANSLATE(SIGN_ACLR_B)];
+			ELSE GENERATE
+				x_signb = signb;
+		END GENERATE;
+
+			-- now add a possible pipeline delay to the wire
+			IF !SPLITTING_STAGE() GENERATE
+				IF PUT_STAGE_HERE(LEVEL) GENERATE
+					signb_out = dffe(	.d = x_signb,
+										.clk = clock[PIPELINE_CLOCK_N],
+										.ena = ena[PIPELINE_CLOCK_N],
+										.clrn = !aclr[PIPELINE_ACLR_N]
+									)
+									RETURNS
+									(
+										.q
+									);
+				ELSE GENERATE
+					signb_out = x_signb;
+				END GENERATE;
+			ELSE GENERATE
+				IF PUT_STAGE_HERE(LEVEL) GENERATE
+					signb_out = dffe(	.d = left_mult.signb_out,
+										.clk = clock[PIPELINE_CLOCK_N],
+										.ena = ena[PIPELINE_CLOCK_N],
+										.clrn = !aclr[PIPELINE_ACLR_N]
+									)
+									RETURNS
+									(
+										.q
+									);
+				ELSE GENERATE
+					signb_out = left_mult.signb_out;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+	ELSE GENERATE
+		IF REPRESENTATION_B == "UNSIGNED" GENERATE
+			signb_out = GND;
+		ELSE GENERATE
+			signb_out = VCC;
+		END GENERATE;
+	END GENERATE;
+	IF !USED(signa_out) GENERATE
+		signa_out = GND;
+	END GENERATE;
+	IF !USED(scanoutb) GENERATE
+		scanoutb[] = GND;
+	END GENERATE;
+	IF !USED(scanouta) GENERATE
+		scanouta[] = GND;
+	END GENERATE;
+	IF !USED(signb_out) GENERATE
+		signb_out = GND;
+	END GENERATE;
+	IF !USED(result) GENERATE
+		result[] = GND;
+	END GENERATE;
+END;

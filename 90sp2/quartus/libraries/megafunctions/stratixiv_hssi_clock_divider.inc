@@ -1,0 +1,64 @@
+------------------------------------------------------------------
+-- stratixiv_hssi_clock_divider parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+
+FUNCTION stratixiv_hssi_clock_divider(
+	clk0in[3..0],
+	clk1in[3..0],
+	dpriodisable,
+	dprioin[99..0],
+	powerdn,
+	quadreset,
+	rateswitch,
+	rateswitchbaseclkin[1..0],
+	rateswitchdonein[1..0],
+	refclkdig,
+	refclkin[1..0],
+	vcobypassin
+)
+WITH(
+	channel_num,
+	coreclk_out_gated_by_quad_reset,
+	data_rate,
+	divide_by,
+	divider_type,
+	dprio_config_mode,
+	effective_data_rate,
+	enable_dynamic_divider,
+	enable_refclk_out,
+	inclk_select,
+	logical_channel_address,
+	lpm_type,
+	pre_divide_by,
+	rate_switch_base_clk_in_select,
+	rate_switch_done_in_select,
+	refclk_divide_by,
+	refclk_multiply_by,
+	refclkin_select,
+	select_local_rate_switch_base_clock,
+	select_local_rate_switch_done,
+	select_local_refclk,
+	select_refclk_dig,
+	sim_analogfastrefclkout_phase_shift,
+	sim_analogrefclkout_phase_shift,
+	sim_coreclkout_phase_shift,
+	sim_refclkout_phase_shift,
+	use_coreclk_out_post_divider,
+	use_refclk_post_divider,
+	use_vco_bypass
+)
+RETURNS(
+	analogfastrefclkout[1..0],
+	analogfastrefclkoutshifted[1..0],
+	analogrefclkout[1..0],
+	analogrefclkoutshifted[1..0],
+	analogrefclkpulse,
+	analogrefclkpulseshifted,
+	coreclkout,
+	dprioout[99..0],
+	rateswitchbaseclock,
+	rateswitchdone,
+	rateswitchout,
+	refclkout
+);

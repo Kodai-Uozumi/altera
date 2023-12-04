@@ -1,0 +1,279 @@
+-- **************************************************************************
+--	Fast Flip-flop FIFO Parameterized Megafunction - A_F2FIFO
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 2.0
+--
+--------------------------------------------------------------------
+-- 
+-- For a description of the parameters and ports, see SCFIFO.
+-- An additional port "usedw_eq[]", unique to this FIFO design, is described below.
+--
+-- Altera recommends not to use this design directly (unless usedw_eq[] is needed).
+-- Use SCFIFO instead with USE_EAB="OFF" and OPTIMIZE_FOR_SPEED>=7
+--
+-------
+-- Output port unique to this FIFO design:
+--
+--	  usedw_eq[LPM_NUMWORDS-1..0]
+--			- usedw_eq[N]==1 if the FIFO contains at least N+1 words
+--			-  It provides the same information as usedw[], but in a different format.
+--			-  Use it instead of usedw[] if possible.
+--			-
+--			-  To decode a specific FIFO level N, use the equation
+-- 			-   (usedw_eq[N-1] and !usedw_eq[N])
+--			-
+--			-  This additional output is not available from other FIFOs
+--			-   (to use it, instantiate A_F2FIFO directly).
+--
+-- **************************************************************************
+
+include "lpm_counter";
+include "lpm_compare";
+include "lpm_ff";
+include "a_mxfifo";
+include "aglobal90";
+
+parameters
+(
+	LPM_WIDTH,
+	LPM_NUMWORDS,
+
+	LPM_SHOWAHEAD = "OFF",
+	UNDERFLOW_CHECKING = "ON",
+	OVERFLOW_CHECKING = "ON",
+	ALLOW_RWCYCLE_WHEN_FULL = "OFF",
+
+	DEVICE_FAMILY,
+	CARRY_CHAIN = "MANUAL"
+);
+
+constant WIDTHAD = ceil(log2(LPM_NUMWORDS));
+constant UseCompactMUX = FAMILY_HAS_LABWIDE_SLOAD() and (FAMILY_STRATIX() != 1 & USE_CARRY_CHAINS());
+
+subdesign a_f2fifo
+(
+	data[LPM_WIDTH-1..0]		: input;
+	q[LPM_WIDTH-1..0]			: output;
+
+	rreq, wreq					: input;
+	clock						: input;
+	aclr, sclr					: input = gnd;
+
+	threshlevel[WIDTHAD-1..0]	: input = gnd;
+	threshold					: output;
+	empty, full					: output;
+	usedw[WIDTHAD-1..0]			: output;
+	usedw_eq[LPM_NUMWORDS-1..0]	: output;		-- see above the description of this port
+)
+
+-------------------------------------------------------------------------------
+variable
+	valid_wreq, valid_rreq: node;
+
+	if used(usedw) or used(threshold) generate
+		usedw_ptr: lpm_counter with( LPM_WIDTH=WIDTHAD );
+	end generate;
+
+	pipe    [LPM_NUMWORDS-1..0][LPM_WIDTH-1..0]: node;
+	pipefull[LPM_NUMWORDS-1..0]: node;
+	if LPM_SHOWAHEAD=="OFF" generate
+		rd_out[LPM_WIDTH-1..0]: dffe;
+	end generate;
+
+-------------------------------------------------------------------------------
+begin
+	assert (LPM_WIDTH>=1)
+			report "Value of LPM_WIDTH parameter must be at least 1"
+			severity error
+			help_id F2FIFO_WIDTH;
+
+	assert (LPM_NUMWORDS>=2) and (LPM_NUMWORDS<=256)
+			report "The value of LPM_NUMWORDS parameter must be in the 2..256 range."
+			severity error
+			help_id F2FIFO_NUMWORDS;
+
+--------------------------------------------------------------------
+	assert (LPM_SHOWAHEAD=="ON") or (LPM_SHOWAHEAD=="OFF")
+			report "Assign either ""ON"" or ""OFF"" to LPM_SHOWAHEAD"
+			severity error
+			help_id F2FIFO_SHOWAHEAD;
+
+	assert (UNDERFLOW_CHECKING=="ON") or (UNDERFLOW_CHECKING=="OFF")
+			report "Assign either ""ON"" or ""OFF"" to UNDERFLOW_CHECKING"
+			severity error
+			help_id F2FIFO_UNDERFLOW_CHECKING;
+
+	assert (OVERFLOW_CHECKING=="ON") or (OVERFLOW_CHECKING=="OFF")
+			report "Assign either ""ON"" or ""OFF"" to OVERFLOW_CHECKING"
+			severity error
+			help_id F2FIFO_OVERFLOW_CHECKING;
+
+	assert (ALLOW_RWCYCLE_WHEN_FULL=="ON") or (ALLOW_RWCYCLE_WHEN_FULL=="OFF")
+			report "Assign either ""ON"" or ""OFF"" to ALLOW_RWCYCLE_WHEN_FULL"
+			severity error
+			help_id F2FIFO_ALLOW_RWCYCLE_WHEN_FULL;
+
+-- **************************************************************************
+--
+	if UNDERFLOW_CHECKING=="OFF" generate
+		valid_rreq = rreq;
+	else generate
+		valid_rreq = rreq and !empty;
+	end generate; 
+
+	if OVERFLOW_CHECKING=="OFF" generate
+		valid_wreq = wreq;
+	else generate 
+		if ALLOW_RWCYCLE_WHEN_FULL=="ON" generate
+			valid_wreq = wreq and (!full or rreq);
+		else generate
+			valid_wreq = wreq and !full;
+		end generate; 
+	end generate;
+
+-- **************************************************************************
+--
+	for i in 0 to LPM_NUMWORDS-2 generate
+		if UseCompactMUX generate
+			pipe[i][] = a_mxfifo( 
+				.clock = clock,
+				.sel = pipefull[i+1],
+				.ena = lcell(rreq or !pipefull[i]),
+				.dataa[] = data[],
+				.datab[] = pipe[i+1][]
+			)
+			with( WIDTH=LPM_WIDTH )
+			returns( .q[] );
+		else generate
+			pipe[i][] = lpm_ff( 
+				.data[] = (data[] and !pipefull[i+1]) or (pipe[i+1][] and pipefull[i+1]), 
+				.clock = clock, 
+				.enable = rreq or !pipefull[i] 
+			)
+			with( LPM_WIDTH=LPM_WIDTH )
+			returns( .q[] );
+		end generate;
+	end generate;
+
+	pipe[LPM_NUMWORDS-1][] = lpm_ff( 
+		.data[] = data[], 
+		.clock = clock, 
+		.enable = rreq or !pipefull[LPM_NUMWORDS-1] 
+	)
+	with( LPM_WIDTH=LPM_WIDTH )
+	returns( .q[] );
+
+-- **************************************************************************
+--
+	pipefull[0] = 
+		dffe( 
+			.d=(pipefull[1] or wreq) and !sclr, 
+			.clk=clock, 
+			.ena=(wreq xor valid_rreq) or sclr, 
+			.clrn=!aclr )
+		returns( .q );
+
+	pipefull[LPM_NUMWORDS-1] = 
+		dffe(
+			.d=(pipefull[LPM_NUMWORDS-2] and valid_wreq) and !sclr, 
+			.clk=clock, 
+			.ena=(valid_wreq xor rreq) or sclr, 
+			.clrn=!aclr )
+		returns( .q );
+
+	if UseCompactMUX generate
+		if LPM_NUMWORDS>2 generate
+			pipefull[LPM_NUMWORDS-2..1] = a_mxfifo( 
+				.clock = clock,
+				.clrn= !aclr,
+				.sclr = sclr,
+				.sel = lcell(rreq),
+				.ena = lcell(wreq xor rreq),
+				.dataa[] = pipefull[LPM_NUMWORDS-3..0],
+				.datab[] = pipefull[LPM_NUMWORDS-1..2]
+			)
+			with( WIDTH=LPM_NUMWORDS-2 )
+			returns( .q[] );
+		end generate;
+	else generate
+		if LPM_NUMWORDS>2 generate
+			pipefull[LPM_NUMWORDS-2..1] = lpm_ff( 
+				.data[] = ((pipefull[LPM_NUMWORDS-3..0] and !rreq) or (pipefull[LPM_NUMWORDS-1..2] and rreq)) and !sclr, 
+				.aclr = aclr,
+				.clock = clock, 
+				.enable = (wreq xor rreq) or sclr 
+			)
+			with( LPM_WIDTH=LPM_NUMWORDS-2 )
+			returns( .q[] );
+		end generate;
+	end generate;
+	
+-- **************************************************************************
+--
+	empty	= not pipefull[0];
+	full	= pipefull[LPM_NUMWORDS-1];
+	usedw_eq[] = pipefull[];
+	
+	if LPM_SHOWAHEAD=="OFF" generate
+		rd_out[]	= pipe[0][];
+		rd_out[].ena= valid_rreq;
+		q[]			= rd_out[];
+
+		rd_out[].clk = clock;
+		rd_out[].clrn= !aclr;
+	else generate
+		q[]			= pipe[0][];
+	end generate;
+
+-- **************************************************************************
+-- usedw[] and threshold signals
+--
+	threshold = full;
+
+	if used(usedw) or used(threshold) generate
+		usedw_ptr.(clock, cnt_en, updown, aclr, sclr) = (clock, valid_wreq xor valid_rreq, valid_wreq, aclr, sclr);
+		usedw[] = usedw_ptr.q[];
+
+		if used(threshlevel) generate
+			threshold = lpm_compare( .dataa[]=usedw_ptr.q[], .datab[]=threshlevel[] )
+			with( LPM_WIDTH=WIDTHAD )
+			returns( .ageb );
+		end generate;
+
+	end generate;
+	IF !USED(threshold) GENERATE
+		threshold = GND;
+	END GENERATE;
+	IF !USED(usedw) GENERATE
+		usedw[] = GND;
+	END GENERATE;
+	IF !USED(q) GENERATE
+		q[] = GND;
+	END GENERATE;
+	IF !USED(usedw_eq) GENERATE
+		usedw_eq[] = GND;
+	END GENERATE;
+	IF !USED(empty) GENERATE
+		empty = GND;
+	END GENERATE;
+	IF !USED(full) GENERATE
+		full = GND;
+	END GENERATE;
+end;
+

@@ -1,0 +1,166 @@
+<?xml version="1.0"?>
+<ROOT>
+	<INCLUDE FILE="mfam_family_macros.xml" />
+	<FUNCTION_INFORMATION>
+		<VHDL_LIBRARY NAME="altera_mf.altera_mf_components" />
+	</FUNCTION_INFORMATION>
+	<MACROS>
+		<MACRO NAME="m_supports_area_speed_opt" DEFINITION="mfam_family_stratixii || mfam_family_cycloneii" />
+		<MACRO NAME="m_family_supports_full_fifo_depth" DEFINITION="mfam_family_has_stratixii_style_ram" />
+		<MACRO NAME="m_ram_output_register_option" DEFINITION="mfam_family_has_stratix_style_ram" />
+		<MACRO NAME="le_based_fifo" >
+			<DEFINITION>
+				((mfam_family_has_stratixii_style_ram and USE_EAB == "OFF" and (LPM_NUMWORDS >= 16 || CLOCKS_ARE_SYNCHRONIZED == "TRUE")) || (!mfam_family_has_stratixii_style_ram and USE_EAB == "OFF"))
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_mram" DEFINITION="(RAM_BLOCK_TYPE == mfam_mram)" />
+		<MACRO NAME="m_m144k" DEFINITION="(RAM_BLOCK_TYPE == mfam_m144k)" />
+		<MACRO NAME="m_m4k" DEFINITION="RAM_BLOCK_TYPE == mfam_m4k" />
+		<MACRO NAME="m_m512" DEFINITION="RAM_BLOCK_TYPE == mfam_m512" />
+		<MACRO NAME="m_auto" DEFINITION="RAM_BLOCK_TYPE == mfam_auto" />
+		<MACRO NAME="m_m8k" DEFINITION="RAM_BLOCK_TYPE == mfam_m9k" />
+		<MACRO NAME="m_wiz" >
+			<DEFINITION>
+				(USE_WIZARD == "ON")
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_family_uses_reduce_by_2_latency" DEFINITION="mfam_family_stratixii || mfam_family_cycloneii" />
+
+		<MACRO NAME="m_stx_low_latency_fifo" DEFINITION="(mfam_family_stratix || mfam_family_cyclone) and (CLOCKS_ARE_SYNCHRONIZED == TRUE || (CLOCKS_ARE_SYNCHRONIZED == FALSE and LPM_SHOWAHEAD == ON and ADD_RAM_OUTPUT_REGISTER == OFF))" />
+
+		<MACRO NAME="m_zero_wrclk_cycles" DEFINITION="0" />
+		<MACRO NAME="m_one_wrclk_cycle" DEFINITION="1" />
+		<MACRO NAME="m_one_wrclk_rising_edge" DEFINITION="1" />
+		<MACRO NAME="m_next_6_rdclk_rising_edges" DEFINITION="6" />
+		<MACRO NAME="m_next_N_rdclk_rising_edges" DEFINITION="m_family_uses_reduce_by_2_latency ? RDSYNC_DELAYPIPE - 2 : RDSYNC_DELAYPIPE" />
+
+		<MACRO NAME="m_wrreq_wrempty_latency" DEFINITION="(m_family_uses_reduce_by_2_latency ? RDSYNC_DELAYPIPE lt 4 ? MAXIMIZE_SPEED gt 5 ? m_zero_wrclk_cycles : m_one_wrclk_cycle + m_next_N_rdclk_rising_edges + m_one_wrclk_rising_edge: m_zero_wrclk_cycles : m_zero_wrclk_cycles)" />
+
+		<MACRO NAME="m_first_write_to_first_read_latency" >
+			<DEFINITION>
+				(m_family_uses_reduce_by_2_latency ? m_one_wrclk_cycle + m_next_N_rdclk_rising_edges : m_stx_low_latency_fifo ? m_one_wrclk_cycle + m_next_N_rdclk_rising_edges : m_one_wrclk_cycle + m_next_6_rdclk_rising_edges)
+			</DEFINITION>
+		</MACRO>
+	</MACROS>
+	<PORT_RULES>
+		<PORT NAME="wrreq" ASYNC="FALSE" HIGH_PROBABILITY="50" INITIAL_VEC_STATE="0" >
+			<FORCE_VALUE TO="0" WHEN="aclr == 1 || (wrfull == 1 and OVERFLOW_CHECKING == OFF)" />
+		</PORT>
+		<PORT NAME="rdreq" ASYNC="FALSE" HIGH_PROBABILITY="50" INITIAL_VEC_STATE="0" >
+			<FORCE_VALUE TO="0" WHEN="aclr == 1 || (rdempty == 1 and UNDERFLOW_CHECKING == OFF)" />
+		</PORT>
+		<PORT NAME="wrfull" USAGE="VARIABLE" >
+			<STATE V="USED" WHEN="OVERFLOW_CHECKING == OFF" />
+		</PORT>
+		<PORT NAME="rdfull" USAGE="VARIABLE" />
+		<PORT NAME="wrempty" USAGE="VARIABLE" />
+		<PORT NAME="rdempty" USAGE="VARIABLE" >
+			<STATE V="USED" WHEN="UNDERFLOW_CHECKING == OFF" />
+		</PORT>
+		<PORT NAME="wrclk" />
+		<PORT NAME="rdclk" />
+		<PORT NAME="aclr" USAGE="VARIABLE" HIGH_PROBABILITY="5" INITIAL_VEC_STATE="1" />
+		<PORT NAME="rdusedw" USAGE="VARIABLE" />
+		<PORT NAME="wrusedw" USAGE="VARIABLE" />
+	</PORT_RULES>
+	<PARAMETER_RULES>
+		<PARAMETER NAME="INTENDED_DEVICE_FAMILY" VALUE="Stratix" />
+		<PARAMETER NAME="RAM_BLOCK_TYPE" >
+			<VALUE_RULE>
+				!mfam_family_has_m512 and (RAM_BLOCK_TYPE != mfam_m512) ||
+				mfam_family_has_m512 and (RAM_BLOCK_TYPE == mfam_m512) || 
+				(RAM_BLOCK_TYPE != mfam_m512)
+			</VALUE_RULE>
+			<VALUE_RULE>
+				!mfam_family_has_megaram and (RAM_BLOCK_TYPE != mfam_mram) ||
+				mfam_family_has_megaram and (RAM_BLOCK_TYPE == mfam_mram) || 
+				(RAM_BLOCK_TYPE != mfam_mram)
+			</VALUE_RULE>
+			<VALUE_RULE>
+				!mfam_family_has_m4k and (RAM_BLOCK_TYPE != mfam_m4k) ||
+				mfam_family_has_m4k and (RAM_BLOCK_TYPE == mfam_m4k) || 
+				(RAM_BLOCK_TYPE != mfam_m4k)
+			</VALUE_RULE>
+			<VALUE_RULE>
+				!mfam_family_has_lutram and (RAM_BLOCK_TYPE != mfam_lutram) ||
+				mfam_family_has_lutram and (RAM_BLOCK_TYPE == mfam_lutram) || 
+				(RAM_BLOCK_TYPE != mfam_lutram)
+			</VALUE_RULE>
+			<VALUE_RULE>
+				!mfam_family_has_m8k and (RAM_BLOCK_TYPE != mfam_m9k) ||
+				mfam_family_has_m8k and (RAM_BLOCK_TYPE == mfam_m9k) || 
+				(RAM_BLOCK_TYPE != mfam_m9k)
+			</VALUE_RULE>
+			<VALUE_RULE>
+				!mfam_family_has_m144k and (RAM_BLOCK_TYPE != mfam_m144k) ||
+				mfam_family_has_m144k and (RAM_BLOCK_TYPE == mfam_m144k) || 
+				(RAM_BLOCK_TYPE != mfam_m144k)
+			</VALUE_RULE>
+		</PARAMETER>
+		<PARAMETER NAME="LPM_WIDTH" >
+			<VALUE_RULE> (LPM_WIDTH lte 64) and (LPM_WIDTH gte 2) </VALUE_RULE>
+		</PARAMETER>
+		<PARAMETER NAME="LPM_NUMWORDS" >
+			<VALUE_RULE>
+				((LPM_NUMWORDS % 2) == 0 )
+			</VALUE_RULE>
+		</PARAMETER>
+		<PARAMETER NAME="LPM_WIDTHU" ON_CONFLICT="USE_CALCULATED_VALUE" >
+			<FORCE_VALUE V="ceil_log(LPM_NUMWORDS)" WHEN="ADD_USEDW_MSB_BIT == OFF || m_wiz" />
+			<FORCE_VALUE V="ceil_log(LPM_NUMWORDS) + 1" WHEN="ADD_USEDW_MSB_BIT == ON and !m_wiz" />
+		</PARAMETER>
+		<PARAMETER NAME="DELAY_RDUSEDW" >
+			<FORCE_RANGE MAX="5" MIN="0" WHEN="!m_wiz" />
+			<FORCE_VALUE V="1" WHEN="m_wiz" />
+		</PARAMETER>
+		<PARAMETER NAME="DELAY_WRUSEDW" >
+			<FORCE_RANGE MAX="5" MIN="0" WHEN="!m_wiz" />
+			<FORCE_VALUE V="1" WHEN="m_wiz" />
+		</PARAMETER>
+		<PARAMETER NAME="RDSYNC_DELAYPIPE" >
+			<FORCE_RANGE MAX="5" MIN="0" WHEN="!m_wiz" />
+			<FORCE_VALUE V="5" WHEN="CLOCKS_ARE_SYNCHRONIZED == FALSE and MAXIMIZE_SPEED == 7 and m_wiz" />
+			<FORCE_VALUE V="3" WHEN="m_wiz and (!m_supports_area_speed_opt || CLOCKS_ARE_SYNCHRONIZED == TRUE)" />
+			<FORCE_VALUE V="4" WHEN="m_wiz and CLOCKS_ARE_SYNCHRONIZED == FALSE and MAXIMIZE_SPEED == 5 and mfam_family_has_stratixii_style_ram" />
+		</PARAMETER>
+		<PARAMETER NAME="WRSYNC_DELAYPIPE" >
+			<FORCE_RANGE MAX="5" MIN="0" WHEN="!m_wiz" />
+			<FORCE_VALUE V="5" WHEN="CLOCKS_ARE_SYNCHRONIZED == FALSE and MAXIMIZE_SPEED == 7 and m_wiz" />
+			<FORCE_VALUE V="3" WHEN="m_wiz and (!m_supports_area_speed_opt || CLOCKS_ARE_SYNCHRONIZED == TRUE)" />
+			<FORCE_VALUE V="4" WHEN="m_wiz and CLOCKS_ARE_SYNCHRONIZED == FALSE and MAXIMIZE_SPEED == 5 and mfam_family_has_stratixii_style_ram" />
+		</PARAMETER>
+		<PARAMETER NAME="MAXIMIZE_SPEED" LPM_HINT="ON">
+			<FORCE_VALUE V="5" WHEN="!m_supports_area_speed_opt" />
+			<FORCE_RANGE MAX="10" MIN="0" WHEN="m_supports_area_speed_opt and !m_wiz" />
+			<FORCE_RANGE TO="5|7" WHEN="m_supports_area_speed_opt and m_wiz" />
+		</PARAMETER>
+		<PARAMETER NAME="LPM_SHOWAHEAD" >
+			<FORCE_RANGE TO="ON|OFF" />
+		</PARAMETER>
+		<PARAMETER NAME="UNDERFLOW_CHECKING" >
+			<FORCE_RANGE TO="ON|OFF" />
+		</PARAMETER>
+		<PARAMETER NAME="OVERFLOW_CHECKING" >
+			<FORCE_RANGE TO="ON|OFF" />
+		</PARAMETER>
+		<PARAMETER NAME="CLOCKS_ARE_SYNCHRONIZED" >
+			<FORCE_RANGE TO="TRUE|FALSE" />
+		</PARAMETER>
+		<PARAMETER NAME="ADD_RAM_OUTPUT_REGISTER" >
+			<FORCE_VALUE V="OFF" WHEN="!m_ram_output_register_option" />
+			<FORCE_RANGE TO="ON|OFF" WHEN="m_ram_output_register_option" />
+		</PARAMETER>
+		<PARAMETER NAME="USE_EAB" >
+			<FORCE_RANGE TO="ON|OFF" />
+		</PARAMETER>
+		<PARAMETER NAME="ADD_USEDW_MSB_BIT" ON_CONFLICT="USE_CALCULATED_VALUE" >
+			<FORCE_VALUE V="OFF" WHEN="!m_family_supports_full_fifo_depth || le_based_fifo" />
+			<FORCE_RANGE TO="ON|OFF" WHEN="m_family_supports_full_fifo_depth and !le_based_fifo" />
+		</PARAMETER>
+		<PARAMETER NAME="WRITE_ACLR_SYNCH" >
+			<FORCE_VALUE V="OFF" WHEN="!mfam_family_has_stratixii_style_ram || le_based_fifo || m_wiz || !is_used(aclr)" />
+			<FORCE_RANGE TO="ON|OFF" WHEN="mfam_family_has_stratixii_style_ram and !le_based_fifo and !m_wiz and is_used(aclr)" />
+		</PARAMETER>
+
+	</PARAMETER_RULES>
+</ROOT>

@@ -1,0 +1,217 @@
+-- **************************************************************************
+--	Cycle-shared FIFO Parameterized Megafunction - CSFIFO
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 2.2
+--
+--------------------------------------------------------------------
+-- 
+-- For a description of the parameters and ports, see SFIFO.
+--
+-- Altera recommends not to use this design directly.
+-- Use SFIFO instead, with FLEX10K - USE_EAB="ON" and clockx2 input port.
+--
+-- **************************************************************************
+
+include "altram";
+include "lpm_counter";
+include "lpm_compare";
+include "busmux";
+include "lpm_add_sub";
+include "a_fefifo";
+
+-------------------------------------------------------------------------------
+parameters
+(
+	LPM_WIDTH,
+	LPM_NUMWORDS,
+
+	LPM_SHOWAHEAD = "OFF",
+	UNDERFLOW_CHECKING = "ON",
+	OVERFLOW_CHECKING = "ON",
+	ALLOW_RWCYCLE_WHEN_FULL = "OFF",
+
+	DEVICE_FAMILY
+);
+
+include "aglobal90";
+
+constant WIDTHAD = LPM_NUMWORDS > 0 ? CEIL(LOG2(LPM_NUMWORDS)) : 0;
+constant NUMWORDS_POWEROF2 = LPM_NUMWORDS==(2^WIDTHAD) ? 1 : 0;
+
+-------------------------------------------------------------------------------
+subdesign csfifo
+(
+	data[LPM_WIDTH-1..0]		: input;
+	q[LPM_WIDTH-1..0]			: output;
+
+	rreq, wreq					: input;
+	clock, clockx2				: input;
+	clr, sclr					: input = GND;
+
+	threshlevel[WIDTHAD-1..0]	: input = GND;
+	threshold					: output;
+	empty, full					: output;
+	usedw[WIDTHAD-1..0]			: output;		-- # of words in the FIFO
+)
+
+-------------------------------------------------------------------------------
+variable
+	valid_wreq, valid_rreq		: node;
+
+	ram_block					: altram with( WIDTH=LPM_WIDTH, AD_WIDTH=WIDTHAD );
+	rd_ptr, wr_ptr				: lpm_counter with( LPM_WIDTH=WIDTHAD );
+	if LPM_SHOWAHEAD=="OFF" generate 
+		rd_out[LPM_WIDTH-1..0]: dffe; 
+	end generate;
+
+	fifo_state					: a_fefifo with( LPM_WIDTHAD=WIDTHAD, LPM_NUMWORDS=LPM_NUMWORDS, UNDERFLOW_CHECKING=UNDERFLOW_CHECKING, OVERFLOW_CHECKING=OVERFLOW_CHECKING, ALLOW_RWCYCLE_WHEN_FULL=ALLOW_RWCYCLE_WHEN_FULL );
+	clock_shadow, clock_reset	: dff;
+
+-------------------------------------------------------------------------------
+begin
+	assert (LPM_WIDTH>=1)
+			report "Value of LPM_WIDTH parameter must be at least 1"
+			SEVERITY ERROR
+			HELP_ID CSFIFO_WIDTH;
+
+	assert (LPM_NUMWORDS>=2)
+			report "Value of LPM_NUMWORDS parameter must be at least 2"
+			SEVERITY ERROR
+			HELP_ID CSFIFO_WIDTHAD;
+
+	--------------------------------------------------------------------
+	assert (LPM_SHOWAHEAD=="ON") or (LPM_SHOWAHEAD=="OFF")
+			report "Assign either ""ON"" or ""OFF"" to LPM_SHOWAHEAD"
+			severity error
+			help_id CSFIFO_SHOWAHEAD;
+
+	assert (UNDERFLOW_CHECKING=="ON") or (UNDERFLOW_CHECKING=="OFF")
+			report "Assign either ""ON"" or ""OFF"" to UNDERFLOW_CHECKING"
+			severity error
+			help_id CSFIFO_UNDERFLOW_CHECKING;
+
+	assert (OVERFLOW_CHECKING=="ON") or (OVERFLOW_CHECKING=="OFF")
+			report "Assign either ""ON"" or ""OFF"" to OVERFLOW_CHECKING"
+			severity error
+			help_id CSFIFO_OVERFLOW_CHECKING;
+
+	assert (ALLOW_RWCYCLE_WHEN_FULL=="ON") or (ALLOW_RWCYCLE_WHEN_FULL=="OFF")
+			report "Assign either ""ON"" or ""OFF"" to ALLOW_RWCYCLE_WHEN_FULL"
+			severity error
+			help_id CSFIFO_ALLOW_RWCYCLE_WHEN_FULL;
+
+	--------------------------------------------------------------------
+	assert (used(clock) & used(clockx2))
+			report "Both clock and clockx2 input port must be connected"
+			severity error
+			help_id CSFIFO_CLOCK;
+
+	-- Cause: This functions was really only intended for FLEX10K with single-port EABs.
+	--		  For any other device family, the LPM equivalent function is a much better choice.
+	-- Action: Replace this function with the LPM equivalent.
+	assert (FAMILY_FLEX10K())
+			report "Altera recommends using the lpm_fifo megafunction instead of the csfifo megafunction for the % device family"
+				DEVICE_FAMILY
+			severity warning
+			help_id CSFIFO_FAMILY;
+
+-- **************************************************************************
+-- Create a shadow signal from the clock to be able to drive logic
+--
+	clock_shadow		= VCC;
+	clock_shadow.clrn	= not clock_reset;
+	clock_shadow.clk	= clock;
+	
+	clock_reset			= clock_shadow;
+	clock_reset.clrn	= clock_shadow;
+	clock_reset.clk		= clockx2;
+
+-- **************************************************************************
+	if UNDERFLOW_CHECKING=="OFF" generate
+		valid_rreq = rreq;
+	else generate
+		valid_rreq = rreq and !empty;
+	end generate; 
+
+	if OVERFLOW_CHECKING=="OFF" generate
+		valid_wreq = wreq;
+	else generate 
+		if ALLOW_RWCYCLE_WHEN_FULL=="ON" generate
+			valid_wreq = wreq and (!full or rreq);
+		else generate
+			valid_wreq = wreq and !full;
+		end generate; 
+	end generate;
+
+	wr_ptr.(cnt_en, clock, aclr, sclr) = (valid_wreq, clock, clr, sclr);
+	rd_ptr.(cnt_en, clock, aclr, sclr) = (valid_rreq, clock, clr, sclr);
+
+-- **************************************************************************
+-- Time multiplex the read and write addresses to the EAB address input
+--
+	ram_block.address[]	= busmux(.dataa[]= wr_ptr.q[],	-- cycle 1: write
+								 .datab[]= rd_ptr.q[],	-- cycle 2: read
+								 .sel	= clock_shadow
+								)
+						  with( WIDTH=WIDTHAD )
+						  returns( .result[] );
+	ram_block.clocki	= clockx2;
+	
+-- **************************************************************************
+-- Access the RAM
+--
+	ram_block.(data[], we)  = (data[], valid_wreq and !clock_shadow);
+
+	if LPM_SHOWAHEAD=="OFF" generate
+		rd_out[] = ram_block.q[];
+		rd_out[].(clk, ena, clrn) = (clockx2, valid_rreq and !clock_shadow, !clr);
+		q[] = rd_out[];
+	else generate
+		q[] = ram_block.q[];
+	end generate;
+
+-- **************************************************************************
+-- status register and full/empty flags
+--
+	usedw[] = lpm_add_sub( .dataa[]=wr_ptr.q[], .datab[]=rd_ptr.q[] )
+			  with( LPM_WIDTH=WIDTHAD, LPM_DIRECTION="SUB" )
+			  returns( .result[] );
+
+	fifo_state.(usedw_in[], wreq, rreq, aclr, sclr, clock) = 
+			   (   usedw[], wreq, rreq,  clr, sclr, clock);
+	(empty, full, threshold) = fifo_state.(empty, full, threshold);
+
+	if used(threshlevel) generate fifo_state.threshlevel[]=threshlevel[]; end generate;
+	IF !USED(threshold) GENERATE
+		threshold = GND;
+	END GENERATE;
+	IF !USED(usedw) GENERATE
+		usedw[] = GND;
+	END GENERATE;
+	IF !USED(q) GENERATE
+		q[] = GND;
+	END GENERATE;
+	IF !USED(empty) GENERATE
+		empty = GND;
+	END GENERATE;
+	IF !USED(full) GENERATE
+		full = GND;
+	END GENERATE;
+end;
+

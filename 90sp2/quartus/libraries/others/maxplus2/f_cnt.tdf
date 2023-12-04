@@ -1,0 +1,23 @@
+SUBDESIGN f_cnt
+(
+        CI,CLK,DATA : INPUT = GND;
+        CEN,LOAD,RESET : INPUT = VCC;
+        COUNT : OUTPUT;
+)
+
+Variable
+
+        i_count : DFF;
+        iq : node;
+
+begin
+
+        i_count.d = ((((CI$iq)&CEN)#(iq&!CEN))&LOAD)#(DATA&!LOAD);
+        iq = i_count.q;
+        i_count.clk = CLK;
+        i_count.clrn = RESET;
+
+        COUNT = i_count.q;
+
+end;
+

@@ -1,0 +1,478 @@
+--------------------------------------------------------------------
+--
+--	ALTDDIO_OUT Parameterized Megafunction
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 1.0
+--
+--------------------------------------------------------------------
+INCLUDE "aglobal90.inc";
+INCLUDE "mercury_ddio.inc";
+INCLUDE "apexii_ddio.inc";
+INCLUDE "stratix_ddio.inc";
+INCLUDE "cyclone_ddio.inc";
+INCLUDE "lpm_mux.inc";
+INCLUDE "stratix_lcell.inc";
+
+OPTIONS NAME_SUBSTITUTION = ON;
+OPTIONS ALTERA_INTERNAL_OPTION="ADV_NETLIST_OPT_ALLOWED=""NEVER_ALLOW""; {-to output_cell_L} PRESERVE_REGISTER=ON; {-to output_cell_L} DDIO_OUTPUT_REGISTER=LOW; {-to mux} DDIO_OUTPUT_REGISTER=HIGH";
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+OPTIONS	ALTERA_INTERNAL_OPTION = "suppress_da_rule_internal=C104";		
+OPTIONS	ALTERA_INTERNAL_OPTION = "suppress_da_rule_internal=C106";		
+
+PARAMETERS
+(
+	WIDTH,
+	POWER_UP_HIGH = "OFF",			-- "ON" or "OFF"
+	OE_REG = "UNUSED", 				-- "REGISTERED" or "UNREGISTERED", with "UNREGISTERED" as default
+	EXTEND_OE_DISABLE = "UNUSED",	-- "ON" or "OFF", with "OFF" as default
+	INTENDED_DEVICE_FAMILY = "MERCURY",
+	DEVICE_FAMILY,
+	CBXI_PARAMETER = "NOTHING"
+);
+
+
+CONSTANT INT_DEVICE_FAMILY = USED(INTENDED_DEVICE_FAMILY) ? 
+									INTENDED_DEVICE_FAMILY : DEVICE_FAMILY;
+
+DEFINE MERCURY_STYLE() = FAMILY_MERCURY();		-- Mercury type of ddio?
+DEFINE APEXII_STYLE() = FAMILY_APEXII();		-- APEX II type of ddio?
+DEFINE STRATIX_STYLE() = FAMILY_STRATIX();
+
+DEFINE VALID_FAMILY() =  FAMILY_MERCURY() # FAMILY_APEXII() # FAMILY_STRATIX();-- Mercury and APEX II families only
+
+DEFINE INT_ARESET_MODE() = USED(aset) ? "preset" : (USED(aclr) ? "clear" : "none");
+DEFINE INT_POWER_UP() = !(USED(aset) # USED(aclr)) ? (POWER_UP_HIGH == "OFF" ? "low" : "high") : 
+							(USED(aset) ? "high" : "low");
+DEFINE DEF_OE_REGMODE() = (OE_REG == "UNUSED" # !USED(OE_REG)) ? "UNREGISTERED" : OE_REG;
+DEFINE APEXII_OE_REGMODE() = (DEF_OE_REGMODE() == "REGISTERED") ? "register" : "none";
+
+DEFINE APEXII_OE_RESET() = (APEXII_OE_REGMODE() == "none") ? "none" : INT_ARESET_MODE();
+DEFINE APEXII_OE_POWERUP() = (APEXII_OE_REGMODE() == "none") ? "low" : INT_POWER_UP();
+
+DEFINE DEF_EXTEND_OE_DISABLE() = (EXTEND_OE_DISABLE == "UNUSED" # !USED(EXTEND_OE_DISABLE)) ?
+										"OFF" : EXTEND_OE_DISABLE;
+DEFINE APEXII_EXTEND_OE_DISABLE() = (APEXII_OE_REGMODE() == "none") ? "false" :
+									(DEF_EXTEND_OE_DISABLE() == "OFF") ? "false" : "true";
+
+DEFINE SAME_DEVICE_FAMILY()	=	family_is_same() # 
+								(((family_base_stratix_member(INT_DEVICE_FAMILY) == 1) & (family_base_stratix_member(DEVICE_FAMILY) == 1)) ? 1 : 0) #
+								(((family_base_stratixii_member(INT_DEVICE_FAMILY) == 1) & (family_base_stratixii_member(DEVICE_FAMILY) == 1)) ? 1 : 0) #
+								(((family_base_stratixiii_member(INT_DEVICE_FAMILY) == 1) & (family_base_stratixiii_member(DEVICE_FAMILY) == 1)) ? 1 : 0) #
+								(((family_base_cyclone_member(INT_DEVICE_FAMILY) == 1) & (family_base_cyclone_member(DEVICE_FAMILY) == 1)) ? 1 : 0) #
+								(((family_base_cycloneii_member(INT_DEVICE_FAMILY) == 1) & (family_base_cycloneii_member(DEVICE_FAMILY) == 1)) ? 1 : 0) #
+								(((family_base_cycloneiii_member(INT_DEVICE_FAMILY) == 1) & (family_base_cycloneiii_member(DEVICE_FAMILY) == 1)) ? 1 : 0);
+
+DEFINE CBX_FAMILY_STRATIX() = (FAMILY_STRATIX() == 1 & (USED(sclr) # USED(sset))) ? 1 : 0;
+DEFINE CBX_FAMILY() = (CBX_FAMILY_STRATIX() == 1 # FAMILY_CYCLONEII() == 1 # FAMILY_STRATIXII() == 1) ? 1 : 0;
+FUNCTION @CBXI_PARAMETER(datain_h[WIDTH-1..0], datain_l[WIDTH-1..0], outclock, outclocken, aclr, aset, sset, sclr,oe)
+RETURNS (dataout[WIDTH-1..0], oe_out[WIDTH-1..0]);									
+
+SUBDESIGN altddio_out
+(
+	datain_h[WIDTH-1..0]	: INPUT;
+	datain_l[WIDTH-1..0]	: INPUT;
+	outclock				: INPUT;
+	outclocken				: INPUT = VCC;	
+	aclr					: INPUT = GND;
+	aset					: INPUT = GND;
+	sclr					: INPUT = GND;
+	sset					: INPUT = GND;
+	oe						: INPUT = VCC;
+	
+	dataout[WIDTH-1..0]		: BIDIR;
+	oe_out[WIDTH-1..0]		: output;
+)
+
+
+VARIABLE
+	IF (CBX_FAMILY() == 1) GENERATE
+		IF (CBXI_PARAMETER != "NOTHING") GENERATE
+			auto_generated : @CBXI_PARAMETER WITH (CBXI_PARAMETER = "NOTHING");
+		END GENERATE;
+	ELSE GENERATE
+	IF (VALID_FAMILY() == 1) GENERATE
+		IF (MERCURY_STYLE() == 1) GENERATE
+			-- Mercury DDIO output mode
+			IF (USED(aclr) # USED(aset)) GENERATE
+				ddio_out[WIDTH-1..0]	: mercury_ddio_out WITH 
+											(areset_mode = INT_ARESET_MODE(),
+											 power_up_mode = INT_POWER_UP());
+			ELSE GENERATE
+				ddio_out[WIDTH-1..0]	: mercury_ddio_out_no_areset WITH 
+											(areset_mode = INT_ARESET_MODE(),
+											 power_up_mode = INT_POWER_UP());
+			END GENERATE;
+		ELSE GENERATE
+			IF (APEXII_STYLE() == 1) GENERATE
+				IF (USED(aclr) # USED(aset)) GENERATE
+					ddio_out[WIDTH-1..0]	: apexii_ddio_out WITH 
+												(output_reset = INT_ARESET_MODE(),
+												 output_power_up = INT_POWER_UP(),
+												 oe_register_mode = APEXII_OE_REGMODE(),
+												 oe_reset = APEXII_OE_RESET(),
+												 oe_power_up = APEXII_OE_POWERUP(),
+												 extend_oe_disable = APEXII_EXTEND_OE_DISABLE());
+				ELSE GENERATE
+					ddio_out[WIDTH-1..0]	: apexii_ddio_out_no_areset WITH 
+												(output_reset = INT_ARESET_MODE(),
+												 output_power_up = INT_POWER_UP(),
+												 oe_register_mode = APEXII_OE_REGMODE(),
+												 oe_reset = APEXII_OE_RESET(),
+												 oe_power_up = APEXII_OE_POWERUP(),
+												 extend_oe_disable = APEXII_EXTEND_OE_DISABLE());
+				END GENERATE;
+			ELSE GENERATE
+				IF (FAMILY_Cyclone() == 1) GENERATE -- CYCLONE
+					ddio_out[WIDTH-1..0]  : cyclone_ddio_out WITH 	
+													( extend_oe_disable = APEXII_EXTEND_OE_DISABLE());
+--						output_cell_H[WIDTH-1..0] 	: DFFE;
+						IF USED(oe) & (OE_REG == "REGISTERED") GENERATE
+							oe_cell_1	:	DFFE;
+							IF (EXTEND_OE_DISABLE == "ON") GENERATE
+								oe_cell_2	:	DFFE;
+								oe_input	: 	LCELL;
+							END GENERATE;
+						END GENERATE;
+--						mux[WIDTH-1..0]	: LCELL; -- Use Lcell instead of lpm_mux 
+						output_cell_L[WIDTH-1..0] 	: DFFE;						
+						mux[WIDTH-1..0] : stratix_lcell WITH 
+												( OPERATION_MODE = "NORMAL",
+													SYNCH_MODE = "ON",
+													LUT_MASK = "F5A0",
+													SUM_LUTC_INPUT = "qfbk");
+--						output_cell_L[WIDTH-1..0] : stratix_lcell WITH
+--												( OPERATION_MODE = "NORMAL",
+--													SYNCH_MODE = "ON");					
+						
+				-- regular stratix
+				ELSE GENERATE
+				IF (STRATIX_STYLE() == 1) GENERATE
+					IF (USED(aclr) # USED(aset)) GENERATE
+						ddio_out[WIDTH-1..0]	: stratix_ddio_out WITH 
+													(output_async_reset = INT_ARESET_MODE(),
+													 output_power_up = INT_POWER_UP(),
+													 oe_register_mode = APEXII_OE_REGMODE(),
+													 oe_async_reset = APEXII_OE_RESET(),
+													 oe_power_up = APEXII_OE_POWERUP(),
+													 extend_oe_disable = APEXII_EXTEND_OE_DISABLE());
+					ELSE GENERATE
+						ddio_out[WIDTH-1..0]	: stratix_ddio_out_no_areset WITH 
+													(output_async_reset = INT_ARESET_MODE(),
+													 output_power_up = INT_POWER_UP(),
+													 oe_register_mode = APEXII_OE_REGMODE(),
+													 oe_async_reset = APEXII_OE_RESET(),
+													 oe_power_up = APEXII_OE_POWERUP(),
+													 extend_oe_disable = APEXII_EXTEND_OE_DISABLE());
+					END GENERATE;
+				END GENERATE;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+	END GENERATE; -- !Stratix II
+	-- Temporary nodes created to avoid issues with invalid assignments
+	IF (FAMILY_CYCLONE() != 1) GENERATE
+		temp : NODE;
+		output_cell_L : NODE;
+		mux : NODE;
+	END GENERATE;
+
+BEGIN
+	-- ------------------------------------------
+	--      Error checkings and assertions
+	-- ------------------------------------------
+	-- Cause: The user has assigned zero or a negative value to this parameter 
+	-- Action: Choose a positive integer for this parameter
+	ASSERT (WIDTH > 0)
+			REPORT "Value of WIDTH parameter must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID ALTDDIO_OUT_WIDTH;
+
+	-- Cause: The user has connected both the aclr and aset input ports. Simultaneous
+	--			connection of these ports are not supported
+	-- Action: Disconnect either one or both of the aset or aclr input port connections. 
+	ASSERT (!(USED(aclr) & USED(aset)))
+			REPORT "Both aset and aclr input ports may not be simultaneously connected" 
+			SEVERITY ERROR
+			HELP_ID ALTDDIO_OUT_ASET_ACLR;
+
+	-- Cause: The user has connected both the sclr and sset input ports. Simultaneous
+	--			connection of these ports are not supported
+	-- Action: Disconnect either one or both of the sset or sclr input port connections. 
+	ASSERT (!(USED(sclr) & USED(sset)))
+			REPORT "Both sset and sclr input ports may not be simultaneously connected" 
+			SEVERITY ERROR
+			HELP_ID ALTDDIO_OUT_SSET_SCLR;
+
+	-- Cause: The user has assigned an invalid value to the POWER_UP_HIGH parameter 
+	-- Action: Choose "ON" (for power-up to a high output) or "OFF" (for power-up to a low output)			
+	ASSERT (POWER_UP_HIGH == "ON" # POWER_UP_HIGH == "OFF")
+			REPORT "Illegal value for POWER_UP_HIGH parameter (%) -- value must be ON or OFF (the default)"
+				POWER_UP_HIGH
+			SEVERITY ERROR
+			HELP_ID ALTDDIO_OUT_POWER_UP_HIGH;
+
+	-- Cause: The user has assigned an invalid value to the OE_REG parameter 
+	-- Action: Choose "UNREGISTERED", "REGISTERED", or "UNUSED"			
+	ASSERT (!(APEXII_STYLE() == 1 & !(OE_REG == "UNREGISTERED" # OE_REG == "REGISTERED" # OE_REG == "UNUSED")))
+			REPORT "Illegal value for OE_REG parameter (%) -- value must be UNREGISTERED (the default), REGISTERED, or UNUSED"
+				OE_REG
+			SEVERITY ERROR
+			HELP_ID ALTDDIO_OUT_OE_REG_VALUE;
+
+	-- Cause: The user has assigned an invalid value to the EXTEND_OE_DISABLE parameter 
+	-- Action: Choose "OFF" or "ON"			
+	ASSERT (!(APEXII_STYLE() == 1 & !(EXTEND_OE_DISABLE == "ON" # EXTEND_OE_DISABLE == "OFF" # EXTEND_OE_DISABLE == "UNUSED")))
+			REPORT "Illegal value for EXTEND_OE_DISABLE parameter (%) -- value must be OFF (the default) or ON"
+				EXTEND_OE_DISABLE
+			SEVERITY ERROR
+			HELP_ID ALTDDIO_OUT_EXTEND_OE_DISABLE_VALUE;
+
+	-- Cause: Use of OE_REG parameter is not supported in a non-APEX II logic family device
+	-- Action: Do not use this parameter for non-APEX II logic families. Otherwise, it will be ignored
+	ASSERT (!(MERCURY_STYLE() == 1 & USED(OE_REG)))
+    	    REPORT "OE_REG parameter is not supported in the Mercury logic device family. The parameter is ignored"
+        	SEVERITY WARNING
+        	HELP_ID ALTDDIO_OUT_OE_REG;
+
+	-- Cause: Use of EXTEND_OE_DISABLE parameter is not supported in a non-APEX II logic family device
+	-- Action: Do not use this parameter for non-APEX II logic families. Otherwise, it will be ignored
+	ASSERT (!(MERCURY_STYLE() == 1 & USED(EXTEND_OE_DISABLE)))
+    	    REPORT "EXTEND_OE_DISABLE parameter is not supported in the Mercury logic device family. The parameter is ignored"
+        	SEVERITY WARNING
+        	HELP_ID ALTDDIO_OUT_EXTEND_OE_DISABLE;
+
+	-- Cause: EXTEND_OE_DISABLE parameter in APEX II logic family device may be set to "ON" only if
+	--			the oe input port is registered
+	-- Action: Set the OE_REG parameter to "REGISTERED" to use the EXTEND_OE_DISABLE parameter
+	ASSERT (!(APEXII_STYLE() == 1 & DEF_OE_REGMODE() == "UNREGISTERED" & EXTEND_OE_DISABLE == "ON"))
+    	    REPORT "EXTEND_OE_DISABLE parameter is set to ON but the oe input port is not registered"
+        	SEVERITY ERROR
+        	HELP_ID ALTDDIO_OUT_OE_REG_DISABLE;
+
+	-- Cause: The user has specified a non-Mercury logic family for this megafunction.
+	--		  ALTDDIO_OUT is currently supported only in Mercury and APEX II logic families.
+	-- Action: Change the logic family setting to Mercury or APEX II
+	ASSERT (VALID_FAMILY() == 1)
+			REPORT "Megafunction altddio_out is not supported in %" DEVICE_FAMILY
+			SEVERITY ERROR
+			HELP_ID ALTDDIO_OUT_INVALID_FAMILY;
+
+	-- Cause: The user has specified a logic family for this megafunction different
+	--		  from the intended one.
+	-- Action: Change the logic family setting to the intended logic family
+	-- ASSERT (SAME_DEVICE_FAMILY())
+	-- 		REPORT "Megafunction altddio_out is expecting device logic family % but is being compiled for %"
+	--			INTENDED_DEVICE_FAMILY, DEVICE_FAMILY
+	--		SEVERITY WARNING
+	--		HELP_ID ALTDDIO_OUT_INTENDED_FAMILY;
+
+	-- ------------------------------------------
+	--     	Sub-module Connections
+	-- ------------------------------------------
+	IF (CBX_FAMILY() == 1) GENERATE
+	IF (CBXI_PARAMETER != "NOTHING") GENERATE
+		IF USED(datain_h) GENERATE
+			auto_generated.datain_h[]  = datain_h[];
+		END GENERATE;
+		IF USED(datain_l) GENERATE
+			auto_generated.datain_l[]  = datain_l[];
+		END GENERATE;
+		IF USED(outclock) GENERATE
+			auto_generated.outclock  = outclock;
+		END GENERATE;
+		IF USED(outclocken) GENERATE
+			auto_generated.outclocken  = outclocken;
+		END GENERATE;
+		IF USED(aclr) GENERATE
+			auto_generated.aclr  = aclr;
+		END GENERATE;
+		IF USED(aset) GENERATE
+			auto_generated.aset  = aset;
+		END GENERATE;
+		IF USED(sclr) GENERATE
+			auto_generated.sclr  = sclr;
+		END GENERATE;
+		IF USED(sset) GENERATE
+			auto_generated.sset  = sset;
+		END GENERATE;
+		IF USED(oe) GENERATE
+			auto_generated.oe  = oe;
+		END GENERATE;
+		IF USED(dataout) GENERATE
+			dataout[] = auto_generated.dataout[];
+		END GENERATE;
+		IF USED(oe_out) GENERATE
+			oe_out[] = auto_generated.oe_out[];
+		END GENERATE;
+	ELSE GENERATE
+		ASSERT (0)
+		REPORT "The current megafunction is configured for use with the clear box feature and cannot be used when the clear box feature is disabled"
+		SEVERITY ERROR
+		HELP_ID MF_CBX_ONLY_SUPPORT;
+	END GENERATE;		
+	ELSE GENERATE
+	IF (VALID_FAMILY() == 1) GENERATE
+		IF FAMILY_Cyclone() == 1 GENERATE
+			dataout[] = ddio_out[].padio;
+--			output_cell_H[].clk = outclock;
+			output_cell_L[].clk = outclock;
+--			output_cell_H[].ena = outclocken;
+			output_cell_L[].ena = outclocken;
+			mux[].clk = outclock;
+			mux[].ena = outclocken;
+			IF USED(oe) & OE_REG == "REGISTERED" GENERATE 
+				oe_cell_1.clk = outclock;
+				oe_cell_1.ena = outclocken;
+				IF (EXTEND_OE_DISABLE == "ON") GENERATE
+					oe_cell_2.clk = !outclock;
+					oe_cell_2.ena = outclocken;					
+				END GENERATE;
+			END GENERATE;
+			IF USED(oe) GENERATE
+				IF (OE_REG == "REGISTERED") GENERATE
+					oe_cell_1.d = oe;
+					IF (EXTEND_OE_DISABLE == "ON") GENERATE
+						oe_cell_2.d = oe_cell_1.q;
+						oe_input = oe_cell_1.q & oe_cell_2.q;													
+						ddio_out[].oe = oe_input;						
+					ELSE GENERATE
+						ddio_out[].oe = oe_cell_1.q;						
+					END GENERATE;
+				ELSE GENERATE
+					ddio_out[].oe = oe;
+				END GENERATE;
+			ELSE GENERATE
+				ddio_out[].oe = VCC;
+			END GENERATE;
+			IF (USED(aset) # USED(aclr)) GENERATE
+				IF USED(aset) GENERATE
+					output_cell_L[].prn = !aset;
+--					output_cell_H[].prn = !aset;
+					IF USED(oe) & OE_REG == "REGISTERED" GENERATE					
+						oe_cell_1.prn = !aset;
+						IF (EXTEND_OE_DISABLE == "ON") GENERATE
+							oe_cell_2.prn = !aset;
+						END GENERATE;
+					END GENERATE;
+					mux[].datac = !datain_h[];
+					mux[].aclr = aset;
+					mux[].sload = VCC;		
+					mux[].datad = !output_cell_L[].q;
+					mux[].dataa = outclock;
+					ddio_out[].datain = !mux[].combout;
+				END GENERATE;
+				IF USED(aclr) GENERATE
+					output_cell_L[].clrn = !aclr;
+					mux[].aclr = aclr;
+--					output_cell_H[].clrn = !aclr;
+					IF USED(oe) & OE_REG == "REGISTERED" GENERATE					
+						oe_cell_1.clrn = !aclr;
+						IF (EXTEND_OE_DISABLE == "ON") GENERATE
+							oe_cell_2.clrn = !aclr;
+						END GENERATE;
+					END GENERATE;
+					mux[].datac = datain_h[];
+					mux[].sload = VCC;		
+					mux[].datad = output_cell_L[].q;
+					mux[].dataa = outclock;
+					ddio_out[].datain = mux[].combout;
+				END GENERATE;
+		
+--				output_cell_H[].d = datain_h[];
+				output_cell_L[].d = datain_l[];
+		%		mux.data[0][] = output_cell_L[].q;
+				mux.data[1][] = output_cell_H[].q;
+				mux.sel[0] = outclock;
+				ddio_out[].datain = mux.result[]; %
+--				mux[] = (output_cell_L[].q & !outclock # output_cell_H[].q & outclock);
+--				ddio_out[].datain = mux[];
+
+			ELSE GENERATE
+				IF (POWER_UP_HIGH == "ON") GENERATE
+			
+--					output_cell_H[].d = !datain_h[];
+					output_cell_L[].d = !datain_l[];
+					
+%					mux.data[0][] = !output_cell_L[].q;
+					mux.data[1][] = !output_cell_H[].q;
+					mux.sel[0] = outclock;
+					ddio_out[].datain = mux.result[];%
+--					mux[] = (!output_cell_L[].q & !outclock # !output_cell_H[].q & outclock);
+--					ddio_out[].datain = mux[];
+					mux[].datac = !datain_h[];
+					mux[].sload = VCC;		
+					mux[].datad = output_cell_L[].q;
+					mux[].dataa = outclock;
+					ddio_out[].datain = !mux[].combout;
+
+				ELSE GENERATE
+		
+--					output_cell_H[].d = datain_h[];
+					output_cell_L[].d = datain_l[];
+						
+		%			mux.data[0][] = output_cell_L[].q;
+					mux.data[1][] = output_cell_H[].q;
+					mux.sel[0] = outclock;
+					ddio_out[].datain = mux.result[];%
+--					mux[] = (output_cell_L[].q & !outclock # output_cell_H[].q & outclock);
+--					ddio_out[].datain = mux[];
+					mux[].datac = datain_h[];
+					mux[].sload = VCC;		
+					mux[].datad = output_cell_L[].q;
+					mux[].dataa = outclock;
+					ddio_out[].datain = mux[].combout;
+
+							
+				END GENERATE;
+			END GENERATE;
+		ELSE GENERATE -- Stratix	
+		IF (MERCURY_STYLE() == 1) # (APEXII_STYLE() == 1) # (STRATIX_STYLE() == 1) GENERATE
+			-- Input connections
+			ddio_out[].datain_h = datain_h[];
+			ddio_out[].datain_l = datain_l[];
+			ddio_out[].clk = outclock;
+			ddio_out[].clkena = outclocken;
+			ddio_out[].oe = oe;
+					
+			IF USED(aclr) GENERATE
+				ddio_out[].areset = aclr;
+			END GENERATE;
+			
+			IF USED(aset) GENERATE
+				ddio_out[].areset = aset;
+			END GENERATE;
+			
+			-- Output connections
+			dataout[] = ddio_out[].padio;
+		END GENERATE;
+		END GENERATE;
+	END GENERATE;
+	END GENERATE; -- !Stratix II
+	-- Temporary nodes created to avoid issues with invalid assignments
+	IF (FAMILY_CYCLONE() != 1) GENERATE
+		output_cell_L = VCC;
+		mux = VCC;
+		temp = output_cell_L & mux;
+	END GENERATE;
+	IF !USED(oe_out) GENERATE
+		oe_out[] = GND;
+	END GENERATE;
+END;
+

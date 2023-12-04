@@ -1,0 +1,73 @@
+<?xml version="1.0" ?>
+<ROOT>
+	<INCLUDE FILE="mfam_family_macros.xml" />
+	<HTML_TEXT>
+		<TITLE>Sample Waveforms for m_design_file_name</TITLE>
+
+		<HEADER>Sample behavioral waveforms for design file m_design_file_name</HEADER>
+		<INTRO>
+			<T>The following waveforms show the behavior of dcfifo megafunction for the chosen set of parameters in design m_design_file_name.  The design m_design_file_name has</T>
+			<T>a depth of LPM_NUMWORDS words of LPM_WIDTH bits each.</T>
+			<IF>mfam_has_stratix_style_ram</IF>
+			<THEN>
+				<T>The output of the fifo is</T>
+				<IF>ADD_RAM_OUTPUT_REGISTER == "ON"</IF>
+				<THEN>registered.</THEN>
+				<ELSE>unregistered.</ELSE>
+			</THEN>
+			<T>The fifo is in</T>
+			<IF>LPM_SHOWAHEAD == "ON"</IF>
+			<THEN>show-ahead synchronous mode.  The data becomes available before 'rdreq' is asserted; 'rdreq' acts as a read acknowledge.</THEN>
+			<ELSE>legacy synchronous mode.  The data becomes available after 'rdreq' is asserted; 'rdreq' acts as a read request.</ELSE>
+		</INTRO>
+	</HTML_TEXT>
+	<WAVE_DATA>
+		<WAVE NAME="ALL" TIME_STEP="10" MAX_TIME="500">
+			<CAPTION>Wave showing read and write operation.</CAPTION>
+			<DESCRIPTION>
+				<T>The above waveform shows the behavior of the design under normal read and write conditions</T>
+				<IF>is_used(aclr)</IF>
+				<THEN>with aclr</THEN>
+				<T>.</T>
+			</DESCRIPTION>
+
+			<STIM> force wrclk 0 @0, 1 @20, -repeat @40</STIM>
+			<STIM> force rdclk 0 @0, 1 @20, -repeat @40</STIM>
+			<STIM> force wrreq 0 @0, 1 @10, 0 @250</STIM>
+			<IF> rdempty != 1 </IF>
+			<THEN>
+				<STIM> force rdreq 0 @0, 1 @360 </STIM>
+			</THEN>
+			<ELSE> 
+				<STIM> force rdreq 0 </STIM>
+			</ELSE>
+			<STIM> force data 0 @0, 1 @10, 2 @50, 3 @90, 4 @130, 5 @170, 6 @210, 7 @260</STIM>
+			<STIM> force aclr 0 @0, 1 @410, 0 @450</STIM>
+		</WAVE>
+		<WAVE NAME="WRFULL" TIME_STEP="10" MAX_TIME="40*LPM_NUMWORDS+300" DISPLAY_START_TIME="40*(LPM_NUMWORDS - 4)">
+			<CAPTION>Wave showing FIFO full operation.</CAPTION>
+			<WAVE_CONDITION>is_used(wrfull) and (LPM_NUMWORDS gt 8)</WAVE_CONDITION>			
+			<DESCRIPTION>
+				<T>The above waveform shows the behavior of the FIFO under wrfull condition. In the example above, data is written into the FIFO till it is full, then data is read back.</T>
+			</DESCRIPTION>
+			<STIM> force wrclk 0 @0, 1 @20, -repeat @40</STIM>
+			<STIM> force rdclk 0 @0, 1 @20, -repeat @40</STIM>
+			<IF> wrfull != 1</IF>
+			<THEN>
+				<STIM> force wrreq 0 @0, 1 @20</STIM>
+			</THEN>
+			<ELSE>
+				<STIM> force wrreq 0</STIM>
+			</ELSE>
+			<IF> wrfull != 1</IF>
+			<THEN>
+				<STIM>force rdreq 0 @0</STIM>
+			</THEN>				
+			<ELSE>
+				<STIM>force rdreq 1</STIM>
+			</ELSE>
+			<STIM> force data 0 @0, 1 @10, 2 @50, 3 @90, 4 @130, 5 @170, 6 @210, 7 @260</STIM>
+			<STIM> force aclr 0 @0</STIM>
+		</WAVE>
+	</WAVE_DATA>
+</ROOT>

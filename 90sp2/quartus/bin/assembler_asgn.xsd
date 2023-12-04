@@ -1,0 +1,525 @@
+<?xml version="1.0" encoding="US-ASCII"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+	<!-- ***** ASM (root) ********* -->
+	<!-- Define the root element.  The only child elements allowed are
+		asm_assignment elements.  No attributes or text are allowed here. -->
+	<xsd:element name="asm">
+		<xsd:complexType>
+			<xsd:choice minOccurs="0" maxOccurs="unbounded">
+				<xsd:element name="include" type="include_type"/>
+				<xsd:element name="asm_assignments" type="asm_assignments_type"/>
+			</xsd:choice>
+		</xsd:complexType>
+	</xsd:element>
+
+	<!-- ***** ASM_ASSIGNMENT ********* -->
+	<!-- Define the asm_assignment element.  Each asm_assignment can have
+		a "device", "cmp", and "keyword" attribute.  The assembler will choose
+		one or zero such elements as the basis for configuration. -->
+	<xsd:complexType name="asm_assignments_type">
+		<xsd:choice minOccurs="0" maxOccurs="unbounded">
+			<xsd:element name="pof_block" type="pof_block_type"/>
+			<xsd:element name="bit_settings" type="bit_settings_type"/>
+			<xsd:element name="hc_bit_settings" type="hc_bit_settings_type"/>
+			<xsd:element name="token_file" type="token_file_type"/>
+			<xsd:element name="address_package" type="address_package_type"/>
+		</xsd:choice>
+		<xsd:attribute name="device" type="xsd:string" default="any"/>
+		<xsd:attribute name="cmp" type="xsd:string" default="any"/>
+		<xsd:attribute name="keyword" type="xsd:string" default="any"/>
+	</xsd:complexType>
+
+	<!-- ***** INCLUDE ********* -->
+	<xsd:complexType name="include_type">
+		<xsd:simpleContent>
+			<xsd:extension base="xsd:string">
+				<xsd:attribute name="path" type="xsd:anyURI" use="required"/>
+			</xsd:extension>
+		</xsd:simpleContent>
+	</xsd:complexType>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	<!-- ****************************************************** -->
+	<!-- This section defines elements used in the pof_block -->
+	<!-- ****************************************************** -->
+
+
+	<!-- ***** POF_BLOCK ********* -->
+	<!-- Define the pof_block element.  This is used to identify BLOCKs to be
+		individually dumped to block-level POFs.  -->
+	<xsd:complexType name="pof_block_type">
+		<xsd:sequence>
+			<xsd:element name="atom" type="atom_type" minOccurs="0" maxOccurs="unbounded"/>
+		</xsd:sequence>
+		<xsd:attribute name="name" type="xsd:string" use="required"/>
+		<xsd:attribute name="block_type" type="xsd:string" use="required"/>
+		<xsd:attribute name="location" type="xsd:string" default="unknown"/>
+	</xsd:complexType>
+
+	<!-- ***** ATOM ********* -->
+	<xsd:complexType name="atom_type">
+		<xsd:simpleContent>
+			<xsd:extension base="xsd:string">
+				<xsd:attribute name="type" type="xsd:string" use="required"/>
+				<xsd:attribute name="location" type="xsd:string" default="unknown"/>
+			</xsd:extension>
+		</xsd:simpleContent>
+	</xsd:complexType>
+
+
+
+
+
+
+
+
+	<!-- ****************************************************** -->
+	<!-- This section defines elements used in the bit_settings -->
+	<!-- ****************************************************** -->
+
+	<!-- ***** BIT_SETTINGS ********* -->
+	<xsd:complexType name="bit_settings_type">
+		<xsd:choice minOccurs="0" maxOccurs="unbounded">
+			<xsd:element name="debug_mode" type="debug_mode_type"/>
+			<xsd:element name="token_file" type="token_file_type"/>
+			<xsd:element name="address_package" type="address_package_type"/>
+			<xsd:element name="jtag_user_code" type="jtag_user_code_type"/>
+			<xsd:element name="option_register" type="option_register_type"/>
+			<xsd:element name="expanded_option_register" type="expanded_option_register_type"/>
+			<xsd:element name="cram" type="cram_type"/>
+			<xsd:element name="cff" type="cff_type"/>
+			<xsd:element name="archgroups" type="archgroups_type"/>
+		</xsd:choice>
+		<xsd:attribute name="action" use="required">
+			<xsd:simpleType>
+				<xsd:restriction base="xsd:string">
+					<xsd:enumeration value="override"/>
+					<xsd:enumeration value="read"/>
+					<xsd:enumeration value="compare"/>
+				</xsd:restriction>
+			</xsd:simpleType>
+		</xsd:attribute>
+	</xsd:complexType>
+
+	<!-- ***** DEBUG_MODE ********* -->
+	<xsd:complexType name="debug_mode_type">
+		<xsd:simpleContent>
+			<xsd:extension base="xsd:string">
+				<xsd:attribute name="filename" type="xsd:string" use="required"/>
+				<xsd:attribute name="value" type="xsd:boolean" default="true"/>
+				<xsd:attribute name="cram_style" default="2-d">
+					<xsd:simpleType>
+						<xsd:restriction base="xsd:string">
+							<xsd:enumeration value="1-d"/>
+							<xsd:enumeration value="2-d"/>
+						</xsd:restriction>
+					</xsd:simpleType>
+				</xsd:attribute>
+			</xsd:extension>
+		</xsd:simpleContent>
+	</xsd:complexType>
+
+	<!-- ***** TOKEN_FILE ********* -->
+	<xsd:complexType name="token_file_type">
+		<xsd:simpleContent>
+			<xsd:extension base="xsd:string">
+				<xsd:attribute name="filename" type="xsd:string" use="required"/>
+			</xsd:extension>
+		</xsd:simpleContent>
+	</xsd:complexType>
+
+	<!-- ***** CRAM ********* -->
+	<xsd:complexType name="cram_type">
+		<xsd:choice minOccurs="0" maxOccurs="unbounded">
+			<xsd:element name="address_1d" type="address_1d_type"/>
+			<xsd:element name="address_2d" type="address_2d_type"/>
+			<xsd:element name="token_1d" type="token_type"/>
+			<xsd:element name="token_2d" type="token_type"/>
+			<xsd:element name="base_address_1d" type="base_address_1d_type"/>
+			<xsd:element name="base_address_2d" type="base_address_2d_type"/>
+			<xsd:element name="address_package" type="address_package_type"/>
+			<xsd:element name="block_range" type="block_range_type"/>
+			<xsd:element name="block_location" type="block_location_type"/>
+			<xsd:element name="block_name" type="block_name_type"/>
+		</xsd:choice>
+	</xsd:complexType>
+
+	<!-- ***** CFF ********* -->
+	<xsd:complexType name="cff_type">
+		<xsd:choice minOccurs="0" maxOccurs="unbounded">
+			<xsd:element name="address_1d" type="address_1d_type"/>
+			<xsd:element name="token_1d" type="token_type"/>
+			<xsd:element name="base_address_1d" type="base_address_1d_type"/>
+			<xsd:element name="address_package" type="address_package_type"/>
+			<xsd:element name="block_range" type="block_range_type"/>
+			<xsd:element name="block_location" type="block_location_type"/>
+			<xsd:element name="block_name" type="block_name_type"/>
+		</xsd:choice>
+	</xsd:complexType>
+
+	<!-- ***** ADDRESS_1D ********* -->
+	<xsd:complexType name="address_1d_type">
+		<xsd:simpleContent>
+			<xsd:extension base="xsd:string">
+				<xsd:attribute name="addr" type="address_range_type" use="required"/>
+				<xsd:attribute name="value" type="hexadecimal" use="required"/>
+				<xsd:attribute name="desc" type="xsd:string" default=""/>
+			</xsd:extension>
+		</xsd:simpleContent>
+	</xsd:complexType>
+
+	<!-- ***** ADDRESS_2D ********* -->
+	<xsd:complexType name="address_2d_type">
+		<xsd:simpleContent>
+			<xsd:extension base="xsd:string">
+				<xsd:attribute name="row" type="address_range_type" use="required"/>
+				<xsd:attribute name="column" type="address_range_type" use="required"/>
+				<xsd:attribute name="value" type="hexadecimal" use="required"/>
+				<xsd:attribute name="desc" type="xsd:string" default=""/>
+			</xsd:extension>
+		</xsd:simpleContent>
+	</xsd:complexType>
+
+	<!-- ***** misc. bit settings definitions ********* -->
+	<xsd:simpleType name="address_range_type">
+		<xsd:restriction base="xsd:string">
+			<xsd:pattern value="(0|([1-9]([0-9])*))(:(0|([1-9]([0-9])*)))?"/>
+		</xsd:restriction>
+	</xsd:simpleType>
+	<xsd:simpleType name="hexadecimal">
+		<xsd:restriction base="xsd:string">
+			<xsd:pattern value="([0-9a-fA-F]){1,8}"/>
+		</xsd:restriction>
+	</xsd:simpleType>
+
+	<!-- ***** TOKEN_1D/TOKEN_2D ********* -->
+	<xsd:complexType name="token_type">
+		<xsd:simpleContent>
+			<xsd:extension base="xsd:string">
+				<xsd:attribute name="name" type="xsd:string" use="required"/>
+				<xsd:attribute name="value" use="required">
+					<xsd:simpleType>
+						<xsd:restriction base="xsd:string">
+							<xsd:pattern value="([0-9a-fA-F]){1,16}"/>
+						</xsd:restriction>
+					</xsd:simpleType>
+				</xsd:attribute>
+				<xsd:attribute name="desc" type="xsd:string" default=""/>
+			</xsd:extension>
+		</xsd:simpleContent>
+	</xsd:complexType>
+
+	<!-- ***** BASE_ADDRESS_1D ********* -->
+	<xsd:complexType name="base_address_1d_type">
+		<xsd:choice minOccurs="0" maxOccurs="unbounded">
+			<xsd:element name="address_1d" type="address_1d_type"/>
+			<xsd:element name="token_1d" type="token_type"/>
+			<xsd:element name="address_reference" type="address_reference_type"/>
+		</xsd:choice>
+		<xsd:attribute name="addr" type="xsd:nonNegativeInteger" use="required"/>
+	</xsd:complexType>
+
+	<!-- ***** BASE_ADDRESS_2D ********* -->
+	<xsd:complexType name="base_address_2d_type">
+		<xsd:choice minOccurs="0" maxOccurs="unbounded">
+			<xsd:element name="address_2d" type="address_2d_type"/>
+			<xsd:element name="token_2d" type="token_type"/>
+			<xsd:element name="address_reference" type="address_reference_type"/>
+		</xsd:choice>
+		<xsd:attribute name="row" type="xsd:nonNegativeInteger" use="required"/>
+		<xsd:attribute name="column" type="xsd:nonNegativeInteger" use="required"/>
+	</xsd:complexType>
+
+	<!-- ***** ADDRESS_PACKAGE ********* -->
+	<xsd:complexType name="address_package_type">
+		<xsd:choice minOccurs="0" maxOccurs="unbounded">
+			<xsd:element name="address_1d" type="address_1d_type"/>
+			<xsd:element name="token_1d" type="token_type"/>
+			<xsd:element name="address_2d" type="address_2d_type"/>
+			<xsd:element name="token_2d" type="token_type"/>
+		</xsd:choice>
+		<xsd:attribute name="name" type="xsd:string" use="required"/>
+		<xsd:attribute name="bit_type" use="required">
+			<xsd:simpleType>
+				<xsd:restriction base="xsd:string">
+					<xsd:enumeration value="cram"/>
+					<xsd:enumeration value="cff"/>
+				</xsd:restriction>
+			</xsd:simpleType>
+		</xsd:attribute>
+	</xsd:complexType>
+
+	<!-- ***** ADDRESS_REFERENCE ********* -->
+	<xsd:complexType name="address_reference_type">
+		<xsd:complexContent>
+			<xsd:restriction base="xsd:anyType">
+				<xsd:attribute name="name" type="xsd:string" use="required"/>
+			</xsd:restriction>
+		</xsd:complexContent>
+	</xsd:complexType>
+
+	<!-- ***** OPTION_REGISTER ********* -->
+	<xsd:complexType name="option_register_type">
+		<xsd:attribute name="index" use="required">
+			<xsd:simpleType>
+				<xsd:restriction base="xsd:integer">
+					<xsd:minInclusive value="0"/>
+					<xsd:maxInclusive value="31"/>
+				</xsd:restriction>
+			</xsd:simpleType>
+		</xsd:attribute>
+		<xsd:attribute name="value" use="required">
+			<xsd:simpleType>
+				<xsd:restriction base="xsd:integer">
+					<xsd:minInclusive value="0"/>
+					<xsd:maxInclusive value="1"/>
+				</xsd:restriction>
+			</xsd:simpleType>
+		</xsd:attribute>
+	</xsd:complexType>
+
+	<!-- ***** EXPANDED_OPTION_REGISTER ********* -->
+	<!-- Now we keep an entire buffer of option bits -->
+	<xsd:complexType name="expanded_option_register_type">
+		<xsd:choice minOccurs="0" maxOccurs="unbounded">
+			<xsd:element name="address_1d" type="address_1d_type"/>
+		</xsd:choice>
+	</xsd:complexType>
+
+	<!-- ***** JTAG_USER_CODE ********* -->
+	<xsd:complexType name="jtag_user_code_type">
+		<xsd:attribute name="value" type="hexadecimal" use="required"/>
+	</xsd:complexType>
+
+
+
+	<!-- ******************************************************** -->
+	<!-- ***** BLOCK related bit settings elements ********* -->
+
+	<!-- ***** BLOCK_RANGE ********* -->
+	<xsd:complexType name="block_range_type">
+		<xsd:choice minOccurs="0" maxOccurs="unbounded">
+			<xsd:element name="address_1d" type="address_1d_type"/>
+			<xsd:element name="address_2d" type="address_2d_type"/>
+			<xsd:element name="token_1d" type="token_type"/>
+			<xsd:element name="token_2d" type="token_type"/>
+			<xsd:element name="address_reference" type="address_reference_type"/>
+		</xsd:choice>
+		<xsd:attribute name="block_type" type="xsd:string" use="required"/>
+		<xsd:attribute name="x_min" type="xsd:nonNegativeInteger" use="optional" default="0"/>
+		<xsd:attribute name="y_min" type="xsd:nonNegativeInteger" use="optional" default="0"/>
+		<xsd:attribute name="x_max" type="upper_range_type" use="optional" default="unbounded"/>
+		<xsd:attribute name="y_max" type="upper_range_type" use="optional" default="unbounded"/>
+		<xsd:attribute name="x_step" type="xsd:positiveInteger" use="optional" default="1"/>
+		<xsd:attribute name="y_step" type="xsd:positiveInteger" use="optional" default="1"/>
+	</xsd:complexType>
+	<xsd:simpleType name="upper_range_type">
+		<xsd:restriction base="xsd:string">
+			<xsd:pattern value="unbounded|0|[1-9]([0-9])*"/>
+		</xsd:restriction>
+	</xsd:simpleType>
+
+	<!-- ***** BLOCK_LOCATION ********* -->
+	<xsd:complexType name="block_location_type">
+		<xsd:choice minOccurs="0" maxOccurs="unbounded">
+			<xsd:element name="address_1d" type="address_1d_type"/>
+			<xsd:element name="address_2d" type="address_2d_type"/>
+			<xsd:element name="token_1d" type="token_type"/>
+			<xsd:element name="token_2d" type="token_type"/>
+			<xsd:element name="address_reference" type="address_reference_type"/>
+		</xsd:choice>
+		<xsd:attribute name="block_type" type="xsd:string" use="required"/>
+		<xsd:attribute name="x" type="xsd:nonNegativeInteger" use="required"/>
+		<xsd:attribute name="y" type="xsd:nonNegativeInteger" use="required"/>
+	</xsd:complexType>
+
+	<!-- ***** BLOCK_NAME ********* -->
+	<xsd:complexType name="block_name_type">
+		<xsd:choice minOccurs="0" maxOccurs="unbounded">
+			<xsd:element name="address_1d" type="address_1d_type"/>
+			<xsd:element name="address_2d" type="address_2d_type"/>
+			<xsd:element name="token_1d" type="token_type"/>
+			<xsd:element name="token_2d" type="token_type"/>
+			<xsd:element name="address_reference" type="address_reference_type"/>
+		</xsd:choice>
+		<xsd:attribute name="block_type" type="xsd:string" use="required"/>
+		<xsd:attribute name="name" type="xsd:string" use="required"/>
+	</xsd:complexType>
+
+
+
+	<!-- ******************************************************** -->
+	<!-- ***** ARCHGROUPS related bit settings elements ********* -->
+
+	<!-- ***** ARCHGROUPS ********* -->
+	<xsd:complexType name="archgroups_type">
+		<xsd:choice minOccurs="0" maxOccurs="unbounded">
+			<xsd:element name="element_location" type="ag_element_location_type"/>
+			<xsd:element name="element_name" type="ag_element_name_type"/>
+			<xsd:element name="element_index" type="ag_element_index_type"/>
+			<xsd:element name="all_elements" type="ag_all_elements_type"/>
+			<xsd:element name="pin_location" type="ag_pin_location_type"/>
+		</xsd:choice>
+	</xsd:complexType>
+
+	<!-- ***** ELEMENT_LOCATION ********* -->
+	<xsd:complexType name="ag_element_location_type">
+		<xsd:group ref="ag_mux_elements" minOccurs="0" maxOccurs="unbounded"/>
+		<xsd:attribute name="block_type" type="xsd:string" use="optional" default="DEFAULT"/>
+		<xsd:attribute name="dev_element" type="xsd:string" use="required"/>
+		<xsd:attribute name="x" type="xsd:nonNegativeInteger" use="required"/>
+		<xsd:attribute name="y" type="xsd:nonNegativeInteger" use="required"/>
+		<xsd:attribute name="z" type="xsd:integer" use="optional" default="-1"/>
+		<xsd:attribute name="subloc" type="xsd:integer" use="optional" default="-1"/>
+		<xsd:attribute name="index" type="xsd:integer" use="optional" default="-1"/>
+	</xsd:complexType>
+
+	<!-- ***** PIN_LOCATION ********* -->
+	<xsd:complexType name="ag_pin_location_type">
+		<xsd:group ref="ag_mux_elements" minOccurs="0" maxOccurs="unbounded"/>
+		<xsd:attribute name="block_type" type="xsd:string" use="optional" default="DEFAULT"/>
+		<xsd:attribute name="pin" type="xsd:string" use="required"/>
+	</xsd:complexType>
+
+	<!-- ***** ALL_ELEMENTS ********* -->
+	<xsd:complexType name="ag_all_elements_type">
+		<xsd:group ref="ag_mux_elements" minOccurs="0" maxOccurs="unbounded"/>
+		<xsd:attribute name="block_type" type="xsd:string" use="optional" default="DEFAULT"/>
+	</xsd:complexType>
+
+	<!-- ***** ELEMENT_NAME ********* -->
+	<xsd:complexType name="ag_element_name_type">
+		<xsd:group ref="ag_mux_elements" minOccurs="0" maxOccurs="unbounded"/>
+		<xsd:attribute name="block_type" type="xsd:string" use="optional" default="DEFAULT"/>
+		<xsd:attribute name="dev_element" type="xsd:string" use="required"/>
+		<xsd:attribute name="name" type="xsd:string" use="required"/>
+		<xsd:attribute name="use_dev_index" type="xsd:boolean" use="optional" default="false"/>
+	</xsd:complexType>
+
+	<!-- ***** ELEMENT_INDEX ********* -->
+	<xsd:complexType name="ag_element_index_type">
+		<xsd:group ref="ag_mux_elements" minOccurs="0" maxOccurs="unbounded"/>
+		<xsd:attribute name="block_type" type="xsd:string" use="optional" default="DEFAULT"/>
+		<xsd:attribute name="index" type="xsd:nonNegativeInteger" use="required"/>
+	</xsd:complexType>
+
+	<!-- ***** misc. ARCHGROUPS definitions ********* -->
+	<xsd:group name="ag_mux_elements">
+		<xsd:sequence>
+			<xsd:element name="select">
+				<xsd:complexType>
+					<xsd:attributeGroup ref="ag_mux_element_attributes"/>
+				</xsd:complexType>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:group>
+	<xsd:attributeGroup name="ag_mux_element_attributes">
+		<xsd:attribute name="arch_type" type="xsd:string" use="required"/>
+		<xsd:attribute name="arch_index" default="-1">
+			<xsd:simpleType>
+				<xsd:restriction base="xsd:integer">
+					<xsd:minInclusive value="-1"/>
+				</xsd:restriction>
+			</xsd:simpleType>
+		</xsd:attribute>
+		<xsd:attribute name="arg" type="hexadecimal" use="required"/>
+		<xsd:attribute name="desc" type="xsd:string" default=""/>
+		
+		<xsd:attribute name="array_index" type="xsd:integer" default="-1"/>
+		<xsd:attribute name="array_index_value" type="xsd:nonNegativeInteger" default="0"/>
+		
+		<!-- This one is used for RAM initialization style select calls -->
+		<xsd:attribute name="value" use="optional" default="none">
+			<xsd:simpleType>
+				<xsd:restriction base="xsd:string">
+					<xsd:enumeration value="none"/>
+					<xsd:enumeration value="1"/>
+					<xsd:enumeration value="0"/>
+				</xsd:restriction>
+			</xsd:simpleType>
+		</xsd:attribute>
+	</xsd:attributeGroup>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	<!-- ****************************************************** -->
+	<!-- This section defines elements used in the bit_settings -->
+	<!--		FUSION limited settings							-->
+	<!-- ****************************************************** -->
+
+	<xsd:complexType name="hc_bit_settings_type">
+		<xsd:choice minOccurs="0" maxOccurs="unbounded">
+			<xsd:element name="pin_location" type="hc_pin_location_type"/>
+			<xsd:element name="all_phys_atoms" type="hc_all_phys_atoms_type"/>
+			<xsd:element name="phys_atom_name" type="hc_phys_atom_name_type"/>
+		</xsd:choice>
+		<xsd:attribute name="action" use="required">
+			<xsd:simpleType>
+				<xsd:restriction base="xsd:string">
+					<xsd:enumeration value="override"/>
+					<xsd:enumeration value="read"/>
+				</xsd:restriction>
+			</xsd:simpleType>
+		</xsd:attribute>
+		<xsd:attribute name="filename" type="xsd:string" use="optional" default="NONE"/>
+	</xsd:complexType>
+
+	<!-- ***** PIN_LOCATION ********* -->
+	<xsd:complexType name="hc_pin_location_type">
+		<xsd:choice minOccurs="0" maxOccurs="unbounded">
+			<xsd:element name="select" type="select_type"/>
+			<xsd:element name="address" type="address_1d_type"/>
+		</xsd:choice>
+		<xsd:attribute name="pin" type="xsd:string" use="required"/>
+	</xsd:complexType>
+
+	<!-- ***** SELECT ********* -->
+	<xsd:complexType name="select_type">
+		<xsd:attributeGroup ref="ag_mux_element_attributes"/>
+	</xsd:complexType>
+
+	<!-- ***** ALL_PHYS_ATOMS ********* -->
+	<xsd:complexType name="hc_all_phys_atoms_type">
+		<xsd:choice minOccurs="0" maxOccurs="unbounded">
+			<xsd:element name="select" type="select_type"/>
+			<xsd:element name="address" type="address_1d_type"/>
+		</xsd:choice>
+		<xsd:attribute name="block_type" type="xsd:string" use="required"/>
+	</xsd:complexType>
+
+	<!-- ***** PHYS_ATOM_NAME ********* -->
+	<xsd:complexType name="hc_phys_atom_name_type">
+		<xsd:choice minOccurs="0" maxOccurs="unbounded">
+			<xsd:element name="select" type="select_type"/>
+			<xsd:element name="address" type="address_1d_type"/>
+		</xsd:choice>
+		<xsd:attribute name="block_type" type="xsd:string" use="required"/>
+		<xsd:attribute name="name" type="xsd:string" use="required"/>
+	</xsd:complexType>
+
+</xsd:schema>

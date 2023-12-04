@@ -1,0 +1,1820 @@
+<<<<versions>>>>
+1.0
+2.0
+<<<</versions>>>>
+<<<<1.0>>>>
+<load_device>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: load_device [-h | -help] [-long_help] [-migrating_to <migration part list>] -part <part>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -migrating_to <migration part list>: A list of complete part names. This list should include the main device. 
+        -part <part>: Complete part name
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_device 1.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Loads device database information for the specified part.
+Required before calling most of the commands in this package.
+Optionally, creates a virtual device with migration to the specified part.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Note, add "package require ::quartus::advanced_device" at the beginning of your script
+load_device -part EP1S25F780C5
+	# access device information here
+unload_device
+
+# Creating virtual device with migration (not supported in version 1.0)
+# The migration_to needs to include the full part list including the main part.
+set my_part EP1S25F780C5
+load_device -part $my_part -migrating_to EP1S25F780C6 $my_part
+
+# Creating virtual device with all valid migration parts (not supported in version 1.0)
+load_device -part $my_part -migrating_to [get_migration_path $my_part]
+
+unload_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Device <string> is not installed. Install this device or choose a different one.
+TCL_ERROR	1   	ERROR: Illegal part name: <string>. Specify a legal part name. Use "report_family_info", "report_device_info", or "get_part_list" to find available parts.
+TCL_ERROR	1   	ERROR: Invalid part for migration from the current device: <string>. Specify valid migration part. Use "get_migration_path" to find valid migration parts.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</load_device>
+
+<unload_device>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: unload_device [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_device 1.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Unloads device database information.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Note, add "package require ::quartus::advanced_device" at the beginning of your script
+load_device -part EP1S25F780C5
+	# access device information here
+unload_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</unload_device>
+
+<get_basic_bool_data>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_basic_bool_data [-h | -help] [-long_help] [-element <element>] <variable>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -element <element>: Name of the element from which you want to get data
+        <variable>: Name of the variable you want to access
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_device 1.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Returns data of type BOOL (Boolean).
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_device -part EPM240T100C4
+get_basic_bool_data -element LE BOOL_IS_PLACEMENT_ELEMENT
+unload_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Element name is illegal. Specify a legal element name for the specified device.
+TCL_ERROR	1   	ERROR: Variable type is illegal. Specify a legal variable type.
+TCL_ERROR	1   	ERROR: No device database is loaded. Load a device database.
+TCL_ERROR	1   	ERROR: Data for variable type for current device does not exist. Specify a variable type with available data for current device.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_basic_bool_data>
+
+<get_basic_string_data>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_basic_string_data [-h | -help] [-long_help] [-element <element>] <variable>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -element <element>: Name of the element from which you want to get data
+        <variable>: Name of the variable you want to access
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_device 1.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Returns data of type STRING.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_device -part EPM240T100C4
+get_basic_string_data -element LE STRING_USER_NAME
+get_basic_string_data -element LE STRING_USER_NAME
+unload_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Element name is illegal. Specify a legal element name for the specified device.
+TCL_ERROR	1   	ERROR: Variable type is illegal. Specify a legal variable type.
+TCL_ERROR	1   	ERROR: No device database is loaded. Load a device database.
+TCL_ERROR	1   	ERROR: Data for variable type for current device does not exist. Specify a variable type with available data for current device.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_basic_string_data>
+
+<get_basic_int_data>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_basic_int_data [-h | -help] [-long_help] [-element <element>] [-location <location>] <variable>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -element <element>: Name of the element from which you want to get data
+        -location <location>: Name of the location type from which you want to get data
+        <variable>: Name of the variable you want to access
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_device 1.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Returns data of type INT (integer).
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_device -part EPM240T100C4
+# Get the total number of LEs
+get_basic_int_data -element LE INT_TOTAL_COUNT
+# Get the size of the chip in LAB units
+get_basic_int_data -location X INT_COUNT
+get_basic_int_data -location Y INT_COUNT
+unload_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Element name is illegal. Specify a legal element name for the specified device.
+TCL_ERROR	1   	ERROR: Illegal location name. Specify a legal location name for the specified device.
+TCL_ERROR	1   	ERROR: Variable type is illegal. Specify a legal variable type.
+TCL_ERROR	1   	ERROR: No device database is loaded. Load a device database.
+TCL_ERROR	1   	ERROR: Data for variable type for current device does not exist. Specify a variable type with available data for current device.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_basic_int_data>
+
+<get_pad_count>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_pad_count [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_device 1.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Returns the number of total pads in the die. The number 
+includes bonded and unbonded pads.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_device -part EPM240T100C4
+set count [get_pad_count]
+for { set i 0 } { $i < $count } { incr i } {
+	puts "Pad $i : [get_pad_string_data -pad $i STRING_TYPE_NAME]"
+}
+unload_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: No device database is loaded. Load a device database.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_pad_count>
+
+<get_pad_bool_data>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_pad_bool_data [-h | -help] [-long_help] [-pad <pad>] <variable>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -pad <pad>: Pad number from which you want to get data
+        <variable>: Name of the variable you want to access
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_device 1.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Returns data of type BOOL (Boolean).
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_device -part EPM240T100C4
+get_pad_bool_data -pad 5 BOOL_IS_CLOCK_PAD
+unload_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal pad number. Specify a number between 0 and the total number of pads minus 1 for the specified device.
+TCL_ERROR	1   	ERROR: Variable type is illegal. Specify a legal variable type.
+TCL_ERROR	1   	ERROR: No device database is loaded. Load a device database.
+TCL_ERROR	1   	ERROR: Data for variable type for current device does not exist. Specify a variable type with available data for current device.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_pad_bool_data>
+
+<get_pad_string_data>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_pad_string_data [-h | -help] [-long_help] [-pad <pad>] <variable>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -pad <pad>: Pad number from which you want to get data
+        <variable>: Name of the variable you want to access
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_device 1.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Returns data of type STRING.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_device -part EPM240T100C4
+get_pad_string_data -pad 5 STRING_USER_PIN_NAME
+unload_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal pad number. Specify a number between 0 and the total number of pads minus 1 for the specified device.
+TCL_ERROR	1   	ERROR: Variable type is illegal. Specify a legal variable type.
+TCL_ERROR	1   	ERROR: No device database is loaded. Load a device database.
+TCL_ERROR	1   	ERROR: Data for variable type for current device does not exist. Specify a variable type with available data for current device.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_pad_string_data>
+
+<get_pad_int_data>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_pad_int_data [-h | -help] [-long_help] [-pad <pad>] <variable>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -pad <pad>: Pad number from which you want to get data
+        <variable>: Name of the variable you want to access
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_device 1.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Returns data of type INT (integer).
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_device -part EPM240T100C4
+get_pad_int_data -pad 5 INT_PIN_ID
+unload_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal pad number. Specify a number between 0 and the total number of pads minus 1 for the specified device.
+TCL_ERROR	1   	ERROR: Variable type is illegal. Specify a legal variable type.
+TCL_ERROR	1   	ERROR: No device database is loaded. Load a device database.
+TCL_ERROR	1   	ERROR: Data for variable type for current device does not exist. Specify a variable type with available data for current device.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_pad_int_data>
+
+<get_pkg_pin_count>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_pkg_pin_count [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_device 1.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Returns the number of total pins in the package. The 
+number includes bonded and unbonded pins.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_device -part EPM240T100C4
+set count [get_pkg_pin_count]
+for { set i 0 } { $i < $count } { incr i } {
+	puts "Pin $i : [get_pkg_string_data -pin $i STRING_USER_PIN_NAME]"
+}
+unload_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: No device database is loaded. Load a device database.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_pkg_pin_count>
+
+<get_pkg_bool_data>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_pkg_bool_data [-h | -help] [-long_help] [-pin <pin>] <variable>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -pin <pin>: Pin number from which you want to get data
+        <variable>: Name of the variable you want to access
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_device 1.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Returns data of type BOOL (Boolean).
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_device -part EPM240T100C4
+[catch "get_pkg_bool_data BOOL_IS_WIREBOND" result]
+[catch "get_pkg_bool_data BOOL_IS_FLIPCHIP" result]
+get_pkg_bool_data -pin 5 BOOL_IS_BONDED
+unload_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal pin number. Specify a number between 0 and the total number of pins minus 1 for the specified device.
+TCL_ERROR	1   	ERROR: Variable type is illegal. Specify a legal variable type.
+TCL_ERROR	1   	ERROR: No device database is loaded. Load a device database.
+TCL_ERROR	1   	ERROR: Data for variable type for current device does not exist. Specify a variable type with available data for current device.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_pkg_bool_data>
+
+<get_pkg_string_data>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_pkg_string_data [-h | -help] [-long_help] -pin <pin> <variable>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -pin <pin>: Pin number from which you want to get data
+        <variable>: Name of the variable you want to access
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_device 1.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Returns data of type STRING.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_device -part EPM240T100C4
+get_pkg_string_data -pin 5 STRING_USER_PIN_NAME 
+get_pkg_string_data -pin 11 STRING_TYPE_NAME
+unload_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal pin number. Specify a number between 0 and the total number of pins minus 1 for the specified device.
+TCL_ERROR	1   	ERROR: Variable type is illegal. Specify a legal variable type.
+TCL_ERROR	1   	ERROR: No device database is loaded. Load a device database.
+TCL_ERROR	1   	ERROR: Data for variable type for current device does not exist. Specify a variable type with available data for current device.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_pkg_string_data>
+
+<get_pkg_int_data>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_pkg_int_data [-h | -help] [-long_help] [-pin <pin>] <variable>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -pin <pin>: Pin number from which you want to get data
+        <variable>: Name of the variable you want to access
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_device 1.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Returns data of type INT (integer).
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_device -part EPM240T100C4
+get_pkg_int_data INT_WIDTH
+get_pkg_int_data INT_LENGTH
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal pin number. Specify a number between 0 and the total number of pins minus 1 for the specified device.
+TCL_ERROR	1   	ERROR: Variable type is illegal. Specify a legal variable type.
+TCL_ERROR	1   	ERROR: No device database is loaded. Load a device database.
+TCL_ERROR	1   	ERROR: Data for variable type for current device does not exist. Specify a variable type with available data for current device.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_pkg_int_data>
+
+<get_list_of_pads_by_pin>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_list_of_pads_by_pin [-h | -help] [-long_help] <pin>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        <pin>: Pin number from which you want to get data
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_device 1.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Returns the list of bonded pads for the specified pin. In 
+some cases, a pin (usually a power pin) can be double bonded. 
+For this reason, a list of bonded pads is returned.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_device -part EPM240T100C4
+set pad_list [get_list_of_pads_by_pin 5]
+foreach pad $pad_list {
+	puts "Pad $pad : [get_pad_string_data -pad $pad STRING_USER_PIN_NAME]"
+}
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: No device database is loaded. Load a device database.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_list_of_pads_by_pin>
+
+<<<</1.0>>>>
+<<<<2.0>>>>
+<load_device>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: load_device [-h | -help] [-long_help] [-migrating_to <migration part list>] -part <part>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -migrating_to <migration part list>: A list of complete part names. This list should include the main device. 
+        -part <part>: Complete part name
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_device 2.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Loads device database information for the specified part.
+Required before calling most of the commands in this package.
+Optionally, creates a virtual device with migration to the specified part.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Note, add "package require ::quartus::advanced_device" at the beginning of your script
+load_device -part EP1S25F780C5
+	# access device information here
+unload_device
+
+# Creating virtual device with migration (not supported in version 1.0)
+# The migration_to needs to include the full part list including the main part.
+set my_part EP1S25F780C5
+load_device -part $my_part -migrating_to EP1S25F780C6 $my_part
+
+# Creating virtual device with all valid migration parts (not supported in version 1.0)
+load_device -part $my_part -migrating_to [get_migration_path $my_part]
+
+unload_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Device <string> is not installed. Install this device or choose a different one.
+TCL_ERROR	1   	ERROR: Illegal part name: <string>. Specify a legal part name. Use "report_family_info", "report_device_info", or "get_part_list" to find available parts.
+TCL_ERROR	1   	ERROR: Invalid part for migration from the current device: <string>. Specify valid migration part. Use "get_migration_path" to find valid migration parts.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</load_device>
+
+<unload_device>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: unload_device [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_device 2.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Unloads device database information.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Note, add "package require ::quartus::advanced_device" at the beginning of your script
+load_device -part EP1S25F780C5
+	# access device information here
+unload_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</unload_device>
+
+<load_die_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: load_die_info [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_device 2.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Load more detailed device die information (placement and GID database info only)
+Older device families are not supported. You must use the load_device command first.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Note, add "package require ::quartus::advanced_device" at the beginning of your script
+load_device -part EP1C3T144C7
+	# get_basic_data, get_pad_data, etc.
+load_die_info 
+	# get_die_data and get_die_gids here
+unload_die_info
+	# can still access other commands here
+unload_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: No device database is loaded. Load a device database.
+TCL_ERROR	1   	ERROR: Access to <string> is not supported. Attempts to access this information will cause errors.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</load_die_info>
+
+<unload_die_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: unload_die_info [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_device 2.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Unload the detailed device die information to release memory.
+Older device families are not supported.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Note, add "package require ::quartus::advanced_device" at the beginning of your script
+load_device -part EP1C3T144C7
+	# get_basic_data, get_pad_data, etc.
+load_die_info 
+	# get_die_data and get_die_gids here
+unload_die_info
+	# can still access other commands here
+unload_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</unload_die_info>
+
+<get_basic_data>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_basic_data [-h | -help] [-long_help] [-element <element>] [-location <location>] <variable>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -element <element>: Name of the element, from which you want to get data
+        -location <location>: Name of the location, from which you want to get data
+        <variable>: Name of the variable you want to access
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_device 2.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Get the basic device information - the properties of the die of the loaded device.
+The -location and -element oprions are mutually exclusive.
+The return type is defined by the type of the variable accessed (except for some
+INT enum values that are represented by strings)
+The list of the legal names can be obtained with the get_basic_data_keys command.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_device -part EPM240T100C4
+get_basic_data INT_CRAM_ROWS
+get_basic_data ENUM_PACKAGE
+get_basic_data INT_TOTAL_COUNT	-element LE 
+get_basic_data LIST_LOCATIONS		-element LE
+get_basic_data 2D_INT_LEGAL_LOCATION_VALUES -element IO
+get_basic_data INT_COUNT			-location X
+
+# Sample flow - Get specific element counts of all Armstrong parts
+# Note, add "package require ::quartus::advanced_device" at the beginning of your script
+set elem LE_FF
+foreach part [get_part_list -family Armstrong] {
+	load_device -part $part
+	set count [get_basic_data INT_TOTAL_COUNT -element $elem]
+	set elem_name [get_basic_data STRING_USER_NAME -element $elem]
+	puts "Part $part of device [get_basic_data STRING_DEVICE_NAME] has $count of $elem_name element"
+	unload_device
+}
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Element name <string> is illegal. Specify a legal element name for the specified device.
+TCL_ERROR	1   	ERROR: Location name <string> is illegal. Specify a legal location name for the specified device.
+TCL_ERROR	1   	ERROR: Variable name <string> is illegal.  Specify a legal variable name.
+TCL_ERROR	1   	ERROR: No device database is loaded. Load a device database.
+TCL_ERROR	1   	ERROR: Data for variable <string> for current device does not exist. \nSpecify a variable name with available data for current device.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_basic_data>
+
+<get_pad_data>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_pad_data [-h | -help] [-long_help] [-io_standard <I/O standard>] [-pad <pad>] [-pad_name <pad name>] <variable>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -io_standard <I/O standard>: Name of the I/O standard, from which you want to get data
+        -pad <pad>: Number of the pad, from which you want to get data
+        -pad_name <pad name>: The functional name of the pad, from which you want to get data
+        <variable>: Name of the variable you want to access
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_device 2.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Get the general or pad-specific device information - the I/O die properties
+of the loaded device.
+The -pad, -pad_name, and -io_standard options are mutually exclusive, 
+except for STRING_IO_STD_DESC_NAME. 
+Otherwise, if two or more options are specified, only the first one is used 
+in the order of preference above.
+The return type is defined by the type of the variable accessed (except for some
+INT enum values that are represented by strings).
+The list of the legal names can be obtained with the get_pad_data_keys command.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_device -part EP1S20B672C7
+get_pad_data INT_PAD_COUNT
+get_pad_data BOOL_SUPPORTS_RESERVE_VREF
+get_pad_data BOOL_IS_LEFT		-pad 25
+get_pad_data LIST_IO_STANDARDS	-pad 25
+get_pad_data LIST_IO_STANDARDS	-pad_name DQ1B6
+get_pad_data LIST_CURRENT_SET	-io_standard LVTTL
+get_pad_data INT_VOLTAGE_TYPE	-io_standard LVDS
+get_pad_data STRING_IO_STD_DESC_NAME -pad 25 -io_standard LVTTL
+
+# Sample flow - List IO standards and their VREF voltages for all bonded VREF pads
+# Note, add "package require ::quartus::advanced_device" at the beginning of your script
+set part EP1C3T144C7
+load_device -part $part
+set total_pads [get_pad_data INT_PAD_COUNT]
+for { set pad 0 } { $pad < $total_pads } { incr pad } {
+
+	if { [get_pad_data BOOL_IS_VREF_PAD -pad $pad] && [get_pad_data BOOL_IS_BONDED -pad $pad]} {
+
+		set name [get_pad_data STRING_AUXILIARY_FUNCTION_NAME -pad $pad]
+		puts "\nVREF PAD $pad ($name) supports these I/O standards"
+		foreach io_std [get_pad_data LIST_IO_STANDARDS	-pad $pad] {
+			if { [catch "get_pad_data INT_VREF_VOLTAGE_TYPE -io_standard $io_std" result] } {
+				set vvoltage "(no VREF voltage available)"
+			} else {
+				set vvoltage "(VREF voltage $result)"
+			}
+			puts "\t$io_std \t$vvoltage"					 
+		}
+	}
+}
+unload_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: I/O standard name <string> is illegal. Specify a legal I/O standard name for the specified device.
+TCL_ERROR	1   	ERROR: Pad function name <string> is illegal. Specify a legal pad auxiliary function name for the specified device.
+TCL_ERROR	1   	ERROR: Pad number <string> is illegal. Specify a number between 0 and the total number of pads minus 1 for the specified device.
+TCL_ERROR	1   	ERROR: Variable name <string> is illegal.  Specify a legal variable name.
+TCL_ERROR	1   	ERROR: No device database is loaded. Load a device database.
+TCL_ERROR	1   	ERROR: Data for variable <string> for current device does not exist. \nSpecify a variable name with available data for current device.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_pad_data>
+
+<get_pkg_data>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_pkg_data [-h | -help] [-long_help] [-pin <pin>] [-pin_name <pin name>] <variable>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -pin <pin>: Number of the pin, from which you want to get data
+        -pin_name <pin name>: Name of the pin, from which you want to get data
+        <variable>: Name of the variable you want to access
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_device 2.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Get the general package or the specific pin information - the package properties
+of the loaded device.
+The -pin and -pin_name options are mutually exclusive. If both are given, only -pin is used.
+The return type is defined by the type of the variable accessed (except for some
+INT enum values that are represented by strings).
+The list of the legal names can be obtained with the get_pkg_data_keys command.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_device -part EP2C8F256C7
+# same as get_pkg_pin_count in 1.0
+get_pkg_data INT_PIN_COUNT
+get_pkg_data BOOL_IS_WIREBOND
+get_pkg_data STRING_USER_PIN_NAME -pin 5
+# same as get_list_of_pads_by_pin in 1.0
+get_pkg_data LIST_PAD_IDS         -pin 25
+# same as above
+get_pkg_data LIST_PAD_IDS         -pin_name D11
+
+# Sample flow - List the names of all pins together with bonding info
+# Note, add "package require ::quartus::advanced_device" at the beginning of your script
+set part EP1S80F1020C5
+load_device -part $part
+set total_pins [get_pkg_data INT_PIN_COUNT]
+puts "Listing all $total_pins pins of $part"
+for { set pin 0 } { $pin < $total_pins } { incr pin } {
+	set pin_name [get_pkg_data STRING_USER_PIN_NAME -pin $pin]
+	set bond_info ""
+	if { [get_pkg_data BOOL_IS_BONDED -pin $pin] } {
+		set pad_list [get_pkg_data LIST_PAD_IDS -pin_name $pin_name]
+		if { [llength $pad_list] > 1 } {
+			set bond_info "bonded to more than one pad:"
+		} else {
+			set bond_info "bonded to"
+		}
+		foreach pad $pad_list {
+			append bond_info " $pad"
+		}
+	} else {
+		set bond_info "not bonded ([get_pkg_data STRING_TYPE_NAME -pin $pin])"
+	}				 
+	puts "Pin $pin (name = $pin_name) is $bond_info"			 
+}
+unload_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Pin name <string> is illegal. Specify a legal pin name for the specified device.
+TCL_ERROR	1   	ERROR: Pin number <string> is illegal. Specify a number between 0 and the total number of pins minus 1 for the specified device.
+TCL_ERROR	1   	ERROR: Variable name <string> is illegal.  Specify a legal variable name.
+TCL_ERROR	1   	ERROR: No device database is loaded. Load a device database.
+TCL_ERROR	1   	ERROR: Data for variable <string> for current device does not exist. \nSpecify a variable name with available data for current device.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_pkg_data>
+
+<get_die_gids>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_die_gids [-h | -help] [-long_help] [-element <element>] [-location_str <location string>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -element <element>: Name of the element, from which you want to get data
+        -location_str <location string>: Location string, from which you want to get data
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_device 2.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Get the list of GIDs (Global IDs) associated with the specified location or element
+of the loaded device. 
+-location_str and -element are mutually exclusive. An empty list is returned if no options specified.
+You must use the load_die_info command first.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_device -part EPM240T100C4
+load_die_info
+puts "Getting all the LAB GIDs"
+get_die_gids -element LAB
+puts "Get the GID corresponding to location LC_X3_Y4_N5"
+get_die_gids -location_str LC_X3_Y4_N5
+
+# Sample flow - Is there a LAB at (X, Y)?
+# Note, add "package require ::quartus::advanced_device" at the beginning of your script
+load_device -part EP1C6F256C6
+puts "\nScan X, Y to see if have LABs there."
+puts "For some other elements would need to account for INT_WIDTH and INT_HEIGHT > 1"
+load_die_info
+set max_x [get_basic_data INT_COUNT -location X]
+set max_y [get_basic_data INT_COUNT -location Y]
+for { set x 0 } { $x < $max_x } { incr x } {
+	for { set y 0 } { $y < $max_y } { incr y } {
+
+		set location_str "LAB_X${x}_Y${y}"
+		# Try getting gid with this location
+		if [catch "get_die_gids -location_str $location_str" result] {
+			puts "($x, $y) are not in LAB"
+		}
+	}
+}
+unload_die_info
+unload_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Element name <string> is illegal. Specify a legal element name for the specified device.
+TCL_ERROR	1   	ERROR: Location string <string> is illegal. Specify a legal location string for the specified device.
+TCL_ERROR	1   	ERROR: No device database is loaded. Load a device database.
+TCL_ERROR	1   	ERROR: Detailed die information is not loaded. Use the load_die_info command before accessing this information.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_die_gids>
+
+<get_die_data>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_die_data [-h | -help] [-long_help] -gid <global ID> <variable>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -gid <global ID>: Global ID, for which you want to get data
+        <variable>: Name of the variable you want to access
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_device 2.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Get the detailed properties of the die of the loaded device.
+You must run the load_die_info command first. The global IDs (GIDs) can be obtained 
+with the get_die_gids command.
+The return type is defined by the type of the variable accessed.
+Currently supported: BOOL_ENABLED, STRING_LOCATION, INT_WIDTH, INT_HEIGHT,
+and certain other common die information for internal use.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_device -part EPM240T100C4
+load_die_info
+get_die_data BOOL_ENABLED -gid [get_die_gids -location_str LC_X3_Y4_N5]
+get_die_data STRING_LOCATION -gid 296
+
+# Sample flow - List all device locations and sizes of a given element type
+# Note, add "package require ::quartus::advanced_device" at the beginning of your script
+load_device -part EP1C6F256C6
+set elem PLL
+puts "Getting $elem locations and sizes"
+load_die_info
+foreach id [get_die_gids -element $elem] {
+
+	set location_string [get_die_data STRING_LOCATION -gid $id]
+	set size "[get_die_data INT_WIDTH -gid $id] [get_die_data INT_HEIGHT -gid $id]"
+	if {[get_die_data BOOL_ENABLED -gid $id]} {
+		puts "$location_string, size = ($size)"
+	} else {
+		puts "$location_string, size = ($size) (DISABLED)"
+	}
+}
+unload_die_info
+unload_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal global ID <string>. Legal global IDs can be obtained with the get_die_gids command.
+TCL_ERROR	1   	ERROR: Variable name <string> is illegal.  Specify a legal variable name.
+TCL_ERROR	1   	ERROR: No device database is loaded. Load a device database.
+TCL_ERROR	1   	ERROR: Detailed die information is not loaded. Use the load_die_info command before accessing this information.
+TCL_ERROR	1   	ERROR: Data for variable <string> for current device does not exist. \nSpecify a variable name with available data for current device.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_die_data>
+
+<get_basic_data_keys>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_basic_data_keys [-h | -help] [-long_help] [-element <element>] [-location <location>] <type>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -element <element>: Name of the element, from which you want to get data
+        -location <location>: Name of the location, from which you want to get data
+        <type>: The specific type of the keywords you want
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_device 2.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Get the list of the possible keywords for the basic device information of the loaded device.
+The possible types are ALL, INT, BOOL, STRING, ENUM, 2D_INT, LIST, LOCATIONS, and ELEMENTS.
+Type ALL lists keywords of all types, except for LOCATIONS and ELEMENTS.
+The -location and -element options are mutually exclusive. Some types may not be applicable to 
+elements or locations. Use ALL to get all the keywords generally applicable for locations 
+or elements in the loaded device.
+Note, this function may be slow. Use with caution. Intended primarily for reference.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_device -part EPM240T100C4
+
+# list all keywords applicable to this device
+get_basic_data_keys ALL							
+
+# list all STRING keywords applicable to this device
+get_basic_data_keys STRING							
+
+# list all available elements
+get_basic_data_keys ELEMENTS
+
+# list all available locations
+get_basic_data_keys LOCATIONS
+
+# list all keywords applicable to elements
+get_basic_data_keys ALL	-element ALL
+
+# list all STRING keywords applicable to elements
+get_basic_data_keys STRING -element ALL
+
+# list all STRING keywords applicable to LE
+get_basic_data_keys STRING -element LE
+
+# list all keywords applicable to location X
+get_basic_data_keys ALL	-location X
+
+# Sample flow - Print all available string data types and their values 
+#               for all the device elements
+# Note, add "package require ::quartus::advanced_device" at the beginning of your script
+load_device -part EP1C6F256C6
+foreach element [get_basic_data_keys ELEMENTS] {
+	foreach string_var [get_basic_data_keys STRING -element $element] {
+		puts "$element: $string_var = [get_basic_data $string_var -element $element]"
+	}
+}
+unload_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Element name <string> is illegal. Specify a legal element name for the specified device.
+TCL_ERROR	1   	ERROR: Location name <string> is illegal. Specify a legal location name for the specified device.
+TCL_ERROR	1   	ERROR: Type name <string> is illegal. Specify a legal type name as described in the command help.
+TCL_ERROR	1   	ERROR: No device database is loaded. Load a device database.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_basic_data_keys>
+
+<get_pad_data_keys>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_pad_data_keys [-h | -help] [-long_help] [-io_standard <I/O standard>] [-pad <pad>] [-pad_name <pad name>] <type>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -io_standard <I/O standard>: Name of the I/O standard, from which you want to get data
+        -pad <pad>: Number of the pad, from which you want to get data
+        -pad_name <pad name>: The functional name of the pad, from which you want to get data
+        <type>: The specific type of the keywords you want
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_device 2.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Get the list of the possible keywords for the pad device information of the loaded device.
+The possible types are ALL, INT, BOOL, STRING, VEC_STRING, 2D_INT, LIST, and IO_STANDARDS.
+Type ALL lists keywords of all types, except for IO_STANDARDS.
+The -pad, -pad_name, and -io_standard options are mutually exclusive. If two or more given,
+only the first is used in the order of preference above.
+Some types may not be applicable to pads or io_standards. 
+Use ALL to get all the keywords generally applicable for pads or io_standards in the loaded device.
+Note, this function may be slow. Use with caution. Intended primarily for reference.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_device -part EP1S20B672C7
+
+# list all keywords applicable to this device
+get_pad_data_keys ALL
+
+# list all STRING keywords applicable to this device
+get_pad_data_keys STRING
+
+# list all available I/O standards
+get_pad_data_keys IO_STANDARDS
+
+# list all keywords applicable to pads
+get_pad_data_keys ALL -pad ALL
+
+# list all STRING keywords applicable to this pad
+get_pad_data_keys STRING -pad_name DQ1B6
+
+# list all STRING keywords applicable to this pad
+get_pad_data_keys STRING -pad 33
+
+# list all keywords applicable to LVDS I/O standard
+get_pad_data_keys ALL	-io_standard LVDS
+
+# Sample flow - Print all data available for the specific pad
+# Note, add "package require ::quartus::advanced_device" at the beginning of your script
+set pad 22
+puts "All data available for PAD $pad"
+load_device -part EP1C6F256C6
+foreach variable [get_pad_data_keys ALL -pad $pad] {
+	puts "$variable = [get_pad_data $variable -pad $pad]"
+}
+unload_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: I/O standard name <string> is illegal. Specify a legal I/O standard name for the specified device.
+TCL_ERROR	1   	ERROR: Pad function name <string> is illegal. Specify a legal pad auxiliary function name for the specified device.
+TCL_ERROR	1   	ERROR: Pad number <string> is illegal. Specify a number between 0 and the total number of pads minus 1 for the specified device.
+TCL_ERROR	1   	ERROR: Type name <string> is illegal. Specify a legal type name as described in the command help.
+TCL_ERROR	1   	ERROR: No device database is loaded. Load a device database.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_pad_data_keys>
+
+<get_pkg_data_keys>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_pkg_data_keys [-h | -help] [-long_help] [-pin <pin>] [-pin_name <pin name>] <type>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -pin <pin>: Number of the pin, from which you want to get data
+        -pin_name <pin name>: Name of the pin, from which you want to get data
+        <type>: The specific type of the keywords you want
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_device 2.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Get the list of the possible keywords for the package device information of the loaded device.
+The possible types are ALL, INT, BOOL, STRING, VEC_INT, VEC_DOUBLE, and LIST.
+Type ALL lists keywords of all types.
+The -pin and -pin_name options are mutually exclusive. If both are given, only -pin is used.
+Some types may not be applicable to pins. 
+Use ALL to get all the keywords generally applicable for pins in the loaded device.
+Note, this function may be slow. Use with caution. Intended primarily for reference.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_device -part EP2C8F256C7
+
+# list all keywords applicable to this device
+get_pkg_data_keys ALL
+
+# list all STRING keywords applicable to this device
+get_pkg_data_keys STRING
+
+# list all keywords applicable to pins
+get_pkg_data_keys ALL -pin ALL
+
+# list all STRING keywords applicable to pins
+get_pkg_data_keys STRING -pin_name ALL
+
+# list all BOOL keywords applicable to D11
+get_pkg_data_keys BOOL -pin_name D11
+
+# Sample flow - What boolean data is true for a given pin? List them all.
+# Note, add "package require ::quartus::advanced_device" at the beginning of your script
+set total_pins [get_pkg_data INT_PIN_COUNT]
+puts "Listing truths of all pins of EP1C6F256C6"
+load_device -part EP1C6F256C6
+for { set pin 0 } { $pin < $total_pins } { incr pin } {
+	foreach key [get_pkg_data_keys BOOL -pin $pin] {
+		if { [get_pkg_data $key -pin $pin] } {
+			puts "$key is TRUE for pin $pin"
+		}
+	}
+}
+unload_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Pin name <string> is illegal. Specify a legal pin name for the specified device.
+TCL_ERROR	1   	ERROR: Pin number <string> is illegal. Specify a number between 0 and the total number of pins minus 1 for the specified device.
+TCL_ERROR	1   	ERROR: Type name <string> is illegal. Specify a legal type name as described in the command help.
+TCL_ERROR	1   	ERROR: No device database is loaded. Load a device database.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_pkg_data_keys>
+
+<get_user_name>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_user_name [-h | -help] [-long_help] [-current <current name>] [-io_standard <I/O standard name>] [-termination <Termination name>] [-voltage <voltage name>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -current <current name>: Internal name of the current strength value
+        -io_standard <I/O standard name>: Internal name of the I/O standard
+        -termination <Termination name>: Internal name of the termination value
+        -voltage <voltage name>: Internal name of the voltage type
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_device 2.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Get the user name corresponding to the internal name.
+A single option must always be used.
+load_device is required only for -io_standard option
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_device -part EP2S30F484C5
+get_user_name -io_standard SSTL_2_II
+unload_device
+get_user_name -current 10MA
+get_user_name -voltage 1_25_V
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: I/O standard name <string> is illegal. Specify a legal I/O standard name for the specified device.
+TCL_ERROR	1   	ERROR: Variable name <string> is illegal.  Specify a legal variable name.
+TCL_ERROR	1   	ERROR: <string> option is required with this command. Specify the required option.
+TCL_ERROR	1   	ERROR: No device database is loaded. Load a device database.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_user_name>
+
+<get_migration_path>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_migration_path [-h | -help] [-long_help] [-all_speed_grades] [-within <device family list>] <part>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -all_speed_grades: Include all speed grade variations
+        -within <device family list>: A list of complete device family names
+        <part>: Complete part name
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::advanced_device 2.0 (advanced)
+
+------------
+Description:
+------------
+
+This is an advanced Quartus II Tcl command.
+
+Returns the list of installed parts to which the specified part can migrate, 
+within the specified device families (optional).
+Without optional arguments, returns the migration part list within the same family 
+and for the same speed grade as the source part.
+load_device is not required for this function.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Note, add "package require ::quartus::advanced_device" at the beginning of your script
+get_migration_path EP1S25F780C5
+get_migration_path EP2S30F484C5 -within "Stratix II" "HardCopy II"
+get_migration_path EP2S30F484C5 -within "Stratix II" "HardCopy II" -all_speed_grades
+
+# Creating virtual device with all valid HardCopy II migration parts
+set migration_parts [get_migration_path EP2S30F484C5 -within "HardCopy II" -all_speed_grades]
+load_device -part EP2S30F484C5 -migrating_to $migration_parts
+unload_device
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal device family name: <string>. Specify a legal device family name. Use "get_family_list" to find available device families.
+TCL_ERROR	1   	ERROR: Illegal part name: <string>. Specify a legal part name. Use "report_family_info", "report_device_info", or "get_part_list" to find available parts.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_migration_path>
+
+<<<</2.0>>>>

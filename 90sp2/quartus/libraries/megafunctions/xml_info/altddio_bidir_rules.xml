@@ -1,0 +1,77 @@
+<?xml version="1.0"?>
+<ROOT>
+		<INCLUDE FILE="mfam_family_macros.xml" />
+		<MACROS>
+			<MACRO NAME="m_dqs_family" >
+				<DEFINITION>
+					mfam_family_base_stratix
+				</DEFINITION>
+			</MACRO>
+			<MACRO NAME="m_family_support_sset_sclr" >
+				<DEFINITION>
+					mfam_family_stratixii || mfam_family_stratixiii || mfam_family_base_stratix
+				</DEFINITION>
+			</MACRO>
+			<MACRO NAME="m_family_use_oe_out" >
+				<DEFINITION>
+					mfam_family_has_oe_out
+				</DEFINITION>
+			</MACRO>
+		</MACROS>
+		<PARAMETER_RULES>
+			<PARAMETER NAME="POWER_UP_HIGH" TYPE="STRING" >
+				<FORCE_VALUE V="UNUSED" WHEN="is_used(aclr) || is_used(aset)" />
+			</PARAMETER>
+			<PARAMETER NAME="OE_REG" TYPE="STRING" >
+				<FORCE_VALUE V="UNUSED" WHEN="!is_used(oe)" />
+			</PARAMETER>
+			<PARAMETER NAME="EXTEND_OE_DISABLE" TYPE="STRING" >
+				<FORCE_VALUE V="UNUSED" WHEN="!is_used(oe) || (OE_REG == UNREGISTERED) || (OE_REG == UNUSED)" />
+			</PARAMETER>
+			<PARAMETER NAME="IMPLEMENT_INPUT_IN_LCELL" TYPE="STRING" >
+				<FORCE_VALUE TO="ON" WHEN="is_used(combout) and is_used(dataout_h) and is_used(dataout_l)" />
+			</PARAMETER>
+			<PARAMETER NAME="INVERT_OUTPUT" TYPE="STRING" >
+				<FORCE_RANGE TO="OFF|UNUSED" WHEN="!mfam_family_cycloneii" />
+			</PARAMETER>
+		</PARAMETER_RULES>
+		<PORT_RULES>
+			<PORT NAME="datain_h" TYPE="INPUT" USAGE="USED"/>
+			<PORT NAME="datain_l" TYPE="INPUT" USAGE="USED"/>
+			<PORT NAME="padio" TYPE="Bidir" USAGE="USED"/>
+			<PORT NAME="outclock" TYPE="INPUT" USAGE="USED"/>
+			<PORT NAME="inclock" TYPE="INPUT" USAGE="USED"/>
+			<PORT NAME="inclocken" TYPE="INPUT" USAGE="VARIABLE"/>
+			<PORT NAME="outclocken" TYPE="INPUT" USAGE="VARIABLE"/>
+			<PORT NAME="aclr" TYPE="INPUT" USAGE="VARIABLE"/>
+			<PORT NAME="aset" TYPE="INPUT" USAGE="VARIABLE">
+				<STATE V="UNUSED" WHEN="is_used(aclr)" />
+			</PORT>	
+			<PORT NAME="sset" TYPE="INPUT" USAGE="VARIABLE">
+				<STATE V="UNUSED" WHEN="is_used(sclr) || !m_family_support_sset_sclr" />
+			</PORT>	
+			<PORT NAME="sclr" TYPE="INPUT" USAGE="VARIABLE">
+				<STATE V="UNUSED" WHEN="!m_family_support_sset_sclr" />
+			</PORT>	
+			<PORT NAME="oe" TYPE="INPUT" USAGE="VARIABLE">
+				<STATE V="USED" WHEN="m_family_use_oe_out" />
+			</PORT>	
+			<PORT NAME="inclock" TYPE="INPUT" USAGE="VARIABLE"> 
+				<STATE V="UNUSED" WHEN="!is_used(dataout_h) and !is_used(dataout_l)" />
+			</PORT>
+			<PORT NAME="inclocken" TYPE="INPUT" USAGE="VARIABLE">   
+				<STATE V="UNUSED" WHEN="!is_used(inclock) || (!is_used(outclocken) and (USE_WIZARD == ON))" />
+			</PORT>
+			<PORT NAME="dataout_l" TYPE="OUTPUT" USAGE="VARIABLE"/>   
+			<PORT NAME="dataout_h" TYPE="OUTPUT" USAGE="VARIABLE">   
+				<STATE V="UNUSED" WHEN="!is_used(dataout_l)" ELSE="USED" />
+			</PORT>
+			<PORT NAME="dqsundelayedout" TYPE="OUTPUT" USAGE="VARIABLE">   
+				<STATE V="UNUSED" WHEN="m_dqs_family and !is_used(combout)" />
+			</PORT>
+			<PORT NAME="oe_out" TYPE="OUTPUT" USAGE="VARIABLE">
+				<STATE V="UNUSED" WHEN="!m_family_use_oe_out || !is_used(oe)" />
+			</PORT>
+			<PORT NAME="combout" TYPE="OUTPUT" USAGE="VARIABLE"/>   
+		</PORT_RULES>
+</ROOT>

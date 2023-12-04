@@ -1,0 +1,14 @@
+# Add ::quartus::atoms to the table of packages
+lappend quartus(package_table) {atoms quartus_sta advanced}
+
+if {[lsearch -exact [list quartus_cdb quartus_eda quartus_si quartus_sta] $quartus(nameofexecutable)] != -1} {
+
+    # Make ::quartus::atoms available to load
+    set qpkg_script_auto [file join [file dirname [info script]] atoms.tcl]
+    if {[file exist $qpkg_script_auto]} {
+       source $qpkg_script_auto
+    }
+    unset qpkg_script_auto
+
+}
+

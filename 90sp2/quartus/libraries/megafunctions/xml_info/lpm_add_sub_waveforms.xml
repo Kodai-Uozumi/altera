@@ -1,0 +1,74 @@
+<?xml version="1.0" ?>
+<ROOT>
+	<MACROS>
+		<MACRO NAME="m_halfval" >
+			<DEFINITION>
+				(2 exp LPM_WIDTH) div 2
+			</DEFINITION>
+		</MACRO>
+	</MACROS>
+	<HTML_TEXT>
+		<TITLE>Sample Waveforms for m_design_file_name</TITLE>
+		<HEADER>Sample behavioral waveforms for design file m_design_file_name</HEADER>
+		<INTRO>
+			<T>The following waveforms show the behavior of lpm_add_sub megafunction for the chosen set of parameters in design m_design_file_name. </T>
+			<T> The design m_design_file_name is </T>
+			<IF> is_used(add_sub) </IF>
+			<THEN> a dynamically controlled adder/subtractor </THEN>
+			<ELSE>
+				<IF> LPM_DIRECTION == "SUB" </IF>
+				<THEN> a subtractor </THEN>
+				<ELSE> an adder </ELSE>
+			</ELSE>
+			<T> of width LPM_WIDTH. </T>
+			<IF> ONE_INPUT_IS_CONSTANT == "YES" </IF>
+			<THEN> 
+				<T>One of the inputs of lpm_add_sub is the constant </T>
+				<IF> is_constant(datab) </IF>
+				<THEN> datab. </THEN>
+				<ELSE> dataa. </ELSE>
+			</THEN>
+		        <IF>LPM_PIPELINE > 0</IF>
+			<THEN> The output result has a latency of LPM_PIPELINE.</THEN>
+		</INTRO>
+	</HTML_TEXT>
+	<WAVE_DATA>
+		<WAVE NAME="ALL" TIME_STEP="10" MAX_TIME="750 + LPM_PIPELINE*40">
+			<CAPTION>Wave showing lpm_add_sub operation.</CAPTION>
+
+			<STIM> force dataa 0 @0, 1 @170, 2 @330, -1 @490, 3 @650</STIM>
+			<STIM> force datab 3 @0, 2 @170, 1 @330, 1 @490, 0 @650</STIM>
+			<STIM> force clock 0 @0, 1 @20, -repeat @40</STIM>
+			<STIM> force clken 0 @0, 1 @50</STIM>
+			<STIM> force add_sub 1 @0, 0 @250, 1 @410</STIM>
+			<IF> LPM_DIRECTION == "SUB"</IF>
+				<STIM> force cin 1 @0, 0 @250, 1 @330</STIM>	
+			<ELSE>
+				<STIM> force cin 0 @0, 1 @250, 0 @330</STIM>	
+			</ELSE>
+			<IF> LPM_PIPELINE == 1</IF>
+			<THEN>
+				<STIM> force aclr 0 @0, 1 @210, 0 @250</STIM>
+			</THEN>
+			<ELSE>
+				<STIM> force aclr 0 @0, 1 @90, 0 @130</STIM>
+			</ELSE>
+		</WAVE>
+		<WAVE NAME="OVERFLOW" TIME_STEP="10" MAX_TIME="400 + LPM_PIPELINE*40">
+			<CAPTION>Wave showing overflow operation.</CAPTION>
+			<WAVE_CONDITION> is_used(overflow) </WAVE_CONDITION>
+			<STIM> force dataa 0 @0, m_halfval @30, 2 @250</STIM>
+			<STIM> force datab 3 @0, m_halfval @30</STIM>
+			<STIM> force clock 0 @0, 1 @20, -repeat @40</STIM>
+			<STIM> force clken 0 @0, 1 @10</STIM>
+			<STIM> force add_sub 1 @0, 0 @250</STIM>
+			<IF> LPM_DIRECTION == "SUB"</IF>
+				<STIM> force cin 1 @0</STIM>	
+			<ELSE>
+				<STIM> force cin 0 @0</STIM>	
+			</ELSE>
+			<STIM> force aclr 0 @0</STIM>
+		</WAVE>		
+	</WAVE_DATA>
+</ROOT>
+

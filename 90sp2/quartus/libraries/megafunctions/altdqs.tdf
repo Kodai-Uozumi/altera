@@ -1,0 +1,183 @@
+------------------------------------------------------------------
+-- altdqs parameterized megafunction
+-- Generated with 'clearbox' loader - do not edit
+------------------------------------------------------------------
+
+
+-- Copyright (C) 1991-2009 Altera Corporation
+--  Your use of Altera Corporation's design tools, logic functions 
+--  and other software and tools, and its AMPP partner logic 
+--  functions, and any output files from any of the foregoing 
+--  (including device programming or simulation files), and any 
+--  associated documentation or information are expressly subject 
+--  to the terms and conditions of the Altera Program License 
+--  Subscription Agreement, Altera MegaCore Function License 
+--  Agreement, or other applicable license agreement, including, 
+--  without limitation, that your use is for the sole purpose of 
+--  programming logic devices manufactured by Altera and sold by 
+--  Altera or its authorized distributors.  Please refer to the 
+--  applicable agreement for further details.
+
+--  Version 9.0 Build 235 06/17/2009
+
+OPTIONS NAME_SUBSTITUTION = ON;
+
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+
+PARAMETERS
+(
+	delay_buffer_mode = "low",
+	delay_chain_mode = "static",
+	dll_delay_chain_length = 12,
+	dll_delayctrl_mode = "normal",
+	dll_jitter_reduction = "true",
+	dll_offsetctrl_mode = "none",
+	dll_phase_shift = "unused",
+	dll_static_offset = "0",
+	dll_use_reset = "false",
+	dll_use_upndnin = "false",
+	dll_use_upndninclkena = "false",
+	dqs_ctrl_latches_enable = "true",
+	dqs_delay_chain_length = 3,
+	dqs_delay_chain_setting = "0",
+	dqs_delay_requirement = "unused",
+	dqs_edge_detect_enable = "false",
+	dqs_oe_async_reset = "none",
+	dqs_oe_power_up = "low",
+	dqs_oe_register_mode = "register",
+	dqs_oe_sync_reset = "none",
+	dqs_open_drain_output = "false",
+	dqs_output_async_reset = "none",
+	dqs_output_power_up = "low",
+	dqs_output_sync_reset = "none",
+	dqs_use_dedicated_delayctrlin = "true",
+	dqsn_mode = "none",
+	extend_oe_disable = "true",
+	gated_dqs = "false",
+	has_dqs_delay_requirement = "true",
+	input_frequency,
+	invert_output = "false",
+	number_of_dqs,
+	number_of_dqs_controls = 1,
+	sim_invalid_lock = 100000,
+	sim_valid_lock = 1,
+	tie_off_dqs_oe_clock_enable = "false",
+	tie_off_dqs_output_clock_enable = "false",
+	CBXI_PARAMETER = "NOTHING"
+);
+FUNCTION @CBXI_PARAMETER (dll_addnsub, dll_offset[5..0], dll_reset, dll_upndnin, dll_upndninclkena, dqs_areset[number_of_dqs_controls-1..0], dqs_datain_h[number_of_dqs-1..0], dqs_datain_l[number_of_dqs-1..0], dqs_delayctrlin[5..0], dqs_sreset[number_of_dqs_controls-1..0], enable_dqs[number_of_dqs-1..0], inclk, oe[number_of_dqs_controls-1..0], outclk[number_of_dqs_controls-1..0], outclkena[number_of_dqs_controls-1..0])
+RETURNS (dll_delayctrlout[5..0], dll_upndnout, dqddioinclk[number_of_dqs-1..0], dqinclk[number_of_dqs-1..0], dqs_padio[number_of_dqs-1..0], dqsn_padio[number_of_dqs-1..0], dqsundelayedout[number_of_dqs-1..0]);
+
+
+SUBDESIGN altdqs
+(
+	dll_addnsub		:	INPUT = GND;
+	dll_delayctrlout[5..0]		:	OUTPUT;
+	dll_offset[5..0]		:	INPUT = GND;
+	dll_reset		:	INPUT = GND;
+	dll_upndnin		:	INPUT = GND;
+	dll_upndninclkena		:	INPUT = VCC;
+	dll_upndnout		:	OUTPUT;
+	dqddioinclk[number_of_dqs-1..0]		:	OUTPUT;
+	dqinclk[number_of_dqs-1..0]		:	OUTPUT;
+	dqs_areset[number_of_dqs_controls-1..0]		:	INPUT = GND;
+	dqs_datain_h[number_of_dqs-1..0]		:	INPUT;
+	dqs_datain_l[number_of_dqs-1..0]		:	INPUT;
+	dqs_delayctrlin[5..0]		:	INPUT = GND;
+	dqs_padio[number_of_dqs-1..0]		:	BIDIR;
+	dqs_sreset[number_of_dqs_controls-1..0]		:	INPUT = GND;
+	dqsn_padio[number_of_dqs-1..0]		:	BIDIR;
+	dqsundelayedout[number_of_dqs-1..0]		:	OUTPUT;
+	enable_dqs[number_of_dqs-1..0]		:	INPUT = VCC;
+	inclk		:	INPUT = GND;
+	oe[number_of_dqs_controls-1..0]		:	INPUT = VCC;
+	outclk[number_of_dqs_controls-1..0]		:	INPUT;
+	outclkena[number_of_dqs_controls-1..0]		:	INPUT = VCC;
+)
+VARIABLE
+	IF CBXI_PARAMETER != "NOTHING" GENERATE
+		auto_generated : @CBXI_PARAMETER WITH ( CBXI_PARAMETER = "NOTHING" );
+	END GENERATE;
+BEGIN
+	ASSERT (CBXI_PARAMETER != "NOTHING")
+	REPORT "Valid clear box generator not found or Errors encountered during clear box generation"
+	SEVERITY ERROR;
+	IF (CBXI_PARAMETER != "NOTHING") GENERATE
+		IF USED(dll_addnsub) GENERATE
+			auto_generated.dll_addnsub = dll_addnsub;
+		END GENERATE;
+		IF USED(dll_delayctrlout) GENERATE
+			dll_delayctrlout[] = auto_generated.dll_delayctrlout[];
+		ELSE GENERATE
+			dll_delayctrlout[] = GND;
+		END GENERATE;
+		IF USED(dll_offset) GENERATE
+			auto_generated.dll_offset[] = dll_offset[];
+		END GENERATE;
+		IF USED(dll_reset) GENERATE
+			auto_generated.dll_reset = dll_reset;
+		END GENERATE;
+		IF USED(dll_upndnin) GENERATE
+			auto_generated.dll_upndnin = dll_upndnin;
+		END GENERATE;
+		IF USED(dll_upndninclkena) GENERATE
+			auto_generated.dll_upndninclkena = dll_upndninclkena;
+		END GENERATE;
+		IF USED(dll_upndnout) GENERATE
+			dll_upndnout = auto_generated.dll_upndnout;
+		ELSE GENERATE
+			dll_upndnout = GND;
+		END GENERATE;
+		IF USED(dqddioinclk) GENERATE
+			dqddioinclk[] = auto_generated.dqddioinclk[];
+		ELSE GENERATE
+			dqddioinclk[] = GND;
+		END GENERATE;
+		IF USED(dqinclk) GENERATE
+			dqinclk[] = auto_generated.dqinclk[];
+		ELSE GENERATE
+			dqinclk[] = GND;
+		END GENERATE;
+		IF USED(dqs_areset) GENERATE
+			auto_generated.dqs_areset[] = dqs_areset[];
+		END GENERATE;
+		IF USED(dqs_datain_h) GENERATE
+			auto_generated.dqs_datain_h[] = dqs_datain_h[];
+		END GENERATE;
+		IF USED(dqs_datain_l) GENERATE
+			auto_generated.dqs_datain_l[] = dqs_datain_l[];
+		END GENERATE;
+		IF USED(dqs_delayctrlin) GENERATE
+			auto_generated.dqs_delayctrlin[] = dqs_delayctrlin[];
+		END GENERATE;
+		IF USED(dqs_padio) GENERATE
+			dqs_padio[] = auto_generated.dqs_padio[];
+		END GENERATE;
+		IF USED(dqs_sreset) GENERATE
+			auto_generated.dqs_sreset[] = dqs_sreset[];
+		END GENERATE;
+		IF USED(dqsn_padio) GENERATE
+			dqsn_padio[] = auto_generated.dqsn_padio[];
+		END GENERATE;
+		IF USED(dqsundelayedout) GENERATE
+			dqsundelayedout[] = auto_generated.dqsundelayedout[];
+		ELSE GENERATE
+			dqsundelayedout[] = GND;
+		END GENERATE;
+		IF USED(enable_dqs) GENERATE
+			auto_generated.enable_dqs[] = enable_dqs[];
+		END GENERATE;
+		IF USED(inclk) GENERATE
+			auto_generated.inclk = inclk;
+		END GENERATE;
+		IF USED(oe) GENERATE
+			auto_generated.oe[] = oe[];
+		END GENERATE;
+		IF USED(outclk) GENERATE
+			auto_generated.outclk[] = outclk[];
+		END GENERATE;
+		IF USED(outclkena) GENERATE
+			auto_generated.outclkena[] = outclkena[];
+		END GENERATE;
+	END GENERATE;
+END;

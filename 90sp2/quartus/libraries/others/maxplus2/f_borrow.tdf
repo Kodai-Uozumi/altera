@@ -1,0 +1,16 @@
+
+SUBDESIGN f_borrow
+(
+	IN1,IN2,BI : INPUT = GND;
+	BO         : OUTPUT;
+)
+VARIABLE
+
+	int : NODE;
+
+begin
+
+	int = BI&IN2#!IN1&(BI$IN2);
+	BO = CARRY(int);
+
+end;

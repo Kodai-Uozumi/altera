@@ -1,0 +1,14 @@
+# Add ::quartus::device_features to the table of packages
+lappend quartus(package_table) {device_features quartus_cdb advanced}
+
+if {[lsearch -exact [list quartus_cdb] $quartus(nameofexecutable)] != -1} {
+
+    # Make ::quartus::device_features available to load
+    set qpkg_script_auto [file join [file dirname [info script]] device_features.tcl]
+    if {[file exist $qpkg_script_auto]} {
+       source $qpkg_script_auto
+    }
+    unset qpkg_script_auto
+
+}
+

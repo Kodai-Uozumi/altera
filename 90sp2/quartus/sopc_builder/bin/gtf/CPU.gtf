@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<!-- CPU.gtf - This "subroutine" returns the name of the CPU indicated in
+               the STF.
+
+     Inputs:
+        STF_NAME       - the name of the STF file
+
+     Returns:
+        CPU            - the name of the CPU module in the PTF
+        CPU_IRQ_MASTER - the name of the MASTER interface used to ascertain IRQ numbers
+                         from the global PTF file. Defaults to "data_master" which is
+                         the appropriate interface for a Nios II processor.
+-->     
+
+<generate_set>
+
+    <!-- only set CPU if it hasn't already been set
+         (since this GTF may be included multiple times) -->
+    <if condition="not( %CPU% )">
+
+        <set_variable variable="CPU"
+                      to='xpath( %STF_NAME%, "normalize-space(/stf/cpu/@name)" )'/>
+
+    </if>
+
+    <!-- set a variable for the CPU's IRQ master or use "data_master" -->
+    <!-- this "CPU_IRQ_MASTER" is the one that we're checking IRQ numbers for -->
+    <!-- preference order: from stf, then from cpu/data_master, then from cpu/first-master-found -->
+
+    <if condition="not( %CPU_IRQ_MASTER% )">
+        <set_variable variable="CPU_IRQ_MASTER"
+                      to='xpath( %STF_NAME%, "normalize-space(/stf/cpu/@irqmaster)" )'/>
+            <if condition="not( %CPU_IRQ_MASTER% )">
+                <set_variable variable="CPU_IRQ_MASTER" ptf_path="SYSTEM/MODULE %CPU%/MASTER data_master" />
+                <if condition="not( %CPU_IRQ_MASTER% )">
+                    <set_variable variable="CPU_IRQ_MASTER" ptf_path="SYSTEM/MODULE %CPU%/MASTER" />
+                </if>
+
+            </if>
+    </if>
+
+</generate_set>

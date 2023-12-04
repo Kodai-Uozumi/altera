@@ -1,0 +1,124 @@
+<?xml version="1.0" ?>
+<ROOT>
+	<INCLUDE FILE="mfam_family_macros.xml" />
+	<PARAMETERS>
+		<PARAMETER NAME="DEVICE_FAMILY" TYPE="STRING" />
+		<PARAMETER NAME="CBXI_DEVICE_FAMILY" TYPE="STRING" />
+    <PARAMETER NAME="CBXI_FILE_NAME" TYPE="STRING" VALUE="UNUSED" />
+		<PARAMETER NAME="VERSION" TYPE="STRING" VALUE="UNKNOWN" />
+	</PARAMETERS>
+	<MACROS>
+		<MACRO NAME="m_fusion_spl_case" >
+			<DEFINITION>
+				(mfam_family_stratixii_strict(DEVICE_FAMILY) and mfam_family_hardcopyii(CBXI_DEVICE_FAMILY)) ||
+				(mfam_family_stratixii_strict(CBXI_DEVICE_FAMILY) and mfam_family_hardcopyii(DEVICE_FAMILY))
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_dual_clock_dual_port" >
+			<DEFINITION>
+				(OPERATION_MODE == DUAL_PORT || OPERATION_MODE == BIDIR_DUAL_PORT) and (ADDRESS_REG_B == "CLOCK1")
+			</DEFINITION>
+                </MACRO>
+		<MACRO NAME="m_51_version" >
+			<DEFINITION>
+				(VERSION == "5.1" || VERSION == "UNKNOWN" || VERSION == "")
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_pre_51_version" >
+			<DEFINITION>
+				(VERSION str_lt "5.1")
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_pre_80sp1_version" >
+			<DEFINITION>
+				(VERSION str_lt "8.0SP1")
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_pre_60_version" >
+			<DEFINITION> (VERSION str_lt "6.0") </DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_pre_80_version" >
+			<DEFINITION> (VERSION str_lt "8.0") </DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_pre_81_version" >
+			<DEFINITION> (VERSION str_lt "8.1") </DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_70_71_version" >
+			<DEFINITION> (VERSION == "7.0" || VERSION == "7.1") </DEFINITION>
+		</MACRO>
+    <MACRO NAME="m_pre_90_version" >
+      <DEFINITION>
+        (VERSION str_lt "9.0")
+      </DEFINITION>
+    </MACRO>
+    <MACRO NAME="m_altdqs_spl_case" >
+			<DEFINITION> (VERSION str_lte "5.1") and (m_function_name == altdqs) </DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_dq_dqs_titan" >
+			<DEFINITION> mfam_family_base_stratixii(DEVICE_FAMILY) and mfam_family_stratixiii(CBXI_DEVICE_FAMILY) and ((m_function_name == altdq) || (m_function_name == altdqs)) </DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_altclkctrl_titan" >
+			<DEFINITION> mfam_family_stratixiii(CBXI_DEVICE_FAMILY) and (m_function_name == altclkctrl) and (mfam_family_base_stratixii(DEVICE_FAMILY) || mfam_family_cycloneii(DEVICE_FAMILY)) </DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_similar_family" >
+			<DEFINITION> 
+				(mfam_family_base_stratix(DEVICE_FAMILY) and mfam_family_base_stratix(CBXI_DEVICE_FAMILY)) ||
+				(mfam_family_base_stratixii(DEVICE_FAMILY) and mfam_family_base_stratixii(CBXI_DEVICE_FAMILY)) ||
+				(mfam_family_base_stratixiii(DEVICE_FAMILY) and mfam_family_base_stratixiii(CBXI_DEVICE_FAMILY))
+			</DEFINITION>
+		</MACRO>
+    <MACRO NAME="m_siv_aii_old_designs_allowed" >
+      <DEFINITION>
+        (ccl_cfg_ini$cfg_ini_get_value_for_mega(allow_compile_of_old_siv_aii_designs) == on)
+      </DEFINITION>
+    </MACRO>
+	</MACROS>
+
+	<RULES>
+		<RULE REQUIRED_RULE="OFF" >
+			(DEVICE_FAMILY != CBXI_DEVICE_FAMILY) and !m_fusion_spl_case and !m_altdqs_spl_case and !m_dq_dqs_titan and !m_altclkctrl_titan and !m_similar_family
+		</RULE>  
+		<RULE REQUIRED_RULE="OFF" ENABLED="OFF" > 
+			(m_function_name == alt2gxb_reconfig) and m_51_version
+		</RULE>  
+		<RULE REQUIRED_RULE="OFF" >
+			(m_function_name == altsyncram) and m_dual_clock_dual_port and m_pre_51_version and mfam_family_cycloneii_strict(DEVICE_FAMILY) and mfam_family_cycloneii_strict(CBXI_DEVICE_FAMILY) and (CYCLONEII_M4K_COMPATIBILITY != "OFF")
+		</RULE>
+		<RULE REQUIRED_RULE="OFF" >
+			(m_function_name == altsyncram) and (OPERATION_MODE == BIDIR_DUAL_PORT) and (ADDRESS_REG_B == "CLOCK1") and (INIT_FILE != "") and (INIT_FILE != "UNUSED") and (CYCLONEII_M4K_COMPATIBILITY != "OFF") and (CYCLONEII_SAFE_WRITE == "RESTRUCTURE") and mfam_family_cycloneii_strict(DEVICE_FAMILY) and mfam_family_cycloneii_strict(CBXI_DEVICE_FAMILY)
+		</RULE>			
+		<RULE REQUIRED_RULE="OFF" >
+			(m_function_name == altsyncram) and m_pre_80sp1_version and mfam_family_stratixiii_strict(DEVICE_FAMILY) and mfam_family_stratixiii_strict(CBXI_DEVICE_FAMILY)
+		</RULE>
+		<RULE REQUIRED_RULE="OFF" >
+			(m_function_name == altlvds_rx) and m_pre_81_version and mfam_family_stratixiii(CBXI_DEVICE_FAMILY) and is_used(rx_dpa_locked)
+		</RULE>
+	</RULES>
+	<MESSAGES>
+		<MESSAGE TYPE="CRITICAL_WARNING" >
+			<IF> (m_function_name == altpll_reconfig) and !is_used(pll_areset) and (mfam_family_base_stratix(CBXI_DEVICE_FAMILY) || mfam_family_base_stratixii(CBXI_DEVICE_FAMILY)) </IF>
+			<THEN> For the PLL reconfiguration mechanism to function correctly, regenerate the altpll_reconfig megafunction. Refer the PLL Reconfiguration Application Note (AN 367 for Stratix II / AN 282 for Stratix) for more details. </THEN>
+		</MESSAGE>
+		<MESSAGE TYPE="WARNING" >
+			<IF> m_altdqs_spl_case and (DEVICE_FAMILY != CBXI_DEVICE_FAMILY) and !m_fusion_spl_case </IF>
+			<THEN> The Altdqs megafunction was not generated for the current device family. Use the megawizard to regenerate the design for the current device family </THEN>
+		</MESSAGE>
+		<MESSAGE TYPE="CRITICAL_WARNING" >
+			<IF> (m_function_name == altpll_reconfig) and mfam_family_cycloneiii(CBXI_DEVICE_FAMILY) and m_70_71_version </IF>
+			<THEN> For the PLL reconfiguration mechanism to function correctly, regenerate the altpll_reconfig megafunction and any associated MIF files with the current version of Quartus II software. </THEN>
+		</MESSAGE>
+		<MESSAGE TYPE="ERROR" >
+			<IF>(m_function_name == altlvds_rx) and m_pre_80_version and mfam_family_stratixiii(CBXI_DEVICE_FAMILY) and is_used(rx_dpa_locked) and (USE_EXTERNAL_PLL == ON)</IF>
+			<THEN>The Altlvds_rx megafunction needs rx_syncclock (which is the slow clock from PLL running at data rate/DESERIALIZATION_FACTOR) and pll_areset (PLL locked output from the corresponding Altpll megafunction instance must be inverted and connected to pll_areset) to be connected to use the DPA lock feature in external PLL mode for the current device family</THEN>
+		</MESSAGE>
+		<MESSAGE TYPE="CRITICAL_WARNING" >
+			<IF>(m_function_name == alt2gxb_reconfig) and ((mfam_family_stratixiigx(DEVICE_FAMILY) and mfam_family_stratixiv(CBXI_DEVICE_FAMILY)) || (mfam_family_stratixiigx(CBXI_DEVICE_FAMILY) and mfam_family_stratixiv(DEVICE_FAMILY))) </IF>
+			<THEN>The Alt2gxb_reconfig/Altgx_reconfig megafunction was not generated for the current device family. Use the megawizard to regenerate the design for the current device family</THEN>
+		</MESSAGE>
+    <MESSAGE TYPE="ERROR" >
+      <IF>(m_function_name == alt2gxb_reconfig || m_function_name == alt4gxb) and mfam_family_stratixiv(DEVICE_FAMILY) and m_pre_90_version and !m_siv_aii_old_designs_allowed</IF>
+      <THEN>The altgx megafunction or altgx_reconfig megafunction entity file ${CBXI_FILE_NAME} was generated using an earlier version of the Quartus II software. This instance may not be compatible with the current version of the Quartus II software. Regenerate the instance with the current version of the Quartus II software.</THEN>
+    </MESSAGE>
+	</MESSAGES>
+</ROOT>
+

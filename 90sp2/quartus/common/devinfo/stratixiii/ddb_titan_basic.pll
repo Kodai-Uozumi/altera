@@ -1,0 +1,89 @@
+##Version 2.0
+
+family "Stratix III"
+
+pll ENHANCED_PLL
+m_counter_high_low_max 256
+m_counter_initial_max 256
+m_counter_phase_tap_max 7
+m_counter_phase_tap_resolution 45
+n_counter_high_low_max 256
+vco_post_scale_counter_max 2
+number_of_output_counters 10
+output_counter_high_low_max 256
+output_counter_initial_max 256
+output_counter_phase_tap_max 7
+output_counter_phase_tap_resolution 45
+output_counter_cascade true
+feedback_duty_cycle_min 40
+feedback_duty_cycle_max 60
+bandwidth_pfd_min_frequency_multiplier 10
+bandwidth_low 500000
+bandwidth_high 2000000
+bandwidth_settings_table_file ddb_titan_bandwidth_enhanced.pll
+bandwidth_relative_tolerance 0.3
+is_pfd_bandwidth_rule_an_error true
+phase_absolute_tolerance 1.0
+reconfig_type enhanced
+reconfig_params unused voltage_detector_2 loop_filter_c loop_filter_r vco_post_scale voltage_detector_1 charge_pump_current counter end
+reconfig_counter_params counter_bypass counter_high counter_odd_even counter_low end
+reconfig_scan_chain_counter_order m n c0 c1 c2 c3 c4 c5 c6 c7 c8 c9 end
+reconfig_param_bits_order msb_first
+vco_post_scale_bit_enabled_setting_bit_value 0
+charge_pump_current_default 10
+charge_pump_current_bit  10 20 0 40 0 0 0 0 -1
+loop_filter_resistor_default 1000
+loop_filter_resistor_bit  20000 0 0 18000 16000 0 0 0 14000 0 0 0 0 0 0 0 12000 0 0 10000 8000 0 0 0 6000 0 0 4000 2000 0 1000 0 -1
+loop_filter_capacitor_default 10
+loop_filter_capacitor_bit  10 12 0 14 -1
+loop_filter_fixed_capacitor 600
+hide_charge_pump_loop_filter_values_in_mif_file
+prefer_post_scale_counter_to_be_engaged true
+m_counter_times_vco_post_scale_counter_preferred_min 4
+lock_window_ui_bits_default 3
+lock_high_default 25
+lock_low_default 2
+
+pll FAST_PLL
+m_counter_high_low_max 256
+m_counter_initial_max 256
+m_counter_phase_tap_max 7
+m_counter_phase_tap_resolution 45
+n_counter_high_low_max 256
+vco_post_scale_counter_max 2
+number_of_output_counters 7
+output_counter_high_low_max 256
+output_counter_initial_max 256
+output_counter_phase_tap_max 7
+output_counter_phase_tap_resolution 45
+output_counter_cascade true
+feedback_duty_cycle_min 40
+feedback_duty_cycle_max 60
+bandwidth_pfd_min_frequency_multiplier 10
+bandwidth_low 500000
+bandwidth_high 2000000
+bandwidth_settings_table_file ddb_titan_bandwidth_fast.pll
+bandwidth_relative_tolerance 0.3
+is_pfd_bandwidth_rule_an_error true
+phase_absolute_tolerance 1.0
+reconfig_type enhanced
+reconfig_params unused voltage_detector_2 loop_filter_c loop_filter_r vco_post_scale voltage_detector_1 charge_pump_current counter end
+reconfig_counter_params counter_bypass counter_high counter_odd_even counter_low end
+reconfig_scan_chain_counter_order m n c0 c1 c2 c3 c4 c5 c6 end
+reconfig_param_bits_order msb_first
+vco_post_scale_bit_enabled_setting_bit_value 0
+charge_pump_current_default 10
+charge_pump_current_bit  10 20 0 40 0 0 0 0 -1
+loop_filter_resistor_default 1000
+loop_filter_resistor_bit  20000 0 0 18000 16000 0 0 0 14000 0 0 0 0 0 0 0 12000 0 0 10000 8000 0 0 0 6000 0 0 4000 2000 0 1000 0 -1
+loop_filter_capacitor_default 10
+loop_filter_capacitor_bit  10 12 0 14 -1
+loop_filter_fixed_capacitor 200
+hide_charge_pump_loop_filter_values_in_mif_file
+prefer_post_scale_counter_to_be_engaged true
+m_counter_times_vco_post_scale_counter_preferred_min 4
+lock_window_ui_bits_default 3
+lock_high_default 25
+lock_low_default 2
+dpa_counter_settings 1 2 4 -1
+

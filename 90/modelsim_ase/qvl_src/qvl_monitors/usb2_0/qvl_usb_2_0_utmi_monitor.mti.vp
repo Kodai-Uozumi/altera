@@ -1,0 +1,838 @@
+//              Copyright 2006-2008 Mentor Graphics Corporation
+//                           All Rights Reserved.
+//
+//              THIS WORK CONTAINS TRADE SECRET AND PROPRIETARY
+//            INFORMATION WHICH IS THE PROPERTY OF MENTOR GRAPHICS
+//           CORPORATION OR ITS LICENSORS AND IS SUBJECT TO LICENSE
+//                                  TERMS.
+//
+//                   Questa Verification Library (QVL)
+//
+/*************************************************************************
+*
+* PURPOSE     This file is part of Questa Verification Library (QVL).
+*
+* DESCRIPTION This monitor checks the USB 2.0 UTMI interface for compliance 
+*             with UTMI specification and USB 2.0 specification and protocol.
+*
+* REFERENCES  Universal Serial Bus Specification, Revision 2.0, April 27,
+*             2000.
+*             Errata for USB 2.0 specification, May 28, 2002.
+*             Errata for USB 2.0 specification, December 7, 2000.
+*             USB 2.0 Transceiver Macrocell Interface Specification, 
+*             Revision 1.05, Mar 29, 2001.
+*
+* INPUTS      clock                   - Clock.
+*             reset                   - Synchronous reset, active high.
+*             areset                  - Asynchronous reset, active high.
+*
+*             tx_valid                - Transmit data valid signal.
+*             tx_valid_h              - Transmit data valid high signal.
+*             tx_ready                - Transmit data ready signal.
+*             data_in_low             - 8-Bit parallel USB data input.
+*             data_in_high            - 8-Bit parallel USB data input. This
+*                                       bus carries the high order byte
+*
+*             rx_valid                - Receive data valid signal.
+*             rx_valid_h              - Receive data valid high signal.
+*             data_out_low            - 8-Bit parallel USB data output.
+*             data_out_high           - 8-Bit parallel USB data output. This
+*                                       bus carries the high order byte.
+*             rx_active               - Receive active signal
+*             rx_error                - Receive error signal
+*             
+*             databus16_8             - Selects between 8 bit or 16 bit.
+*             line_state              - Signal which reflects current state
+*                                       of the USB bus.
+*             xcvr_select             - Selects between FS/HS transceivers.
+*             term_select             - Selects between FS/HS terminations.
+*             address                 - Device address.
+*             end_point_config        - End point configuration input.
+*
+*             // Signals to support Bi-Directional interfaces.
+*     
+*             data_low                - 8-Bit parallel USB input and output.
+*             data_high               - 8-Bit parallel USB input and output.
+*             valid_h                 - Valid high signal.
+*
+* NOTES
+*
+*        1. Bidirectional signals are required if the UTMI is bidirectional.
+*
+*        2. If the UTMI interface is 8 bit, then signals/ports related to 
+*           16 bit interface need not be hooked up.
+*
+*
+* MONITOR INSTANTIATION
+*
+*
+*  Monitor is instantiated in the Host to track the transactions of the
+*  downstream port of the host(Downstream port of root hub).
+*
+*       +----------------+                          +-----------------+
+*       |                |                          |                 |  
+*       | +-----------+  |                          |                 |  
+*       | | Monitor   |  |                          |                 |  
+*       | +-----------+  |     USB Bus              |     HUB or      |  
+*       |                |<------------------------>|                 |  
+*       |  HOST          |    Full speed or         |     FUNCTION    |
+*       |                |    High speed            |                 |  
+*       |                |                          |                 |  
+*       |                |                          |                 |  
+*       |                |                          |                 |  
+*       +----------------+                          +-----------------+
+*
+*  Monitor is instantiated in the Device to track the transactions of the
+*  upstream port of the Device. (Device can be Hub or Function)
+*
+*       +----------------+                          +-----------------+
+*       |                |                          |                 |  
+*       |                |                          | +-------------+ |
+*       |                |                          | | Monitor     | |
+*       |                |      USB Bus             | +-------------+ |
+*       |                |<------------------------>|     HUB or      |  
+*       |                |      Full speed or       |                 |  
+*       |  HOST          |      High speed          |    FUNCTION     |  
+*       |                |                          |                 |  
+*       |                |                          |                 |  
+*       |                |                          |                 |  
+*       +----------------+                          +-----------------+
+*
+*  Monitor is instantiated in the Hub to track the transactions of the
+*  downstream port of the Hub.
+*
+*        +----------------+                          +-----------------+
+*        |                |                          |                 | 
+*        | +-----------+  |                          |                 | 
+*        | | Monitor   |  |                          |                 | 
+*        | +-----------+  |     USB Bus              |     HUB or      | 
+*        |                |<------------------------>|                 | 
+*        |  HUB           |   Full or Low speed or   |   FUNCTION      | 
+*        |                |      High speed          |                 | 
+*        |                |                          |                 | 
+*        |                |                          |                 | 
+*        |                |                          |                 | 
+*        +----------------+                          +-----------------+
+*
+*
+***************************************************************************/
+
+`ifdef ZiCwDebug
+`define ZiCwDebugDelay1 #1
+`define ZiCwQuietIfNoCwDebug
+`else
+`define ZiCwDebugDelay1
+`define ZiCwQuietIfNoCwDebug -quiet
+`endif // ZiCwDebug
+
+`ifdef QVL_SVA_INTERFACE
+`define qvlmodule interface
+`define qvlendmodule endinterface
+`else
+`define qvlmodule module
+`define qvlendmodule endmodule
+`endif
+
+
+`ifdef QVL_ASSERT_ON
+  `define OVL_ASSERT_ON
+  `define OVL_SVA
+`endif
+
+`ifdef QVL_COVER_ON
+  `ifdef QVL_SV_COVERGROUP_OFF
+    // Do nothing
+  `else
+    `define QVL_SV_COVERGROUP
+  `endif
+  `ifdef QVL_MW_FINAL_COVER_OFF
+    // Do nothing
+  `else
+    `define QVL_MW_FINAL_COVER
+  `endif
+`endif
+
+`qvlmodule qvl_usb_2_0_utmi_monitor (
+                                   clock,
+                                   reset,
+                                   areset,
+                              
+                                   // Transmit Interface
+
+                                   tx_valid,
+                                   data_in_low,
+                                   tx_valid_h,
+                                   data_in_high,
+                                   tx_ready,
+
+                                   // Receive Interface
+
+                                   rx_valid,
+                                   data_out_low,
+                                   rx_valid_h,
+                                   data_out_high,
+                                   rx_active,
+                                   rx_error,
+
+                                   // Control interface
+
+                                   databus16_8,
+                                   line_state, 
+                                   xcvr_select,
+                                   term_select,
+                                   op_mode,
+
+                                   // Bi directional 
+
+                                   data_low,
+                                   data_high,
+                                   valid_h,
+
+                                   // Configuration inputs
+ 
+                                   address,
+                                   end_point_config
+                                   );
+
+  // Parameter Constraints_Mode = 1 will configure some checks in this 
+  // monitor as constraints during 0-In Search.
+
+  parameter Constraints_Mode = 0; // 0in constraint 
+  wire [31:0] pw_Constraints_Mode = Constraints_Mode;
+
+  // Parameter PORT_TYPE configures the port type which will be tracked by
+  // the monitor. PORT_TYPE = 0 configures the monitor to track the
+  // transactions of the downstream port of the Host. PORT_TYPE = 1
+  // configures the monitor to track the transactions of the upstream port
+  // of Hub. PORT_TYPE = 2 configures the monitor to track the transactions
+  // of the downstream port of Hub. PORT_TYPE = 3 configures the monitor to
+  // track transactions of upstream port of a function. This information,
+  // along with the value of parameter Constraints_Mode will decide the checks
+  // to be turned into constraints during 0-In Search.
+
+  parameter PORT_TYPE = 0;                             
+  wire [31:0] pw_PORT_TYPE = PORT_TYPE;
+
+  // Parameter UTMI_SIDE indicates on which side of the interface, monitor
+  // is instantiated. By default monitor is assumed to be instantiated on
+  // the SIE side of the interface. 
+
+  parameter UTMI_SIDE = 0;
+  wire [31:0] pw_UTMI_SIDE = UTMI_SIDE;
+
+  // Parameter BI_DIRECTIONAL configures the monitor to track the
+  // UTMI interface.
+
+  parameter BI_DIRECTIONAL = 0;
+  wire [31:0] pw_BI_DIRECTIONAL = BI_DIRECTIONAL;
+
+  // Parameter DEVICE_SPEED configures the monitor for FS/HS, FS only, LS only
+  // mode of operation. Set this parameter to 1 if the UTM is FS only, Set this
+  // parameter to 2 if the UTM is LS only. By default, monitor is configured to
+  // track FS/HS interface.
+
+  parameter DEVICE_SPEED = 0;
+  wire [31:0] pw_DEVICE_SPEED = DEVICE_SPEED;
+
+  // Parameter NUMBER_OF_ENDPOINTS configures the number of end points
+  // to be tracked by the monitor. By default, monitor is configured
+  // to track only one end point.
+
+  parameter NUMBER_OF_ENDPOINTS = 1;
+  wire [31:0] pw_NUMBER_OF_ENDPOINTS = NUMBER_OF_ENDPOINTS;
+ 
+  // Parameter FRAME_INTERVAL_COUNT indicates the number of clock cycles
+  // between two successive SOF packets (USB specification specifies
+  // an interval of 1ms between frames. This time duration needs to be mapped
+  // into number of clock cycles).
+
+  parameter FRAME_INTERVAL_COUNT = 7500;
+  wire [31:0] pw_FRAME_INTERVAL_COUNT = FRAME_INTERVAL_COUNT;
+
+  // Parameter SEQUENCE_BIT_TRACKING_ENABLE configures the monitor to
+  // track data toggle synchronization.
+
+  parameter SEQUENCE_BIT_TRACKING_ENABLE = 1;
+  wire [31:0] pw_SEQUENCE_BIT_TRACKING_ENABLE = SEQUENCE_BIT_TRACKING_ENABLE;
+ 
+  // Parameter PACKET_ISSUE_CHECK_ENABLE configures the monitor to fire
+  // for illegal issue of token, requests. By default monitor fires
+  // for above mentioned conditions. Example : If IN token is issued
+  // to OUT only end point then monitor check fires when this parameter
+  // is set to 1. Similarly if undefined requests other than standard
+  // requests, device class requests are issued then monitor checks
+  // fire when this parameter is set to 1.
+ 
+  parameter PACKET_ISSUE_CHECK_ENABLE = 1;
+  wire [31:0] pw_PACKET_ISSUE_CHECK_ENABLE = PACKET_ISSUE_CHECK_ENABLE;
+
+  // parameter RX_ACTIVE_DEASSERT_TO_TX_VALID_ASSERT_DELAY configures the
+  // delay between the deassertion of the RxActive and assertion of TxValid
+  // assertion
+
+  parameter RX_ACTIVE_DEASSERT_TO_TX_VALID_ASSERT_DELAY_MIN = 5;
+  wire [31:0] pw_RX_ACTIVE_DEASSERT_TO_TX_VALID_ASSERT_DELAY_MIN = 
+                       RX_ACTIVE_DEASSERT_TO_TX_VALID_ASSERT_DELAY_MIN;
+
+  parameter RX_ACTIVE_DEASSERT_TO_TX_VALID_ASSERT_DELAY_MAX = 24;
+  wire [31:0] pw_RX_ACTIVE_DEASSERT_TO_TX_VALID_ASSERT_DELAY_MAX = 
+                       RX_ACTIVE_DEASSERT_TO_TX_VALID_ASSERT_DELAY_MAX;
+
+  // parameter TX_VALID_DEASSERT_TO_RX_ACTIVE_ASSERT_DELAY configures the
+  // delay between the deassertion of the TxValid and assertion of
+  // RxActive.
+
+  parameter TX_VALID_DEASSERT_TO_RX_ACTIVE_ASSERT_DELAY_MIN = 6;
+  wire [31:0] pw_TX_VALID_DEASSERT_TO_RX_ACTIVE_ASSERT_DELAY_MIN = 
+                   TX_VALID_DEASSERT_TO_RX_ACTIVE_ASSERT_DELAY_MIN;
+
+  parameter TX_VALID_DEASSERT_TO_RX_ACTIVE_ASSERT_DELAY_MAX = 37;
+  wire [31:0] pw_TX_VALID_DEASSERT_TO_RX_ACTIVE_ASSERT_DELAY_MAX = 
+                   TX_VALID_DEASSERT_TO_RX_ACTIVE_ASSERT_DELAY_MAX;
+
+  // Parameter TIME_OUT_COUNT configures the number of clk cycles
+  // after which device or host is required to time out.
+
+  parameter TIME_OUT_COUNT = 800;
+  wire [31:0] pw_TIME_OUT_COUNT = TIME_OUT_COUNT;
+
+  // Parameter OTG_DEVICE configures the monitor to track OTG compliant
+  // USB devices. By default, non OTG compliant devices are tracked.
+
+  parameter OTG_DEVICE = 0;
+  wire [31:0] pw_OTG_DEVICE = OTG_DEVICE;
+
+  // Parameter HUB_TURNAR_TIMEOUT_16BIT configures the monitor to track 
+  // the turn around timeout period in case databus16_8 is set for 16 bit
+  
+  parameter HUB_TURNAR_TIMEOUT_16BIT = 45000;
+  wire [12:0] pw_HUB_TURNAR_TIMEOUT_16BIT = HUB_TURNAR_TIMEOUT_16BIT; 
+
+  // Parameter HUB_TURNAR_TIMEOUT_8BIT configures the monitor to track 
+  // the turn around timeout period in case databus16_8 is set for 8 bit
+  
+  parameter HUB_TURNAR_TIMEOUT_8BIT = 90000;
+  wire [12:0] pw_HUB_TURNAR_TIMEOUT_8BIT = HUB_TURNAR_TIMEOUT_8BIT; 
+
+  // Parameter HUB_CHIRP_TIMEOUT_16BIT configures the monitor to track
+  // the timeout period for a K or J chirp in 16 bit mode
+  
+  parameter HUB_CHIRP_TIMEOUT_16BIT = 1800;
+  wire [11:0] pw_HUB_CHIRP_TIMEOUT_16BIT = HUB_CHIRP_TIMEOUT_16BIT;	
+
+  // Parameter HUB_CHIRP_TIMEOUT_8BIT configures the monitor to track
+  // the timeout period for a K or J chirp in 8 bit mode
+  
+  parameter HUB_CHIRP_TIMEOUT_8BIT = 3600;
+  wire [11:0] pw_HUB_CHIRP_TIMEOUT_8BIT = HUB_CHIRP_TIMEOUT_8BIT;	
+  
+  // Parameter TERM_SEL_DEASS_AFTER_HS_DETECT_TIMEOUT_8BIT configures the 
+  // monitor to timeout when term_select signal does not deassert till 
+  // 500 us after HS has been detected.
+
+  parameter TERM_SEL_DEASS_AFTER_HS_DETECT_TIMEOUT_8BIT = 30000; 
+  wire [14:0] pw_TERM_SEL_DEASS_AFTER_HS_DETECT_TIMEOUT_8BIT = 
+                 TERM_SEL_DEASS_AFTER_HS_DETECT_TIMEOUT_8BIT;	
+
+  // Parameter TERM_SEL_DEASS_AFTER_HS_DETECT_TIMEOUT_16BIT configures the 
+  // monitor to timeout when term_select signal does not deassert till 
+  // 500 us after HS has been detected.
+
+  parameter TERM_SEL_DEASS_AFTER_HS_DETECT_TIMEOUT_16BIT = 15000; 
+  wire [14:0] pw_TERM_SEL_DEASS_AFTER_HS_DETECT_TIMEOUT_16BIT = 
+                 TERM_SEL_DEASS_AFTER_HS_DETECT_TIMEOUT_16BIT;	
+
+  // Parameters related to Inter PAcket delay, Max PAcket Size.
+
+  // Input port declarations.
+
+  input clock; // Active on the rising edge only.
+  input reset; // Active high. 
+  input areset; // Active high.
+
+  input tx_valid; // Transmit data 'data_in_low' is valid.
+  input [7:0] data_in_low; 
+
+  input tx_valid_h; // Transmit data 'data_in_high' is valid.
+  input [7:0] data_in_high;
+ 
+  input tx_ready; // Transmit ready signal
+
+  input rx_valid; // Receive data 'data_out_low' is valid.
+  input [7:0] data_out_low; 
+
+  input rx_valid_h; // Receive data 'data_out_high' is valid.
+  input [7:0] data_out_high;
+  input rx_active;
+  input rx_error;
+
+  input databus16_8; // 1 - 16 bit, 0 - 8 bit interface.
+  input [1:0] line_state; // Line status signal.
+  input xcvr_select; // Selects between FS and HS transceiver
+  input term_select; // Selects between FS and HS termination
+  input [1:0] op_mode; // Selects between normal and disable NRZI and bit stuffing 
+
+  input [7:0] data_low; // Bidirectional data
+  input [7:0] data_high; // Bidirectional data
+  input valid_h; // 'data_high' is valid.
+
+  input [6:0] address; // Address of the device.
+  input [NUMBER_OF_ENDPOINTS * 21 - 1:0] end_point_config; // End point info.
+
+  parameter MAC_LAYER_CONSTRAINT = (UTMI_SIDE == 0 && Constraints_Mode);
+  parameter PHY_LAYER_CONSTRAINT = (UTMI_SIDE == 1 && Constraints_Mode);
+
+  parameter ZI_HOST_SIDE_CONSTRAINT = (Constraints_Mode &&
+                                       (PORT_TYPE == 0 || PORT_TYPE == 2));
+  parameter ZI_DEVICE_SIDE_CONSTRAINT = (Constraints_Mode &&
+                       (PORT_TYPE == 1 || PORT_TYPE == 3));
+
+  // Internal parameter declarations.
+
+  parameter ZI_SE0_STATE = 0;
+  parameter ZI_K_STATE = 2;
+  parameter ZI_J_STATE = 1;
+
+  // parameter declarations for states
+
+  parameter ZI_TX_IDLE_STATE = 0;
+  parameter ZI_TX_SYNC_STATE = 1;
+  parameter ZI_TX_DATA_STATE = 2;
+  parameter ZI_TX_DATA_WAIT_STATE = 3;
+  parameter ZI_TX_WAIT_DEV_CHIRP = 4;
+  parameter ZI_TX_CHIRP_DEV_STATE = 5;
+  parameter ZI_TX_WAIT_HUB_CHIRP = 6;
+  parameter ZI_TX_CHIRP_K_STATE = 7;
+  parameter ZI_TX_CHIRP_J_STATE = 8;
+  parameter ZI_TX_HS_DETECTED_STATE = 9;
+  parameter ZI_TX_UNKN_STATE = 10; 
+
+  parameter ZI_RX_IDLE_STATE = 0;
+  parameter ZI_RX_SYNC_STATE = 1;
+  parameter ZI_RX_DATA_STATE = 2;
+  parameter ZI_RX_DATA_WAIT_STATE = 3;
+  parameter ZI_RX_ERROR_STATE = 4;
+  parameter ZI_RX_ABORT_STATE = 5;
+
+  // Register declarations
+
+  reg [3:0] present_state_transmit;
+  reg [3:0] next_state_transmit;
+
+  reg [16*8 :1] present_state_transmit_string;
+  reg [16*8 :1] next_state_transmit_string;
+
+  reg [2:0] present_state_receive;
+  reg [2:0] next_state_receive;
+
+  reg [6*8 :1] present_state_receive_string;
+  reg [6*8 :1] next_state_receive_string;
+
+  reg r_tx_valid;
+  reg r_rx_active;
+  reg [15:0] r_tx_data;
+  reg r_tx_new_data;
+  reg r_tx_ready;
+  reg r_rx_valid;
+  reg latch_tx_last_byte_transferred;
+  reg latch_rx_last_byte_transferred;
+  reg r_rx_error;
+  reg latched_databus16_8; // Latches the databus16_8 input
+  reg enable_inter_pkt_delay_count_1; // Receive and Transmit
+  reg enable_inter_pkt_delay_count_2; // Transmit and Receive
+  reg [7:0] inter_pkt_delay_count; 
+  reg [9:0] response_timer;
+  reg first_clock_after_reset; // Asserted for one clock 
+  reg r_host_is_transmitting;
+  reg r_device_is_transmitting;
+  reg sof_pkt_received_from_device;
+
+  // Counters to check out timeout conditions during chirping 
+  // sequence
+  
+  reg [16:0] turnaround_timeout; 
+  reg [11:0] hub_chirp_timeout;
+  reg [14:0] term_sel_deass_after_hs_detect_timeout; 
+
+  // Counter to check the nuumber of K state and J state 
+  // transitions being equal to 6 before deciding the device speed
+
+  reg [2:0] chirp_count;
+  reg r_disable_nrzi_bit_stuff;
+
+  // Wire declarations
+
+  wire [1:0] speed;
+  wire [10:0] time_out_count;
+  wire tx_start_of_pkt;
+  wire rx_start_of_pkt;
+  wire tx_end_of_pkt;
+  wire rx_end_of_pkt;
+  wire tx_data_valid;
+  wire rx_data_valid;
+  wire [15:0] tx_data; // Data into the UTM
+  wire [15:0] rx_data; // Data out from the UTM
+  wire [15:0] muxed_parallel_data; // Mux between Tx and Rx
+  wire time_out; // Asserted when device or host times out.
+  wire tx_last_byte_transferred; // Asserted when last byte
+  wire rx_last_byte_transferred; // is transferred
+
+  wire tx_new_data; // Asserted whenever 
+  wire pkt_size_error;
+
+  // Signals driven from packet monitor
+
+  wire host_is_waiting;
+  wire device_is_waiting;
+  wire waiting_for_timeout;
+  wire tkn_pid_received;
+  wire split_tkn_received;
+  wire handshake_pid_received;
+  wire [10:0] pkt_byte_count;
+
+  // Signals driven and not used in the monitor
+
+  wire transfer_complete;
+  wire transfer_incomplete;
+  wire transfer_aborted;
+  wire data_pid_received;
+  wire pre_pid_received;
+  wire sof_pkt_received;
+  wire host_is_responding;
+  wire device_is_responding;
+  wire enable_low_speed_port;
+  wire pkt_received;
+
+  // Violations
+
+  wire rx_valid_without_rx_active;
+  wire rx_vald_h_without_rx_valid;
+  wire illegal_rx_error_assertion;
+  wire tx_vald_h_without_tx_valid;
+  wire rx_valid_not_deasserted;
+  wire tx_more_data_transfer_after_tx_valid_h;
+  wire rx_more_data_transfer_after_rx_valid_h;
+  wire tx_data_changed_before_sampling;
+  wire tx_ready_more_than_one_clock;
+  wire rx_valid_more_than_one_clock;
+
+  // Packet size violations
+
+  wire tkn_pkt_size_err;
+  wire split_tkn_pkt_size_err;
+  wire handshake_pkt_size_err;
+
+  // Inter Packet delay violations
+
+  wire receive_to_transmit_delay_violation_min;
+  wire receive_to_transmit_delay_violation_max;
+  wire transmit_to_receive_delay_violation_min;
+  wire transmit_to_receive_delay_violation_max;
+
+  // Chirping related violations
+   
+  wire invalid_chirp_sequence;
+  wire chirp_kj_duration_timeout;
+  wire device_j_state_during_chirping; 
+  wire device_initiated_with_j_during_chirp; 
+  wire term_sel_deassert_timeout; 
+
+  // Wire declarations for supporting bi directional 
+  // interface.
+
+  wire [7:0] data_in_low_actual;
+  wire [7:0] data_in_high_actual;
+  wire tx_valid_h_actual;
+  wire rx_valid_h_actual;
+  wire [7:0] data_out_low_actual;
+  wire [7:0] data_out_high_actual;
+  wire [7:0] data_out_low_int;
+  wire [7:0] data_in_low_int;
+  wire [7:0] data_out_high_int;
+  wire [7:0] data_in_high_int;
+  wire tx_valid_h_int;
+  wire rx_valid_h_int;
+
+  wire host_is_transmitting;
+  wire device_is_transmitting;
+  wire back_to_back_transfer;
+  wire disable_nrzi_bit_stuff;
+  wire normal_phi_operation;
+  wire term_sel_xcvr_sel_same;
+  wire [14:0] term_sel_timeout_value; 
+
+
+`protected
+
+    MTI!#+5r_p'eOYO~lD+W2]-@r^RzBj5ZBM5t[)C?Oi0?_PoGB_QxW_V}IU}Dv~#S&Xsu<iYZ]z>!
+    om{1^{C5[ZQK>uoVkO#;YK<O'z|j\IeiYozh,GKQC'#ze1X>t<xp{7n<H~UH#D>3r[eQ$paJ;u}j
+    A.=#@DCNW&W]Di,RKaBl!O)1+nH]$lkpuT@$!Qs@-H}*-JQ12JEO\[@#_GQ-UC@uA[Kz3sZz?vnO
+    RBe^BzRU-K]sKHs'CzC$A<s1vm{(XX@*C!2,GuXlpH!TmsBT-U+~p3>IA5?]_jD@wxlv4j*=U]\]
+    e2X<Ie3~v$@E>%?-DWomneOEoH)VQzW){$vo7zZo!YRu~[\+@s\}eKC2JGMNmnvsT[mQ=[moGHIk
+    nzvxp<RR#Vz'Zwn#1AR)o^\>\IulDV'rD}BepK;,B_o*j@D,Ov<nIJK,TT]p~l!kJ-7u'BHXOS^,
+    JBraD;*IK2zOk_Gpa@,YJZt&6?oA3le,}s,U$N?'HK7A!m[XDn#=;ZNxu$-2n'XVz*7sU[+[Y1jV
+    iI#o>exvaHuJ1vV7*xa!oYG*YHBGxCD1pB^C?x-DwHE-z;GC;-TdL{{Ouyg*}iwa]B^lOiV~][~x
+    ;>a?_i~IGA*_rC{!az{GC;ar>s5%\jRw=5V,4R25_p{'5Gs,pL\7]*fr{5D5m}p[#Kr'ieu_VsB,
+    '-{#-^CODzKhIU!B[Z2Q]w1jhp+\Jp?=azWDC?Dk{&~oiYlbkjvmi${!xr_=$!5]nomupmvi}Uj5
+    l!2+elKvY+}*[@*]YQ<E~}#<$9}kW5e1pe,\O@@_EuTr<C]!ICY\D^{v'[_E{np]^3?v~OQ3ITU]
+    T3T{6nB;[+HE-!YQ#Bu]kAw+oOXZYsx^l,1IU}Kz{V'A55YH*-1+,ZCO\<]XWB#KIkOsGDlI[.jA
+    V~D[Ja#CYEx!Z=J\jzT5Yt^CkCD^!'_i$rIQ@Q~<E^[?>?si;A.2pF}qPo@'k}}[sQ7wj\-Z}pm_
+    aI5}ssbAeEsV$?WA.v}{*$vBDK7r[]mn}wrV>}mr~5=vn#ll!2{@[p@D+}Y\E5lKo>wJXP~7_O+B
+    +\+HQlZR^3pCG+$e'+3*UsDVEB]A5#=>3>2]"qOsnuvQXp-Aw7WsA'Z7D_QnCHV#;@l_@~,}3+Hl
+    \rv~>ae1Q,R\KnA{K77oU=Y,?DZ{sGOA\iTD}^QOaz<=u'i'?kxD~nrvikXU[7}Ek2jz+B_iV!#D
+    v^KA[Bl,]$IaO55<^uEr7~6Di+,+={3^T-Vu>]E-BUv2nj^Ynl+,=KEhCX^uP]I^s3v7IoQJU3>7
+    ~ojZ''XRGp1BJz?nk,;{^K^HT\'n~CZwlINj!!T5(GWvxQ!<XzpoR*mV7'VTO'W,o=,GkZ,va~'2
+    X2n$}{{Co~*<Gee'KzUI#?t*ka<ZT<Dr-A>YIY3uQR!r!B131BUkl2e!RiO]pY,}'x}IR-'~$pe|
+    {SURp+/}_qe]][$x[]*4DC!'p>a<C{[e%d1uUC@YHv=T@eve{_.'u<XiC1Yn*UX_--RaORTQjZ@I
+    YO[Y;D_uX{{tfBO,k4sUa^C-,m_s$V?Tl+!}nUu'lB=UDRS?js@*GA];EX<%K{~@ulQJ*R's_]a]
+    ls{<1nv2te1#!;Bu;@rC7_;ol>G[@^YxwY5\!<+a?#v}Bs]TWy,pC!WCe5mC1s*vIQeRCwxDl-+E
+    wvR}-@;\jO=H1p:w[wG{9*^\,.=i,sB@l*psI*UEQxPIjnwWC{>xt(eHz3js*@+'KEQQ#W8RUwwm
+    a[KsY'#7'Q*+oBWwUUHV_ET<<^u!sV;knXQQu7i>v}u]ApXexeO;,K7weWp3C5rfElK!-{3Kp[^U
+    Y_ri*A]ks@I2^'riCCz-7^[sE+o3dmz\\]Eo2[=E;sCawJB]muoi7lT-2r@YEb|B2{[Q?I;N-a,a
+    }F#zr+B@YQY~l~g[?AVnN^w^xi<x}aTDuT7AYRAzDKHYKDZ{~r';o^wvU=b@zQis-_D7?B<e6V;X
+    B5_1^+CWujljnVW;xH>!n9'Z7n'[+3@a^xEWB1U]J3o}?DW7x@%IR!zjeRn^xO2WRvOiO-nbQ_o7
+    $ZB3NrmHO7WsWx}\~LZ>U7^?o}VU@rA'!{!$K=!D!oYBG{'_ZA255ZE1n~KaVYYwz+uw_rCJv^I3
+    uX;7;'=_R+oY<v=s@rmp<3It+V!C"ZO7e{-OK\?]{X^EJj\C{YyrKr{[Xz5[eQaYQ2j8mv>k5OiG
+    wUJT+IkTxe'A;=@@n}+vxO-K1Gkx='BZz$?7iX1pOUJs$^JU3<_HK{5[.[p~\oN*3o21?jjC?>nZ
+    T1I(,;o77W1Wr#\^BL,*CG}O?3_08TR{{P;O{]7eWJp@QIB-Zk[C>AC5KCz/,i[?-N5DRGHsBeyQ
+    s'iCeT-q*_km=^C7m=$uZ>Hu'Is<>*e!O{-XX-xnrJK=n+O'AErJCk3~FpOr[j+D]*>xz2U*}eww
+    rMvwx32H]Gv!'Q5ljUBBB+n5ZTQpI@rDzB"V+p@r{Wsf=I{$8BXB,I^#Cz#zRo?[7kGw{;5^[/lK
+    DEp]$2sTZ<CaH,{5*RG-D?O@C$*4_1#nr{+;r<E~3RZ$,;jQow@VE?!~?r}mKrj-I}wJ_-A]HY^-
+    a\XuKvmkb}eQ+iY~ZCaQ]5s5#pJ+uN;xe}i_C]T{rUOu+-'sd2U;1[Ds\\Cpet!AvB{RBX3}!]ae
+    KAv+;Tio7<<7swJealBZ>2Q}n*?a+riU-<jJE]Qx{e\AnHr2zJ~\oAr7]jHox{D\E]2ji?zwB;E\
+    uQIG<@BB}$J_Ku]U@mT\7{7p2U@,<]k_riKpIJkoOnv>@jjTC^mRwB;H5HZaj$W-2^NuCUa)JI^O
+    ?s<ljnADhQ\-YKCYDLkaJTF}+-'psK{wCZU=m7^!XDuv5{$;{RZw5$BCXmo>CTx!I}j8yAO1[R;I
+    }jU]vIG<I3owpv1}X$v-lO2Za7mQs$ERi'pi_[o2?/,,{?El>>eia>?{1Wqz+m!gm]D3hUI72GXE
+    p}ziADn1VV5lp<R#-]*W74E;<!.lAz!}uCviCo!r*Zrn<B@AIV>7O?-nYv~2&ssD'^fACJWaX>+m
+    H!=D]]KPvPVR,Q^sDU-jjnmASl%q\J'i$<x!VBJp,wVUBs^>lz^kHUC^7n7OD*<\jvl<#T7WoxZk
+    p[os5Y^V{To]E}K<urr<4I_{[/2*\AWvU!.O6;=B'C[+2J=~u!EiKCdf>UZ[$OH3j;_TL,w1X}HA
+    OohjKK,v+lCJ'$#3E@z:v3+ogrB'@[WYe3^+!Tw-G<'RiO+w#l!=sU{D{lCl3wwAQ;_^Ut<]lrZz
+    TwoCZ?(Vn$}G52W-{eHDC;7$wTJ\\-k'>BJIARUHr]sd7R*p5kJz}(XE!$Q+m_Y>*#aaX+[$$Zpz
+    p5G?X!u$X=[av*DUrWmETpYiv^G<+Cx2YGxI^X{,,W]r~[p;+[@GV$vTv;wxXeS?_T^j^>$73*G~
+    r^BXsQl1&?]lXsA2Dl3Y2'{l>lu@v{QX#6X7i$zR@!<vokv-o#j-_<9L7^jQPJHa$4zjj^Xp1Z6+
+    lRi(K'x^7V-r0I}tUEzWV}-n!YAB,#RoW1,[7IOE2G[Jn_1^1<\]RT[5WA'<Vl<J9P<qPY31i=~v
+    ]#+[R~oG['O\1JI$vUEewn\2x+OJ<#5l_al\_DQAJyk*sK$KKn]e{KH$Avr<HQ8-$a?EZ>D[;xBm
+    _mQ}*R-zGl5qrEm'[+W;&}EOKX,oQ$\*K'[p1Ot]T^xIO>T_\A$*YQ^q,C{'A5$G1hdj#_a^Xj30
+    mI~~1znQqjKrJn7xiNg,psX~zr?pjo1EDmAo#V+lWY>/-LP"FGuR}X]IB0WlV'^;EW*k{5o9*W^r
+    T7ZUliEk4mr{'qi5?VTAR,R~2X9?Y:leAVcwzE[QDJ}sw*@SuS"}'IE<Ek3e<57nr2R^uD;r$m},
+    W$lxF5AQK6a+;'%u+3\_52RlTvsi+UB_=Y<9Qmppsm!'^[{\'V2wRBY]z\_Jlzu!R!~nZ1uY27J!
+    @xH+}r-!&E?v@K'WTWD7s.xwH^,mQ_T}x@QXTm]B#Q=77Z7YUYx_'VWzX1'rj2xKOJ1+U5}^~>Ym
+    $aDj?5aX7rZ+r_73uB8N#IW{E_?p<*#pDW<Zo'Aj_'eiK\'={_I]>DrT0ra;RRZa<{='VA5}aerv
+    ^#>Q}e5VG;wVp^1sI&3w'pf-A>k];H^!Hos/uTpG'?<~+j'lHBU52+5aTT\[>11mv[s$-^QCTEr{
+    h7]3Cra=H>=z^"AzE-pRx3,}-aD53l~H<z5|7IK^{$e~UVi'.BRpulsAG3_)<{Bx>N1Vw=7?Bb~U
+    Q[H>$^;$}{$m*B=}+WDCIpXa{p?Q>V'L.C7-2-x\~5VkJ>w;vE,paRB{VH}{lRiUQV<@=]n5$Xx>
+    ~1@7RxzaR$,T{EE<A|}?Gx\Ao];x~'1Jw5%]am]oEurH[mlO[=l0p{=iQwvn#Oxj$ABCZs_}{5wC
+    =>~!<_pr@TpDOB+nRu}\eHpzzJ<k!|B?ZG&#X*p^nlJCVz{Qzo5J_Om?]-3mO!JKB@^,*#]l3sx]
+    ]3}B*p[^4Eolz?>X}%vnJ,-<]p}nmkO3Ro\ozlc0~_j{_*+594,JuV>>,nTn1IGI@?z+5kn=o$aX
+    r[ao2aA-\;CUV{mn1w}yBWn@wED}\1Ea['kr\UaTD#1v@,I}CAZ!3QXu=Xvr5-~s{\RpzO\{+pY;
+    ^w{=]?(G2B!L'1wKCI>_,;*Ya1k^\rA@I3*@<VA<HD+j_T~1^+mo@Cn+5ZTu?r1]41^?A*Ue!C]]
+    edQAKT1ajiW1+]bu{V@5Y,-xDiCT'7!,#[u}QC_m{v?oA5{AY;{Y3>H*Ou@*#lU7Blins2R'K,~B
+    Yk@T7{{*eE<hG=;;E-+X{&Y{;m2{$A>lK$x;5[$~wlT*1D8#$v_.XV?5Gm;]Hs~DTYJ;^Tw<_pVs
+    e2Z\5}sRixEpT]^!W{]Ub\+wTi*ovGA<>ZC!7p-,zj{m?8lH{kZC<3GGA5?I[E^J;={livU1UoG;
+    O[+7'VNvvs;An'J$Hm}vUmBWV,a*?3UQr!WBmTQI,}zTnluC~p##neJ8k$@!2+;v1CD#xOHx}xVV
+    -H}o[#{1}/a7^31xT>7JT[kEHJwC]Qv3[QWXHU.ilY<C!GigAA{@@EsBr5ZrZ>C>Jn=#G}[W)\Y2
+    wIiXZ<Y=}9~I\K1KUxa>Y*>5u-ke3Kk]ip)zX[;[D*v1huwaI1K53o*mxN,Z,]zVAO?1zm,~CUZ'
+    1+z,RlwvIC=-1{G~CJ.r[@,,$@\*^+I>^i@'[oV*VXkXaU>Be+Z'}QTA_HvwrVugZal@IJ,$vZ'I
+    l#5ol=k}@DvwL"i{-@Q;JjD<CJ&>Eurp<72<RV=t}B$@R<{?UwW;+TOu~Go]+Ru2EJ>sx{lk7r}V
+    nnxY,;xjVr$TYs$3'W-H3-@+eDI31Y-HH-C}@${ppKxX>Gu1Ik,pDTj$WC+@e\VpBI<WWG*Er_OJ
+    ow]n=3BlCz=<-*x5'3K3eU*Ej\VGTsv1aLe#^{vTW!6aB~U,;BQ^nYk@wD+V!nTOk;<A{n,1C7W/
+    =E!lu<-BQ'R_21rGI^o#3-nXs3J{<+o2z*[[31WT$Du7x2>I;l>u[r]Av|i-_eR,QA?e!+a*!$rB
+    riWRzaLkxux4Gn7mjO3ESu7vnmVYu\IpGbm[mEFgOUQ!s7]WW5!+>Yj!AoskDY\Yhnw!W%a=z}zA
+    JQro_jJ]KQCJ$u5zXzBV_TAe7'tE2a_ee@;i7-wEel=\-J@Kjm^pQu7)==C7w\le1QDkN&lZE~,z
+    >JlijYC.[r<zjeeInzup+IB?Bi5YRp2u5-I]aT46^1>-Ol*<u^QQ?*EK3VWTC@zwJA7p=v_C[Hnu
+    IOE@;G!a?7aYR1G[g2YQ~wxAo]Dw?jJ5zHU>}O@^uLre2RxKvXkXu_1z!o;*HA};wD_#A['1iTHq
+    >\Q1eR^i@\@=KH*a$6}J1zM&qPM^HYOZA^aTA}^|6!5[uz^?jr*?}r6Bjekij-=R^TwKUE+p;pIL
+    opKR1j;-5Q-na-;z,QjT*-e'O'#m^KDpr7OE!Xn2AU\sOzCU(rJ5@Z7!JKvI^7JHDG7xe?r>s1\Q
+    u;s!2}+ARb'Bp^HXlak+!<zv+]NDi=,AY<E1kloU]wu*Ku?rRQG+RoCm=pA!Q={2I[r=X~Q9B6^i
+    \l@ER-OO{5-+ll$>+A-lGHKODuM]lHAs}CTzsRe[kT3}UTXsTsU{x_3Yku#w*3Z]@HxW1u!AE5z2
+    1T}z1$WX}m\RX7R=e;Oy,jpGaUEu@Ii\C>{=l#Z=qa-<r@B?uTADrC$J$CQ#,-T~3,#Gs1,o+mwC
+    jOZ7]uO*V3]=W73}#5\i@rz@E[<<<U+o-^U^-Uo2JB\23Bi2p~V\Epw]Kez1s['<VwT3pl;jHeBz
+    [@TpH5apW>=I'bvsv\BZDpX>Y1oWCU^jQ_=1#s3_o~Oiz',Ei5\pia&K>r#jeo{+LDrvm!\=CZz!
+    >C[C5oP_\akUT+Qx^;ngWHEC2TV+*7eDVr,GpJxOG,r[3DA^B{aZq?';luD#lE?E]j?OZE!j=)qv
+    B_^CJ<m~o3Z{[9e\Tmo?puHIBY,}i-C,po}2}zT,U^Zs?_a]I(F1RTJSW=G~\'J_>1Rup>lKrTX*
+    aRxI=!nX+]O!5Y<f^~Uw/T,*@;IDTHeWV^?U?7OCBHrr?Y}p#@nl!jlx{@oEGqS\l7-QCV^j<}p^
+    ;E$-_W+Toaps9zi]T*ZK*^+^-csZ=<>C+Kkln]e}Qen^-[G?ezn,m^#D,\2E{r/Y>CoxK^IQNp_~
+    ;B,#$rximnoxE?+spv,+ZGaDwol@nGpU${=O<3v3[NvejAX5D1Z(A>wrBWJo]2\e[.QXa;7sJ-p@
+    ]OCW$lseOWZ+-VqYDY-}H,2AC\D}mp=nzQrLYvEl~7JpOjj]?CapZ[+{V#U,Z}Jp<r@;xpvYIkVX
+    xwCJIeB\_#\i|XrDwJ]2,XRT]^XZo;Dr_TB<ri>*]1#vpYwuW=?sGBHmnvVJX~\EUcA-@>pNej,7
+    SQ+\?XYrR=WU$^E#Zn_U<Yum5Ca77pk\7V_7jN^z-KiO5\GiD#kR-Ask=wE'5[?_V5*z-\:exvV[
+    1u5vevIA]O-2,Gs_]G<[Ov7\'\Z9{pK+D\nJS,=~s2vT[U*re~+Aoo5QWN;\Tlmr+kxuBRuwZ<ko
+    _!2z#7\r(svD]jY,{eo\wor'711A+FWer+,DGWiOn^O'2Z]Z$ur{>\E7DJ[XDTrXGU,11{v!!GCI
+    5=R{^?H^n[e^#JA}^~?wQWJ^Jvz{BG*7oIQ,U\=_,l$~*n+,]\.@j'pZ>;uyvY!1=\nY*p};CK2j
+    pB{TDAmjQCm_#}j2cx*i\w[3-xv>XOvZYxD<{E\sp5oz[(G_[E{arQ_b-5+#Uj]$e[r,L{,Gn^!Z
+    WE>]HpZ$7(!5{WT1U~npV12+-}S;{KWpRo7Vu3O,<2$V'];S+E}}7rkpbEp_}<5'@x!={Y'uAA7'
+    v;s;T1[>G[{X<kn;[67rH5xrG@Ira5{xjWhKX]W5#!OG>Ix(fG[]D+GKAYT[or@-Dv;Bz$wG<k-;
+    3/D1?~,BRQEOxu_xnJlsjI:Z+U^E^sj&|j3K!roTnR'Qu^>B2j2!K!*{Iu}=QZsw\KjZw}D^WVB'
+    3n5nGkUr'ZUWTTIOm,<$'$@x+@r{QC}YD_aW;qwE!!-eK?uj<A[p\*2CA!kQiJrve=7X2>=ex7W]
+    E*KT~1w>+Oor\H*\s!ZDD]W^X~^{Y-FV5ko?{1@gU7;XClpAeDkTil{}y}AVmnwIu:TY5#Ar<u@\
+    @n(h=YA'2Sv]^EYjD?lXW~kpm1zi>p}xeV]jZJ[;5Aa^$aDzvBZ{2;%H>Z{7kpVxGu}!Qo{MAoCe
+    n-KAeX{x@{]RCzjEi5n!8_z{UGkolE*WsRheK]235$e5<j=_\C?CnCk#Ql1k<_Glp?e]5{Gx+JRC
+    W3x:o\wI,!5\ppeR0>Gl2C5]*VGIX<Rakw+I\$}{,gj5219-,o!zGG?p$-,8cpvvj+-sRmnXCzea
+    J@HQDQ{zp^*@-*er,!OOz+l=EuCrYB;ji+V~2r8zG^ZOD^raYaDjOp^w_YQR_;#}X;r1xW1ep[=w
+    }TZ'RA1$27D~r$*g^e@,+1=xCX3p$"RrVn<5o'awVGIGwR'ImA<B<W3x,$*nAV{TQEeo'[2}B[G}
+    Wp^RI-IZ<m}gGAzOGwn+VV\kv3mIXeepGK5Z~vI?v'GrO$rrF(<BIj>$<@.+v1@m5eZ<E2Je{zwk
+    Ie2!R^m5;HJ$tBa+s3UZ2@sQI@D?jYa5z=GV}RV\i'R\rsrDz=-O*'G#AKOvwWvv~weJG;Rr\AIX
+    H>A!Xouv+OD?AK_UVKXKKs$*]Be~kg[UUGh5AV;E[!!^$IK>$}5B7J\ps1\Ri}izw]7m^u3\YTnK
+    B'WmsWz*U]sz['1!\2IioOORDRks$@CIjHByF=AmJ#Ypllj[~Ax5-JYBBr1<Rx?[r'~Aksz^rF<n
+    -zm+'7KOK?J}E\"}EA!=RkkYO53mr[@ZU{UUQ}po}H]}-E+pCsAYR#j4m,zHmGxo1u7#QKsojGlA
+    lv*e5_EH->Dp;qz]*n~AvYO?}jW[11DWVQykzGv^-Z["4zE\A.-]wQK{e]UOKOf1GRm?'3;'HzJ:
+    a\u3CmG=Z\xZp@Hu9XpiO{wRWqIQ=rV@[C7IukeUYi<rzpz3!Q;Q=zDH=;D,Z1\Tu+>x}as!ep#s
+    mkeV~Ao0-sT3r}k;ll2'1oJnb^7CCOY*XQHx_\^C!}$WeXeq+Cw+E!wjv!Ua1AjQ!oCp,fdi1*!R
+    B2*6*O^@I_3lR}==O5J?&jxr#xu_Acs=r2!LlYx,,@!G:7lHKsDi\CV#OK^w[gr#DTT,{{@Ra'$K
+    =2AX[U>sk<-puXBBrBTI>r$>XOz@573*I=5/^VRiTUH<$U1RIeGkQMC]m>OOrIx=7Z)H<5=a=HG5
+    *Xw3*3m!\KaIhX1mwXH3rrLOVQ+R3'ar}B!ER>J^'l17K1vQXXjv?RTY\nYzu*ao<ADw\vo~n'?E
+    ;QoW,W}XAwk,oZA_+X#1imkz)v{-7XrxD2>xCZCX[?r<';T>>eG_;TGDXWrQo@s}}EVe+YEZ!CCo
+    #'V+_~D7e-p!T+{,_\B{lE3@7Up,Oj,'TH$7DEIapvpiKlha'}j@A+~E\2[i>]sw5KC)=TWRBSzl
+    O1K*UO7J2z)n'mwDe=C7oXpi'{X=Op>Y7XlkpTELW[r3T]krjv$u^CVBNd#wne2EoYmC^{<r,Ev1
+    @sxWv=>I,Br*_wH<ln#+WGpT+{\aRn_Z_JN1*je~I3Io-I_=w[5Ua5ss>IgIw}HpB'5?v7nj_Hx\
+    '*l$_RHGAUOVX++kAD3}HZGri'wd77RT#nHw{DY@5G5n#UaBBa~DY{D,#+*]$D^mv@A3qX$k,5m!
+    @e@rxIeA3oo]V;rjs<,Bn7U;$*mvH-O$UM-_e*UEX\]V,To+,oJ&z2lj'D;V>5;vEETo&+{UYHCk
+    JkXR}>D3OqWIVB,V#_lRCBx*I?}A5]j\nAEA+WkxEm'or,?sG2D$H,QE?<\z1$*}jwGoeB?Uomhn
+    B#=+Oo^G77{AhV$YJmjm$$YJna_rsYn*~UxTn2'Xll?!Q~l?-X]2?_LR;}?(q'D>HWp2W*\,Or*$
+    vmzx]mp[;sm-w#7KA#G,Vkzse>\Q[e#,p{BWO$imD,+C>nCEXnou\]!HsC>pAd/j~zJHerzEKB>u
+    nw\e3@AWEml8HEB2IMuE=V[wC,Jl'z~e{Q;51oCAKwi\JZ$\?_)\[uuc=u*>pA;kQx\J3B*,\3_j
+    p(t+]<VV+r[,[IpC3}jez7Qv?\ku-[UQ,!v12$IjGmK}-pZ7-aOJVeies5JuII=De?7dPSFW5U$|
+    >l]##1#7]Y}'BpX34z^YEm<o\_^*UYN,#CmCJ^@!1Yj|_DvsKH\muj~*1a2*$z=sC;rj,=K\[3]C
+    C'A;@5Y?Y!vX-]J=^O\Kli_jwB2H{}?TKTr<x@Z?Mx[C>_ie!GvBR]VJuQT@w<1-,{pj\r4G_xu^
+    }Yng^+Gu;rvxH5p+W\uQQ;J3DJDul77]l?jv;oKQ^s5!W&*RQ2CrwOi*=T]7V<Bl,i?Q"%41=jr1
+    C>@@j\oj#<@IH_rJx{Ad{}lK657oDGZxxH\?''v^]z[V}a}<AXNnH^Ur#lE1uw]UnIA;e]2kC*re
+    JR7m=H+nrVOKeH~Y!XjB^r2ER]A>^Q}[~UC6v}1Ay2vZ].~DVX9VkJ5pD2*ElDJ7Tj#jYX-V@CAW
+    D^1u<T'^2$7WY\kY>G}2YYew7Z]'R<Tbja>@'fR[7[TYo+d]\32:R5\p2Q{CH-Z_52@2TUvrj^,o
+    ?-jV$@YXB}@'|zn=C"a>wT:A7,T1{=+-*,z^*Hz\V-_?QT]4I!K-Y?GV%)SU*2<'nJCx2QIK>CH#
+    a*ZmU3?B3Va0J'YEM[wXIc-]QV$e=2%ahgAVaEXs1x
+`endprotected
+
+  // Packet monitor instantiation
+
+  qvl_usb_2_0_packet_monitor #(
+	 /* Constraints_Mode */             Constraints_Mode,
+	 /* PORT_TYPE */                    PORT_TYPE,
+         /* DEVICE_SPEED */                 DEVICE_SPEED,
+	 /* NUMBER_OF_ENDPOINTS */          NUMBER_OF_ENDPOINTS,
+	 /* FRAME_INTERVAL_COUNT */         FRAME_INTERVAL_COUNT,
+	 /* SEQUENCE_BIT_TRACKING_ENABLE */ SEQUENCE_BIT_TRACKING_ENABLE,
+	 /* PACKET_ISSUE_CHECK_ENABLE */    PACKET_ISSUE_CHECK_ENABLE)
+	    PKT_MON (
+	 .reset                (reset),
+	 .areset               (areset),
+	 .clock                (clock),
+	 .speed                (speed),
+	 .address              (address),
+	 .end_point_config     (end_point_config),
+	 .start_of_pkt         (tx_start_of_pkt | rx_start_of_pkt),
+	 .end_of_pkt           (tx_end_of_pkt | rx_end_of_pkt),
+	 .parallel_data_valid  (tx_data_valid | rx_data_valid),
+	 .parallel_data        (muxed_parallel_data),
+	 .databus16_8          (latched_databus16_8),
+	 .bus_is_idle          (host_is_transmitting === 1'b0 && device_is_transmitting === 1'b0),
+	 .high_byte_valid      (tx_valid_h_actual | rx_valid_h_actual),
+	 .usb_2_0_compliant    (1'b1),
+	 .time_out_count       (time_out_count),
+	 .time_out             (time_out),
+	 .pkt_size_error       (pkt_size_error),
+	 .inter_pkt_dly_count  (inter_pkt_delay_count),
+         .data_k_state         (line_state === ZI_K_STATE),
+         .host_is_transmitting (host_is_transmitting | r_host_is_transmitting),
+         .device_is_transmitting (device_is_transmitting | r_device_is_transmitting),
+         .low_speed_enable (1'b0), // Serial monitor only
+	 .bit_stuff_error      (rx_error),
+         .op_mode              (op_mode),
+         .term_sel_xcvr_sel    (term_sel_xcvr_sel_same),
+
+         // Outputs
+
+	 .host_is_waiting      (host_is_waiting),
+	 .device_is_waiting    (device_is_waiting),
+	 .host_is_responding   (host_is_responding),
+	 .device_is_responding (device_is_responding),
+	 .sof_pkt_received     (sof_pkt_received),
+         .tkn_pid_received     (tkn_pid_received),
+         .split_tkn_received   (split_tkn_received),
+         .handshake_pid_received (handshake_pid_received),
+         .data_pid_received    (data_pid_received),
+         .pre_pid_received     (pre_pid_received),
+         .pkt_received         (pkt_received),
+         .enable_low_speed_port (enable_low_speed_port),
+         .waiting_for_timeout (waiting_for_timeout),
+         .transfer_complete (transfer_complete),
+         .transfer_incomplete (transfer_incomplete),
+         .transfer_aborted (transfer_aborted),
+         .pkt_byte_count (pkt_byte_count),
+         .utmi_mon(1'b1),
+	 .back_to_back_transfer(back_to_back_transfer)
+	 );
+
+`protected
+
+    MTI!#o\jm/[<BHV]7p2nK\1o}]]I{@l'5=4,$i!!Id"W5v!|{Um7IA>E9FrpiUW]+O;E?<W]l;eJ
+    <{*nu*I;~v*eV$@a^C[#CJF7Vx-k}Kw]X[{rWRj=%[\Di#jUJA}A-Dskeu7kn$mCo=?H]nNIOn{|
+    K+E{-_HlZC?;zsLtOn[]CuXelQ<7*;BlIa-^GBv3^*o3IW]RoOs[Z>l'"{XgAa{nV^XeO9$E;,Q,
+    zx/hrs{+m-w~xn1]i'e-UlUG\z-l}EMreGIe1Iw<\Y2|-x-H6#NY{B][Bk;x1i'^_^mqAjl[YTa?
+    rzVZp\awo*73BH'5U]';~B?p](lWBeJQz1u1_iV*l}g!sDX$@G-Q[}]kw\Q<7_e9n5a1:]*ppQsX
+    7[mAx[C1$]Z~W=@+!REizef~^_ip<,JV>Q\YoR]@nQv\;X?MKH_#vC$s}wV$uDYw1uzK#zEo0^*@
+    sc'xQJx3ej!wRkxoJvdoQ~Q~[;WaVmX]@JmCpA[3$\1}QovY~aZ'kJ]?Y,$-C<I@1{{(#RD-x?~!
+    rVJr$sV!\*pY#5Q-v>22lsTxEm}Usu*VSV\J[5;>mx[sHzxowzT^}5{_JWEPB]Ka$]<>(Ig|!=^v
+    $$X=\QBzE?$CRA[l-oA*u{vJ?1$s'uaAC.OWGu1s<rGj2u;>IWrr7r$oae.={C$^3]#uE;m1>{v>
+    ',[$QDJWaYkCEn=a<@<I_3I~AQmVY\!SBspBC-5C{s~QHCJ<eTA_V8OeHoxco^7}Zzn[o9QO,3e+
+    2zj?7o#TZ2$_uj!w{[W}+Cw,Wz_vO-m[ZYDH1e,J>**<'!Aa]?vZC@@];p]K_w=R\G@Avp^wT[q_
+    ,rx5k[@*$7Z:W}olV>Awm\m';E7]CmvR,BEDxipxv,n~de[kl\e@U*^?<opw_ZY>HEZYJ1O@>.+C
+    2n=1@2C7a+OJX1!BV],z2s[jv=eel=p\k7Ba]ml_z}dA^;RpQ?B9Er^2a<an[GRs7?m?cJYv3,U]
+    e@CU\r1G#vDljEs[3@_V<C7m[DY>CmEvHw7~nTXJ[UR3k>[J!-+W1z[{Jz/}r{jvG\$GJ=R]\VJL
+    qJ{om>w7!M|I+=7~A^$HG'n3Ts{@rYs;_1\vxJ?AI@^HCzi@sQj=jVuVZ_1VW<\>[?3;T*ijjpr\
+    im*2jZ;W-Z<*r=DYkjDr[,#'i*],Q7~TX5'$}Ii&XEZZKvIVA^^>m5!WvvQseCzj^*X]y|[X\KxW
+    >YRm,Qi<!CS<[kB;B;$C~o}7?xW1}l{3X[=oYkrC1Bl=|jQ2z*IJwmYr}t3Rk>,Yj~v'XzZVuU+R
+    W;=,'5okn[2CHZg:,5;^v~]R;,xG[EnaH7oB=iC{|xWGKB-5iojm'}5Ra_ln2'Dxn=5lv}wl~3p@
+    'z57OlYVW,B>wvU}u<{ltl_-D-htx]T7CiKrn+UkrsBn~$oKI_lDK{<!<AlXI+@]WaJ}[aRs5EI]
+    jx+o=++Ii[A1Pf^!aU\B!EI*?#SIOD2'2<KpnUkw-$;p3HTV>$-En*e'W}iEozYbG<;]W}$1U$rB
+    ^]m;1kKzlOrT_2e?_1oRaH3nwO-eHzv>Ca7Z1[J}jJY>mCv^tNGelT.r-a@sD-x\ZUDIX+o];@!2
+    >OAm^ssLz;}=WDRTA$Q@OUnE?]B!H}*QqVwr'vsT@m^!Quen54xAYRYZ@u{}!o0_z;\wv<OZC=u=
+    spWvE*}1-pp5}5Vw15kA=Es,~_*Q>YlV7+rswT-IkXOs_u+'7#K[vQjDnZ\#G*m+eWs_"G@_3$@'
+    <!Q\zIV''LV5ls#VA}oz6K\VrUTs2*r;QAEs2Nbk_HTv~xi-{n>aU55~\I,RaVT@\YpdBz!$Fi}+
+    $7x@?a^OKj]?j8O+vTn-5u&|]nHJ~x2?uI*vw.iA-uzX1A=O*mTU7{@su[[DZ1$BQ\>77,^;x7Hx
+    [7YD3XID?!7B}#iRQ7e_}p#1'sxm+5Z*#BjY<3UVATiR}xas[e7!7WB=Z+u\s_EY=}E#YuAG{eCv
+    immQJ;K_o@~BxprB;B#GK=YJ-jQ}s!_looe2$U*'aX'RCYl\J'G^=Vzs=rOu-XoRnRT12E&iaUxI
+    ~n}K[3^:WR*R%pr1r@a}mlS;R?es*V~X7j~v+lOE*p7QEQuc*p@H/naT2>CJj#Xs!>,x}9R,ar]Q
+    I{^C{x{a@^PrO>u;Y<mvC{]XOE{*Ju2%c!,xHg;e}A[a+[5A=TC2B[>CUz<G=#52D1'723Ww{ID!
+    rU{1<;v5w]J}Xr''iQw{pWpTp*=5AAc=;\@!'1=R|Qx'_em$>A>@5_vD[TA;+]B_Z'xW=PQCO'CQ
+    D_a]=aLLBUY5@<aKmH;@}K+TK\iXlzY-C;-,C7_apiTuw<z**Z+2B\up7jo'3RBInOQ1jpOk]75V
+    p3m=(kaH2r1ow;E-*#]rV'IZuDJ_aj=TByUw2[]'$CWeXa]'k@[YaGr_lua1ZUj!pi27s^1ZR3I*
+    Ov~sZu@s?arKx!J_2Do*}71p1RVxr=+LkDx@v7mR<CTYkXJB^G#a72H7(wx3u(E7~kv+~}eOAEDE
+    K$QsmDx!]z?ElG//sBUZG<__^zIHa{]WLnnj[fg5@n!,\Jk*oBza,RA@vv7\m*!x#'RwYlzDY#7i
+    <BeVE~,"vpTlYO>{rDXBrUepRRzzD[}=\s+HTAW[9k,E3\wV7L=AU5q7nC5[j?WCKX}a$2;x2GqQ
+    3l@$msIr{Q$XU}=XOiTIrnj!E7+A1V\5u!@s@!5or;O{Or[X5reF!HX,(11_zX13VmwYZ;n$wFOW
+    wmxBQHe^[Q)2Y[,Llm1THoDeEC>'ij'-*a5#@]a~Pea,+^f\z{emok>;xTlS1kO;p]{v^#BjrCw=
+    ,mm[JIBH!n1~$eDnfZXx-{}^T{R-l[{swAT+oCX1veUlmqj2$W#E?~>7jZ7Q_\}vvokDu-/;R-5X
+    ==<k+5GJO{_5w<{is$x5^7[u}gSxvpOx03YY$QEa{m+XEV_rjE3xRB~HnoUGU{Ye2nv]C?*Oz7eD
+    BR1\7?{,7Jz^R*^\V;=,'Ej?sRUY5d8=EiDYlaCkYKAZ11Zu$+Y<lr=CwJTT'mUWG{!y]mjuIk;m
+    X}7W*O[_Bwo78oaBADCJJ-V*G$x$lerHDG!pY#V*7eU7AC@eBTn75v+7#3v<Cr?WA^_I+A{HvWwl
+    U[52~71GV><*$Ye1?_7[vz*^k-<>#hQk}j,X_Qzs_5CG>w[7Rzx5T>Q1ow75VA,3WW;vXTAA~@3o
+    '{6TV,?@z7HB2VVlYmGC$YTG2Z];{n+W^3@GIZWc'V$$2Gi@oX+?{1n?+xAY#$WxpHa17p2sA[T1
+    Mrl?BC!u~oEQ13Ez#,';1i-QrYj$[e~1#cK$-+JADxQejC^j@HIAw#lUOBy'?n1~epXzk^])ID+o
+    px]B?+H}[~]K#s}-IjrGBwr_@{v_n*WxJe]3b}Y$p3]?x;n_<*95G@3a-avIzD3ZoIkc7KOW^Xvs
+    s}ToE2{xEev<[R7=dov@TupC{ITQaatnBl!l;TwzjsruU5m5A$JCppnRn^u!B=uQVQ-@e?3WQ=^8
+    Xj${f><'X(B-a^HCpTUs,@+TDl~]x~D\DQ{auQl3o{sGZ=4gjv#u~z^GmBG3%7?x*}Xjl.2H<$G>
+    UE*z$2zevx72OCf.T$HX_tjjDWe@'7={5a>I?!xzTIp_zYQY][Dr1{B<p]@_mx*reo*5Bx!w}=Za
+    =kCA1eYXZTt7u^['wlHdqcx'[]W{pGsrG?1XIlSFXz=p3jwT_vr@]wZ]QJjw'^lAIQm<]H1e7U<3
+    }a5l&ap4LXQ#!HRW^XEv'zDGXTxOaup$=mE5ilFi]e2kBGpOkDuh==vvQ2$}P_3u[B!OlozWw1jZ
+    }J,HOh}JV-b=1KEU5-2X=xeT<oIP-I#2laYu#<-C-nTm!=XEeCzUY-;CK_-zv\=A=C!<3sR@[HZ>
+    !_>IlmHIlzBo\W~l*p[GYiEIsdW5k>SR=X[M4\YX;leRZ|^z{o^iB?*$[+?R+'A['[cEkEEE]#}
+`endprotected
+
+  //--------------------------------------------------------------------------
+  // OVL SVA Assertions are included here
+  //--------------------------------------------------------------------------
+
+`include "qvl_usb_2_0_utmi_monitor_assertions.inc"
+
+`ifdef ZI_INLINED_PSL
+`include "0in_ac_inline_for_mod_zi_cw_usb_2_0_utmi_monitor.inc"
+`endif
+`ifdef ZI_INLINED_CHX
+`include "zi_cw_usb_2_0_utmi_monitor.zi_chx.inc"
+`else
+`ifdef ZI_INLINED_CHX_zi_cw_usb_2_0_utmi_monitor
+`include "zi_cw_usb_2_0_utmi_monitor.zi_chx.inc"
+`endif
+`endif
+
+`qvlendmodule // End of module qvl_usb_2_0_utmi_monitor

@@ -1,0 +1,66 @@
+# Some resources...
+
+# Customizing Your Shell: http://www.dsl.org/cookbook/cookbook_5.html#SEC69
+# Consistent BackSpace and Delete Configuration:
+#   http://www.ibb.net/~anne/keyboard.html
+
+# Setup some default paths.  Note that this order will allow user installed
+# software to override 'system' software
+PATH="/usr/local/bin:/usr/bin:/bin:$PATH"
+
+# Set the user id
+USER="`id -un`"
+
+# Set the USER's home directory
+if [ -z "$HOME" ]; then
+  HOME="/home/$USER"
+fi
+
+# If the home directory doesn't exist, create it.
+if [ ! -d "$HOME" ]; then
+  mkdir -p "$HOME"
+  # copy skeleton files
+  cp -a /etc/skel/. $HOME
+fi
+
+# Export home and user for other scripts to use
+export HOME USER
+
+# run all of the profile.d scripts
+for i in /etc/profile.d/*.sh ; do
+  if [ -f $i ]; then
+    . $i
+  fi
+done
+
+# default to unix make mode
+export MAKE_MODE=unix
+
+# it is recommended that cvs uses ssh for it's remote shell environment
+export CVS_RSH=/bin/ssh
+
+# Patches to Cygwin always appreciated ;)
+#export CVSROOT=:pserver:anoncvs@sources.redhat.com:/cvs/src
+
+# Set a HOSTNAME variable to the host name in lower case letters
+export HOSTNAME=`hostname | tr '[A-Z]' '[a-z]'`
+
+# set a default prompt of: user@host current_directory
+#export PS1='\[\033]0;\w\007
+#\033[32m\]\u@\h \[\033[33m\w\033[0m\]
+#$ '
+export PS1='\[\033]0;Altera Cygwin Shell\a\007
+\033[32m\]\u@\h \[\033[33m\w\033[0m\] 
+$ '
+
+
+# uncomment to use the terminal colours set in DIR_COLOR
+# eval `dircolors -b /etc/DIR_COLOR`
+
+# default to removing the write permission for group and other
+# (files normally created with mode 777 become 755; files created with
+# mode 666 become 644)
+umask 022
+
+# make sure we start in home
+cd "/"

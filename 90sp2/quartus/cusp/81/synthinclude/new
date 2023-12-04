@@ -1,0 +1,29 @@
+// new
+//
+// This header file is used when the Altera CusP compiler is compiling
+// your source code to hardware.
+#ifndef _NEW_HEADER
+#define _NEW_HEADER
+
+#include <exception>
+
+void *operator new(size_t, void*);
+
+namespace std
+{
+  class bad_alloc : public exception
+  {
+  	public:
+  };
+  
+  struct nothrow_t { };
+  extern const nothrow_t nothrow;
+  
+  typedef void (*new_handler)();
+  new_handler set_new_handler(new_handler);
+  
+  
+}
+
+
+#endif

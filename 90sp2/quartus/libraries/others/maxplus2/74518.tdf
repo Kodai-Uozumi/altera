@@ -1,0 +1,79 @@
+TITLE "Top-level file for the 74518 macrofunction.  Chooses a device-family optimized implementation."; 
+FUNCTION p74518 (p[7..0], q[7..0], gn) RETURNS (pq);
+FUNCTION f74518 (p[7..0], q[7..0], gn) RETURNS (pq);
+
+PARAMETERS
+(
+	DEVICE_FAMILY
+);
+INCLUDE "aglobal.inc";
+
+SUBDESIGN 74518
+(
+	p[7..0]          : INPUT = GND;
+	q[7..0]          : INPUT = GND;
+	gn               : INPUT = GND;
+	pq               : OUTPUT;
+)
+
+VARIABLE
+	IF (FAMILY_FLEX() == 1) GENERATE
+		sub  : f74518;
+	ELSE GENERATE
+		sub  : p74518;
+	END GENERATE;
+
+BEGIN
+	IF (USED(p0)) GENERATE
+		sub.p0 = p0;
+	END GENERATE;
+	IF (USED(p1)) GENERATE
+		sub.p1 = p1;
+	END GENERATE;
+	IF (USED(p2)) GENERATE
+		sub.p2 = p2;
+	END GENERATE;
+	IF (USED(p3)) GENERATE
+		sub.p3 = p3;
+	END GENERATE;
+	IF (USED(p4)) GENERATE
+		sub.p4 = p4;
+	END GENERATE;
+	IF (USED(p5)) GENERATE
+		sub.p5 = p5;
+	END GENERATE;
+	IF (USED(p6)) GENERATE
+		sub.p6 = p6;
+	END GENERATE;
+	IF (USED(p7)) GENERATE
+		sub.p7 = p7;
+	END GENERATE;
+	IF (USED(q0)) GENERATE
+		sub.q0 = q0;
+	END GENERATE;
+	IF (USED(q1)) GENERATE
+		sub.q1 = q1;
+	END GENERATE;
+	IF (USED(q2)) GENERATE
+		sub.q2 = q2;
+	END GENERATE;
+	IF (USED(q3)) GENERATE
+		sub.q3 = q3;
+	END GENERATE;
+	IF (USED(q4)) GENERATE
+		sub.q4 = q4;
+	END GENERATE;
+	IF (USED(q5)) GENERATE
+		sub.q5 = q5;
+	END GENERATE;
+	IF (USED(q6)) GENERATE
+		sub.q6 = q6;
+	END GENERATE;
+	IF (USED(q7)) GENERATE
+		sub.q7 = q7;
+	END GENERATE;
+	IF (USED(gn)) GENERATE
+		sub.gn = gn;
+	END GENERATE;
+	pq = sub.pq;
+END;

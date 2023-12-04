@@ -1,0 +1,111 @@
+------------------------------------------------------------------
+-- altmem_init parameterized megafunction
+-- Generated with 'clearbox' loader - do not edit
+------------------------------------------------------------------
+
+
+-- Copyright (C) 1991-2009 Altera Corporation
+--  Your use of Altera Corporation's design tools, logic functions 
+--  and other software and tools, and its AMPP partner logic 
+--  functions, and any output files from any of the foregoing 
+--  (including device programming or simulation files), and any 
+--  associated documentation or information are expressly subject 
+--  to the terms and conditions of the Altera Program License 
+--  Subscription Agreement, Altera MegaCore Function License 
+--  Agreement, or other applicable license agreement, including, 
+--  without limitation, that your use is for the sole purpose of 
+--  programming logic devices manufactured by Altera and sold by 
+--  Altera or its authorized distributors.  Please refer to the 
+--  applicable agreement for further details.
+
+--  Version 9.0 Build 235 06/17/2009
+
+OPTIONS NAME_SUBSTITUTION = ON;
+
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+
+PARAMETERS
+(
+	INIT_FILE = "UNUSED",
+	INIT_TO_ZERO = "YES",
+	NUMWORDS = 16,
+	PORT_ROM_DATA_READY = "PORT_UNUSED",
+	ROM_READ_LATENCY = 1,
+	WIDTH,
+	WIDTHAD,
+	CBXI_PARAMETER = "NOTHING"
+);
+FUNCTION @CBXI_PARAMETER (clken, clock, datain[width-1..0], init, rom_data_ready)
+RETURNS (dataout[width-1..0], init_busy, ram_address[widthad-1..0], ram_wren, rom_address[widthad-1..0], rom_rden);
+
+
+SUBDESIGN altmem_init
+(
+	clken		:	INPUT = VCC;
+	clock		:	INPUT;
+	datain[width-1..0]		:	INPUT = GND;
+	dataout[width-1..0]		:	OUTPUT;
+	init		:	INPUT;
+	init_busy		:	OUTPUT;
+	ram_address[widthad-1..0]		:	OUTPUT;
+	ram_wren		:	OUTPUT;
+	rom_address[widthad-1..0]		:	OUTPUT;
+	rom_data_ready		:	INPUT = GND;
+	rom_rden		:	OUTPUT;
+)
+VARIABLE
+	IF CBXI_PARAMETER != "NOTHING" GENERATE
+		auto_generated : @CBXI_PARAMETER WITH ( CBXI_PARAMETER = "NOTHING" );
+	END GENERATE;
+BEGIN
+	ASSERT (CBXI_PARAMETER != "NOTHING")
+	REPORT "Valid clear box generator not found or Errors encountered during clear box generation"
+	SEVERITY ERROR;
+	IF (CBXI_PARAMETER != "NOTHING") GENERATE
+		IF USED(clken) GENERATE
+			auto_generated.clken = clken;
+		END GENERATE;
+		IF USED(clock) GENERATE
+			auto_generated.clock = clock;
+		END GENERATE;
+		IF USED(datain) GENERATE
+			auto_generated.datain[] = datain[];
+		END GENERATE;
+		IF USED(dataout) GENERATE
+			dataout[] = auto_generated.dataout[];
+		ELSE GENERATE
+			dataout[] = GND;
+		END GENERATE;
+		IF USED(init) GENERATE
+			auto_generated.init = init;
+		END GENERATE;
+		IF USED(init_busy) GENERATE
+			init_busy = auto_generated.init_busy;
+		ELSE GENERATE
+			init_busy = GND;
+		END GENERATE;
+		IF USED(ram_address) GENERATE
+			ram_address[] = auto_generated.ram_address[];
+		ELSE GENERATE
+			ram_address[] = GND;
+		END GENERATE;
+		IF USED(ram_wren) GENERATE
+			ram_wren = auto_generated.ram_wren;
+		ELSE GENERATE
+			ram_wren = GND;
+		END GENERATE;
+		IF USED(rom_address) GENERATE
+			rom_address[] = auto_generated.rom_address[];
+		ELSE GENERATE
+			rom_address[] = GND;
+		END GENERATE;
+		IF USED(rom_data_ready) GENERATE
+			auto_generated.rom_data_ready = rom_data_ready;
+		END GENERATE;
+		IF USED(rom_rden) GENERATE
+			rom_rden = auto_generated.rom_rden;
+		ELSE GENERATE
+			rom_rden = GND;
+		END GENERATE;
+	END GENERATE;
+END;

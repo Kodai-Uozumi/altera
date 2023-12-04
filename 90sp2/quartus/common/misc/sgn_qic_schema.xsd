@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified">
+	<!-- Root Element -->
+	<xs:element name="partition">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="global" >
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="short_hpath" type="xs:string" />
+							<xs:element name="family" type="xs:string" />
+							<xs:element name="part" type="xs:string" />
+                            <xs:element name="info_version" type="xs:string" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+
+				<xs:element name="hierarchies">
+					<xs:complexType>
+						<xs:sequence minOccurs="0" maxOccurs="unbounded">
+							<xs:element name="hierarchy" type="hierarchy_t" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:complexType name="hierarchy_t">
+        <xs:sequence>
+			<xs:element name="short_hpath" type="xs:string" />
+
+            <xs:element name="parameters">
+			    <xs:complexType>
+				    <xs:sequence minOccurs="0" maxOccurs="unbounded">
+						<xs:element name="parameter" type="parameter_t" />
+				    </xs:sequence>
+		   	    </xs:complexType>
+			</xs:element>
+
+            <xs:element name="ports">
+			    <xs:complexType>
+				    <xs:sequence minOccurs="0" maxOccurs="unbounded">
+						<xs:element name="port" type="port_t" />
+				    </xs:sequence>
+		   	    </xs:complexType>
+			</xs:element>
+
+            <xs:element name="files">
+			    <xs:complexType>
+				    <xs:sequence minOccurs="0" maxOccurs="unbounded">
+						<xs:element name="file" type="file_t" />
+				    </xs:sequence>
+		   	    </xs:complexType>
+			</xs:element>
+
+            <xs:element name="children">
+			    <xs:complexType>
+				    <xs:sequence minOccurs="0" maxOccurs="unbounded">
+						<xs:element name="child" type="xs:string" />
+				    </xs:sequence>
+		   	    </xs:complexType>
+			</xs:element>
+        </xs:sequence>
+		<xs:attribute name="is_partition" type="xs:boolean" use="optional" />
+		<xs:attribute name="is_jtag_hub" type="xs:boolean" use="optional" />
+		<xs:attribute name="design_nodes" type="xs:integer" use="optional" />
+		<xs:attribute name="import_nodes" type="xs:integer" use="optional" />
+		<xs:attribute name="auto_nodes" type="xs:integer" use="optional" />
+		<xs:attribute name="hdl" type="xs:string" use="optional" />
+		<xs:attribute name="library" type="xs:string" use="optional" />
+		<xs:attribute name="architecture" type="xs:string" use="optional" />
+	</xs:complexType>
+
+
+	<xs:complexType name="parameter_t">
+		<xs:sequence>
+			<xs:element name="name" type="xs:string" />
+			<xs:element name="type" type="xs:string" />
+			<xs:element name="value" type="xs:string" />
+		</xs:sequence>
+	</xs:complexType>
+
+
+	<xs:complexType name="port_t">
+		<xs:sequence>
+			<xs:element name="name" type="xs:string" />
+			<xs:element name="dir" type="xs:string" />
+			<xs:element name="default_value" type="xs:string" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="file_t">
+		<xs:sequence>
+			<xs:element name="name" type="xs:string" />
+			<xs:element name="library" type="xs:string" />
+			<xs:element name="type" type="xs:string" />
+			<xs:element name="checksum"  type="xs:string" />
+		</xs:sequence>
+    </xs:complexType>
+
+</xs:schema>

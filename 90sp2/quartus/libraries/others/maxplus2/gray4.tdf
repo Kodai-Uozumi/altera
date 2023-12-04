@@ -1,0 +1,39 @@
+TITLE "Top-level file for the gray4 macrofunction.  Chooses a device-family optimized implementation."; 
+FUNCTION pgray4 (clk, ena) RETURNS (qd, qc, qb, qa);
+FUNCTION fgray4 (clk, ena) RETURNS (qd, qc, qb, qa);
+
+PARAMETERS
+(
+	DEVICE_FAMILY
+);
+INCLUDE "aglobal.inc";
+
+SUBDESIGN gray4
+(
+	clk              : INPUT = GND;
+	ena              : INPUT = VCC;
+	qd               : OUTPUT;
+	qc               : OUTPUT;
+	qb               : OUTPUT;
+	qa               : OUTPUT;
+)
+
+VARIABLE
+	IF (FAMILY_FLEX() == 1) GENERATE
+		sub  : fgray4;
+	ELSE GENERATE
+		sub  : pgray4;
+	END GENERATE;
+
+BEGIN
+	IF (USED(clk)) GENERATE
+		sub.clk = clk;
+	END GENERATE;
+	IF (USED(ena)) GENERATE
+		sub.ena = ena;
+	END GENERATE;
+	qd = sub.qd;
+	qc = sub.qc;
+	qb = sub.qb;
+	qa = sub.qa;
+END;

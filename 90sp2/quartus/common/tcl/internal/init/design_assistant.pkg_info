@@ -1,0 +1,20 @@
+# Add ::quartus::design_assistant to the table of packages
+lappend quartus(package_table) {design_assistant quartus_drc hidden}
+
+if {[lsearch -exact [list quartus_drc] $quartus(nameofexecutable)] != -1} {
+
+    # Make ::quartus::design_assistant available to load
+    set qpkg_script_auto [file join [file dirname [info script]] design_assistant.tcl]
+    if {[file exist $qpkg_script_auto]} {
+       source $qpkg_script_auto
+    }
+    unset qpkg_script_auto
+
+}
+
+if {[lsearch -exact [list quartus_drc] $quartus(nameofexecutable)] != -1} {
+
+    # Load ::quartus::design_assistant by default
+    package require ::quartus::design_assistant
+
+}

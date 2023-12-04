@@ -1,0 +1,68 @@
+
+FUNCTION hardcopyii_ram_block (
+							portadatain[PORT_A_DATA_WIDTH-1..0], 	--	DATA A
+							portaaddr[PORT_A_ADDRESS_WIDTH-1..0],		--	ADDR A
+							portawe,		--	WRITE ENABLE A		
+							portbdatain[(OPERATION_MODE == "ROM" # OPERATION_MODE == "SINGLE_PORT") ? 0 : PORT_B_DATA_WIDTH-1..0],	--	DATA B
+							portbaddr[(OPERATION_MODE == "ROM" # OPERATION_MODE == "SINGLE_PORT") ? 0 : (PORT_B_ADDRESS_WIDTH == 0) ? 0 : PORT_B_ADDRESS_WIDTH-1..0],		--	ADDR B
+							portbrewe,		--	READ ENABLE / WRITE ENABLE B
+							clk0, 			--	CLK 0
+							clk1,			--	CLK 1
+							ena0,			--	ENABLE FOR CLK 0							
+							ena1,			--	ENABLE FOR CLK 1
+							clr0,			--	CLEAR 
+							clr1,			--	CLEAR 1
+							portabyteenamasks[OPERATION_MODE != "ROM" ? (PORT_A_BYTE_ENABLE_MASK_WIDTH == 0 ? 0 : PORT_A_BYTE_ENABLE_MASK_WIDTH-1) : 0..0],	--	A BYTE ENABLE MASKS
+							portbbyteenamasks[OPERATION_MODE == "BIDIR_DUAL_PORT" ? (PORT_B_BYTE_ENABLE_MASK_WIDTH == 0 ? 0 : PORT_B_BYTE_ENABLE_MASK_WIDTH-1)  : 0..0],	--	B BYTE ENABLE MASKS
+							portaaddrstall,
+							portbaddrstall
+						)
+						WITH
+						(
+							OPERATION_MODE,
+							MIXED_PORT_FEED_THROUGH_MODE,
+							RAM_BLOCK_TYPE,
+							PHYSICAL_PORT,
+							LOGICAL_RAM_NAME,
+							INIT_FILE,
+							INIT_FILE_LAYOUT,
+							DATA_INTERLEAVE_WIDTH_IN_BITS,
+							DATA_INTERLEAVE_OFFSET_IN_BITS,
+							PORT_A_LOGICAL_RAM_DEPTH,
+							PORT_A_LOGICAL_RAM_WIDTH,
+							PORT_A_DATA_OUT_CLOCK,
+							PORT_A_DATA_OUT_CLEAR,
+							PORT_A_FIRST_ADDRESS,
+							PORT_A_LAST_ADDRESS,
+							PORT_A_FIRST_BIT_NUMBER,
+							PORT_A_DATA_WIDTH,
+							PORT_A_ADDRESS_WIDTH,
+							PORT_A_BYTE_ENABLE_MASK_WIDTH,
+							PORT_A_BYTE_SIZE,
+							PORT_A_DISABLE_CE_ON_INPUT_REGISTERS,
+							PORT_A_DISABLE_CE_ON_OUTPUT_REGISTERS,
+							PORT_B_LOGICAL_RAM_DEPTH,
+							PORT_B_LOGICAL_RAM_WIDTH,
+							PORT_B_DATA_IN_CLOCK,
+							PORT_B_ADDRESS_CLOCK,
+							PORT_B_READ_ENABLE_WRITE_ENABLE_CLOCK,
+							PORT_B_DATA_OUT_CLOCK,
+							PORT_B_DATA_OUT_CLEAR,
+							PORT_B_BYTE_ENABLE_CLOCK,
+							PORT_B_FIRST_ADDRESS,
+							PORT_B_LAST_ADDRESS,
+							PORT_B_FIRST_BIT_NUMBER,
+							PORT_B_DATA_WIDTH,
+							PORT_B_ADDRESS_WIDTH,
+							PORT_B_BYTE_ENABLE_MASK_WIDTH,
+							PORT_B_BYTE_SIZE,
+							PORT_B_DISABLE_CE_ON_INPUT_REGISTERS,
+							PORT_B_DISABLE_CE_ON_OUTPUT_REGISTERS
+						)
+						RETURNS
+						(
+							portadataout[PORT_A_DATA_WIDTH-1..0],	--	DATA OUT A
+							portbdataout[(OPERATION_MODE == "ROM" # OPERATION_MODE == "SINGLE_PORT") ? 0 : PORT_B_DATA_WIDTH-1..0]	--	DATA OUT B
+						);
+						
+						

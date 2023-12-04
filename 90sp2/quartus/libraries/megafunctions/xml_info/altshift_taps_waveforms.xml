@@ -1,0 +1,60 @@
+<?xml version="1.0" ?>
+<ROOT>
+	<MACROS>
+		<MACRO NAME="m_clk_period" DEFINITION="40" />
+		<MACRO NAME="m_wave_timeframe" DEFINITION="1000" />
+		<MACRO NAME="m_start_time" DEFINITION="m_clk_period * NUMBER_OF_TAPS * TAP_DISTANCE" />
+		<MACRO NAME="m_is_aclr_used" DEFINITION="is_used(aclr)" />
+		<MACRO NAME="m_is_large_aclr" DEFINITION="(m_start_time gt m_wave_timeframe) and m_is_aclr_used" />
+		<MACRO NAME="m_is_large" DEFINITION="(m_start_time gt m_wave_timeframe) and !m_is_aclr_used" />
+		<!-- <MACRO NAME=m_is_large" DEFINITION="(m_start_time gt m_wave_timeframe) && !m_is_aclr_used" /> -->
+	</MACROS>
+	<HTML_TEXT>
+		<TITLE>Sample Waveforms for m_design_file_name</TITLE>
+		<HEADER>Sample behavioral waveforms for design file m_design_file_name</HEADER>
+		<INTRO>
+			<T>The following waveforms show the behavior of altshift_taps megafunction for the chosen set of parameters in design m_design_file_name. </T>
+			<T> The design m_design_file_name is a WIDTH bits RAM-based shift register.</T>
+			<IF>m_is_aclr_used</IF>
+			<THEN> The shift register has an asynchronous clear input. </THEN>
+			<IF> is_used(clken) </IF>
+			<THEN> It has a clock enable input. </THEN>
+		</INTRO>
+	</HTML_TEXT>
+	<WAVE_DATA>
+		<!-- without aclr port -->
+		<WAVE NAME="ALL" TIME_STEP="10" MAX_TIME="m_wave_timeframe">
+			<CAPTION>Waveform showing the first m_wave_timeframe ns of the RAM-based shift register operation.</CAPTION>			
+			<WAVE_CONDITION>!m_is_aclr_used</WAVE_CONDITION>
+			<STIM> force clock 0 @0, 1 @20, -repeat @m_clk_period</STIM>
+			<STIM> force shiftin 0 @0, 202 @100, 3 @200, 1480 @400, 88 @500, 255 @600, 90 @850</STIM>
+			<STIM> force clken 0 @0, 1 @30</STIM>
+			<!-- <STIM> force aclr 0 @0</STIM> -->
+		</WAVE>
+		<WAVE NAME="LARGE_INPUT" TIME_STEP="10" MAX_TIME="m_wave_timeframe + m_start_time" DISPLAY_START_TIME="m_start_time" >
+			<CAPTION>Waveform showing the last m_wave_timeframe ns of the RAM-based shift register operation.</CAPTION>
+			<WAVE_CONDITION> m_is_large </WAVE_CONDITION>
+			<STIM> force clock 0 @0, 1 @20, -repeat @40</STIM>
+			<STIM> force shiftin 35 @0, 202 @200,  -repeat @500</STIM>
+			<STIM> force clken 0 @0, 1 @30</STIM>
+			<!-- <STIM> force aclr 0 @0, 1 @250, 0 @290</STIM> -->
+		</WAVE>
+		<!-- with aclr port -->
+		<WAVE NAME="ALL_ACLR" TIME_STEP="10" MAX_TIME="m_wave_timeframe">
+			<CAPTION>Waveform showing the first m_wave_timeframe ns of the RAM-based shift register operation with aclr enabled.</CAPTION>			
+			<WAVE_CONDITION>m_is_aclr_used</WAVE_CONDITION>
+			<STIM> force clock 0 @0, 1 @20, -repeat @m_clk_period</STIM>
+			<STIM> force shiftin 0 @0, 202 @100, 3 @200, 1480 @400, 88 @500, 255 @600, 90 @850</STIM>
+			<STIM> force clken 0 @0, 1 @30</STIM>
+			<STIM> force aclr 0 @0, 1 @740, 0 @780</STIM>
+		</WAVE>
+		<WAVE NAME="LARGE_INPUT_ACLR" TIME_STEP="10" MAX_TIME="m_wave_timeframe + m_start_time" DISPLAY_START_TIME="m_start_time" >
+			<CAPTION>Waveform showing the last m_wave_timeframe ns of the RAM-based shift register operation with aclr enabled.</CAPTION>
+			<WAVE_CONDITION>m_is_large_aclr</WAVE_CONDITION>
+			<STIM> force clock 0 @0, 1 @20, -repeat @m_clk_period</STIM>
+			<STIM> force shiftin 17 @0, 200 @200, 1300 @400, -repeat @500</STIM>
+			<STIM> force clken 0 @0, 1 @30</STIM>
+			<STIM> force aclr 0 @0</STIM>
+		</WAVE>	
+	</WAVE_DATA>
+</ROOT>

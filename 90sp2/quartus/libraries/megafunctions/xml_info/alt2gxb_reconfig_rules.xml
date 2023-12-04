@@ -1,0 +1,61 @@
+<?xml version="1.0"?>
+<ROOT>
+	<INCLUDE FILE="mfam_family_macros.xml" />
+	<MACROS>
+		<MACRO NAME="m_read_used" >
+			<DEFINITION>
+				used(rx_eqdcgain_out) || 
+				used(rx_eqctrl_out) || 
+				used(tx_preemp_0t_out) ||
+				used(tx_preemp_1t_out) ||
+				used(tx_preemp_2t_out) ||
+				used(tx_vodctrl_out)
+			</DEFINITION>
+		</MACRO>
+	</MACROS>
+	<PARAMETERS>
+		<PARAMETER NAME="BASE_PORT_WIDTH" >
+			<FORCE_RANGE TO="1|NUMBER_OF_CHANNELS" />
+		</PARAMETER>
+		<PARAMETER NAME="NUMBER_OF_CHANNELS" >
+			<FORCE_RANGE MIN="1" MAX="160" />
+		</PARAMETER>
+		<PARAMETER NAME="NUMBER_OF_RECONFIG_PORTS" TYPE="INTEGER" >
+			<FORCE_VALUE TO="NUMBER_OF_CHANNELS/4" WHEN="(NUMBER_OF_CHANNELS % 4) == 0" ELSE="(NUMBER_OF_CHANNELS quot 4) + 1" />
+		</PARAMETER>
+		<PARAMETER NAME="INTENDED_DEVICE_FAMILY" >
+			<VALUE_RULE>
+				mfam_family_stratixiigx
+			</VALUE_RULE>
+		</PARAMETER>
+	</PARAMETERS>
+	<PORTS>
+		<PORT NAME="data_valid" USAGE="VARIABLE" >
+			<STATE TO="USED" WHEN="m_read_used" ELSE="UNUSED" />
+		</PORT>
+		<PORT NAME="read" USAGE="VARIABLE" >
+			<STATE TO="USED" WHEN="m_read_used" ELSE="UNUSED" />
+		</PORT>
+		<PORT NAME="rx_eqdcgain_out" USAGE="VARIABLE" >
+			<STATE TO="UNUSED" WHEN="!used(rx_eqdcgain)" />
+		</PORT>
+		<PORT NAME="rx_eqctrl_out" USAGE="VARIABLE" >
+			<STATE TO="UNUSED" WHEN="!used(rx_eqctrl_a)" />
+		</PORT>
+		<PORT NAME="tx_vodctrl_out" USAGE="VARIABLE" >
+			<STATE TO="UNUSED" WHEN="!used(tx_vodctrl)" />
+		</PORT>
+		<PORT NAME="tx_preemp_0t_out" USAGE="VARIABLE" >
+			<STATE TO="UNUSED" WHEN="!used(tx_preemp_0t)" />
+		</PORT>
+		<PORT NAME="tx_preemp_1t_out" USAGE="VARIABLE" >
+			<STATE TO="UNUSED" WHEN="!used(tx_preemp_1t)" />
+		</PORT>
+		<PORT NAME="tx_preemp_2t_out" USAGE="VARIABLE" >
+			<STATE TO="UNUSED" WHEN="!used(tx_preemp_2t)" />
+		</PORT>
+	</PORTS>
+	<WIZARD_DATA>
+		<WIZARD_MAP NAME="ALT2GXB_RECONFIG" WIZARD_NAME="ALT2GXB_RECONFIG" MODULE_NAME="alt2gxb_reconfig" MAP_CONSTANTS="ON" MAP_USED_PORTS="ON" />
+	</WIZARD_DATA>
+</ROOT>

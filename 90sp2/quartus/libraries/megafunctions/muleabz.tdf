@@ -1,0 +1,656 @@
+--------------------------------------------------------------------
+--
+--	MULEABZ
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 2.0
+--
+--------------------------------------------------------------------
+
+------------------------------------------------------------------
+-- MULEABZ is a subdesign of lpm_mult and will be invoked		--
+-- by lpm_mult when implementing a multiplier using EABs.		--
+--																--
+-- MULEABZ implements an MxN multiplier with M <= 4(8) using	--
+-- FLEX10K EAB RAM units as either 4x4 or 8x8 lookup tables.	--
+-- 4x4 tables are implemented when input B is declared as a 	--
+-- non-constant value by assigning "NO" value to the 			--
+-- INPUT_B_IS_CONSTANT parameter. 8x8 lookup tables are 		--
+-- employed for constant B input cases.							--
+--																--
+-- MULEABZ employs the internal registers of EABs when 			--
+-- a pipelined multiplier is implemented and ONLY when the  	--
+-- "ACLR" input of the multiplier is NOT used. This 			--
+-- limitation is due to the fact that the internal registers	--
+-- of EABs do not have asynch. clear inputs. In cases where 	--
+-- "ACLR" input is used, registers external to EABs will be 	--
+-- used and, thus, slower multipliers will result.				--
+------------------------------------------------------------------ 							
+INCLUDE "lpm_mult.inc";
+INCLUDE "muleabz.inc";
+INCLUDE "mpar_add.inc";
+INCLUDE "csa_add.inc";
+ 
+PARAMETERS
+(
+	WIDTHA,						-- Width of the multiplicand (<= 4(8))
+	WIDTHB,						-- Width of the multiplier
+ 	A_REPRESENTATION,			-- Signed/unsigned for A (4/8 bits input)
+	B_REPRESENTATION,			-- Signed/unsigned for B
+	PIPELINE,					-- Latency of the pipeline (<= 2)
+	INPUT_B_IS_CONSTANT,		-- Is multiplier a constant value?
+	EXT_EAB_OUT_REG,			-- Should insert external registers?
+	USE_EAB,					-- Should use EABs?
+	MAXIMIZE_SPEED,
+	DEVICE_FAMILY,
+	CARRY_CHAIN = "MANUAL"
+);
+INCLUDE "aglobal90.inc";
+
+-- IF B is a constant, then we can cram 8 bits of A with 8 bits of B in one 
+-- EAB. Otherwise, a 4x4 multiplier is the maximum size possible with 8 EAB
+-- inputs. Note that this parameter is not used for "odd_shaped" multipliers
+-- as 2x6 for which one EAB still suffices.
+CONSTANT OPT_WIDTHB = (INPUT_B_IS_CONSTANT == "NO" ? 4 : 8);
+
+-- Cut multiplier into chunks of size OPT_WIDTHB (4 or 8 bits each).
+CONSTANT B_BLOCKS 	= CEIL(WIDTHB DIV OPT_WIDTHB);
+CONSTANT REM_B_BITS = (WIDTHB MOD OPT_WIDTHB > 0) ? 
+							(WIDTHB MOD OPT_WIDTHB) : OPT_WIDTHB;
+CONSTANT TOT_LEVELS	= CEIL(LOG2(B_BLOCKS)) + CEIL(LOG2(OPT_WIDTHB)) + 1; 
+CONSTANT A_ZERO_EXT = (A_REPRESENTATION == "UNSIGNED") ? 1 : 0;
+CONSTANT B_ZERO_EXT = (B_REPRESENTATION == "UNSIGNED") ? 1 : 0;
+CONSTANT EAB_EXT_FULL_WIDTHR = OPT_WIDTHB*B_BLOCKS + WIDTHA;
+ 
+
+SUBDESIGN muleabz
+(
+	dataa[WIDTHA-1..0] 			: INPUT;
+	datab[WIDTHB-1..0] 			: INPUT;
+	clock						: INPUT = GND;
+	aclr						: INPUT = GND;
+	clken						: INPUT = VCC;
+	result[WIDTHA+WIDTHB-1..0] 	: OUTPUT;
+)
+
+
+VARIABLE
+
+	-- This is the first recursion termination case in which a lookup table 
+	-- of 4x4 is generated within a single EAB. (Actually, it allows lookup
+	-- tables smaller than 4x4 or "odd_shaped" multipliers as well, but we 
+	-- will refer to all of them as 4x4 vs. 8x8s cases encountered later.) 
+	-- With no pipelining, the whole 4x4 goes into one EAB. When aclr is 
+	-- not used, the pipelining registers are implemented using the EAB's 
+	-- internal registers. With aclr connected, external registers are 
+	-- declared for pipelined cases.  
+	IF ((WIDTHA+WIDTHB <= 8) & INPUT_B_IS_CONSTANT == "NO") GENERATE
+		IF !USED(clock) GENERATE
+			-- Non-pipelined case: simply implement a 4x4 multiplier by
+			-- invoking LPM_MULT and asking MLS to implement its logic in 
+			-- an EAB.
+			IF A_REPRESENTATION == B_REPRESENTATION GENERATE
+				multer : lpm_mult WITH (LPM_WIDTHA = WIDTHA, 
+										LPM_WIDTHB = WIDTHB, 
+										LPM_WIDTHP = WIDTHA+WIDTHB,
+										LPM_WIDTHS = WIDTHA, 
+		 								LPM_REPRESENTATION = A_REPRESENTATION,
+										LPM_PIPELINE = 0,
+										USE_EAB = "OFF",
+										IMPLEMENT_IN_EAB = USE_EAB,
+										MAXIMIZE_SPEED = MAXIMIZE_SPEED);
+			ELSE GENERATE
+
+				multer : lpm_mult WITH (LPM_WIDTHA = WIDTHA+A_ZERO_EXT, 
+										LPM_WIDTHB = WIDTHB+B_ZERO_EXT, 
+										LPM_WIDTHP = WIDTHA+WIDTHB+1,
+										LPM_WIDTHS = WIDTHA, 
+		 								LPM_REPRESENTATION = "SIGNED",
+										LPM_PIPELINE = 0,
+										USE_EAB = "OFF",
+										IMPLEMENT_IN_EAB = USE_EAB,
+										MAXIMIZE_SPEED = MAXIMIZE_SPEED);
+			END GENERATE;
+
+	 		ext_out_regs[WIDTHA+WIDTHB-1..0] 	: NODE;
+	 		ext_ina_regs[WIDTHA-1..0] 			: NODE;
+	 		ext_inb_regs[WIDTHB-1..0] 			: NODE;
+
+		ELSE GENERATE
+			IF EXT_EAB_OUT_REG == "YES" GENERATE
+				IF USED(aclr) GENERATE
+					-- If ACLR is used, invoke a combinational
+					-- LPM_MULT with logic implemented in EABs. 
+					-- Attached output (and input) registers external
+					-- to EABs.
+					IF A_REPRESENTATION == B_REPRESENTATION GENERATE
+						multer : lpm_mult WITH (LPM_WIDTHA = WIDTHA, 
+												LPM_WIDTHB = WIDTHB, 
+												LPM_WIDTHP = WIDTHA+WIDTHB,
+												LPM_WIDTHS = WIDTHA,
+			 									LPM_REPRESENTATION = A_REPRESENTATION,	
+												LPM_PIPELINE = 0,
+												USE_EAB = "OFF",
+												IMPLEMENT_IN_EAB = "ON",
+												MAXIMIZE_SPEED = MAXIMIZE_SPEED);
+					ELSE GENERATE
+						multer : lpm_mult WITH (LPM_WIDTHA = WIDTHA+A_ZERO_EXT, 
+												LPM_WIDTHB = WIDTHB+B_ZERO_EXT, 
+												LPM_WIDTHP = WIDTHA+WIDTHB+1,
+												LPM_WIDTHS = WIDTHA,
+			 									LPM_REPRESENTATION = "SIGNED",	
+												LPM_PIPELINE = 0,
+												USE_EAB = "OFF",
+												IMPLEMENT_IN_EAB = "ON",
+												MAXIMIZE_SPEED = MAXIMIZE_SPEED);
+					END GENERATE;
+
+		 			ext_out_regs[WIDTHA+WIDTHB-1..0] 	: DFFE;
+					IF PIPELINE > 1 GENERATE
+		 				ext_ina_regs[WIDTHA-1..0] : DFFE;
+		 				ext_inb_regs[WIDTHB-1..0] : DFFE;
+					ELSE GENERATE
+			 			ext_ina_regs[WIDTHA-1..0] : NODE;
+	 					ext_inb_regs[WIDTHB-1..0] : NODE;
+					END GENERATE;
+
+				ELSE GENERATE
+					-- If ACLR is not used, invoke a combinational
+					-- LPM_MULT with logic implemented in LCELLs and NOT in
+					-- EABs. In the upper level subdesign, this logic
+					-- will be attached to output registers and the whole
+					-- combination will go to MLS for full EAB implementation.
+					IF A_REPRESENTATION == B_REPRESENTATION GENERATE
+						multer : lpm_mult WITH (LPM_WIDTHA = WIDTHA, 
+												LPM_WIDTHB = WIDTHB, 
+												LPM_WIDTHP = WIDTHA+WIDTHB,
+												LPM_WIDTHS = WIDTHA,
+			 									LPM_REPRESENTATION = A_REPRESENTATION,
+												LPM_PIPELINE = 0,
+												USE_EAB = "OFF",
+												IMPLEMENT_IN_EAB = "OFF",
+												MAXIMIZE_SPEED = MAXIMIZE_SPEED);
+					ELSE GENERATE
+						multer : lpm_mult WITH (LPM_WIDTHA = WIDTHA+A_ZERO_EXT, 
+												LPM_WIDTHB = WIDTHB+B_ZERO_EXT, 
+												LPM_WIDTHP = WIDTHA+WIDTHB+1,
+												LPM_WIDTHS = WIDTHA,
+			 									LPM_REPRESENTATION = "SIGNED",
+												LPM_PIPELINE = 0,
+												USE_EAB = "OFF",
+												IMPLEMENT_IN_EAB = "OFF",
+												MAXIMIZE_SPEED = MAXIMIZE_SPEED);
+					END GENERATE;
+
+		 			ext_out_regs[WIDTHA+WIDTHB-1..0] 	: DFFE;
+					IF PIPELINE > 1 GENERATE
+			 			ext_ina_regs[WIDTHA-1..0] : DFFE;
+		 				ext_inb_regs[WIDTHB-1..0] : DFFE;
+					ELSE GENERATE
+		 				ext_ina_regs[WIDTHA-1..0] : NODE;
+		 				ext_inb_regs[WIDTHB-1..0] : NODE;
+					END GENERATE;
+				END GENERATE;
+
+			ELSE GENERATE
+				-- This section is a recursive invoking of MULEABZ to ask
+				-- it to implement an LPM_MULT which has external registers
+				-- attached to its output. The reason for this indirect call to
+				-- LPM_MULT is as follows:
+				-- To be able to exploit the internal output registers of EABs, 
+				-- one has to submit the whole combinational logic of the 4x4 
+				-- LPM_MULT with output registers attached to its outputs. 
+				-- However, LPM_MULT doesn't support any such explicit attach-
+				-- ment of registers at its outputs. Thus, we first invoke 
+				-- MULEABZ with an explicit request for output registers.   
+				-- MULEABZ in turn will invoke a combinational (logic) LPM_MULT 
+				-- and attach the registers at the end. Returning this combination
+				-- to its previous level of recursion, IMPLEMENT_IN_EAB will
+				-- ask MLS to implement the combination into EABs.
+				multer : muleabz WITH (	WIDTHA = WIDTHA, 
+									 	WIDTHB = WIDTHB, 
+ 										A_REPRESENTATION = A_REPRESENTATION,	
+ 										B_REPRESENTATION = B_REPRESENTATION,	
+										PIPELINE = PIPELINE,
+										INPUT_B_IS_CONSTANT = INPUT_B_IS_CONSTANT,
+										EXT_EAB_OUT_REG = "YES",
+										IMPLEMENT_IN_EAB = USE_EAB,
+										MAXIMIZE_SPEED = MAXIMIZE_SPEED);
+
+	 			ext_out_regs[WIDTHA+WIDTHB-1..0] 	: NODE;
+	 			ext_ina_regs[WIDTHA-1..0] 			: NODE;
+	 			ext_inb_regs[WIDTHB-1..0] 			: NODE;
+			END GENERATE;
+ 		END GENERATE;
+
+	ELSE GENERATE
+		IF (WIDTHA <= 8 & WIDTHB <= 8 & INPUT_B_IS_CONSTANT == "YES") GENERATE
+			-- The descriptions are similar to those of 4x4 with the additional
+			-- comment that the invocations of LPM_MULT now should have 
+			-- INPUT_B_IS_CONSTANT set to "YES" to allow MLS to implement 8x8
+			-- lookup tables.
+			IF !USED(clock) GENERATE
+				IF A_REPRESENTATION == B_REPRESENTATION GENERATE
+					multer : lpm_mult WITH (LPM_WIDTHA = WIDTHA, 
+											LPM_WIDTHB = WIDTHB, 
+											LPM_WIDTHP = WIDTHA+WIDTHB,
+											LPM_WIDTHS = WIDTHA, 
+		 									LPM_REPRESENTATION = A_REPRESENTATION,
+											LPM_PIPELINE = 0,
+											INPUT_B_IS_CONSTANT = "YES", 
+											USE_EAB = "OFF",
+		 									IMPLEMENT_IN_EAB = USE_EAB,
+											MAXIMIZE_SPEED = MAXIMIZE_SPEED);
+				ELSE GENERATE
+					multer : lpm_mult WITH (LPM_WIDTHA = WIDTHA+A_ZERO_EXT, 
+											LPM_WIDTHB = WIDTHB+B_ZERO_EXT, 
+											LPM_WIDTHP = WIDTHA+WIDTHB+1,
+											LPM_WIDTHS = WIDTHA, 
+		 									LPM_REPRESENTATION = "SIGNED",
+											LPM_PIPELINE = 0,
+											INPUT_B_IS_CONSTANT = "YES", 
+											USE_EAB = "OFF",
+		 									IMPLEMENT_IN_EAB = USE_EAB,
+											MAXIMIZE_SPEED = MAXIMIZE_SPEED);
+				END GENERATE;
+
+		 		ext_out_regs[WIDTHA+WIDTHB-1..0] 	: NODE;
+		 		ext_ina_regs[WIDTHA-1..0] 			: NODE;
+
+			ELSE GENERATE
+				IF EXT_EAB_OUT_REG == "YES" GENERATE
+					IF USED(aclr) GENERATE
+						IF A_REPRESENTATION == B_REPRESENTATION GENERATE
+							multer : lpm_mult WITH (LPM_WIDTHA = WIDTHA, 
+													LPM_WIDTHB = WIDTHB, 
+													LPM_WIDTHP = WIDTHA+WIDTHB,
+													LPM_WIDTHS = WIDTHA, 
+			 										LPM_REPRESENTATION = A_REPRESENTATION,
+													LPM_PIPELINE = 0,
+													INPUT_B_IS_CONSTANT = "YES",
+													USE_EAB = "OFF",
+													IMPLEMENT_IN_EAB = "ON",
+													MAXIMIZE_SPEED = MAXIMIZE_SPEED);
+						ELSE GENERATE
+							multer : lpm_mult WITH (LPM_WIDTHA = WIDTHA+A_ZERO_EXT, 
+													LPM_WIDTHB = WIDTHB+B_ZERO_EXT, 
+													LPM_WIDTHP = WIDTHA+WIDTHB+1,
+													LPM_WIDTHS = WIDTHA, 
+			 										LPM_REPRESENTATION = "SIGNED",
+													LPM_PIPELINE = 0,
+													INPUT_B_IS_CONSTANT = "YES",
+													USE_EAB = "OFF",
+													IMPLEMENT_IN_EAB = "ON",
+													MAXIMIZE_SPEED = MAXIMIZE_SPEED);
+						END GENERATE;
+	 					ext_out_regs[WIDTHA+WIDTHB-1..0] : DFFE;
+						IF PIPELINE > 1 GENERATE
+			 				ext_ina_regs[WIDTHA-1..0] : DFFE;
+ 						ELSE GENERATE
+		 					ext_ina_regs[WIDTHA-1..0] : NODE;
+ 						END GENERATE;
+
+					ELSE GENERATE
+						IF A_REPRESENTATION == B_REPRESENTATION GENERATE
+							multer : lpm_mult WITH (LPM_WIDTHA = WIDTHA, 
+													LPM_WIDTHB = WIDTHB, 
+													LPM_WIDTHP = WIDTHA+WIDTHB,
+													LPM_WIDTHS = WIDTHA, 
+			 										LPM_REPRESENTATION = A_REPRESENTATION,
+													LPM_PIPELINE = 0,
+													INPUT_B_IS_CONSTANT = "YES",
+													USE_EAB = "OFF",
+													IMPLEMENT_IN_EAB = "OFF",
+													MAXIMIZE_SPEED = MAXIMIZE_SPEED);
+						ELSE GENERATE
+							multer : lpm_mult WITH (LPM_WIDTHA = WIDTHA+A_ZERO_EXT, 
+													LPM_WIDTHB = WIDTHB+B_ZERO_EXT, 
+													LPM_WIDTHP = WIDTHA+WIDTHB+1,
+													LPM_WIDTHS = WIDTHA, 
+			 										LPM_REPRESENTATION = "SIGNED",
+													LPM_PIPELINE = 0,
+													INPUT_B_IS_CONSTANT = "YES",
+													USE_EAB = "OFF",
+													IMPLEMENT_IN_EAB = "OFF",
+													MAXIMIZE_SPEED = MAXIMIZE_SPEED);
+						END GENERATE;
+
+ 						ext_out_regs[WIDTHA+WIDTHB-1..0] : DFFE;
+						IF PIPELINE > 1 GENERATE
+			 				ext_ina_regs[WIDTHA-1..0] : DFFE;
+ 						ELSE GENERATE
+		 					ext_ina_regs[WIDTHA-1..0] : NODE;
+ 						END GENERATE;
+					END GENERATE;
+
+				ELSE GENERATE
+					multer : muleabz WITH (	WIDTHA = WIDTHA, 
+										 	WIDTHB = WIDTHB, 
+ 											A_REPRESENTATION = A_REPRESENTATION,
+ 											B_REPRESENTATION = B_REPRESENTATION,
+											PIPELINE = PIPELINE,
+											INPUT_B_IS_CONSTANT = INPUT_B_IS_CONSTANT,
+											EXT_EAB_OUT_REG = "YES",
+											IMPLEMENT_IN_EAB = USE_EAB,
+											MAXIMIZE_SPEED = MAXIMIZE_SPEED);
+
+			 		ext_out_regs[WIDTHA+WIDTHB-1..0] 	: NODE;
+			 		ext_ina_regs[WIDTHA-1..0] 			: NODE;
+				END GENERATE;
+			END GENERATE;
+
+		ELSE GENERATE
+			-- If WIDTHB > 4, then we have to cut B input (multiplier) into chunks
+			-- of 4 or 8 bits, generate a multitude of 4x4 or 8x8 multiplier lookup
+			-- tables, and add the outputs of the resulting lookup tables by a 
+			-- parallel adder with its inputs appropriately shifted to right.
+ 			IF B_BLOCKS > 1 GENERATE
+				lookup_table[B_BLOCKS-2..0]	: muleabz 
+									WITH  ( WIDTHA = WIDTHA, 
+											WIDTHB = OPT_WIDTHB,
+											A_REPRESENTATION = A_REPRESENTATION,
+											B_REPRESENTATION = "UNSIGNED",
+											PIPELINE = PIPELINE,
+ 											INPUT_B_IS_CONSTANT = INPUT_B_IS_CONSTANT,
+ 											EXT_EAB_OUT_REG = EXT_EAB_OUT_REG,
+											USE_EAB = USE_EAB,
+											MAXIMIZE_SPEED = MAXIMIZE_SPEED);
+
+ 				result_node[B_BLOCKS-2..0][OPT_WIDTHB + WIDTHA-1..0]	: NODE;
+ 
+			END GENERATE;
+
+			last_lookup_table	: muleabz 
+									 WITH ( WIDTHA = WIDTHA, 
+											WIDTHB = REM_B_BITS,
+											A_REPRESENTATION = A_REPRESENTATION,
+											B_REPRESENTATION = B_REPRESENTATION,
+											PIPELINE = PIPELINE,
+ 											INPUT_B_IS_CONSTANT = INPUT_B_IS_CONSTANT,
+ 											EXT_EAB_OUT_REG = EXT_EAB_OUT_REG,
+											USE_EAB = USE_EAB,
+											MAXIMIZE_SPEED = MAXIMIZE_SPEED);
+
+ 	 		last_result_node[WIDTHA + REM_B_BITS-1..0] : NODE;
+
+
+			-- parallel adder declaration
+			IF !USED(clock) & !USE_CARRY_CHAINS() GENERATE
+				par_adder2	: csa_add WITH (SIZE = EAB_EXT_FULL_WIDTHR, 
+											WIDTH = B_BLOCKS, 
+											END_ADDER = 1);
+			ELSE GENERATE
+  				par_adder2	: mpar_add WITH (SIZE = WIDTHA + OPT_WIDTHB, 
+											 WIDTH = B_BLOCKS, 
+											 REPRESENTATION = A_REPRESENTATION,
+											 INT_LATENCY = 1, 
+											 LEVEL = 1 + CEIL(LOG2(OPT_WIDTHB)), 
+											 TOT_LEVELS = TOT_LEVELS, 
+											 PREV_SING_SIZE = WIDTHA + OPT_WIDTHB,
+											 STAGE = 1, 
+											 TOT_STAGES = 2);
+			END GENERATE;
+ 		END GENERATE;
+	END GENERATE;
+
+ 
+BEGIN
+ 
+	ASSERT REPORT "WIDTHA = %, WIDTHB = %, REM_B_BITS = %, B_BLOCKS = %"
+				WIDTHA, WIDTHB, REM_B_BITS, B_BLOCKS SEVERITY DEBUG;
+
+	ASSERT ((WIDTHA <= 4 & INPUT_B_IS_CONSTANT == "NO") # 
+			(WIDTHA <= 8 & INPUT_B_IS_CONSTANT == "YES")) 
+	REPORT
+		"WIDTHA must be less than or equal to 8 (4) when input B is (not) a constant"
+	SEVERITY DEBUG;
+
+
+	IF ((WIDTHA+WIDTHB <= 8) & INPUT_B_IS_CONSTANT == "NO") GENERATE
+		ext_ina_regs[] = dataa[];
+		ext_inb_regs[] = datab[]; 
+		ext_out_regs[] = multer.result[WIDTHA+WIDTHB-1..0];
+		result[] = ext_out_regs[];
+		
+		IF (A_REPRESENTATION == B_REPRESENTATION) # 
+					(USED(clock) & EXT_EAB_OUT_REG == "NO") GENERATE
+			multer.dataa[] = ext_ina_regs[];
+			multer.datab[] = ext_inb_regs[];
+		ELSE GENERATE
+			IF A_REPRESENTATION == "UNSIGNED" GENERATE
+				multer.dataa[] = (GND, ext_ina_regs[]);
+				multer.datab[] = ext_inb_regs[];
+			ELSE GENERATE
+				multer.dataa[] = ext_ina_regs[];
+				multer.datab[] = (GND, ext_inb_regs[]);
+			END GENERATE;
+		END GENERATE;
+
+		IF USED(clock) GENERATE
+			IF EXT_EAB_OUT_REG == "YES" GENERATE
+				IF USED(aclr) GENERATE
+					ext_out_regs[].(clk, clrn) = (clock, !aclr);
+					IF USED(clken) GENERATE
+						ext_out_regs[].ena = clken;
+					END GENERATE;
+					IF PIPELINE > 1 GENERATE
+						ext_ina_regs[].(clk, clrn) = (clock, !aclr);
+						ext_inb_regs[].(clk, clrn) = (clock, !aclr);
+
+						IF USED(clken) GENERATE
+							ext_ina_regs[].ena = clken;
+							ext_inb_regs[].ena = clken;
+						END GENERATE;
+					END GENERATE;
+
+				ELSE GENERATE
+					ext_out_regs[].clk = clock;
+					IF USED(clken) GENERATE
+						ext_out_regs[].ena = clken;
+					END GENERATE;
+ 
+					IF PIPELINE > 1 GENERATE
+						ext_ina_regs[].clk = clock;
+						ext_inb_regs[].clk = clock;
+
+						IF USED(clken) GENERATE
+							ext_ina_regs[].ena = clken;
+							ext_inb_regs[].ena = clken;			
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+
+			ELSE GENERATE
+				multer.(clock) = clock;
+				IF USED(clken) GENERATE
+					multer.clken = clken;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+
+	ELSE GENERATE
+		IF (WIDTHA <= 8 & WIDTHB <= 8 & INPUT_B_IS_CONSTANT == "YES") GENERATE
+			ext_ina_regs[] = dataa[];
+ 			ext_out_regs[] = multer.result[WIDTHA+WIDTHB-1..0];
+			result[] = ext_out_regs[];
+
+			IF (A_REPRESENTATION == B_REPRESENTATION) # 
+						(USED(clock) & EXT_EAB_OUT_REG == "NO") GENERATE
+				multer.dataa[] = ext_ina_regs[];
+				multer.datab[] = datab[];
+			ELSE GENERATE
+				IF A_REPRESENTATION == "UNSIGNED" GENERATE
+					multer.dataa[] = (GND, ext_ina_regs[]);
+					multer.datab[] = datab[];
+				ELSE GENERATE
+					multer.dataa[] = ext_ina_regs[];
+					multer.datab[] = (GND, datab[]);
+				END GENERATE;
+			END GENERATE;
+
+			IF USED(clock) GENERATE
+				IF EXT_EAB_OUT_REG == "YES" GENERATE
+					IF USED(aclr) GENERATE
+						ext_out_regs[].(clk, clrn) = (clock, !aclr);
+						IF USED(clken) GENERATE
+							ext_out_regs[].ena = clken;
+						END GENERATE;
+
+						IF PIPELINE > 1 GENERATE
+							ext_ina_regs[].(clk, clrn) = (clock, !aclr);
+							IF USED(clken) GENERATE
+								ext_ina_regs[].ena = clken;							
+							END GENERATE;
+						END GENERATE;
+
+					ELSE GENERATE
+						ext_out_regs[].clk = clock;
+						IF USED(clken) GENERATE
+							ext_out_regs[].ena = clken;
+						END GENERATE;
+
+						IF PIPELINE > 1 GENERATE
+							ext_ina_regs[].clk = clock;
+							IF USED(clken) GENERATE
+								ext_ina_regs[].ena = clken;
+							END GENERATE;
+						END GENERATE;
+					END GENERATE;
+
+				ELSE GENERATE
+					multer.(clock) = clock;
+					IF USED(clken) GENERATE
+						multer.clken = clken;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+
+		ELSE GENERATE
+ 			IF B_BLOCKS > 1 GENERATE
+				-- If have more than 1 full (4/8 bits) chunks, then generate 
+				-- full lookup tables in addition to last_lookup_table.
+				FOR I IN 0 TO B_BLOCKS-2 GENERATE
+					lookup_table[I].dataa[] = dataa[];
+					lookup_table[I].datab[OPT_WIDTHB-1..0] = datab[(I+1)*OPT_WIDTHB-1..OPT_WIDTHB*I];
+					result_node[I][WIDTHA + OPT_WIDTHB-1..0] = lookup_table[I].result[WIDTHA + OPT_WIDTHB-1..0];	
+				END GENERATE;
+
+				IF USED(clock) GENERATE
+					IF USED(aclr) GENERATE
+						lookup_table[].(clock, aclr) = (clock, aclr);
+					ELSE GENERATE
+						lookup_table[].clock = clock;
+					END GENERATE;
+
+					IF USED(clken) GENERATE
+						lookup_table[].clken = clken;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+
+			-- Last lookup table will implement either the last partially complete
+			-- lookup table or the last full one when more than 1 full lookup table
+			-- is needed (see REM_B_BITS definition).
+			last_lookup_table.dataa[] = dataa[];
+			last_lookup_table.datab[REM_B_BITS-1..0] = datab[WIDTHB-1..WIDTHB-REM_B_BITS];
+			last_result_node[WIDTHA+REM_B_BITS-1..0] = last_lookup_table.result[];
+
+			-- Connect the clock and aclr inputs.
+			IF USED(clock) GENERATE
+				IF USED(aclr) GENERATE
+					last_lookup_table.(clock, aclr) = (clock, aclr);
+				ELSE GENERATE
+					last_lookup_table.clock = clock;
+				END GENERATE;
+
+				IF USED(clken) GENERATE
+					last_lookup_table.clken = clken;
+				END GENERATE;
+			END GENERATE;
+
+			-- Connecting the outputs of EAB lookup tables to the parallel adder
+			IF !USED(clock) & !(FAMILY_HAS_EAB() == 1 & USE_CARRY_CHAINS()) GENERATE
+				IF A_REPRESENTATION == "UNSIGNED" GENERATE	
+	
+					IF B_BLOCKS > 1 GENERATE
+						par_adder2.data[0][WIDTHA+OPT_WIDTHB-1..0] = result_node[0][]; 
+						par_adder2.data[0][EAB_EXT_FULL_WIDTHR-1..WIDTHA+OPT_WIDTHB] = GND;
+						IF B_BLOCKS > 2 GENERATE	
+							FOR I IN 1 TO B_BLOCKS-2 GENERATE
+								par_adder2.data[I][OPT_WIDTHB*I-1..0] = GND;
+								par_adder2.data[I][OPT_WIDTHB*I+WIDTHA+OPT_WIDTHB-1..OPT_WIDTHB*I] = result_node[I][];
+								par_adder2.data[I][EAB_EXT_FULL_WIDTHR-1..OPT_WIDTHB*I+WIDTHA+OPT_WIDTHB] = GND;
+							END GENERATE;
+						END GENERATE;
+	 		
+						par_adder2.data[B_BLOCKS-1][OPT_WIDTHB*(B_BLOCKS-1)-1..0] = GND;
+					END GENERATE;		
+
+					par_adder2.data[B_BLOCKS-1][WIDTHA+REM_B_BITS+OPT_WIDTHB*(B_BLOCKS-1)-1..OPT_WIDTHB*(B_BLOCKS-1)] = last_result_node[];
+					IF REM_B_BITS < OPT_WIDTHB GENERATE 
+						par_adder2.data[B_BLOCKS-1][EAB_EXT_FULL_WIDTHR-1..WIDTHA+REM_B_BITS+OPT_WIDTHB*(B_BLOCKS-1)] = GND;
+					END GENERATE;
+
+				ELSE GENERATE
+	
+					IF B_BLOCKS > 1 GENERATE
+						par_adder2.data[0][WIDTHA+OPT_WIDTHB-1..0] = result_node[0][];
+						par_adder2.data[0][EAB_EXT_FULL_WIDTHR-1..WIDTHA+OPT_WIDTHB] = result_node[0][WIDTHA+OPT_WIDTHB-1];
+						IF B_BLOCKS > 2 GENERATE	
+							FOR I IN 1 TO B_BLOCKS-2 GENERATE
+								par_adder2.data[I][OPT_WIDTHB*I-1..0] = GND;
+								par_adder2.data[I][OPT_WIDTHB*I+WIDTHA+OPT_WIDTHB-1..OPT_WIDTHB*I] = result_node[I][];
+								par_adder2.data[I][EAB_EXT_FULL_WIDTHR-1..OPT_WIDTHB*I+WIDTHA+OPT_WIDTHB] = 
+																		result_node[I][WIDTHA+OPT_WIDTHB-1];
+							END GENERATE;
+						END GENERATE;
+	 		
+						par_adder2.data[B_BLOCKS-1][OPT_WIDTHB*(B_BLOCKS-1)-1..0] = GND;
+					END GENERATE;
+					
+					par_adder2.data[B_BLOCKS-1][WIDTHA+REM_B_BITS+OPT_WIDTHB*(B_BLOCKS-1)-1..OPT_WIDTHB*(B_BLOCKS-1)] = last_result_node[];
+					IF REM_B_BITS < OPT_WIDTHB GENERATE 
+						par_adder2.data[B_BLOCKS-1][EAB_EXT_FULL_WIDTHR-1..WIDTHA+REM_B_BITS+OPT_WIDTHB*(B_BLOCKS-1)] = last_result_node[WIDTHA+REM_B_BITS-1];
+					END GENERATE;
+ 	 			END GENERATE;
+			
+			ELSE GENERATE
+	 			IF B_BLOCKS > 1 GENERATE
+					-- If have more than 1 full (4/8 bits) chunks, then generate 
+					-- full lookup tables in addition to last_lookup_table.
+					FOR I IN 0 TO B_BLOCKS-2 GENERATE
+						par_adder2.data[I][] = result_node[I][];
+					END GENERATE;
+				END GENERATE;
+	
+	  			par_adder2.data[B_BLOCKS-1][WIDTHA+REM_B_BITS-1..0] = last_result_node[];
+				-- If remaing bits (< OPT_WIDTHB) exist, and its a signed case, 
+				-- perform sign extension.
+				IF (REM_B_BITS < OPT_WIDTHB) & (B_REPRESENTATION == "SIGNED") GENERATE
+					par_adder2.data[B_BLOCKS-1][WIDTHA+OPT_WIDTHB-1..WIDTHA+REM_B_BITS] = 
+									last_result_node[WIDTHA+REM_B_BITS-1];
+	 			END GENERATE;
+			END GENERATE;
+
+ 			result[] = par_adder2.result[WIDTHA+WIDTHB-1 ..0];
+		END GENERATE;
+	END GENERATE;
+
+END;
+
+

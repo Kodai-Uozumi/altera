@@ -1,0 +1,381 @@
+<?xml version="1.0" ?>
+<ROOT>
+	<INCLUDE FILE="mfam_family_macros.xml" />
+	<MACROS>
+		<MACRO NAME="m_rom" DEFINITION="OPERATION_MODE == ROM" />
+		<MACRO NAME="m_single_port" DEFINITION="OPERATION_MODE == SINGLE_PORT" />
+		<MACRO NAME="m_dual_port" DEFINITION="OPERATION_MODE == DUAL_PORT" />
+		<MACRO NAME="m_bidir_dual_port" DEFINITION="OPERATION_MODE == BIDIR_DUAL_PORT" />
+		<MACRO NAME="m_m4k" DEFINITION="RAM_BLOCK_TYPE == M4K" />
+		<MACRO NAME="m_m512" DEFINITION="RAM_BLOCK_TYPE == M512" />
+		<MACRO NAME="m_mram" DEFINITION="RAM_BLOCK_TYPE == M-RAM" />
+		<MACRO NAME="m_mlab" DEFINITION="RAM_BLOCK_TYPE == mfam_lutram" />
+		<MACRO NAME="m_auto" DEFINITION="RAM_BLOCK_TYPE == AUTO || !is_used(RAM_BLOCK_TYPE)" />
+		<MACRO NAME="m_clr_used" ARGUMENTS="ADDRESS_ACLR_A" >
+			<DEFINITION>
+				(ADDRESS_ACLR_A == "CLEAR0") || (ADDRESS_ACLR_A == "CLEAR1")
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_data_clr_used" >
+			<DEFINITION>
+				((m_single_port || m_dual_port || m_bidir_dual_port) and m_clr_used(INDATA_ACLR_A)) || ( m_bidir_dual_port and m_clr_used(INDATA_ACLR_B) )
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_rdaddr_clr_used" >
+			<DEFINITION>
+				((m_rom || m_single_port || m_bidir_dual_port) and m_clr_used(ADDRESS_ACLR_A)) || ((m_dual_port || m_bidir_dual_port) and m_clr_used(ADDRESS_ACLR_B))
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_wraddr_clr_used" >
+			<DEFINITION>
+				((m_single_port || m_dual_port || m_bidir_dual_port) and m_clr_used(ADDRESS_ACLR_A)) || (m_bidir_dual_port and m_clr_used(ADDRESS_ACLR_B))
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_wr_clr_used" >
+			<DEFINITION>
+				((m_single_port || m_dual_port || m_bidir_dual_port) and m_clr_used(WRCONTROL_ACLR_A)) || ( m_bidir_dual_port and m_clr_used(WRCONTROL_ACLR_B) )			
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_out_clr_used" >
+			<DEFINITION>
+				((m_dual_port || m_bidir_dual_port) and m_clr_used(OUTDATA_ACLR_B)) || ((m_rom || m_single_port || m_bidir_dual_port) and m_clr_used(OUTDATA_ACLR_A))			
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_write_enabled" DEFINITION="is_used(wren_a) || is_used(wren_b)" />
+	</MACROS>
+	<HTML_TEXT>
+		<TITLE>Sample Waveforms for m_design_file_name</TITLE>
+
+		<HEADER>Sample behavioral waveforms for design file m_design_file_name</HEADER>
+
+		<INTRO>
+			<T>The following waveforms show the behavior of altsyncram megafunction for the chosen set of parameters in design m_design_file_name. For the purpose of this simulation, the contents of the memory at the start of the sample waveforms is assumed to be ( memory0, memory1, memory2, memory3, ...). The design m_design_file_name has</T>
+		        <IF>m_rom</IF>
+		        <THEN> one read port. The read port has NUMWORDS_A words of WIDTH_A bits each.</THEN>
+		        <IF>m_single_port</IF>
+		        <THEN>one read/write port. The read/write port has NUMWORDS_A words of WIDTH_A bits each.</THEN>
+         		<IF>m_dual_port</IF>
+		        <THEN>one read port and one write port. The read port has NUMWORDS_B words of WIDTH_B bits each and the write port has NUMWORDS_A words of WIDTH_A bits each.</THEN>
+         		<IF>m_bidir_dual_port and is_used(wren_a) and is_used(wren_b)</IF>
+         		<THEN>two read/write ports. Read/write port A has NUMWORDS_A words of WIDTH_A bits each and Read/write port B has NUMWORDS_B words of WIDTH_B bits each.</THEN>
+         		<IF>m_bidir_dual_port and !is_used(wren_a) and !is_used(wren_b)</IF>
+         		<THEN>two read ports. Read port A has NUMWORDS_A words of WIDTH_A bits each and Read port B has NUMWORDS_B words of WIDTH_B bits each.</THEN>
+				<IF> is_used(RAM_BLOCK_TYPE) </IF>
+         		<THEN> The ram block type of the design is RAM_BLOCK_TYPE. </THEN>
+         		<IF>mfam_family_has_stratixiii_style_ram and is_used(CLOCK_ENABLE_CORE_A) and (CLOCK_ENABLE_CORE_A != CLOCK_ENABLE_INPUT_A) and (CLOCK_ENABLE_CORE_A != "USE_INPUT_CLKEN")</IF>
+         		<THEN>
+         			<IF> m_dual_port </IF>
+         			<THEN>The write core uses a different clock enable than the write input registers.</THEN>
+         			<ELSE>
+         				<IF> m_bidir_dual_port </IF>
+         				<THEN>The A core uses a different clock enable than the A input registers.</THEN>
+         				<ELSE>The core uses a different clock enable than the input registers.</ELSE>
+         			</ELSE>
+         		</THEN>
+         		<IF> mfam_family_has_stratixiii_style_ram and is_used(CLOCK_ENABLE_CORE_B) and (CLOCK_ENABLE_CORE_B != CLOCK_ENABLE_INPUT_B) and (m_dual_port || m_bidir_dual_port) and (CLOCK_ENABLE_CORE_B != "USE_INPUT_CLKEN")</IF>
+         		<THEN>
+         			<IF> m_dual_port </IF>
+         			<THEN>The read core uses a different clock enable than the read input registers.</THEN>
+         			<ELSE>The B core uses a different clock enable than the B input registers.</ELSE>
+         		</THEN>        		
+         		<IF>m_rom</IF>
+		        <THEN>
+            		<T>The output of the read port is</T>
+			        <IF>OUTDATA_REG_A == "UNREGISTERED"</IF>
+					<THEN>unregistered.</THEN>
+			        <ELSE>registered by port_map(OUTDATA_REG_A).</ELSE>
+			   	</THEN>
+		        <IF>m_single_port</IF>
+		        <THEN>
+			        <T>The output of the read/write port is</T>
+			        <IF>OUTDATA_REG_A == "UNREGISTERED"</IF>
+			        <THEN>unregistered.</THEN>
+			        <ELSE>registered by port_map(OUTDATA_REG_A).</ELSE>
+				</THEN>
+		        <IF>m_dual_port</IF>
+		        <THEN>
+			        <T>The output of the read port is</T>
+			        <IF>OUTDATA_REG_B == "UNREGISTERED"</IF>
+			        <THEN>unregistered.</THEN>
+			        <ELSE>registered by port_map(OUTDATA_REG_B).</ELSE>
+		        </THEN>
+		        <IF>m_bidir_dual_port</IF>
+		        <THEN>
+					<IF>is_used(wren_a)</IF>
+			        <THEN>The output of the read/write port A is</THEN>
+					<ELSE>The output of the read port A is</ELSE>
+			        <IF>OUTDATA_REG_A == "UNREGISTERED"</IF>
+			        <THEN>unregistered.</THEN>
+			        <ELSE>registered by port_map(OUTDATA_REG_A).</ELSE>
+					<IF>is_used(wren_b)</IF>
+			        <THEN> The output of the read/write port B is</THEN>
+			        <ELSE> The output of the read port B is</ELSE>			        
+			        <IF>par(OUTDATA_REG_B) == "UNREGISTERED"</IF>
+			        <THEN>unregistered.</THEN>
+			        <ELSE>registered by port_map(OUTDATA_REG_B).</ELSE>
+		        </THEN>
+		</INTRO>
+
+		<END>
+		</END>
+	</HTML_TEXT>
+	<WAVE_DATA>
+		<WAVE NAME="READ" TIME_STEP="10" MAX_TIME="500" INDEX="1">
+			<CAPTION>Wave showing read operation.</CAPTION>
+
+		        <DESCRIPTION>
+				<T>The above waveform shows the behavior of the design under normal read conditions. The read happens at the rising edge of the enabled clock cycle. The output from the RAM is undefined until after the first rising edge of the read clock.</T>
+				<IF>is_used(rden_b) || is_used(rden_a)</IF>
+				<THEN>
+					<IF>mfam_family_has_stratixiii_style_ram</IF>
+					<THEN>Read enable port should be enabled for read</THEN>
+					<ELSE>Read enable port should be enabled for read in the simple dual port mode</ELSE>
+				</THEN>
+				<IF>(m_dual_port and (CLOCK_ENABLE_INPUT_B == "BYPASS")) || (!m_dual_port and (CLOCK_ENABLE_INPUT_A == "BYPASS"))</IF>
+				<THEN>The clock enable on the read side input registers are disabled.</THEN>
+				<IF>((CLOCK_ENABLE_OUTPUT_B == "BYPASS") and (OUTDATA_REG_B != "UNREGISTERED")) || ((CLOCK_ENABLE_OUTPUT_A == "BYPASS") and (OUTDATA_REG_A != "UNREGISTERED"))</IF>
+				<THEN>The clock enable on the output registers are disabled.</THEN>
+			</DESCRIPTION>
+
+			<IF> !m_dual_port </IF>
+			<THEN>
+				<STIM> force address_a 0 @0, 1 @130, 2 @250, 3 @370</STIM>
+			</THEN>
+			<STIM> force address_b 0 @0, 3 @130, 2 @250, 1 @370</STIM>
+			<STIM> force clock0 0 @0, 1 @20, -repeat @40</STIM>
+			<STIM> force clock1 0 @0, 1 @20, -repeat @40</STIM>
+			<STIM> force clocken0 0 @0, 1 @50, 0 @250, 1 @290</STIM>
+			<STIM> force clocken1 0 @0, 1 @50, 0 @250, 1 @290</STIM>
+			<STIM> force clocken2 0 @0, 1 @50, 0 @250, 1 @290</STIM>
+			<STIM> force clocken3 0 @0, 1 @50, 0 @250, 1 @290</STIM>
+			<STIM> force rden_b 0 @0, 1 @50, 0 @90, 1 @170</STIM>
+			<STIM> force rden_a 0 @0, 1 @50, 0 @90, 1 @170</STIM>
+		</WAVE>
+
+		<WAVE NAME="READ_CLEAR" TIME_STEP="5" MAX_TIME="650" INDEX="2">
+			<WAVE_CONDITION>m_rdaddr_clr_used || m_out_clr_used</WAVE_CONDITION>
+
+			<CAPTION>Waveform showing read operation with clear(s)</CAPTION>
+
+			<DESCRIPTION>
+				<T>The above waveform shows the behavior of the design under read conditions with clears on input and/or output registers. The read happens at the rising edge of the enabled clock cycle. The read cycle is assumed to be from the rising edge of the clock cycle till the next rising clock edge.</T>
+			        <IF>m_rdaddr_clr_used</IF>
+			        <THEN>If the address register is cleared in the middle of a read cycle, the output from the RAM is unknown.</THEN>
+			        <IF>m_out_clr_used</IF>
+					<THEN>The clear on the output register is asynchronous.</THEN>
+			</DESCRIPTION>
+
+			<IF> !m_dual_port</IF>
+			<THEN>
+				<STIM> force address_a 0 @0, 1 @195, 2 @345, 3 @495</STIM>
+			</THEN>	
+			<STIM> force address_b 0 @0, 1 @195, 2 @345, 3 @495</STIM>
+			<STIM> force clock0 0 @0, 1 @30, -repeat @60</STIM>
+			<STIM> force clocken0 0 @0, 1 @75</STIM>
+			<STIM> force clocken2 0 @0, 1 @75</STIM>
+			<STIM> force clock1 0 @0, 1 @30, -repeat @60</STIM>
+			<STIM> force clocken1 0 @0, 1 @75</STIM>
+			<STIM> force clocken3 0 @0, 1 @75</STIM>
+			<STIM> force aclr0 0 @0, 1 @480, 0 @555</STIM>
+			<STIM> force aclr1 0 @0, 1 @480, 0 @555</STIM>
+			<STIM> force rden_b 0 @0, 1 @75</STIM>
+			<STIM> force rden_a 0 @0, 1 @75</STIM>
+		</WAVE>
+		
+		<WAVE NAME="WRITE" TIME_STEP="10" MAX_TIME="600" INDEX="3">
+		        <WAVE_CONDITION>!m_rom and m_write_enabled</WAVE_CONDITION>
+		
+		        <CAPTION>Waveform showing write operation</CAPTION>
+			
+			<DESCRIPTION>
+				<T>The above waveform shows the behavior of the design under normal write conditions. The write cycle is assumed to be from the rising edge of the enabled clock in which wren is high till the rising edge of the next clock cycle.</T>
+				<IF>m_dual_port || m_bidir_dual_port</IF>
+				<THEN>
+			 		<T>In OPERATION_MODE mode, when the write happens at the same address as the one being read in the other port,</T>
+			        	<IF>READ_DURING_WRITE_MODE_MIXED_PORTS == "OLD_DATA"</IF>
+			               	<THEN>the read output is the old data at the address.</THEN>
+			               	<ELSE>the read output is unknown.</ELSE>
+				</THEN>
+				
+				<IF>m_m512 || m_m4k || m_mlab || mfam_family_base_cyclone || mfam_family_base_cycloneii</IF>
+				<THEN>Actual write into the RAM happens at the falling edge of the write clock.</THEN>
+				<IF>m_mram || mfam_family_base_cycloneiii || (mfam_family_stratixiii and !m_mlab and !m_auto)</IF>
+				<THEN>Actual write into the RAM happens at the rising edge of the write clock.</THEN>
+				<IF>m_auto and !(mfam_family_base_cyclone || mfam_family_cycloneii)</IF>
+				<THEN>
+					<T>Actual write into the RAM happens at the rising edge or falling edge of the write clock, depending on whether the RAM blocks are assigned to </T>
+					<IF> mfam_family_stratixiii</IF>
+					<THEN> MLAB or not. In the sample waveforms, they are shown to be on the rising edge of the write clock.</THEN>
+					<ELSE> M-RAM or not. In the sample waveforms, they are shown to be on the falling edge of the write clock.</ELSE>
+				</THEN>					
+			
+				<IF>(m_bidir_dual_port and (CLOCK_ENABLE_INPUT_B == "BYPASS")) || (CLOCK_ENABLE_INPUT_A == "BYPASS")</IF>
+				<THEN>The clock enable on the write side input registers are disabled.</THEN>
+				<IF>((CLOCK_ENABLE_OUTPUT_B == "BYPASS") and (OUTDATA_REG_B != "UNREGISTERED")) || ((CLOCK_ENABLE_OUTPUT_A == "BYPASS") and (OUTDATA_REG_A != "UNREGISTERED"))</IF>
+				<THEN>The clock enable on the output registers are disabled.</THEN>
+				<IF> read_during_write_mode_port_a == "OLD_DATA" </IF>
+				<THEN> 
+					<IF> m_bidir_dual_port</IF>
+					<THEN> For the A port, </THEN>
+					<T>When a write happens, the output of the port is the old data at the address.</T>
+				</THEN>
+				<ELSE>
+					<IF>m_single_port</IF>
+					<THEN>During a write cycle, the new data flows through to the output.</THEN>
+					<IF>m_bidir_dual_port</IF>
+					<THEN>During a write cycle on a port (A or B), the new data flows through to the output of the same port.</THEN>
+				</ELSE>
+				<IF> (read_during_write_mode_port_b == "OLD_DATA") and m_bidir_dual_port </IF>
+				<THEN> For the B port, When a write happens, the output of the port is the old data at the address. </THEN>
+			</DESCRIPTION>
+
+			<STIM> force wren_a 0 @0, 1 @90, 0 @180, 1 @340, 0 @500</STIM>
+			<STIM> force wren_b 0 @0, 1 @90, 0 @180, 1 @500</STIM>
+			<STIM> force data_a 0 @0, 1 @180, 2 @260, 3 @420</STIM>
+			<STIM> force data_b 0 @0, 3 @180, 2 @260, 1 @420</STIM>
+			<STIM> force address_a 0 @0, 1 @100, 2 @340, 3 @540</STIM>
+			<STIM> force address_b 0 @0, 3 @180, 2 @340, 1 @500</STIM>
+			<STIM> force byteena_a 0 @0, 15 @20</STIM>
+			<STIM> force byteena_b 0 @0, 15 @20</STIM>	
+			<STIM> force clock0 0 @0, 1 @40, -repeat @80</STIM>
+			<STIM> force clock1 0 @0, 1 @40, -repeat @80</STIM>
+			<STIM> force clocken0 0 @0, 1 @50, 0 @200, 1 @240</STIM>
+			<STIM> force clocken1 0 @0, 1 @50, 0 @200, 1 @240</STIM>
+			<STIM> force clocken2 0 @0, 1 @50, 0 @200, 1 @240</STIM>
+			<STIM> force clocken3 0 @0, 1 @50, 0 @200, 1 @240</STIM>
+			<STIM> force rden_b 0 @0, 1 @50, 0 @90, 1 @170</STIM>
+			<STIM> force rden_a 0 @0, 1 @50, 0 @90, 1 @170</STIM>
+		</WAVE>
+
+		<WAVE NAME="WRITE_CLEAR" TIME_STEP="5" MAX_TIME="650" INDEX="4">
+			<WAVE_CONDITION>m_write_enabled and (m_wraddr_clr_used || m_wr_clr_used || m_data_clr_used)</WAVE_CONDITION>
+			
+			<CAPTION>Waveform showing write operation with clear(s)</CAPTION>
+
+			<DESCRIPTION>
+				<T>The above waveform shows the behavior of the design under write conditions with clear(s).</T>
+			    <IF>m_wraddr_clr_used</IF>
+					<THEN>A clear on the write address during a write cycle corrupts the whole RAM (The contents of the RAM become unknown).</THEN>
+				<IF>m_data_clr_used</IF>
+					<THEN>A clear on the input data during a write cycle corrupts the RAM contents in that particular address (The contents become unknown).</THEN>
+				<IF>m_wr_clr_used</IF>
+			        <THEN>A clear on the write enable during a write cycle corrupts the RAM contents in that particular address (The contents become unknown).</THEN>
+			</DESCRIPTION>
+			
+			<STIM> force wren_a 0 @0, 1 @75, 0 @195, 1 @315, 0 @555</STIM>
+			<STIM> force wren_b 0 @0, 1 @75, 0 @195, 1 @435 </STIM>
+			<STIM> force byteena_a 0 @0, 15 @75</STIM>
+			<STIM> force byteena_b 0 @0, 15 @75</STIM>	
+			<STIM> force clock0 0 @0, 1 @30, -repeat @60</STIM>
+			<STIM> force clock1 0 @0, 1 @30, -repeat @60</STIM>
+			<STIM> force data_a 0 @0, 1 @135, 2 @255, 3 @435</STIM>
+			<STIM> force data_b 0 @0, 3 @135, 2 @255, 1 @375</STIM>
+			<STIM> force address_a 0 @0, 1 @75, 2 @255, 3 @435</STIM>
+			<STIM> force address_b 0 @0, 3 @135, 2 @255, 1 @435</STIM>
+			<STIM> force clocken0 0 @0, 1 @75, 0 @135, 1 @195</STIM>
+			<STIM> force clocken1 0 @0, 1 @75, 0 @135, 1 @195</STIM>
+			<STIM> force clocken2 0 @0, 1 @75, 0 @135, 1 @195</STIM>
+			<STIM> force clocken3 0 @0, 1 @75, 0 @135, 1 @195</STIM>			
+			<STIM> force aclr0 0 @0, 1 @420, 0 @495</STIM>
+			<STIM> force aclr1 0 @0, 1 @420, 0 @495</STIM>
+			<STIM> force rden_b 0 @0, 1 @75</STIM>
+			<STIM> force rden_a 0 @0, 1 @75</STIM>
+		</WAVE>
+		<WAVE NAME="WRITE_BYTE_ENABLE" TIME_STEP="10" MAX_TIME="500" INDEX="5">
+			
+			<WAVE_CONDITION>m_write_enabled and !m_rom and ( is_used(byteena_a) || is_used(byteena_b) )</WAVE_CONDITION>
+		        
+			<CAPTION>Waveform showing write operation with byte enable ports</CAPTION>
+			
+			<DESCRIPTION>
+				<T>The above waveform shows the behavior of the design under write conditions using byteenable ports.</T>
+				<IF>m_single_port</IF>
+				<THEN>During the write cycle,</THEN>
+				<IF>m_bidir_dual_port</IF>
+				<THEN>During the write cycle on a port (A or B),</THEN>
+				<IF>!m_dual_port</IF>
+				<THEN>only the bytes that are being written to flow through and the disabled bytes show up as unknown in the output in the write cycle.</THEN>
+				<IF> read_during_write_mode_port_a == "NEW_DATA_WITH_NBE_READ" </IF>
+				<THEN> 
+					<IF> m_bidir_dual_port</IF>
+					<THEN> For the A port, </THEN>
+					<T>When a write happens, the output of the port is the old data at the address for the masked bytes and new data for the enabled bytes.</T>
+				</THEN>
+				<IF> (read_during_write_mode_port_b == "NEW_DATA_WITH_NBE_READ") and m_bidir_dual_port </IF>
+				<THEN> For the B port, When a write happens, the output of the port is the old data at the address for the masked bytes and new data for the enabled bytes. </THEN>
+			</DESCRIPTION>
+
+			<STIM> force wren_a 0 @0, 1 @50, 0 @170, 1 @210, 0 @410</STIM>
+			<STIM> force wren_b 0 @0, 1 @50, 0 @170, 1 @290, 0 @410</STIM>
+			<STIM> force data_a 0 @0, 159 @130, 127 @210, 191 @370</STIM>
+			<STIM> force data_b 0 @0, 191 @130, 127 @210, 159 @370</STIM>
+			<STIM> force byteena_a 0 @0, 1 @50, 2 @170, 3 @290, 1 @410</STIM>
+			<STIM> force byteena_b 0 @0, 3 @50, 2 @170, 1 @290</STIM>
+			<STIM> force address_a 0 @0, 1 @50, 2 @250, 3 @370</STIM>
+			<STIM> force address_b 0 @0, 3 @130, 1 @250, 2 @370</STIM>
+			<STIM> force clock0 0 @0, 1 @20, -repeat @40</STIM>
+			<STIM> force clock1 0 @0, 1 @20, -repeat @40</STIM>
+			<STIM> force clocken0 0 @0, 1 @50</STIM>
+			<STIM> force clocken1 0 @0, 1 @50</STIM>
+			<STIM> force clocken2 0 @0, 1 @50</STIM>
+			<STIM> force clocken3 0 @0, 1 @50</STIM>
+			<STIM> force rden_b 0 @0, 1 @50</STIM>
+			<STIM> force rden_a 0 @0, 1 @50</STIM>
+			<IF> (is_used(byteena_a) and (BYTEENA_ACLR_A == "CLEAR0")) || (is_used(byteena_b) and (BYTEENA_ACLR_B == "CLEAR0")) </IF>
+			<THEN>
+				<STIM> force aclr0 0 @0, 1 @100, 0 @150</STIM>
+			</THEN>
+			<IF> (is_used(byteena_a) and (BYTEENA_ACLR_A == "CLEAR1")) || (is_used(byteena_b) and (BYTEENA_ACLR_B == "CLEAR1")) </IF>
+			<THEN>
+				<STIM> force aclr1 0 @0, 1 @100, 0 @150</STIM>
+			</THEN>
+		</WAVE>
+		
+		<WAVE NAME="ADDR_STALL" TIME_STEP="10" MAX_TIME="500" INDEX="6">
+		
+			<WAVE_CONDITION>( is_used(addressstall_a) || is_used(addressstall_b) )</WAVE_CONDITION>
+			
+			<CAPTION>Waveform showing operation of address_stall ports</CAPTION>
+
+			<DESCRIPTION>
+				<T>The above waveform shows the behavior of the design under write / read conditions using address_stall ports.</T>
+				<IF>( m_rom || ( m_dual_port and is_used(addressstall_b) ) || m_bidir_dual_port )</IF>
+				<THEN>During the read cycle, if addressstall on the read address is enabled, the old address on the address register is retained and read happens on the old address. </THEN>
+				<IF>( m_single_port || m_bidir_dual_port || ( m_dual_port and is_used(addressstall_a) ) )</IF>
+				<THEN>During the write cycle, if addressstall on the write address is enabled, the old address on the address register is retained and data is written into the old address. </THEN>
+			</DESCRIPTION>
+
+			<IF> m_write_enabled </IF>
+			<THEN>
+				<STIM> force wren_a 0 @0, 1 @50, 0 @170, 1 @210, 0 @410</STIM>
+				<STIM> force wren_b 0 @0, 1 @50, 0 @170, 1 @290, 0 @410</STIM>
+				<STIM> force data_a 0 @0, 159 @130, 127 @210, 191 @370</STIM>
+				<STIM> force data_b 0 @0, 191 @130, 127 @210, 159 @370</STIM>
+				<STIM> force byteena_a 15 @0</STIM>
+				<STIM> force byteena_b 15 @0</STIM>
+			</THEN>
+			<STIM> force address_a 0 @0, 1 @50, 2 @250, 3 @370</STIM>
+			<STIM> force address_b 0 @0, 3 @130, 1 @250, 2 @370</STIM>
+			<STIM> force addressstall_a 0 @0, 1 @90, 0 @250, 1 @370</STIM>
+			<STIM> force addressstall_b 0 @0, 1 @130, 0 @290, 1 @370</STIM>
+			<STIM> force clock0 0 @0, 1 @20, -repeat @40</STIM>
+			<STIM> force clock1 0 @0, 1 @20, -repeat @40</STIM>
+			<STIM> force clocken0 0 @0, 1 @50</STIM>
+			<STIM> force clocken1 0 @0, 1 @50</STIM>
+			<STIM> force clocken2 0 @0, 1 @50</STIM>
+			<STIM> force clocken3 0 @0, 1 @50</STIM>
+			<STIM> force rden_b 0 @0, 1 @50</STIM>
+			<STIM> force rden_a 0 @0, 1 @50</STIM>
+		</WAVE>
+	</WAVE_DATA>
+	<HIDDEN_PARAMETERS>
+		<PARAMETER NAME="NUM_MEMORY_WORDS" VALUE="5"/>
+	</HIDDEN_PARAMETERS>
+	<PORTS>
+		<PORT NAME="memory4" TYPE="BURIED"/>
+		<PORT NAME="memory3" TYPE="BURIED"/>
+		<PORT NAME="memory2" TYPE="BURIED"/>
+		<PORT NAME="memory1" TYPE="BURIED"/>
+		<PORT NAME="memory0" TYPE="BURIED"/>
+	</PORTS>
+</ROOT>

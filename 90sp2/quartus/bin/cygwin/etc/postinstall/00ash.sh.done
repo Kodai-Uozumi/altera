@@ -1,0 +1,17 @@
+#!/bin/ash
+# Ash postinstall script.  This ensures that /bin/sh exists and is
+# runnable, favoring bash, and updating only if it is missing or ash
+
+update=no
+# Is /bin/sh missing, or have broken dependencies?
+case `(cygcheck /bin/sh.exe) 2>&1` in
+    *Cannot\ open*) update=yes ;;
+    *) # We can run it.  Is the version from ash?
+        case `(/bin/sh.exe --version) 2>&1` in
+            Illegal\ option\ --*) update=yes ;;
+        esac ;;
+esac
+# Update, if needed.
+if test $update = yes ; then
+   cp -f /bin/bash.exe /bin/sh.exe || cp -f /bin/ash.exe /bin/sh.exe
+fi

@@ -1,0 +1,112 @@
+-- **************************************************************************
+--  Clocked 2-to-1 MUX with enable - A_MXFIFO
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 1.0
+--
+--------------------------------------------------------------------
+--
+--  Optimized in area for FLEX6000 - one lcell per output.
+--  Implements ENA input thru the LAB-wide synchronous load.
+--  Implements SEL input thru the carry-chain.
+--  The fan-in of every input must be 1, or the 4 inputs LCELL LUT scheme will break.
+--
+-- **************************************************************************
+
+parameters
+(
+	WIDTH,
+	CARRY_CHAIN_LENGTH = 32
+);
+
+-------------------------------------------------------------------------------
+constant nb_cc = 1 + floor((WIDTH-1) div CARRY_CHAIN_LENGTH);
+constant length_cc = floor(WIDTH div nb_cc);
+constant length_extra_cc = WIDTH-nb_cc*length_cc;
+define brd(i) = length_cc*i;
+define erd(i) = length_cc*(i+1)-1;
+
+-------------------------------------------------------------------------------
+subdesign a_mxfifo
+(
+	clock, sel, ena, dataa[WIDTH-1..0], datab[WIDTH-1..0]: input;
+	clrn: input = vcc;
+	sclr: input = gnd;
+
+	q[WIDTH-1..0]: output;	-- q[]=dataa[] when sel=0, datab[] when sel=1
+)
+
+-------------------------------------------------------------------------------
+variable
+	if WIDTH==1 generate	-- no carry-chain for WIDTH=1
+		reg: dffe;
+	else generate
+		reg     [nb_cc-1..0][length_cc-1..0]: dff;
+		carrysel[nb_cc-1..0][length_cc-1..0]: carry;
+		muxnode [nb_cc-1..0][length_cc-1..0]: node;
+	
+		if length_extra_cc>0 generate
+			lc_reg     [length_extra_cc-1..0]: dff;
+			lc_carrysel[length_extra_cc-1..0]: carry;
+			lc_muxnode [length_extra_cc-1..0]: node;
+		end generate;
+	end generate;
+
+-------------------------------------------------------------------------------
+begin
+	assert report "nb_cc = %" nb_cc severity debug;
+	assert report "length_cc = %" length_cc severity debug;
+	assert report "length_extra_cc = %" length_extra_cc severity debug;
+
+	if WIDTH==1 generate
+		reg.(clk, ena, clrn) = (clock, ena or sclr, clrn);
+		reg = ((dataa[] and !sel) or (datab[] and sel)) and !sclr;
+		q[] = reg;
+	else generate
+		-- take care of the regular carry-chains
+		carrysel[][0] = sel;
+		if length_cc>1 generate
+			carrysel[][length_cc-1..1] = carrysel[][length_cc-2..0];
+		end generate;
+	
+		reg[][].(clk, clrn) = (clock, clrn);
+		reg[][] = ((reg[][] and !ena) or (muxnode[][] and ena)) and !sclr;
+		for i in 0 to nb_cc-1 generate
+			muxnode[i][] = (!carrysel[i][] and dataa[erd(i)..brd(i)]) or (carrysel[i][] and datab[erd(i)..brd(i)]);
+			q[erd(i)..brd(i)] = reg[i][];
+		end generate;
+	
+		-- take care of the extra carry-chain
+		if length_extra_cc>0 generate
+		--	lc_carrysel[0] = sel;	-- instead of creating a new carry-chain
+			lc_carrysel[0] = carrysel[nb_cc-1][length_cc-1];	-- continue the last one
+			if length_extra_cc>1 generate
+				lc_carrysel[length_extra_cc-1..1] = lc_carrysel[length_extra_cc-2..0];
+			end generate;
+	
+			lc_reg[].(clk, clrn) = (clock, clrn);
+			lc_reg[] = ((lc_reg[] and !ena) or (lc_muxnode[] and ena)) and !sclr;
+			lc_muxnode[] = (!lc_carrysel[] and dataa[WIDTH-1..brd(nb_cc)]) or (lc_carrysel[] and datab[WIDTH-1..brd(nb_cc)]);
+			q[WIDTH-1..brd(nb_cc)] = lc_reg[];
+		end generate;
+	end generate;
+	IF !USED(q) GENERATE
+		q[] = GND;
+	END GENERATE;
+end;
+

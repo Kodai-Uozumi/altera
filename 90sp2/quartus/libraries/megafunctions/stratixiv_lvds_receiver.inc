@@ -1,0 +1,50 @@
+------------------------------------------------------------------
+-- stratixiv_lvds_receiver parameterized megafunction component declaration
+-- Generated with 'mega_defn_creator' loader - do not edit
+------------------------------------------------------------------
+
+FUNCTION stratixiv_lvds_receiver(
+	bitslip,
+	bitslipreset,
+	clk0,
+	datain,
+	devclrn,
+	devpor,
+	dpahold,
+	dpareset,
+	dpaswitch,
+	enable0,
+	fiforeset,
+	serialfbk
+)
+WITH(
+	align_to_rising_edge_only,
+	channel_width,
+	data_align_rollover,
+	dpa_debug,
+	dpa_initial_phase_value,
+	dpa_output_clock_phase_shift,
+	enable_dpa,
+	enable_dpa_align_to_rising_edge_only,
+	enable_dpa_initial_phase_selection,
+	enable_soft_cdr,
+	is_negative_ppm_drift,
+	lose_lock_on_one_change,
+	lpm_hint,
+	lpm_type,
+	net_ppm_variation,
+	reset_fifo_at_first_lock,
+	rx_input_path_delay_engineering_bits,
+	use_serial_feedback_input,
+	x_on_bitslip
+)
+RETURNS(
+	bitslipmax,
+	dataout[9..0],
+	divfwdclk,
+	dpaclkout,
+	dpalock,
+	observableout[3..0],
+	postdpaserialdataout,
+	serialdataout
+);

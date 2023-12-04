@@ -1,0 +1,418 @@
+<DEFAULT_WRITE_ASSIGNMENT>
+--------
+Overview
+--------
+
+Option to write out the settings obtained from command-line 
+options to the Quartus II Settings File (.qsf). 
+
+By default, assignments are written to the QSF unless you 
+specify "--write_settings_files=off".
+
+---------------------------
+Command-Line Option Details
+---------------------------
+
+Command-line options are provided for making many common
+global project settings and performing common tasks. You
+can use either of two methods to make assignments to an
+individual entity. If the project exists, open the project
+in the Quartus II GUI, change the assignment, and close the
+project. The changed assignment is updated in the QSF. Any
+command-line executables that are run after this update use
+the updated assignment. See "Option Precedence" below for
+more information. You can also make assignments using the
+Quartus II Tcl scripting API. To completely script the 
+creation of a Quartus II project, choose this method.
+
+-----------------
+Option Precedence
+-----------------
+
+If you are using the command-line executables, you need to
+be aware of the precedence of various project assignments
+and how to control the precedence. You can find ssignments 
+for a particular project exist in the QSF for the project.
+You can also make assignments for a project by using
+command-line options, as described earlier. Project
+assignments are reflected in compiler database files that
+hold intermediate compilation results and reflect assignments
+made in the previous project compilation.
+
+All command-line options override any conflicting assignments
+found in the QSF or the compiler database files. There are
+two command-line options to specify whether QSF or compiler
+database files take precedence for any assignments not
+specified as command-line options.
+
+Note: Any assignment not specified as a command-line option
+or found in the QSF or compiler database files is set to its
+Quartus II software default value.
+
+The file precedence command-line options are
+--read_settings_files and --write_settings_files. By default,
+the --read_settings_files and --write_settings_files options
+are turned on. Turning on the --read_settings_files option
+causes a command-line executable to read assignments from
+the QSF instead of from the compiler database files. Turning
+on the --write_settings_files option causes a command-line
+executable to update the QSF to reflect any specified options,
+as happens when closing a project in the Quartus II GUI.
+
+Table 1 lists the precedence for reading assignments
+depending on the value of the --read_settings_files option.
+
+
+* Table 1. Precedence for Reading Assignments
+
+Option Specified                      Precedence for Reading Assignments
+------------------------------------  ----------------------------------
+--import_settings_files=on (Default)  1. Command-line options
+                                      2. Quartus II Settings File (QSF)
+                                      3. Compiler database (db directory, if it exists)
+                                      4. Quartus II software defaults
+
+--import_settings_files=off           1. Quartus II Settings File (QSF)
+                                      2. Compiler database (db directory, if it exists)
+                                      3. Quartus II software defaults
+
+
+Table 2 lists the locations to which assignments are
+written, depending on the value of the --write_settings_files
+command-line option.
+
+
+* Table 2. Location for Writing Assignments
+
+Option Specified                      Location for Writing Assignments
+------------------------------------  --------------------------------
+--export_settings_files=on (Default)  1. Quartus II Settings File (.qsf) and
+                                      2. Compiler database
+
+--export_settings_files=off           1. Compiler database
+
+
+The following example assumes that a project named fir_filter
+exists, and that the Analysis & Synthesis step has been
+performed (using the quartus_map executable).
+
+quartus_fit fir_filter --fmax=80MHz
+quartus_tan fir_filter
+quartus_tan fir_filter --fmax=100MHz --tao=timing_result-100.tao --write_settings_files=off
+
+The first command, quartus_fit fir_filter --fmax=80MHz, runs
+the Quartus II Fitter and specifies a global fMAX requirement
+of 80 MHz.
+
+The second command, quartus_tan fir_filter, runs Quartus II
+Timing Analyzer for the results of the previous fit.
+
+The third command reruns Quartus II Timing Analyzer with a
+global Fmax requirement of 100 MHz and saves the result in
+a file called timing_result-100.tao. By specifying the
+--write_settings_files=off option, the command-line executable
+does not update the QSF to reflect the changed Fmax requirement.
+The compiler database files reflect the changed Fmax requirement.
+If the --write_settings_files=off option is not specified, the
+command-line executable updates the QSF to reflect the 100 MHz
+global fMAX requirement.
+
+Use the --read_settings_files=off and --write_settings_files=off
+options (where appropriate) to optimize the way that the
+Quartus II software reads and updates the QSF. The following
+example shows how to avoid unnecessary QSF reading and writing.
+
+quartus_map filtref --source=filtref --part=ep1s10f780c5
+quartus_fit filtref --fmax=100MHz --read_settings_files=off
+quartus_tan filtref --read_settings_files=off --write_settings_files=off
+quartus_asm filtref --read_settings_files=off --write_settings_files=off
+
+The quartus_tan and quartus_asm executables do not need to
+read or write settings files because they do not change any
+settings in the project.
+</DEFAULT_WRITE_ASSIGNMENT>
+
+<RESTRUCTURE_MULTIPLEXERS_ID>
+Option to repack fragmented multiplexers more efficiently
+for area in designs targeting supported device familes 
+    (Stratix(R), Stratix GX, Cyclone(TM), Stratix II, Cyclone II, 
+    MAX(R) II).
+
+    The Multiplexer Statistics table in the Analysis & Synthesis 
+    Optimization Results section of the Compilation Report provides 
+an estimate of the potential area saving for each multiplexer 
+bus in the design. In some cases, restructuring results in a 
+20% reduction in logic elements.
+
+Note that the speed of the design may change as a result of
+the multiplexer restructuring.
+
+The following table displays available values:
+
+Value       Description
+--------    ----------------------------------------------
+auto        Restructures multiplexers if you optimize for
+            area or for balanced optimization, and selectively
+                restructures multiplexers ff you optimize for speed. 
+                For more information, refer to the --optimize option.
+
+on          Restructures multiplexers.
+
+off         Does not restructure multiplexers.
+
+Note that the current version of the Quartus(R) II software.
+supports multiplexer restructuring only for the following
+devices:
+</RESTRUCTURE_MULTIPLEXERS_ID>
+
+<SYNTHESIS_EFFORT_ID>
+Option to select synthesis effort level. 
+
+The following table displays available values:
+
+Value       Description
+--------    ----------------------------------------------
+auto        Maximum synthesis effort. This is the default value.
+
+fast        Synthesis process is streamlined to improve runtime 
+                at the cost of design performace and/or resource usage. 
+                Use this option when the Fitter early_timing_estimate 
+                mode is used, or when a fast-synthesis compilation is 
+                needed without the need to run the Fitter. When this 
+                option is used with the regular Fitter, Fitter 
+                performance may decrease as fast-synthesis netlists
+                take longer to route.
+</SYNTHESIS_EFFORT_ID>
+
+<OPTIMIZE_ID>
+Option to optimize the design to achieve maximum speed 
+performance, minimum area usage, or high speed performance 
+with miminal area cost during synthesis.
+
+The following table displays available values:
+
+Value       Description
+--------    ----------------------------------------------
+
+area        Makes the design as small as possible in order 
+            to minimize resource usage.
+
+speed       Chooses a design implementation that has the 
+            fastest fmax. 
+
+balanced    Chooses a design implementation that has a 
+            high-speed performance with minimal logic usage.
+
+Note that the current version of the Quartus(R) II software 
+does not support the "balanced" setting for the following 
+devices:
+    Mercury(TM), MAX(R) 7000B/7000AE/3000A/7000S/7000A, 
+    FLEX(R) 6000, FLEX 10K(R), FLEX 10KE/10KA, and ACEX 1K.
+</OPTIMIZE_ID>
+
+<FAMILY_ID>
+Option to target the specified device family. If the 
+"--part" option is not used, the part is set to Auto.
+
+The family name should not contain any spaces, for example, 
+--family=APEXII. If you need to add space between words in 
+the family name, make sure that you enclose the words in 
+double quotation marks "", for example, --family="APEX II".
+</FAMILY_ID>
+
+<PART_ID>
+Option to target the specified device. This option overrides 
+the "--family" option or family assignment.
+</PART_ID>
+
+<STATE_MACHINE_ENCODING_ID>
+Option to set the state machine processing style used to 
+compile a state machine.
+
+The following table displays available values:
+
+Value             Description
+--------          -----------------------------------------
+
+auto              Allows Analysis & Synthesis to choose the 
+                  best encoding for the state machine. 
+
+minimal_bits      Uses the minimal number of bits to encode 
+                  the state machine. 
+
+one_hot           Encodes the state machine in the one-hot 
+                  style. 
+
+user_encoded      Encodes the state machine in the manner 
+                  specified by the user. 
+</STATE_MACHINE_ENCODING_ID>
+
+<ENABLE_WYSIWYG_RESYNTHESIS_ID>
+Option to unmap WYSIWYG primitives during synthesis and 
+remap the gates back to WYSIWYG LCELL primitives.
+
+This option is not applicable if Quartus(R) II Integrated 
+Synthesis is used. 
+</ENABLE_WYSIWYG_RESYNTHESIS_ID>
+
+<TIMING_DRIVEN_SYNTHESIS_ID>
+Option to make synthesis take timing constraints into account. 
+The default value is off. When this option is turned on, synthesis 
+runs timing analysis to obtain timing information about the 
+netlist, and optimizes the netlist accordingly. 
+</TIMING_DRIVEN_SYNTHESIS_ID>
+
+<IGNORE_CARRY_BUFFERS_ID>
+Option to ignore CARRY_SUM buffers that are instantiated in 
+the design. (This option also applies to MAX+PLUS II-style
+CARRY buffers.)
+</IGNORE_CARRY_BUFFERS_ID>
+
+<IGNORE_CASCADE_BUFFERS_ID>
+Option to ignore CASCADE buffers that are instantiated in 
+the design.
+</IGNORE_CASCADE_BUFFERS_ID>
+
+<INCREMENTAL_COMPILATION_ID>
+Option to specify the incremental compilation mode.
+
+The following table displays available values:
+
+Value                         Description
+--------                      ----------------------------------
+
+off                           Turn off incremental compilation. 
+
+incremental_synthesis         Turn on incremental compilation
+                              for synthesis only. Also known
+                              as incremental synthesis which
+                              is previously the incr_synth option
+
+full_incremental_compilation  Turn on full incremental compilation.
+                                 
+</INCREMENTAL_COMPILATION_ID>
+
+<ANALYZE_PROJECT_ID>
+Option to check all the design files in a design for syntax 
+and semantic errors, and perform a netlist extraction.
+</ANALYZE_PROJECT_ID>
+
+<ANALYZE_FILE_ID>
+Option to check the specified design file for syntax 
+and semantic errors.
+</ANALYZE_FILE_ID>
+
+<GENERATE_SYMBOL_ID>
+Option to create a Block Symbol File (.bsf) that represents 
+the entities in the specified Text Design File (.tdf), VHDL 
+Design File (.vhd), Verilog Design File (.v), EDIF Input 
+File (.edf), or Block Design File (.bdf).
+</GENERATE_SYMBOL_ID>
+
+<GENERATE_INC_FILE_ID>
+Option to create a default AHDL Include File (.inc) that 
+represents the entities in the specified Text Design File 
+(.tdf), VHDL Design File (.vhd), Verilog Design File (.v), 
+EDIF Input File (.edf), or Block Design File (.bdf).
+</GENERATE_INC_FILE_ID>
+
+<GENERATE_INST_FILE_ID>
+    Option to create a default Verilog Instantiation File (.inst) that
+represents the entities in the specified Text Design File (.tdf),
+    VHDL Design File (.vhd), Verilog Design File (.v), EDIF Input File
+    (.edf), Block Design File (.bdf), CusP file (.cpp) or MATLAB file (.mdl).
+
+</GENERATE_INST_FILE_ID>
+
+<GENERATE_CMP_FILE_ID>
+Option to create a default VHDL Component File (.cmp) that 
+represents the entities in the specified Text Design File 
+(.tdf), VHDL Design File (.vhd), Verilog Design File (.v), 
+EDIF Input File (.edf), or Block Design File (.bdf), CusP file (.cpp)
+and MATLAB File (.mdl).	
+</GENERATE_CMP_FILE_ID>
+
+<CONVERT_BDF_TO_VERILOG_ID>
+Option to create a Verilog Design File (.v) for the specified 
+Block Design File (.bdf).
+</CONVERT_BDF_TO_VERILOG_ID>
+
+<CONVERT_BDF_TO_VHDL_ID>
+Option to create a VHDL Design File (.vhd) for the specified 
+Block Design File (.bdf).
+</CONVERT_BDF_TO_VHDL_ID>
+
+<GENERATE_FUNCTIONAL_SIM_NETLIST_ID>
+Option to prepare the databases necessary for functional 
+simulation.
+</GENERATE_FUNCTIONAL_SIM_NETLIST_ID>
+
+<LIB_PATH_ID>
+Option to use the specified library paths to find the design 
+files of the project. For multiple library paths, use 
+--lib_path=path1 --lib_path=path2 or --lib_path="path1;path2".
+</LIB_PATH_ID>
+
+<SOURCE_ID>
+Option to use the specified source file. Add only one 
+source file per tag. For multiple source files, use 
+"--source=file1 --source=file2".
+
+If you specify a relative path, the path must be
+relative to the project directory.
+</SOURCE_ID>
+
+<PARALLEL>
+Runs quartus_map in a mode that enables parallel synthesis of 
+    partitions using the number of processors specified by the 
+    Quartus II parallel compilation option.  
+</PARALLEL>
+
+<TARGET_PARTITION>
+    Specifies a partition to synthesize manually.
+
+    This option overrides the netlist type and preservation level 
+    of the partition and disables any automatic resynthesis of other 
+    partitions, even if they require synthesis because of changes 
+    to your design.
+
+    You can specify a partition ID or name.  For example, the root
+    partition has ID 0 and name "Top".    
+
+    To synthesize multiple partitions, use a separate option for
+    each partition.
+</TARGET_PARTITION>
+
+<UPDATE_WYSIWYG_PARAMETERS_ID>
+Option to update, when possible, the parameters of a changed 
+WYSIWYG PLL or CDR primitive in the Compiler netlists. This 
+option assumes that the previous compilation was successful.
+
+When you use this option, the quartus_map executable gives 
+a message stating the next executable you need to run in 
+order to complete a compilation, quartus_fit or quartus_asm. 
+If it is not possible to update the parameters, the 
+quartus_map executable runs normally and gives a message 
+that you need to run quartus_fit.
+
+When you use this option, all assignment changes you made 
+since the last compilation are lost.
+</UPDATE_WYSIWYG_PARAMETERS_ID>
+
+<VERILOG_MACRO_ID>
+
+Option to set a Verilog macro. Use the following format:
+
+--verilog_macro="my_macro=2"
+--verilog_macro="SUM(a,b)=(a+b)"
+--verilog_macro="my_str_macro=\"string2\""
+
+Those are equivalent to the following `define statements: 
+
+`define my_macro 2
+`define SUM(a,b) (a+b)
+`define my_str_macro "string2"
+
+
+</VERILOG_MACRO_ID>
+

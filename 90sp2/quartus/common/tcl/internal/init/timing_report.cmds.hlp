@@ -1,0 +1,322 @@
+<<<<versions>>>>
+1.0
+1.1
+<<<</versions>>>>
+<<<<1.0>>>>
+<list_path>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: list_path [-h | -help] [-long_help] [-append] [-clock_filter <names>] [-clock_hold] [-clock_hold_io] [-clock_setup] [-clock_setup_io] [-dqs_read_capture] [-file <name>] [-from <names>] [-min_tco] [-min_tpd] [-npaths <number>] [-src_clock_filter <names>] [-stdout] [-tco] [-th] [-to <names>] [-tpd] [-tsu]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -append: Option to append results to output file
+        -clock_filter <names>: Legal clocks for clock analyses (string patterns are matched using Tcl string matching)
+        -clock_hold: Option to report clock hold paths
+        -clock_hold_io: Option to report clock hold I/O paths
+        -clock_setup: Option to report clock setup paths
+        -clock_setup_io: Option to report clock setup I/O paths
+        -dqs_read_capture: Option to report maximum DQS read capture paths
+        -file <name>: File to which to write the report
+        -from <names>: Legal sources (string patterns are matched using Tcl string matching)
+        -min_tco: Option to report minimum tco paths
+        -min_tpd: Option to report minimum tpd paths
+        -npaths <number>: Number of paths to report (default is 1)
+        -src_clock_filter <names>: Legal source clocks for clock analyses (string patterns are matched using Tcl string matching)
+        -stdout: Option to send report to standard output
+        -tco: Option to report tco paths
+        -th: Option to report th paths
+        -to <names>: Legal destinations (string patterns are matched using Tcl string matching)
+        -tpd: Option to report tpd paths
+        -tsu: Option to report tsu paths
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::timing_report 1.0
+
+------------
+Description:
+------------
+
+Reports the timing paths using the list path format. You can use 
+one or several of the filter options to specify the number of 
+paths displayed. You can redirect the output to a file using 
+the "-file" option. Use the "-append" option to append the 
+results to an existing file.
+
+The "-clock_filter", "-to", and "-from" options are case
+sensitive. These options can take string patterns containing
+special characters from the set "*?\[]" as values. The values 
+are matched using Tcl string matching. Note that bus names
+are automatically detected and do not need to be escaped.
+Bus names have the following format:
+
+<bus name>[<bus index>] or <bus name>[*]
+
+The <bus name> portion is a string of alphanumeric characters.
+The <bus index> portion is an integer greater than or equal to
+zero or it can be the character "*" used for string matching.
+Notice that the <bus index> is enclosed by the square
+brackets "[" and "]". For example, "a[0]" and "a[*]" are
+supported bus names and can be used as follows:
+
+# To match index 0 of bus "a", type:
+list_path -to a[0]
+
+# To match all indices of bus "a", type:
+list_path -to a[*]
+
+All other uses of square brackets must be escaped if you do
+not intend to use them as string patterns. For example,
+to match indices 0, 1, and 2 of the bus "a", type:
+
+list_path -to "a[escape_brackets \[]\[0-2\][escape_brackets \]]"
+
+For more information about escaping square brackets, type
+"escape_brackets -h".
+
+You must run the Timing Analyzer (quartus_tan) successfully 
+before using this command, so that the Timing Analyzer report 
+sections generated for the project appear in the Compilation 
+Report. Note that if the requested path(s) are not found in 
+the Timing Analysis report panel, the command does not report 
+anything, and the return value simply shows "0". Otherwise, 
+the command returns the number of reported paths.
+
+This command is similar to the "report_timing" command in the 
+::quartus::timing package (accessible from the quartus_tan 
+executable). The "report_timing" command does not require a 
+completed Timing Analysis report, and therefore can report 
+paths even if they do not appear in the report. 
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# The following examples work from within the Quartus II  
+# Tcl Console after a successful Timing Analysis:
+
+# List paths that represent input setup paths
+if {[list_path -tsu] == 0} {
+	puts "No Tsu paths exist in the design"
+}
+
+# List clock setup paths for clock clk
+list_path -clock_setup -clock_filter clk
+
+# List clock setup paths from clock clk to clock clk
+list_path -clock_setup -src_clock_filter clk -clock_filter clk
+
+# List clock setup paths for clock clk
+# from registers abc* to registers xyz*
+list_path -clock_setup -clock_filter clk -from abc* -to xyz*
+
+# List the top 5 pin-to-pin combinational paths
+list_path -tpd -npaths 5
+
+# List the top 5 pin-to-pin combinational paths and 
+# write output to an out.tao file
+set path_count [list_path -tpd -npaths 5 -file out.tao]
+puts "$path_count == 5"
+
+# Append min tpd results to the existing out.tao file
+list_path -tpd -npaths 5 -file out.tao -append
+
+# Specify bus
+list_path -from in[0]
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	INFO: Report automatically reloaded because it was not up-to-date after the "execute_flow" or "execute_module" Tcl command (which belongs to the ::quartus::flow package) was run. No action is required.
+TCL_ERROR	1   	ERROR: Option <string> requires clock path to be reported.
+TCL_ERROR	1   	ERROR: Can't run Tcl command while a process is in progress: <string>. To run the command, stop the compilation or simulation; or wait for the compilation or simulation to complete.
+TCL_ERROR	1   	ERROR: Illegal value for <string>: <string>. Specify a legal option value.
+TCL_ERROR	1   	ERROR: Options are mutually exclusive: -<string> and -<string>. Specify only one of the two options.
+TCL_ERROR	1   	ERROR: Can't find active revision. Make sure there is an open, active revision name.
+TCL_ERROR	1   	ERROR: Can't read atom netlist. Run a successful compilation before using this command.
+TCL_ERROR	1   	ERROR: Can't find active revision name. Make sure there is an open, active revision name.
+TCL_ERROR	1   	ERROR: Can't find CDB_CHIP_DB_ENTRY. Run Analysis & Synthesis (quartus_map) successfully before using this command.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new one.
+TCL_ERROR	1   	ERROR: Can't load report. Make sure the report exists. Run a successful compilation before using this command.
+TCL_ERROR	1   	ERROR: Can't find Timing Analyzer report. Run the Timing Analyzer (quartus_tan) successfully before using this command.
+TCL_ERROR	1   	ERROR: Can't read timing netlist. Run the Timing Analyzer (quartus_tan) successfully before using this command.
+TCL_ERROR	1   	ERROR: Option -<string> is required for -<string>=<string>. Specify the required option.
+TCL_ERROR	1   	ERROR: Report not loaded for revision name: <string>. Type "load_report" (which belongs to the ::quartus::report package) to load the report.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</list_path>
+
+<<<</1.0>>>>
+<<<<1.1>>>>
+<list_path>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: list_path [-h | -help] [-long_help] [-append] [-clock_filter <names>] [-clock_hold] [-clock_hold_io] [-clock_setup] [-clock_setup_io] [-dqs_read_capture] [-file <name>] [-from <names>] [-min_tco] [-min_tpd] [-npaths <number>] [-src_clock_filter <names>] [-stdout] [-tco] [-th] [-to <names>] [-tpd] [-tsu]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -append: Option to append results to output file
+        -clock_filter <names>: Legal clocks for clock analyses (string patterns are matched using Tcl string matching)
+        -clock_hold: Option to report clock hold paths
+        -clock_hold_io: Option to report clock hold I/O paths
+        -clock_setup: Option to report clock setup paths
+        -clock_setup_io: Option to report clock setup I/O paths
+        -dqs_read_capture: Option to report maximum DQS read capture paths
+        -file <name>: File to which to write the report
+        -from <names>: Legal sources (string patterns are matched using Tcl string matching)
+        -min_tco: Option to report minimum tco paths
+        -min_tpd: Option to report minimum tpd paths
+        -npaths <number>: Number of paths to report (default is 1)
+        -src_clock_filter <names>: Legal source clocks for clock analyses (string patterns are matched using Tcl string matching)
+        -stdout: Option to send report to standard output
+        -tco: Option to report tco paths
+        -th: Option to report th paths
+        -to <names>: Legal destinations (string patterns are matched using Tcl string matching)
+        -tpd: Option to report tpd paths
+        -tsu: Option to report tsu paths
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::timing_report 1.1
+
+------------
+Description:
+------------
+
+Reports the timing paths using the list path format. You can use 
+one or several of the filter options to specify the number of 
+paths displayed. You can redirect the output to a file using 
+the "-file" option. Use the "-append" option to append the 
+results to an existing file.
+
+The "-clock_filter", "-to", and "-from" options are case
+sensitive. These options can take string patterns containing
+special characters from the set "*?\[]" as values. The values 
+are matched using Tcl string matching. Note that bus names
+are automatically detected and do not need to be escaped.
+Bus names have the following format:
+
+<bus name>[<bus index>] or <bus name>[*]
+
+The <bus name> portion is a string of alphanumeric characters.
+The <bus index> portion is an integer greater than or equal to
+zero or it can be the character "*" used for string matching.
+Notice that the <bus index> is enclosed by the square
+brackets "[" and "]". For example, "a[0]" and "a[*]" are
+supported bus names and can be used as follows:
+
+# To match index 0 of bus "a", type:
+list_path -to a[0]
+
+# To match all indices of bus "a", type:
+list_path -to a[*]
+
+All other uses of square brackets must be escaped if you do
+not intend to use them as string patterns. For example,
+to match indices 0, 1, and 2 of the bus "a", type:
+
+list_path -to "a[escape_brackets \[]\[0-2\][escape_brackets \]]"
+
+For more information about escaping square brackets, type
+"escape_brackets -h".
+
+You must run the Timing Analyzer (quartus_tan) successfully 
+before using this command, so that the Timing Analyzer report 
+sections generated for the project appear in the Compilation 
+Report. Note that if the requested path(s) are not found in 
+the Timing Analysis report panel, the command does not report 
+anything, and the return value simply shows "0". Otherwise, 
+the command returns the number of reported paths.
+
+This command is similar to the "report_timing" command in the 
+::quartus::timing package (accessible from the quartus_tan 
+executable). The "report_timing" command does not require a 
+completed Timing Analysis report, and therefore can report 
+paths even if they do not appear in the report. 
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# The following examples work from within the Quartus II  
+# Tcl Console after a successful Timing Analysis:
+
+# List paths that represent input setup paths
+if {[list_path -tsu] == 0} {
+	puts "No Tsu paths exist in the design"
+}
+
+# List clock setup paths for clock clk
+list_path -clock_setup -clock_filter clk
+
+# List clock setup paths from clock clk to clock clk
+list_path -clock_setup -src_clock_filter clk -clock_filter clk
+
+# List clock setup paths for clock clk
+# from registers abc* to registers xyz*
+list_path -clock_setup -clock_filter clk -from abc* -to xyz*
+
+# List the top 5 pin-to-pin combinational paths
+list_path -tpd -npaths 5
+
+# List the top 5 pin-to-pin combinational paths and 
+# write output to an out.tao file
+set path_count [list_path -tpd -npaths 5 -file out.tao]
+puts "$path_count == 5"
+
+# Append min tpd results to the existing out.tao file
+list_path -tpd -npaths 5 -file out.tao -append
+
+# Specify bus
+list_path -from in[0]
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	INFO: Report automatically reloaded because it was not up-to-date after the "execute_flow" or "execute_module" Tcl command (which belongs to the ::quartus::flow package) was run. No action is required.
+TCL_ERROR	1   	ERROR: Option <string> requires clock path to be reported.
+TCL_ERROR	1   	ERROR: Can't run Tcl command while a process is in progress: <string>. To run the command, stop the compilation or simulation; or wait for the compilation or simulation to complete.
+TCL_ERROR	1   	ERROR: Illegal value for <string>: <string>. Specify a legal option value.
+TCL_ERROR	1   	ERROR: Options are mutually exclusive: -<string> and -<string>. Specify only one of the two options.
+TCL_ERROR	1   	ERROR: Can't find active revision. Make sure there is an open, active revision name.
+TCL_ERROR	1   	ERROR: Can't read atom netlist. Run a successful compilation before using this command.
+TCL_ERROR	1   	ERROR: Can't find active revision name. Make sure there is an open, active revision name.
+TCL_ERROR	1   	ERROR: Can't find CDB_CHIP_DB_ENTRY. Run Analysis & Synthesis (quartus_map) successfully before using this command.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new one.
+TCL_ERROR	1   	ERROR: Can't load report. Make sure the report exists. Run a successful compilation before using this command.
+TCL_ERROR	1   	ERROR: Can't find Timing Analyzer report. Run the Timing Analyzer (quartus_tan) successfully before using this command.
+TCL_ERROR	1   	ERROR: Can't read timing netlist. Run the Timing Analyzer (quartus_tan) successfully before using this command.
+TCL_ERROR	1   	ERROR: Option -<string> is required for -<string>=<string>. Specify the required option.
+TCL_ERROR	1   	ERROR: Report not loaded for revision name: <string>. Type "load_report" (which belongs to the ::quartus::report package) to load the report.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</list_path>
+
+<<<</1.1>>>>

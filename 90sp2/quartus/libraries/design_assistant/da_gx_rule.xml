@@ -1,0 +1,297 @@
+<ROOT>
+
+<DA_RULE ID="X201" SEVERITY="HIGH" NAME="Register-to-register paths between different clock domains is not recommended if one of the clocks is from GXB transmitter channel." DEFAULT_RUN="yes" >	
+	<REPORTING_ROOT>
+		<MESSAGE NAME="%ARG1%">
+			<MESSAGE_ARGUMENT NAME="ARG1" TYPE="ATTRIBUTE" VALUE="NAME"/>
+			<MESSAGE NAME="Source Node: %ARG2% from clock: %ARG3%"  >			
+				<MESSAGE_ARGUMENT NAME="ARG2" TYPE="NODE" VALUE="NODE_2"/>
+				<MESSAGE_ARGUMENT NAME="ARG3" TYPE="NODE" VALUE="NODE_1"/>
+				<MESSAGE NAME="Destination Node: %ARG4% from clock: %ARG5%" >			
+					<MESSAGE_ARGUMENT NAME="ARG4" TYPE="NODE" VALUE="NODE_3"/>
+					<MESSAGE_ARGUMENT NAME="ARG5" TYPE="NODE" VALUE="CLK_2"/>
+				</MESSAGE>
+			</MESSAGE>
+		</MESSAGE>
+			
+	</REPORTING_ROOT>
+	<RULE_DEFINITION> 
+		<DECLARE>
+			<!-- Node declaration -->
+			<NODE NAME="NODE_1" TYPE="TX" />
+			<NODE NAME="NODE_2" TYPE="REG"/>
+			<NODE NAME="NODE_3" TYPE="REG"/>	
+			<NODE NAME="CLK_2" TYPE="CLK"/>
+		</DECLARE>
+		<BASIC>
+			<!-- Trigger Point for DA rule check -->
+			<NODE_RELATIONSHIP FROM_NAME="NODE_1" TO_NAME="NODE_2" TO_PORT="CLK_PORT"/>	
+		</BASIC>	
+
+		<FORBID>			
+			<NODE_RELATIONSHIP FROM_NAME="NODE_2" TO_NAME="NODE_3" TO_PORT="D_PORT" THROUGH_TYPE="COMB" CLOCK_RELATIONSHIP="ASYN"/>
+			<NODE_RELATIONSHIP FROM_NAME="CLK_2" TO_NAME="NODE_3" TO_PORT="CLK_PORT" THROUGH_TYPE="!CLK, !TX"/>
+			<!-- Design CANNOT have this pattern -->
+			
+	
+		</FORBID>
+		
+	</RULE_DEFINITION>
+</DA_RULE>
+
+<DA_RULE ID="X202" SEVERITY="HIGH" NAME="Register-to-register paths between different clock domains is not recommended if one of the clocks is from GXB receiver channel." DEFAULT_RUN="yes" >	
+	<REPORTING_ROOT>
+		<MESSAGE NAME="%ARG1%">
+			<MESSAGE_ARGUMENT NAME="ARG1" TYPE="ATTRIBUTE" VALUE="NAME"/>
+			<MESSAGE NAME="Source Node: %ARG2% from clock: %ARG3%"  >			
+				<MESSAGE_ARGUMENT NAME="ARG2" TYPE="NODE" VALUE="NODE_2"/>
+				<MESSAGE_ARGUMENT NAME="ARG3" TYPE="NODE" VALUE="NODE_1"/>
+				<MESSAGE NAME="Destination Node: %ARG4% from clock: %ARG5%" >			
+					<MESSAGE_ARGUMENT NAME="ARG4" TYPE="NODE" VALUE="NODE_3"/>
+					<MESSAGE_ARGUMENT NAME="ARG5" TYPE="NODE" VALUE="CLK_2"/>
+				</MESSAGE>
+			</MESSAGE>
+		</MESSAGE>
+			
+	</REPORTING_ROOT>
+	<RULE_DEFINITION> 
+		<DECLARE>
+			<!-- Node declaration -->
+			<NODE NAME="NODE_1" TYPE="RX" />
+			<NODE NAME="NODE_2" TYPE="REG"/>
+			<NODE NAME="NODE_3" TYPE="REG"/>			
+			<NODE NAME="CLK_2" TYPE="CLK"/>
+		</DECLARE>
+		<BASIC>
+			<!-- Trigger Point for DA rule check -->
+			<NODE_RELATIONSHIP FROM_NAME="NODE_1" TO_NAME="NODE_2" TO_PORT="CLK_PORT"/>	
+		</BASIC>	
+
+		<FORBID>			
+			<NODE_RELATIONSHIP FROM_NAME="NODE_2" TO_NAME="NODE_3" TO_PORT="D_PORT" THROUGH_TYPE="COMB" CLOCK_RELATIONSHIP="ASYN"/>
+			<!-- Design CANNOT have this pattern -->
+			<NODE_RELATIONSHIP FROM_NAME="CLK_2" TO_NAME="NODE_3" TO_PORT="CLK_PORT" THROUGH_TYPE="!CLK, !RX"/>
+	
+		</FORBID>
+		
+	</RULE_DEFINITION>
+</DA_RULE>
+
+<DA_RULE ID="X203" SEVERITY="HIGH" NAME="Register-to-register paths between different clock domains is not recommended if one of the clocks is from GXB central clock divider." DEFAULT_RUN="yes" >	
+	<REPORTING_ROOT>
+		<MESSAGE NAME="%ARG1%">
+			<MESSAGE_ARGUMENT NAME="ARG1" TYPE="ATTRIBUTE" VALUE="NAME"/>
+			<MESSAGE NAME="Source Node: %ARG2% from clock: %ARG3%"  >			
+				<MESSAGE_ARGUMENT NAME="ARG2" TYPE="NODE" VALUE="NODE_2"/>
+				<MESSAGE_ARGUMENT NAME="ARG3" TYPE="NODE" VALUE="NODE_1"/>
+				<MESSAGE NAME="Destination Node: %ARG4% from clock: %ARG5%" >			
+					<MESSAGE_ARGUMENT NAME="ARG4" TYPE="NODE" VALUE="NODE_3"/>
+					<MESSAGE_ARGUMENT NAME="ARG5" TYPE="NODE" VALUE="CLK_2"/>
+				</MESSAGE>
+			</MESSAGE>
+		</MESSAGE>
+			
+	</REPORTING_ROOT>
+	<RULE_DEFINITION> 
+		<DECLARE>
+			<!-- Node declaration -->
+			<NODE NAME="NODE_1" TYPE="CLK_DIV" />
+			<NODE NAME="NODE_2" TYPE="REG"/>
+			<NODE NAME="NODE_3" TYPE="REG"/>
+			<NODE NAME="CLK_2" TYPE="CLK"/>
+		</DECLARE>
+		<BASIC>
+			<!-- Trigger Point for DA rule check -->
+			<NODE_RELATIONSHIP FROM_NAME="NODE_1" TO_NAME="NODE_2" TO_PORT="CLK_PORT"/>	
+		</BASIC>	
+
+		<FORBID>			
+			<NODE_RELATIONSHIP FROM_NAME="NODE_2" TO_NAME="NODE_3" TO_PORT="D_PORT" THROUGH_TYPE="COMB" CLOCK_RELATIONSHIP="ASYN"/>
+			<NODE_RELATIONSHIP FROM_NAME="CLK_2" TO_NAME="NODE_3" TO_PORT="CLK_PORT" THROUGH_TYPE="!CLK, !CLK_DIV"/>
+			<!-- Design CANNOT have this pattern -->
+			
+	
+		</FORBID>
+		
+	</RULE_DEFINITION>
+</DA_RULE>
+
+<DA_RULE ID="X204" SEVERITY="HIGH" NAME="Register-to-register paths between different clock domains is not recommended if one of the clocks is from PCI Express hard IP." DEFAULT_RUN="yes" >	
+	<REPORTING_ROOT>
+		<MESSAGE NAME="%ARG1%">
+			<MESSAGE_ARGUMENT NAME="ARG1" TYPE="ATTRIBUTE" VALUE="NAME"/>
+			<MESSAGE NAME="Source Node: %ARG2% from clock: %ARG3%"  >			
+				<MESSAGE_ARGUMENT NAME="ARG2" TYPE="NODE" VALUE="NODE_2"/>
+				<MESSAGE_ARGUMENT NAME="ARG3" TYPE="NODE" VALUE="NODE_1"/>
+				<MESSAGE NAME="Destination Node: %ARG4% from clock: %ARG5%" >			
+					<MESSAGE_ARGUMENT NAME="ARG4" TYPE="NODE" VALUE="NODE_3"/>
+					<MESSAGE_ARGUMENT NAME="ARG5" TYPE="NODE" VALUE="CLK_2"/>
+				</MESSAGE>
+			</MESSAGE>
+		</MESSAGE>
+			
+	</REPORTING_ROOT>
+	<RULE_DEFINITION> 
+		<DECLARE>
+			<!-- Node declaration -->
+			<NODE NAME="NODE_1" TYPE="PCIE_HIP_CLK" />
+			<NODE NAME="NODE_2" TYPE="REG"/>
+			<NODE NAME="NODE_3" TYPE="REG"/>
+			<NODE NAME="CLK_2" TYPE="CLK"/>
+		</DECLARE>
+		<BASIC>
+			<!-- Trigger Point for DA rule check -->
+			<NODE_RELATIONSHIP FROM_NAME="NODE_1" TO_NAME="NODE_2" TO_PORT="CLK_PORT"/>	
+		</BASIC>	
+
+		<FORBID>			
+			<NODE_RELATIONSHIP FROM_NAME="NODE_2" TO_NAME="NODE_3" TO_PORT="D_PORT" THROUGH_TYPE="COMB" CLOCK_RELATIONSHIP="ASYN"/>
+			<NODE_RELATIONSHIP FROM_NAME="CLK_2" TO_NAME="NODE_3" TO_PORT="CLK_PORT" THROUGH_TYPE="!CLK, !PCIE_HIP_CLK"/>
+			<!-- Design CANNOT have this pattern -->
+			
+	
+		</FORBID>
+		
+	</RULE_DEFINITION>
+</DA_RULE>
+
+<DA_RULE ID="X205" SEVERITY="HIGH" NAME="Register-to-register paths between different clock domains is not recommended if one of the clocks is from GXB transmitter channel." DEFAULT_RUN="no" >	
+	<REPORTING_ROOT>
+		<MESSAGE NAME="%ARG1%">
+			<MESSAGE_ARGUMENT NAME="ARG1" TYPE="ATTRIBUTE" VALUE="NAME"/>
+			<MESSAGE NAME="Source Node: %ARG2%"  >			
+				<MESSAGE_ARGUMENT NAME="ARG2" TYPE="NODE" VALUE="NODE_1"/>
+				<MESSAGE NAME="Destination Node: %ARG3% from clock: %ARG4%">			
+					<MESSAGE_ARGUMENT NAME="ARG3" TYPE="NODE" VALUE="NODE_2"/>
+					<MESSAGE_ARGUMENT NAME="ARG4" TYPE="NODE" VALUE="NODE_3"/>
+				</MESSAGE>
+			</MESSAGE>
+		</MESSAGE>
+			
+	</REPORTING_ROOT>
+	<RULE_DEFINITION> 
+		<DECLARE>
+			<!-- Node declaration -->
+			<NODE NAME="NODE_1" TYPE="TX" />
+			<NODE NAME="NODE_2" TYPE="REG"/>
+			<NODE NAME="NODE_3" TYPE="!TX"/>
+		</DECLARE>
+		<BASIC>
+			<!-- Trigger Point for DA rule check -->
+			<NODE_RELATIONSHIP FROM_NAME="NODE_1" TO_NAME="NODE_2"/>	
+		</BASIC>	
+
+		<FORBID>			
+			<NODE_RELATIONSHIP FROM_NAME="NODE_3" TO_NAME="NODE_2" TO_PORT="CLK_PORT" />	
+			<!--<NODE_RELATIONSHIP FROM_NAME="CLK_1" TO_NAME="NODE_2" TO_PORT="CLK_PORT"/>-->
+	
+		</FORBID>
+		
+	</RULE_DEFINITION>
+</DA_RULE>
+
+<DA_RULE ID="X206" SEVERITY="HIGH" NAME="Register-to-register paths between different clock domains is not recommended if one of the clocks is from GXB receiver channel." DEFAULT_RUN="no" >	
+	<REPORTING_ROOT>
+		<MESSAGE NAME="%ARG1%">
+			<MESSAGE_ARGUMENT NAME="ARG1" TYPE="ATTRIBUTE" VALUE="NAME"/>
+			<MESSAGE NAME="Source Node: %ARG2%"  >			
+				<MESSAGE_ARGUMENT NAME="ARG2" TYPE="NODE" VALUE="NODE_1"/>
+				<MESSAGE NAME="Destination Node: %ARG3% from clock: %ARG4%">			
+					<MESSAGE_ARGUMENT NAME="ARG3" TYPE="NODE" VALUE="NODE_2"/>
+					<MESSAGE_ARGUMENT NAME="ARG4" TYPE="NODE" VALUE="NODE_3"/>
+				</MESSAGE>
+			</MESSAGE>
+		</MESSAGE>
+			
+	</REPORTING_ROOT>
+	<RULE_DEFINITION> 
+		<DECLARE>
+			<!-- Node declaration -->
+			<NODE NAME="NODE_1" TYPE="RX" />
+			<NODE NAME="NODE_2" TYPE="REG"/>
+			<NODE NAME="NODE_3" TYPE="!RX"/>
+		</DECLARE>
+		<BASIC>
+			<!-- Trigger Point for DA rule check -->
+			<NODE_RELATIONSHIP FROM_NAME="NODE_1" TO_NAME="NODE_2"/>	
+		</BASIC>	
+
+		<FORBID>			
+			<NODE_RELATIONSHIP FROM_NAME="NODE_3" TO_NAME="NODE_2" TO_PORT="CLK_PORT" />	
+			<!--<NODE_RELATIONSHIP FROM_NAME="CLK_1" TO_NAME="NODE_2" TO_PORT="CLK_PORT"/>-->
+	
+		</FORBID>
+		
+	</RULE_DEFINITION>
+</DA_RULE>
+
+<DA_RULE ID="X207" SEVERITY="HIGH" NAME="Register-to-register paths between different clock domains is not recommended if one of the clocks is from GXB central clock divider." DEFAULT_RUN="no" >	
+	<REPORTING_ROOT>
+		<MESSAGE NAME="%ARG1%">
+			<MESSAGE_ARGUMENT NAME="ARG1" TYPE="ATTRIBUTE" VALUE="NAME"/>
+			<MESSAGE NAME="Source Node: %ARG2%"  >			
+				<MESSAGE_ARGUMENT NAME="ARG2" TYPE="NODE" VALUE="NODE_1"/>
+				<MESSAGE NAME="Destination Node: %ARG3% from clock: %ARG4%">			
+					<MESSAGE_ARGUMENT NAME="ARG3" TYPE="NODE" VALUE="NODE_2"/>
+					<MESSAGE_ARGUMENT NAME="ARG4" TYPE="NODE" VALUE="NODE_3"/>
+				</MESSAGE>
+			</MESSAGE>
+		</MESSAGE>
+			
+	</REPORTING_ROOT>
+	<RULE_DEFINITION> 
+		<DECLARE>
+			<!-- Node declaration -->
+			<NODE NAME="NODE_1" TYPE="CLK_DIV" />
+			<NODE NAME="NODE_2" TYPE="REG"/>
+			<NODE NAME="NODE_3" TYPE="!CLK_DIV"/>
+		</DECLARE>
+		<BASIC>
+			<!-- Trigger Point for DA rule check -->
+			<NODE_RELATIONSHIP FROM_NAME="NODE_1" TO_NAME="NODE_2"/>	
+		</BASIC>	
+
+		<FORBID>			
+			<NODE_RELATIONSHIP FROM_NAME="NODE_3" TO_NAME="NODE_2" TO_PORT="CLK_PORT" />	
+			<!--<NODE_RELATIONSHIP FROM_NAME="CLK_1" TO_NAME="NODE_2" TO_PORT="CLK_PORT"/>-->
+	
+		</FORBID>
+		
+	</RULE_DEFINITION>
+</DA_RULE>
+
+<DA_RULE ID="X208" SEVERITY="HIGH" NAME="Register-to-register paths between different clock domains is not recommended if one of the clocks is from PCI Express hard IP." DEFAULT_RUN="no" >	
+	<REPORTING_ROOT>
+		<MESSAGE NAME="%ARG1%">
+			<MESSAGE_ARGUMENT NAME="ARG1" TYPE="ATTRIBUTE" VALUE="NAME"/>
+			<MESSAGE NAME="Source Node: %ARG2%"  >			
+				<MESSAGE_ARGUMENT NAME="ARG2" TYPE="NODE" VALUE="NODE_1"/>
+				<MESSAGE NAME="Destination Node: %ARG3% from clock: %ARG4%">			
+					<MESSAGE_ARGUMENT NAME="ARG3" TYPE="NODE" VALUE="NODE_2"/>
+					<MESSAGE_ARGUMENT NAME="ARG4" TYPE="NODE" VALUE="NODE_3"/>
+				</MESSAGE>
+			</MESSAGE>
+		</MESSAGE>
+			
+	</REPORTING_ROOT>
+	<RULE_DEFINITION> 
+		<DECLARE>
+			<!-- Node declaration -->
+			<NODE NAME="NODE_1" TYPE="PCIE_HIP_CLK" />
+			<NODE NAME="NODE_2" TYPE="REG"/>
+			<NODE NAME="NODE_3" TYPE="!PCIE_HIP_CLK"/>
+		</DECLARE>
+		<BASIC>
+			<!-- Trigger Point for DA rule check -->
+			<NODE_RELATIONSHIP FROM_NAME="NODE_1" TO_NAME="NODE_2"/>	
+		</BASIC>	
+
+		<FORBID>			
+			<NODE_RELATIONSHIP FROM_NAME="NODE_3" TO_NAME="NODE_2" TO_PORT="CLK_PORT" />	
+			<!--<NODE_RELATIONSHIP FROM_NAME="CLK_1" TO_NAME="NODE_2" TO_PORT="CLK_PORT"/>-->
+	
+		</FORBID>
+		
+	</RULE_DEFINITION>
+</DA_RULE>
+</ROOT>

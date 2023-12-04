@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<!-- BREAK_ADDRESS.gtf - This "subroutine" returns the break address for
+                         the indicated cpu.
+     Inputs:
+        CPU            - the name of the CPU's PTF module
+
+     Returns:
+        BREAK_ADDRESS  - the break address for the indicated CPU
+-->     
+
+<generate_set>
+
+    <!-- only set BREAK_ADDRESS if it hasn't already been set
+         (since this GTF may be included multiple times) -->
+    <if condition="not( %BREAK_ADDRESS% )">
+
+        <set_variable variable="BREAK_SLAVE"
+                      ptf_path="SYSTEM/MODULE %CPU%/WIZARD_SCRIPT_ARGUMENTS/break_slave"/>
+        <set_variable variable="BREAK_SLAVE_MODULE" to="split( %BREAK_SLAVE%, /, 0 )"/>
+        <set_variable variable="BREAK_SLAVE_SLAVE"  to="split( %BREAK_SLAVE%, /, 1 )"/>
+        <set_variable variable="BREAK_BASE_ADDRESS"
+                      ptf_path="SYSTEM/MODULE %BREAK_SLAVE_MODULE%/SLAVE %BREAK_SLAVE_SLAVE%/SYSTEM_BUILDER_INFO/Base_Address"/>
+        <set_variable variable="BREAK_OFFSET"
+                      ptf_path="SYSTEM/MODULE %CPU%/WIZARD_SCRIPT_ARGUMENTS/break_offset"/>
+        <set_variable variable="BREAK_ADDRESS" to="add( %BREAK_BASE_ADDRESS%, %BREAK_OFFSET% )"/>
+
+    </if>
+
+</generate_set>

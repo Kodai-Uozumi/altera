@@ -1,0 +1,223 @@
+-- **************************************************************************
+--	Dual-Port-EAB based FIFO Parameterized Megafunction - A_DPFIFO
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 1.0
+--
+--------------------------------------------------------------------
+-- 
+-- For a description of the parameters and ports, see SCFIFO.
+--
+-- Altera recommends not to use this design directly.
+-- Use SCFIFO instead with USE_EAB="ON" and a FLEX10KE device
+--
+-- **************************************************************************
+
+OPTIONS NAME_SUBSTITUTION = ON;
+
+include "lpm_counter";
+include "a_fefifo";
+include "altdpram";
+
+-------------------------------------------------------------------------------
+parameters
+(
+	LPM_WIDTH,
+	LPM_NUMWORDS,
+
+	LPM_SHOWAHEAD = "OFF",
+	UNDERFLOW_CHECKING = "ON",
+	OVERFLOW_CHECKING = "ON",
+	ALLOW_RWCYCLE_WHEN_FULL = "OFF",
+	DEVICE_FAMILY,
+	CBXI_PARAMETER = "NOTHING"
+);
+FUNCTION @CBXI_PARAMETER (data[LPM_WIDTH-1..0], wreq, rreq, clock, aclr, sclr) RETURNS (q[LPM_WIDTH-1..0], empty, full, almost_full, almost_empty, usedw[ceil(log2(LPM_NUMWORDS))-1..0]);
+
+INCLUDE "aglobal90";
+
+constant WIDTHAD = ceil(log2(LPM_NUMWORDS));
+
+-------------------------------------------------------------------------------
+subdesign a_dpfifo
+(
+	data[LPM_WIDTH-1..0]		: input;
+	q[LPM_WIDTH-1..0]			: output;
+
+	wreq, rreq					: input;
+	clock						: input;
+	aclr, sclr					: input = gnd;
+
+	empty, full					: output;
+	usedw[WIDTHAD-1..0]			: output;
+)
+
+-------------------------------------------------------------------------------
+variable
+	IF (CBXI_PARAMETER == "NOTHING") GENERATE
+		valid_wreq, valid_rreq, rd_ptr[WIDTHAD-1..0]: node;
+		wr_ptr: lpm_counter with( LPM_WIDTH=WIDTHAD );
+		IF FAMILY_STRATIX() != 1 GENERATE
+			rd_ptr_lsb: dffe;
+			if WIDTHAD>1 generate rd_ptr_msb: lpm_counter with( LPM_WIDTH=WIDTHAD-1 ); end generate;
+		ELSE GENERATE
+			rd_ptr_count : lpm_counter with ( LPM_WIDTH=WIDTHAD );
+		END GENERATE;
+
+		if (LPM_SHOWAHEAD=="OFF") & (FAMILY_STRATIX() != 1) generate
+			FIFOram: altdpram with( WIDTH=LPM_WIDTH, WIDTHAD=WIDTHAD, RDCONTROL_ACLR="OFF", OUTDATA_REG="OUTCLOCK", SUPPRESS_MEMORY_CONVERSION_WARNINGS = "ON" );
+		else generate
+			FIFOram: altdpram with( WIDTH=LPM_WIDTH, WIDTHAD=WIDTHAD, RDCONTROL_ACLR="OFF", SUPPRESS_MEMORY_CONVERSION_WARNINGS = "ON" );
+		end generate;
+
+		fifo_state: a_fefifo with( LPM_WIDTHAD=WIDTHAD, LPM_NUMWORDS=LPM_NUMWORDS, UNDERFLOW_CHECKING=UNDERFLOW_CHECKING, OVERFLOW_CHECKING=OVERFLOW_CHECKING, ALLOW_RWCYCLE_WHEN_FULL=ALLOW_RWCYCLE_WHEN_FULL );
+	ELSE GENERATE
+		auto_generated : @CBXI_PARAMETER WITH (CBXI_PARAMETER = "NOTHING");
+	END GENERATE;
+
+-------------------------------------------------------------------------------
+begin
+	IF CBXI_PARAMETER == "NOTHING" GENERATE
+		assert (LPM_WIDTH>=1)
+				report "Value of LPM_WIDTH parameter must be at least 1"
+				severity error
+				help_id DPFIFO_WIDTH;
+
+		assert (LPM_NUMWORDS>=2)
+				report "Value of LPM_NUMWORDS parameter must be at least 2"
+				severity error
+				help_id DPFIFO_NUMWORDS;
+
+	--------------------------------------------------------------------
+		assert (LPM_SHOWAHEAD=="ON") or (LPM_SHOWAHEAD=="OFF")
+				report "Assign either ""ON"" or ""OFF"" to LPM_SHOWAHEAD"
+				severity error
+				help_id DPFIFO_SHOWAHEAD;
+
+		assert !((FAMILY_STRATIX() == 1) & (LPM_SHOWAHEAD=="ON"))
+				report "Stratix does not support a fifo with LPM_SHOWAHEAD = ""ON"""
+				severity error
+				help_id DPFIFO_STRATIX_SHOWAHEAD;
+
+		assert (UNDERFLOW_CHECKING=="ON") or (UNDERFLOW_CHECKING=="OFF")
+				report "Assign either ""ON"" or ""OFF"" to UNDERFLOW_CHECKING"
+				severity error
+				help_id DPFIFO_UNDERFLOW_CHECKING;
+
+		assert (OVERFLOW_CHECKING=="ON") or (OVERFLOW_CHECKING=="OFF")
+				report "Assign either ""ON"" or ""OFF"" to OVERFLOW_CHECKING"
+				severity error
+				help_id DPFIFO_OVERFLOW_CHECKING;
+
+		assert (ALLOW_RWCYCLE_WHEN_FULL=="ON") or (ALLOW_RWCYCLE_WHEN_FULL=="OFF")
+				report "Assign either ""ON"" or ""OFF"" to ALLOW_RWCYCLE_WHEN_FULL"
+				severity error
+				help_id DPFIFO_ALLOW_RWCYCLE_WHEN_FULL;
+
+	--------------------------------------------------------------------
+		if UNDERFLOW_CHECKING=="OFF" generate
+			valid_rreq = rreq;
+		else generate
+			valid_rreq = rreq and !empty;
+		end generate; 
+
+		if OVERFLOW_CHECKING=="OFF" generate
+			valid_wreq = wreq;
+		else generate
+			if ALLOW_RWCYCLE_WHEN_FULL=="ON" generate
+				valid_wreq = wreq and (!full or rreq);
+			else generate
+				valid_wreq = wreq and !full;
+			end generate; 
+		end generate;
+
+	--------------------------------------------------------------------
+		wr_ptr.(cnt_en, aclr, sclr, clock) = (valid_wreq, aclr, sclr, clock);
+		IF FAMILY_STRATIX() != 1 GENERATE
+			rd_ptr_lsb.(d, ena, clrn, clk) = (!rd_ptr_lsb and !sclr, valid_rreq or sclr, !aclr, clock);
+			rd_ptr[0] = !rd_ptr_lsb;
+			if WIDTHAD>1 generate 
+				rd_ptr_msb.(cnt_en, aclr, sclr, clock) = (valid_rreq and !rd_ptr_lsb, aclr, sclr, clock);
+				rd_ptr[WIDTHAD-1..1] = rd_ptr_msb.q[];
+			end generate;
+		ELSE GENERATE
+			rd_ptr_count.(cnt_en, aclr, sclr, clock) = (valid_rreq, aclr, sclr, clock);
+			rd_ptr[] = rd_ptr_count.q[];
+		END GENERATE;
+
+	--------------------------------------------------------------------
+		FIFOram.data[] = data[];
+		q[] = FIFOram.q[];
+
+		FIFOram.wraddress[] = wr_ptr.q[];
+		FIFOram.rdaddress[] = rd_ptr[] and !sclr;
+		IF USED(aclr) & (FAMILY_STRATIX() != 1) GENERATE
+			FIFOram.(inclock, outclock, wren, outclocken, aclr) = (clock, clock, valid_wreq, valid_rreq or sclr, aclr);
+		ELSE GENERATE
+			FIFOram.(inclock, outclock, wren, outclocken) = (clock, clock, valid_wreq, valid_rreq or sclr);
+		END GENERATE;
+
+		fifo_state.(wreq, rreq, aclr, sclr, clock) = (wreq, rreq, aclr, sclr, clock);
+
+		(usedw[], empty, full) = fifo_state.(usedw_out[], empty, full);
+	ELSE GENERATE
+		IF USED(data) GENERATE
+			auto_generated.data[] = data[];
+		END GENERATE;
+		IF USED(wreq) GENERATE
+			auto_generated.wreq = wreq;
+		END GENERATE;
+		IF USED(rreq) GENERATE
+			auto_generated.rreq = rreq;
+		END GENERATE;
+		IF USED(clock) GENERATE
+			auto_generated.clock = clock;
+		END GENERATE;
+		IF USED(aclr) GENERATE
+			auto_generated.aclr = aclr;
+		END GENERATE;
+		IF USED(sclr) GENERATE
+			auto_generated.sclr = sclr;
+		END GENERATE;
+		IF USED(q) GENERATE
+			q[] = auto_generated.q[];
+		END GENERATE;
+		IF USED(empty) GENERATE
+			empty = auto_generated.empty;
+		END GENERATE;
+		IF USED(full) GENERATE
+			full = auto_generated.full;
+		END GENERATE;
+		IF USED(usedw) GENERATE
+			usedw[] = auto_generated.usedw[];
+		END GENERATE;
+	END GENERATE;
+	IF !USED(usedw) GENERATE
+		usedw[] = GND;
+	END GENERATE;
+	IF !USED(q) GENERATE
+		q[] = GND;
+	END GENERATE;
+	IF !USED(empty) GENERATE
+		empty = GND;
+	END GENERATE;
+	IF !USED(full) GENERATE
+		full = GND;
+	END GENERATE;
+end;
+

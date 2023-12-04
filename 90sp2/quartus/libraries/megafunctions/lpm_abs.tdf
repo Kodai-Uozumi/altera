@@ -1,0 +1,121 @@
+--------------------------------------------------------------------
+--
+--	LPM_ABS Parameterized Megafunction
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 3.0
+--
+--------------------------------------------------------------------
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+
+INCLUDE "lpm_add_sub.inc";
+
+PARAMETERS
+(
+	LPM_WIDTH,
+	ADDERTYPE = "DEFAULT"	% Default should choose best for architecture %,
+	DEVICE_FAMILY,
+	CARRY_CHAIN = "MANUAL"
+);
+
+INCLUDE "aglobal90.inc";	% device family definitions %
+
+DEFINE OPTIMIZE_WITH_CHAINS() = (FAMILY_FLEX() == 1) & (FAMILY_STRATIXII() != 1 & FAMILY_CYCLONEII() != 1) & USE_CARRY_CHAINS();
+SUBDESIGN lpm_abs
+(
+	data[LPM_WIDTH-1..0]		: INPUT = GND;
+	result[LPM_WIDTH-1..0]		: OUTPUT;
+	overflow					: OUTPUT;
+)
+
+VARIABLE
+
+	IF LPM_WIDTH > 4 GENERATE
+	 	   IF OPTIMIZE_WITH_CHAINS() GENERATE
+
+			lcarry[LPM_WIDTH - 1..0]	: CARRY_SUM;
+			
+		ELSE GENERATE
+			adder	: lpm_add_sub WITH (LPM_WIDTH=LPM_WIDTH,
+										LPM_DIRECTION="ADD",
+										ADDERTYPE=ADDERTYPE);
+		END GENERATE;
+	END GENERATE;
+								
+
+BEGIN
+	ASSERT (FAMILY_IS_KNOWN() == 1)
+		REPORT "Megafunction lpm_abs does not recognize the current device family (%) -- ensure that you are using the newest version of the megafunction"
+			DEVICE_FAMILY
+		SEVERITY WARNING
+		HELP_ID LPM_ABS_FAMILY_UNKNOWN;
+
+	IF LPM_WIDTH == 1 GENERATE
+		result[0] = data[0];
+	ELSE GENERATE
+		IF LPM_WIDTH == 2 GENERATE
+			result[0] = data[0];
+			result[1] = data[1] & !data[0];
+			
+		ELSE GENERATE
+			IF LPM_WIDTH == 3 GENERATE
+				result[0] = data[0];
+				result[1] = ((data[1] $ data[0]) & data[2]) # (data[1] & !data[2]);
+				result[2] = data[2] & !(data[1] # data[0]);
+				
+			ELSE GENERATE
+				IF LPM_WIDTH == 4 GENERATE
+					result[0] = data[0];
+					result[1] = ((data[1] $ data[0]) & data[3]) # (data[1] & !data[3]);
+					result[2] = ((data[2] $ (data[1] # data[0])) & data[3]) # (data[2] & !data[3]);
+					result[3] = data[3] & !(data[2] # data[1] # data[0]);
+					
+				ELSE GENERATE
+		 			-- for the FLEX/FAST case, we can utilize a carry chain structure to speed up
+					-- the operation. Will use the carry/output equations directly instead of
+					-- using lpm_add_sub.
+						IF OPTIMIZE_WITH_CHAINS() GENERATE
+						lcarry[0].sin = data[0];
+						lcarry[0].cin = !data[0] & data[LPM_WIDTH - 1];
+						lcarry[LPM_WIDTH - 1..1].sin = (data[LPM_WIDTH - 1] $ data[LPM_WIDTH - 1..1]) $ lcarry[LPM_WIDTH - 2..0].cout;
+						lcarry[LPM_WIDTH - 1..1].cin = (data[LPM_WIDTH - 1] $ data[LPM_WIDTH - 1..1]) & lcarry[LPM_WIDTH - 2..0].cout;
+
+						result[] = (lcarry[LPM_WIDTH - 1..1].sout, data[0]);
+					ELSE GENERATE
+						-- for the FLEX/NORMAL and MAX cases, use lpm_add_sub module.
+						adder.dataa[] = data[] $ data[LPM_WIDTH-1];
+						adder.datab[] = GND;
+						adder.cin = data[LPM_WIDTH-1];
+						result[] = adder.result[];
+	
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+
+	-- Overflow occured only if input was negative and ouput is negative 
+	overflow = result[LPM_WIDTH-1] & data[LPM_WIDTH-1];
+
+	IF !USED(overflow) GENERATE
+		overflow = GND;
+	END GENERATE;
+	IF !USED(result) GENERATE
+		result[] = GND;
+	END GENERATE;
+END;

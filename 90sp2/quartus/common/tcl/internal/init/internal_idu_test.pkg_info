@@ -1,0 +1,14 @@
+# Add ::quartus::internal_idu_test to the table of packages
+lappend quartus(package_table) {internal_idu_test quartus_sh hidden}
+
+if {[lsearch -exact [list quartus quartus_cdb quartus_sh quartus_tan] $quartus(nameofexecutable)] != -1} {
+
+    # Make ::quartus::internal_idu_test available to load
+    set qpkg_script_auto [file join [file dirname [info script]] internal_idu_test.tcl]
+    if {[file exist $qpkg_script_auto]} {
+       source $qpkg_script_auto
+    }
+    unset qpkg_script_auto
+
+}
+

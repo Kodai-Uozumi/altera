@@ -1,0 +1,189 @@
+--------------------------------------------------------------------
+--
+--	LPM_RAM_DP Parameterized Megafunction
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 1.0
+--
+--------------------------------------------------------------------
+
+INCLUDE "altdpram.inc";
+INCLUDE "lpm_mux.inc";
+INCLUDE "lpm_decode.inc";
+
+CONSTANT NO_FILE = "UNUSED";
+
+PARAMETERS
+(
+	LPM_WIDTH,
+	LPM_WIDTHAD,
+	LPM_NUMWORDS = 2^LPM_WIDTHAD,
+	LPM_INDATA = "REGISTERED",
+	LPM_RDADDRESS_CONTROL = "REGISTERED",
+	LPM_WRADDRESS_CONTROL = "REGISTERED",
+	LPM_OUTDATA = "REGISTERED",
+	LPM_FILE = NO_FILE,
+	USE_EAB = "ON",
+	DEVICE_FAMILY
+);
+
+INCLUDE "aglobal90.inc";
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+
+CONSTANT NUMWORDS = (LPM_NUMWORDS == 0) ? 2^LPM_WIDTHAD : LPM_NUMWORDS;
+CONSTANT RA_REG = (LPM_RDADDRESS_CONTROL == "REGISTERED") ? "OUTCLOCK" : "UNREGISTERED";
+CONSTANT WA_REG = (LPM_WRADDRESS_CONTROL == "REGISTERED") ? "INCLOCK" : "UNREGISTERED";
+CONSTANT D_REG = (LPM_INDATA == "REGISTERED") ? "INCLOCK" : "UNREGISTERED";
+CONSTANT Q_REG = (LPM_OUTDATA == "REGISTERED") ? "OUTCLOCK" : "UNREGISTERED";
+
+SUBDESIGN lpm_ram_dp
+(
+	data[LPM_WIDTH-1..0]		: INPUT;
+	rdaddress[LPM_WIDTHAD-1..0]	: INPUT = GND;
+	wraddress[LPM_WIDTHAD-1..0]	: INPUT = GND;
+	rdclock						: INPUT = VCC;
+	rdclken						: INPUT = VCC;
+	wrclock						: INPUT = VCC;
+	wrclken						: INPUT = VCC;
+	rden						: INPUT = VCC;
+	wren						: INPUT;
+	q[LPM_WIDTH-1..0]			: OUTPUT;
+)
+
+VARIABLE
+
+	IF (LPM_FILE == NO_FILE) GENERATE
+		sram	: altdpram WITH (WIDTH=LPM_WIDTH,
+							WIDTHAD=LPM_WIDTHAD,
+							NUMWORDS=NUMWORDS,
+							RDADDRESS_REG=RA_REG,
+							RDCONTROL_REG=(USED(rden) ? RA_REG : "UNREGISTERED"),
+							OUTDATA_REG=Q_REG,
+							INDATA_REG=D_REG,
+							WRADDRESS_REG=WA_REG,
+							WRCONTROL_REG=WA_REG);
+	ELSE GENERATE -- With FILE
+		sram	: altdpram WITH (WIDTH=LPM_WIDTH,
+							WIDTHAD=LPM_WIDTHAD,
+							NUMWORDS=NUMWORDS,
+							FILE=LPM_FILE,
+							RDADDRESS_REG=RA_REG,
+							RDCONTROL_REG=(USED(rden) ? RA_REG : "UNREGISTERED"),
+							OUTDATA_REG=Q_REG,
+							INDATA_REG=D_REG,
+							WRADDRESS_REG=WA_REG,
+							WRCONTROL_REG=WA_REG);
+	END GENERATE;
+
+BEGIN
+
+	ASSERT (LPM_WIDTH > 0)
+			REPORT "Value of LPM_WIDTH parameter must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID L_DPRAM_WIDTH;
+
+	ASSERT (LPM_WIDTHAD > 0)
+			REPORT "Value of LPM_WIDTHAD parameter must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID L_DPRAM_WIDTHAD;
+
+	ASSERT (NUMWORDS > 2^(LPM_WIDTHAD-1) & NUMWORDS <= 2^LPM_WIDTHAD)
+			REPORT "Value of LPM_NUMWORDS parameter requires % address lines, but LPM_WIDTHAD value, which defines the number of address lines, is %"
+				CEIL(LOG2(NUMWORDS)), LPM_WIDTHAD
+			SEVERITY ERROR
+			HELP_ID L_DPRAM_NUMWORDS;
+
+	ASSERT (LPM_INDATA == "REGISTERED" # LPM_INDATA == "UNREGISTERED")
+			REPORT "Illegal value for LPM_INDATA parameter (%) -- value must be REGISTERED (the default) or UNREGISTERED"
+				LPM_INDATA
+			SEVERITY ERROR
+			HELP_ID L_DPRAM_INDATA;
+
+	ASSERT (LPM_RDADDRESS_CONTROL == "REGISTERED" # LPM_RDADDRESS_CONTROL == "UNREGISTERED")
+			REPORT "Illegal value for LPM_RDADDRESS_CONTROL parameter (%) -- value must be REGISTERED (the default) or UNREGISTERED"
+				LPM_RDADDRESS_CONTROL
+			SEVERITY ERROR
+			HELP_ID L_DPRAM_RDADDRESS_CONTROL;
+
+	ASSERT (LPM_WRADDRESS_CONTROL == "REGISTERED" # LPM_WRADDRESS_CONTROL == "UNREGISTERED")
+			REPORT "Illegal value for LPM_WRADDRESS_CONTROL parameter (%) -- value must be REGISTERED (the default) or UNREGISTERED"
+				LPM_WRADDRESS_CONTROL
+			SEVERITY ERROR
+			HELP_ID L_DPRAM_WRADDRESS_CONTROL;
+
+	ASSERT (LPM_OUTDATA == "REGISTERED" # LPM_OUTDATA == "UNREGISTERED")
+			REPORT "Illegal value for LPM_OUTDATA parameter (%) -- value must be REGISTERED or UNREGISTERED (the default)"
+				LPM_OUTDATA
+			SEVERITY ERROR
+			HELP_ID L_DPRAM_OUTDATA;
+
+	ASSERT (  (  LPM_OUTDATA== "REGISTERED"
+			   # LPM_RDADDRESS_CONTROL == "REGISTERED"
+			   # USED(rdclock) == 0)
+			& (  ( LPM_OUTDATA== "UNREGISTERED"
+				 & LPM_RDADDRESS_CONTROL == "UNREGISTERED")
+			   # USED(rdclock)))
+			REPORT "Values of LPM_OUTDATA (%) and/or LPM_RDADDRESS_CONTROL (%) parameters are not consistent with the use of the rdclock port"
+				LPM_OUTDATA, LPM_RDADDRESS_CONTROL
+			SEVERITY ERROR
+			HELP_ID L_DPRAM_OUTDATA_CLOCK;
+
+	ASSERT (  (  LPM_INDATA == "REGISTERED"
+			   # LPM_WRADDRESS_CONTROL == "REGISTERED"
+			   # USED(wrclock) == 0)
+			& (  ( LPM_INDATA == "UNREGISTERED"
+				 & LPM_WRADDRESS_CONTROL == "UNREGISTERED")
+			   # USED(wrclock)))
+			REPORT "Values of LPM_INDATA (%) and/or LPM_WRADDRESS_CONTROL (%) parameters are not consistent with the use of the wrclock port"
+				LPM_INDATA, LPM_WRADDRESS_CONTROL
+			SEVERITY ERROR
+			HELP_ID L_DPRAM_INDATA_CLOCK;
+
+	ASSERT (FAMILY_IS_KNOWN() == 1)
+			REPORT "Megafunction l_dpram does not recognize the current device family (%) -- ensure that you are using the newest version of the megafunction"
+				DEVICE_FAMILY
+			SEVERITY WARNING
+			HELP_ID L_DPRAM_FAMILY_UNKNOWN;
+
+	sram.data[] = data[];
+	sram.rdaddress[] = rdaddress[];
+	sram.wraddress[] = wraddress[];
+	IF (USED(wren)) GENERATE
+		sram.wren = wren;
+	END GENERATE;
+	IF (USED(wrclock)) GENERATE
+		sram.inclock = wrclock;
+	END GENERATE;
+	IF (USED(wrclken)) GENERATE
+		sram.inclocken = wrclken;
+	END GENERATE;
+	IF (USED(rden)) GENERATE
+		sram.rden = rden;
+	END GENERATE;
+	IF (USED(rdclock)) GENERATE
+		sram.outclock = rdclock;
+	END GENERATE;
+	IF (USED(rdclken)) GENERATE
+		sram.outclocken = rdclken;
+	END GENERATE;
+	q[] = sram.q[];
+
+	IF !USED(q) GENERATE
+		q[] = GND;
+	END GENERATE;
+END;

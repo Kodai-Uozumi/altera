@@ -1,0 +1,37 @@
+## Sample primetime script for quartus netlists( QII 1.0 and later).
+## In this example, design name is 'deepest', and its an apex20ke
+## verilog atom netlist.
+## This file could be source'ed from primetime GUI.
+
+#### START SETUP FOR ALL DESIGNS ##################3
+
+set hierarchy_separator  .
+
+## primetime only accepts forward slashes as directory separators
+regsub -all {\\} $env(QUARTUS_ROOTDIR) / quartus_root
+
+set search_path [list . [format "%s%s" $quartus_root "/eda/synopsys/primetime/lib"]  ]
+
+## apex20ke library
+set link_path [list * apex20ke_asynch_io_lib.db apex20ke_asynch_mem_lib.db alt_vtl.db apex20ke_pterm_lib.db apex20ke_asynch_lcell_lib.db apex20ke_lcell_register_lib.db apex20ke_cam_lib.db apex20ke_pll_lib.db apex20ke_lvds_transmitter_lib.db apex20ke_lvds_receiver_lib.db]
+
+## read in all the structural models
+read_verilog apex20ke_all_pt.v
+##for vhdl: read_vhdl apex20ke_all_pt.vhd
+
+link
+
+#### END SETUP FOR ALL DESIGNS ##################3
+
+set design deepest
+
+read_verilog -hdl_compiler [format "%s%s" $design ".vo"]
+##for vhdl: read_vhdl [format "%s%s" $design ".vho"]
+
+current_design $design
+link
+
+read_sdf [format "%s%s" $design "_v.sdo"]
+## for vhdl: read_sdf [format "%s%s" $design "_vhd.sdo"]
+
+## Now we are ready to do timing analysis

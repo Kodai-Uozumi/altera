@@ -1,0 +1,17 @@
+INCLUDE "lpm_mux.inc";
+
+subdesign 41mux
+(
+	data[3..0]	: input;
+	sel[1..0]	: input;
+	result		: output;
+)
+
+BEGIN
+	result = lpm_mux(.data[3..0][0]=data[], .sel[1..0]=sel[])
+    			WITH (LPM_SIZE=4, LPM_WIDTH=1, LPM_WIDTHS=2);
+	IF !USED(result) GENERATE
+		result = GND;
+	END GENERATE;
+END;
+

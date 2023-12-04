@@ -1,0 +1,1 @@
+FUNCTION digit_tracker (denominator[WIDTH - 1..0]) WITH (WIDTH) RETURNS (out[WIDTH - 1..0]);

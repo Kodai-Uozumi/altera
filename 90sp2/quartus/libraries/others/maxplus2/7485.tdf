@@ -1,0 +1,69 @@
+TITLE "Top-level file for the 7485 macrofunction.  Chooses a device-family optimized implementation."; 
+FUNCTION p7485 (a[3..0], b[3..0], agbi, albi, aebi)
+    RETURNS (agbo, albo, aebo);
+FUNCTION f7485 (a[3..0], b[3..0], agbi, albi, aebi)
+    RETURNS (agbo, albo, aebo);
+
+PARAMETERS
+(
+	DEVICE_FAMILY
+);
+INCLUDE "aglobal.inc";
+
+SUBDESIGN 7485
+(
+	a[3..0]          : INPUT = VCC;
+	b[3..0]          : INPUT = VCC;
+	agbi             : INPUT = VCC;
+	albi             : INPUT = VCC;
+	aebi             : INPUT = VCC;
+	agbo             : OUTPUT;
+	albo             : OUTPUT;
+	aebo             : OUTPUT;
+)
+
+VARIABLE
+	IF (FAMILY_FLEX() == 1) GENERATE
+		sub  : f7485;
+	ELSE GENERATE
+		sub  : p7485;
+	END GENERATE;
+
+BEGIN
+	IF (USED(a0)) GENERATE
+		sub.a0 = a0;
+	END GENERATE;
+	IF (USED(a1)) GENERATE
+		sub.a1 = a1;
+	END GENERATE;
+	IF (USED(a2)) GENERATE
+		sub.a2 = a2;
+	END GENERATE;
+	IF (USED(a3)) GENERATE
+		sub.a3 = a3;
+	END GENERATE;
+	IF (USED(b0)) GENERATE
+		sub.b0 = b0;
+	END GENERATE;
+	IF (USED(b1)) GENERATE
+		sub.b1 = b1;
+	END GENERATE;
+	IF (USED(b2)) GENERATE
+		sub.b2 = b2;
+	END GENERATE;
+	IF (USED(b3)) GENERATE
+		sub.b3 = b3;
+	END GENERATE;
+	IF (USED(agbi)) GENERATE
+		sub.agbi = agbi;
+	END GENERATE;
+	IF (USED(albi)) GENERATE
+		sub.albi = albi;
+	END GENERATE;
+	IF (USED(aebi)) GENERATE
+		sub.aebi = aebi;
+	END GENERATE;
+	agbo = sub.agbo;
+	albo = sub.albo;
+	aebo = sub.aebo;
+END;

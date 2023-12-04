@@ -1,0 +1,20 @@
+# Add ::quartus::insystem_source_probe to the table of packages
+lappend quartus(package_table) {insystem_source_probe quartus_stp generic}
+
+if {[lsearch -exact [list quartus_stp] $quartus(nameofexecutable)] != -1} {
+
+    # Make ::quartus::insystem_source_probe available to load
+    set qpkg_script_auto [file join [file dirname [info script]] insystem_source_probe.tcl]
+    if {[file exist $qpkg_script_auto]} {
+       source $qpkg_script_auto
+    }
+    unset qpkg_script_auto
+
+}
+
+if {[lsearch -exact [list quartus_stp] $quartus(nameofexecutable)] != -1} {
+
+    # Load ::quartus::insystem_source_probe by default
+    package require ::quartus::insystem_source_probe
+
+}

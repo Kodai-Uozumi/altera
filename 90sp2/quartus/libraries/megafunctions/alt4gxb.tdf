@@ -1,0 +1,865 @@
+------------------------------------------------------------------
+-- alt4gxb parameterized megafunction
+-- Generated with 'clearbox' loader - do not edit
+------------------------------------------------------------------
+
+
+-- Copyright (C) 1991-2009 Altera Corporation
+--  Your use of Altera Corporation's design tools, logic functions 
+--  and other software and tools, and its AMPP partner logic 
+--  functions, and any output files from any of the foregoing 
+--  (including device programming or simulation files), and any 
+--  associated documentation or information are expressly subject 
+--  to the terms and conditions of the Altera Program License 
+--  Subscription Agreement, Altera MegaCore Function License 
+--  Agreement, or other applicable license agreement, including, 
+--  without limitation, that your use is for the sole purpose of 
+--  programming logic devices manufactured by Altera and sold by 
+--  Altera or its authorized distributors.  Please refer to the 
+--  applicable agreement for further details.
+
+--  Version 9.0 Build 235 06/17/2009
+
+OPTIONS NAME_SUBSTITUTION = ON;
+
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+
+PARAMETERS
+(
+	advanced_calibration_clocking = "false",
+	base_data_rate = "UNUSED",
+	clk_div_use_vco_bypass = "false",
+	cmu_clk_div_use_coreclk_out_post_divider = "false",
+	cmu_offset_all_errors_align = "false",
+	cmu_pll_inclk_log_index = 0,
+	cmu_pll_log_index = 0,
+	cmu_pll_reconfig_inclk_log_index = 0,
+	cmu_pll_reconfig_log_index = 0,
+	effective_data_rate = "UNUSED",
+	elec_idle_infer_enable = "false",
+	enable_0ppm = "false",
+	enable_adce = "false",
+	enable_lc_tx_pll = "false",
+	enable_pcie_gen2_x8_es = "false",
+	enable_pll_cascade = "false",
+	enable_pll_inclk_drive_rx_cru = "false",
+	enable_pma_direct = "false",
+	enable_pma_xn_bonding = "false",
+	equalizer_ctrl_a_setting = 7,
+	equalizer_ctrl_b_setting = 7,
+	equalizer_ctrl_c_setting = 7,
+	equalizer_ctrl_d_setting = 7,
+	equalizer_ctrl_v_setting = 7,
+	equalizer_dcgain_setting = 0,
+	gen_reconfig_pll = "false",
+	gx_channel_type = "auto",
+	gxb_analog_power = "AUTO",
+	gxb_powerdown_width = 1,
+	hip_enable = "false",
+	input_clock_frequency = "UNUSED",
+	intended_device_speed_grade = "UNUSED",
+	intended_device_variant = "UNUSED",
+	loopback_mode = "none",
+	number_of_channels = 1,
+	number_of_quads = 1,
+	operation_mode = "duplex",
+	pcie_sw_width = 1,
+	pll_control_width = 1,
+	pll_pfd_fb_mode = "internal",
+	preemphasis_ctrl_1stposttap_setting = 0,
+	preemphasis_ctrl_2ndposttap_inv_setting = "false",
+	preemphasis_ctrl_2ndposttap_setting = 0,
+	preemphasis_ctrl_pretap_inv_setting = "false",
+	preemphasis_ctrl_pretap_setting = 0,
+	protocol = "basic",
+	receiver_termination = "OCT_100_OHMS",
+	reconfig_base_data_rate = "UNUSED",
+	reconfig_calibration = "false",
+	reconfig_dprio_mode = 0,
+	reconfig_fromgxb_port_width = 1,
+	reconfig_input_clock_frequency = "UNUSED",
+	reconfig_pll_inclk_width = 1,
+	reconfig_protocol = "basic",
+	reconfig_togxb_port_width = 3,
+	rx_0ppm_core_clock = "false",
+	rx_8b_10b_compatibility_mode = "true",
+	rx_8b_10b_mode = "none",
+	rx_adaptive_equalization_mode = "none",
+	rx_align_loss_sync_error_num = 1,
+	rx_align_pattern = "0000000000",
+	rx_align_pattern_length = 10,
+	rx_align_to_deskew_pattern_pos_disp_only = "false",
+	rx_allow_align_polarity_inversion = "false",
+	rx_allow_pipe_polarity_inversion = "false",
+	rx_bitslip_enable = "false",
+	rx_byte_order_pad_pattern = "0",
+	rx_byte_order_pattern = "0",
+	rx_byte_order_pld_ctrl_enable = "false",
+	rx_byte_ordering_mode = "none",
+	rx_cdrctrl_enable = "false",
+	rx_channel_bonding = "indv",
+	rx_channel_width = 8,
+	rx_common_mode = "0.82v",
+	rx_cru_bandwidth_type = "auto",
+	rx_cru_inclk_log_index = 0,
+	rx_cru_inclock0_period = 5000,
+	rx_cru_inclock1_period = 5000,
+	rx_cru_inclock2_period = 5000,
+	rx_cru_inclock3_period = 5000,
+	rx_cru_inclock4_period = 5000,
+	rx_cru_inclock5_period = 5000,
+	rx_cru_inclock6_period = 5000,
+	rx_cru_inclock7_period = 5000,
+	rx_cru_inclock8_period = 5000,
+	rx_cru_inclock9_period = 5000,
+	rx_cru_m_divider = 1,
+	rx_cru_n_divider = 1,
+	rx_cru_refclk_divide_by = 0,
+	rx_cru_refclk_divider = 0,
+	rx_cru_refclk_multiply_by = 0,
+	rx_cru_use_refclk_pin = "false",
+	rx_cru_vco_post_scale_divider = 1,
+	rx_custom_deskew_pattern = "false",
+	rx_data_rate = 1000,
+	rx_data_rate_remainder = 0,
+	rx_dataoutfull_width = 64,
+	rx_datapath_low_latency_mode = "false",
+	rx_datapath_protocol = "basic",
+	rx_deskew_pattern = "0",
+	rx_digitalreset_port_width = 1,
+	rx_disable_auto_idle_insertion = "false",
+	rx_disable_running_disp_in_word_align = "false",
+	rx_dprio_mode = "none",
+	rx_dwidth_factor = 2,
+	rx_enable_bit_reversal = "false",
+	rx_enable_dc_coupling = "false",
+	rx_enable_deep_align_byte_swap = "false",
+	rx_enable_lock_to_data_sig = "false",
+	rx_enable_lock_to_refclk_sig = "false",
+	rx_enable_self_test_mode = "false",
+	rx_enable_true_complement_match_in_word_align = "false",
+	rx_flip_rx_out = "false",
+	rx_force_freq_det_high = "false",
+	rx_force_freq_det_low = "false",
+	rx_force_signal_detect = "false",
+	rx_force_signal_detect_dig = "true",
+	rx_ignore_lock_detect = "false",
+	rx_infiniband_invalid_code = 0,
+	rx_insert_pad_on_underflow = "false",
+	rx_num_align_code_groups_in_ordered_set = 0,
+	rx_num_align_cons_good_data = 1,
+	rx_num_align_cons_pat = 1,
+	rx_phfiforegmode = "false",
+	rx_pll_sim_clkout_phase_shift = 0,
+	rx_ppmselect = 32,
+	rx_rate_match_almost_empty_threshold = 11,
+	rx_rate_match_almost_full_threshold = 13,
+	rx_rate_match_back_to_back = "false",
+	rx_rate_match_delete_threshold = 0,
+	rx_rate_match_empty_threshold = 0,
+	rx_rate_match_fifo_mode = "none",
+	rx_rate_match_full_threshold = 0,
+	rx_rate_match_insert_threshold = 0,
+	rx_rate_match_ordered_set_based = "false",
+	rx_rate_match_pattern1 = "0",
+	rx_rate_match_pattern2 = "0",
+	rx_rate_match_pattern_size = 10,
+	rx_rate_match_reset_enable = "false",
+	rx_rate_match_skip_set_based = "false",
+	rx_rate_match_start_threshold = 0,
+	rx_reconfig_clk_scheme = "tx_clk_to_rx",
+	rx_run_length = 40,
+	rx_run_length_enable = "true",
+	rx_self_test_mode = "incremental",
+	rx_signal_detect_threshold = 4,
+	rx_use_align_state_machine = "false",
+	rx_use_clkout = "true",
+	rx_use_coreclk = "false",
+	rx_use_cruclk = "false",
+	rx_use_deserializer_double_data_mode = "false",
+	rx_use_deskew_fifo = "false",
+	rx_use_double_data_mode = "false",
+	rx_use_pipe8b10binvpolarity = "false",
+	rx_use_rate_match_pattern1_only = "false",
+	rx_use_rising_edge_triggered_pattern_align = "false",
+	rx_word_aligner_num_byte = 1,
+	sim_dump_dprio_internal_reg_at_time = 0,
+	sim_dump_filename = "sim_dprio_dump.txt",
+	starting_channel_number = 0,
+	transmitter_termination = "OCT_100_OHMS",
+	tx_0ppm_core_clock = "false",
+	tx_8b_10b_compatibility_mode = "true",
+	tx_8b_10b_mode = "none",
+	tx_allow_polarity_inversion = "false",
+	tx_analog_power = "auto",
+	tx_bitslip_enable = "false",
+	tx_channel_bonding = "indv",
+	tx_channel_width = 8,
+	tx_clkout_width = 1,
+	tx_common_mode = "0.65v",
+	tx_data_rate = 1000,
+	tx_data_rate_remainder = 0,
+	tx_datainfull_width = 44,
+	tx_datapath_low_latency_mode = "false",
+	tx_digitalreset_port_width = 1,
+	tx_dprio_mode = "none",
+	tx_dwidth_factor = 2,
+	tx_enable_bit_reversal = "false",
+	tx_enable_idle_selection = "false",
+	tx_enable_self_test_mode = "false",
+	tx_enable_symbol_swap = "false",
+	tx_flip_tx_in = "false",
+	tx_force_disparity_mode = "false",
+	tx_force_echar = "false",
+	tx_force_kchar = "false",
+	tx_low_speed_test_select = 0,
+	tx_phfiforegmode = "false",
+	tx_pll_bandwidth_type = "auto",
+	tx_pll_clock_post_divider = 1,
+	tx_pll_inclk0_period = 5000,
+	tx_pll_inclk1_period = 5000,
+	tx_pll_inclk2_period = 5000,
+	tx_pll_inclk3_period = 5000,
+	tx_pll_inclk4_period = 5000,
+	tx_pll_inclk5_period = 5000,
+	tx_pll_inclk6_period = 5000,
+	tx_pll_inclk7_period = 5000,
+	tx_pll_inclk8_period = 5000,
+	tx_pll_inclk9_period = 5000,
+	tx_pll_m_divider = 1,
+	tx_pll_n_divider = 1,
+	tx_pll_pfd_clk_select = 1,
+	tx_pll_refclk_divide_by = 0,
+	tx_pll_refclk_divider = 0,
+	tx_pll_refclk_multiply_by = 0,
+	tx_pll_sim_clkout_phase_shift = 0,
+	tx_pll_type = "CMU",
+	tx_pll_use_refclk_pin = "false",
+	tx_pll_vco_post_scale_divider = 1,
+	tx_reconfig_clk_scheme = "tx_ch0_clk_source",
+	tx_reconfig_data_rate = 1000,
+	tx_reconfig_data_rate_remainder = 0,
+	tx_reconfig_pll_bandwidth_type = "auto",
+	tx_reconfig_pll_m_divider = 1,
+	tx_reconfig_pll_n_divider = 1,
+	tx_reconfig_pll_vco_post_scale_divider = 1,
+	tx_refclk_divide_by = 1,
+	tx_self_test_mode = "incremental",
+	tx_slew_rate = "off",
+	tx_transmit_protocol = "basic",
+	tx_use_coreclk = "false",
+	tx_use_double_data_mode = "false",
+	tx_use_serializer_double_data_mode = "false",
+	use_calibration_block = "true",
+	use_global_clk_divider = "auto",
+	vod_ctrl_setting = 0,
+	CBXI_PARAMETER = "NOTHING"
+);
+FUNCTION @CBXI_PARAMETER (aeq_togxb[number_of_channels*4-1..0], cal_blk_clk, cal_blk_powerdown, cmu_rateswitchin[number_of_quads-1..0], fixedclk, fixedclk_fast[6*number_of_quads-1..0], gxb_powerdown[gxb_powerdown_width-1..0], pipe8b10binvpolarity[number_of_channels-1..0], pll_inclk, pll_inclk_rx_cruclk[reconfig_pll_inclk_width-1..0], pll_inclk_slave, pll_powerdown[pll_control_width-1..0], powerdn[number_of_channels*2-1..0], rateswitch[number_of_channels-1..0], reconfig_clk, reconfig_togxb[reconfig_togxb_port_width-1..0], rx_a1a2size[number_of_channels-1..0], rx_analogreset[rx_digitalreset_port_width-1..0], rx_bitslip[number_of_channels-1..0], rx_coreclk[number_of_channels-1..0], rx_cruclk[number_of_channels-1..0], rx_datain[number_of_channels-1..0], rx_digitalreset[rx_digitalreset_port_width-1..0], rx_elecidleinfersel[number_of_channels*3-1..0], rx_enabyteord[number_of_channels-1..0], rx_enapatternalign[number_of_channels-1..0], rx_invpolarity[number_of_channels-1..0], rx_locktodata[number_of_channels-1..0], rx_locktorefclk[number_of_channels-1..0], rx_phfifordenable[number_of_channels-1..0], rx_phfiforeset[number_of_channels-1..0], rx_phfifowrdisable[number_of_channels-1..0], rx_powerdown[number_of_channels-1..0], rx_prbscidenable[number_of_channels-1..0], rx_revbitorderwa[number_of_channels-1..0], rx_revbyteorderwa[number_of_channels-1..0], rx_rmfifordena[number_of_channels-1..0], rx_rmfiforeset[number_of_channels-1..0], rx_rmfifowrena[number_of_channels-1..0], rx_seriallpbken[number_of_channels-1..0], rx_seriallpbkin[number_of_channels-1..0], scanclk, scanin[22..0], scanmode, scanshift, testin[999..0], tx_bitslipboundaryselect[number_of_channels*5-1..0], tx_coreclk[number_of_channels-1..0], tx_ctrlenable[number_of_channels*tx_dwidth_factor-1..0], tx_datain[tx_channel_width*number_of_channels-1..0], tx_datainfull[tx_datainfull_width*number_of_channels-1..0], tx_detectrxloop[number_of_channels-1..0], tx_digitalreset[tx_digitalreset_port_width-1..0], tx_dispval[number_of_channels*tx_dwidth_factor-1..0], tx_forcedisp[number_of_channels*tx_dwidth_factor-1..0], tx_forcedispcompliance[number_of_channels-1..0], tx_forceelecidle[number_of_channels-1..0], tx_invpolarity[number_of_channels-1..0], tx_phfiforeset[number_of_channels-1..0], tx_pipedeemph[number_of_channels-1..0], tx_pipemargin[number_of_channels*3-1..0], tx_pipeswing[number_of_channels-1..0], tx_pllreset, tx_revparallellpbken[number_of_channels-1..0], tx_revseriallpbkin[number_of_channels-1..0])
+RETURNS (aeq_fromgxb[number_of_channels*6-1..0], cal_blk_calibrationstatus[4..0], coreclkout[number_of_quads-1..0], hip_tx_clkout[number_of_channels-1..0], pcie_sw[pcie_sw_width-1..0], pipedatavalid[number_of_channels-1..0], pipeelecidle[number_of_channels-1..0], pipephydonestatus[number_of_channels-1..0], pipestatus[number_of_channels*3-1..0], pll_locked[pll_control_width-1..0], pll_locked_alt[pll_control_width-1..0], rateswitchbaseclock[number_of_quads-1..0], reconfig_fromgxb[reconfig_fromgxb_port_width-1..0], reconfig_fromgxb_oe[number_of_quads-1..0], rx_a1a2sizeout[number_of_channels*rx_dwidth_factor-1..0], rx_a1detect[number_of_channels*rx_word_aligner_num_byte-1..0], rx_a2detect[number_of_channels*rx_word_aligner_num_byte-1..0], rx_bistdone[number_of_channels-1..0], rx_bisterr[number_of_channels-1..0], rx_bitslipboundaryselectout[number_of_channels*5-1..0], rx_byteorderalignstatus[number_of_channels-1..0], rx_channelaligned[number_of_quads-1..0], rx_clkout[number_of_channels-1..0], rx_ctrldetect[number_of_channels*rx_dwidth_factor-1..0], rx_dataout[rx_channel_width*number_of_channels-1..0], rx_dataoutfull[rx_dataoutfull_width*number_of_channels-1..0], rx_disperr[number_of_channels*rx_dwidth_factor-1..0], rx_errdetect[number_of_channels*rx_dwidth_factor-1..0], rx_freqlocked[number_of_channels-1..0], rx_k1detect[number_of_channels*rx_word_aligner_num_byte-1..0], rx_k2detect[number_of_channels*2-1..0], rx_patterndetect[number_of_channels*rx_dwidth_factor-1..0], rx_phase_comp_fifo_error[number_of_channels-1..0], rx_phfifooverflow[number_of_channels-1..0], rx_phfifounderflow[number_of_channels-1..0], rx_pipebufferstat[number_of_channels*4-1..0], rx_pll_locked[number_of_channels-1..0], rx_recovclkout[number_of_channels-1..0], rx_revseriallpbkout[number_of_channels-1..0], rx_rlv[number_of_channels-1..0], rx_rmfifoalmostempty[number_of_channels-1..0], rx_rmfifoalmostfull[number_of_channels-1..0], rx_rmfifodatadeleted[number_of_channels*rx_dwidth_factor-1..0], rx_rmfifodatainserted[number_of_channels*rx_dwidth_factor-1..0], rx_rmfifoempty[number_of_channels-1..0], rx_rmfifofull[number_of_channels-1..0], rx_runningdisp[number_of_channels*rx_dwidth_factor-1..0], rx_signaldetect[number_of_channels-1..0], rx_syncstatus[number_of_channels*rx_dwidth_factor-1..0], tx_clkout[tx_clkout_width-1..0], tx_dataout[number_of_channels-1..0], tx_phase_comp_fifo_error[number_of_channels-1..0], tx_phfifooverflow[number_of_channels-1..0], tx_phfifounderflow[number_of_channels-1..0], tx_seriallpbkout[number_of_channels-1..0]);
+
+
+SUBDESIGN alt4gxb
+(
+	aeq_fromgxb[number_of_channels*6-1..0]		:	OUTPUT;
+	aeq_togxb[number_of_channels*4-1..0]		:	INPUT = GND;
+	cal_blk_calibrationstatus[4..0]		:	OUTPUT;
+	cal_blk_clk		:	INPUT = GND;
+	cal_blk_powerdown		:	INPUT = GND;
+	cmu_rateswitchin[number_of_quads-1..0]		:	INPUT = GND;
+	coreclkout[number_of_quads-1..0]		:	OUTPUT;
+	fixedclk		:	INPUT = GND;
+	fixedclk_fast[6*number_of_quads-1..0]		:	INPUT = VCC;
+	gxb_powerdown[gxb_powerdown_width-1..0]		:	INPUT = GND;
+	hip_tx_clkout[number_of_channels-1..0]		:	OUTPUT;
+	pcie_sw[pcie_sw_width-1..0]		:	OUTPUT;
+	pipe8b10binvpolarity[number_of_channels-1..0]		:	INPUT = GND;
+	pipedatavalid[number_of_channels-1..0]		:	OUTPUT;
+	pipeelecidle[number_of_channels-1..0]		:	OUTPUT;
+	pipephydonestatus[number_of_channels-1..0]		:	OUTPUT;
+	pipestatus[number_of_channels*3-1..0]		:	OUTPUT;
+	pll_inclk		:	INPUT = GND;
+	pll_inclk_rx_cruclk[reconfig_pll_inclk_width-1..0]		:	INPUT = GND;
+	pll_inclk_slave		:	INPUT = GND;
+	pll_locked[pll_control_width-1..0]		:	OUTPUT;
+	pll_locked_alt[pll_control_width-1..0]		:	OUTPUT;
+	pll_powerdown[pll_control_width-1..0]		:	INPUT = GND;
+	powerdn[number_of_channels*2-1..0]		:	INPUT = GND;
+	rateswitch[number_of_channels-1..0]		:	INPUT = GND;
+	rateswitchbaseclock[number_of_quads-1..0]		:	OUTPUT;
+	reconfig_clk		:	INPUT = GND;
+	reconfig_fromgxb[reconfig_fromgxb_port_width-1..0]		:	OUTPUT;
+	reconfig_fromgxb_oe[number_of_quads-1..0]		:	OUTPUT;
+	reconfig_togxb[reconfig_togxb_port_width-1..0]		:	INPUT;
+	rx_a1a2size[number_of_channels-1..0]		:	INPUT = GND;
+	rx_a1a2sizeout[number_of_channels*rx_dwidth_factor-1..0]		:	OUTPUT;
+	rx_a1detect[number_of_channels*rx_word_aligner_num_byte-1..0]		:	OUTPUT;
+	rx_a2detect[number_of_channels*rx_word_aligner_num_byte-1..0]		:	OUTPUT;
+	rx_analogreset[rx_digitalreset_port_width-1..0]		:	INPUT = GND;
+	rx_bistdone[number_of_channels-1..0]		:	OUTPUT;
+	rx_bisterr[number_of_channels-1..0]		:	OUTPUT;
+	rx_bitslip[number_of_channels-1..0]		:	INPUT = GND;
+	rx_bitslipboundaryselectout[number_of_channels*5-1..0]		:	OUTPUT;
+	rx_byteorderalignstatus[number_of_channels-1..0]		:	OUTPUT;
+	rx_channelaligned[number_of_quads-1..0]		:	OUTPUT;
+	rx_clkout[number_of_channels-1..0]		:	OUTPUT;
+	rx_coreclk[number_of_channels-1..0]		:	INPUT = GND;
+	rx_cruclk[number_of_channels-1..0]		:	INPUT = GND;
+	rx_ctrldetect[number_of_channels*rx_dwidth_factor-1..0]		:	OUTPUT;
+	rx_datain[number_of_channels-1..0]		:	INPUT = GND;
+	rx_dataout[rx_channel_width*number_of_channels-1..0]		:	OUTPUT;
+	rx_dataoutfull[rx_dataoutfull_width*number_of_channels-1..0]		:	OUTPUT;
+	rx_digitalreset[rx_digitalreset_port_width-1..0]		:	INPUT = GND;
+	rx_disperr[number_of_channels*rx_dwidth_factor-1..0]		:	OUTPUT;
+	rx_elecidleinfersel[number_of_channels*3-1..0]		:	INPUT = GND;
+	rx_enabyteord[number_of_channels-1..0]		:	INPUT = GND;
+	rx_enapatternalign[number_of_channels-1..0]		:	INPUT = GND;
+	rx_errdetect[number_of_channels*rx_dwidth_factor-1..0]		:	OUTPUT;
+	rx_freqlocked[number_of_channels-1..0]		:	OUTPUT;
+	rx_invpolarity[number_of_channels-1..0]		:	INPUT = GND;
+	rx_k1detect[number_of_channels*rx_word_aligner_num_byte-1..0]		:	OUTPUT;
+	rx_k2detect[number_of_channels*2-1..0]		:	OUTPUT;
+	rx_locktodata[number_of_channels-1..0]		:	INPUT = GND;
+	rx_locktorefclk[number_of_channels-1..0]		:	INPUT = GND;
+	rx_patterndetect[number_of_channels*rx_dwidth_factor-1..0]		:	OUTPUT;
+	rx_phase_comp_fifo_error[number_of_channels-1..0]		:	OUTPUT;
+	rx_phfifooverflow[number_of_channels-1..0]		:	OUTPUT;
+	rx_phfifordenable[number_of_channels-1..0]		:	INPUT = VCC;
+	rx_phfiforeset[number_of_channels-1..0]		:	INPUT = GND;
+	rx_phfifounderflow[number_of_channels-1..0]		:	OUTPUT;
+	rx_phfifowrdisable[number_of_channels-1..0]		:	INPUT = GND;
+	rx_pipebufferstat[number_of_channels*4-1..0]		:	OUTPUT;
+	rx_pll_locked[number_of_channels-1..0]		:	OUTPUT;
+	rx_powerdown[number_of_channels-1..0]		:	INPUT = GND;
+	rx_prbscidenable[number_of_channels-1..0]		:	INPUT = GND;
+	rx_recovclkout[number_of_channels-1..0]		:	OUTPUT;
+	rx_revbitorderwa[number_of_channels-1..0]		:	INPUT = GND;
+	rx_revbyteorderwa[number_of_channels-1..0]		:	INPUT = GND;
+	rx_revseriallpbkout[number_of_channels-1..0]		:	OUTPUT;
+	rx_rlv[number_of_channels-1..0]		:	OUTPUT;
+	rx_rmfifoalmostempty[number_of_channels-1..0]		:	OUTPUT;
+	rx_rmfifoalmostfull[number_of_channels-1..0]		:	OUTPUT;
+	rx_rmfifodatadeleted[number_of_channels*rx_dwidth_factor-1..0]		:	OUTPUT;
+	rx_rmfifodatainserted[number_of_channels*rx_dwidth_factor-1..0]		:	OUTPUT;
+	rx_rmfifoempty[number_of_channels-1..0]		:	OUTPUT;
+	rx_rmfifofull[number_of_channels-1..0]		:	OUTPUT;
+	rx_rmfifordena[number_of_channels-1..0]		:	INPUT = GND;
+	rx_rmfiforeset[number_of_channels-1..0]		:	INPUT = GND;
+	rx_rmfifowrena[number_of_channels-1..0]		:	INPUT = GND;
+	rx_runningdisp[number_of_channels*rx_dwidth_factor-1..0]		:	OUTPUT;
+	rx_seriallpbken[number_of_channels-1..0]		:	INPUT = GND;
+	rx_seriallpbkin[number_of_channels-1..0]		:	INPUT = GND;
+	rx_signaldetect[number_of_channels-1..0]		:	OUTPUT;
+	rx_syncstatus[number_of_channels*rx_dwidth_factor-1..0]		:	OUTPUT;
+	scanclk		:	INPUT = GND;
+	scanin[22..0]		:	INPUT = GND;
+	scanmode		:	INPUT = GND;
+	scanshift		:	INPUT = GND;
+	testin[999..0]		:	INPUT = GND;
+	tx_bitslipboundaryselect[number_of_channels*5-1..0]		:	INPUT = GND;
+	tx_clkout[tx_clkout_width-1..0]		:	OUTPUT;
+	tx_coreclk[number_of_channels-1..0]		:	INPUT = GND;
+	tx_ctrlenable[number_of_channels*tx_dwidth_factor-1..0]		:	INPUT = GND;
+	tx_datain[tx_channel_width*number_of_channels-1..0]		:	INPUT = GND;
+	tx_datainfull[tx_datainfull_width*number_of_channels-1..0]		:	INPUT = GND;
+	tx_dataout[number_of_channels-1..0]		:	OUTPUT;
+	tx_detectrxloop[number_of_channels-1..0]		:	INPUT = GND;
+	tx_digitalreset[tx_digitalreset_port_width-1..0]		:	INPUT = GND;
+	tx_dispval[number_of_channels*tx_dwidth_factor-1..0]		:	INPUT = GND;
+	tx_forcedisp[number_of_channels*tx_dwidth_factor-1..0]		:	INPUT = GND;
+	tx_forcedispcompliance[number_of_channels-1..0]		:	INPUT = GND;
+	tx_forceelecidle[number_of_channels-1..0]		:	INPUT = GND;
+	tx_invpolarity[number_of_channels-1..0]		:	INPUT = GND;
+	tx_phase_comp_fifo_error[number_of_channels-1..0]		:	OUTPUT;
+	tx_phfifooverflow[number_of_channels-1..0]		:	OUTPUT;
+	tx_phfiforeset[number_of_channels-1..0]		:	INPUT = GND;
+	tx_phfifounderflow[number_of_channels-1..0]		:	OUTPUT;
+	tx_pipedeemph[number_of_channels-1..0]		:	INPUT = GND;
+	tx_pipemargin[number_of_channels*3-1..0]		:	INPUT = GND;
+	tx_pipeswing[number_of_channels-1..0]		:	INPUT = GND;
+	tx_pllreset		:	INPUT = GND;
+	tx_revparallellpbken[number_of_channels-1..0]		:	INPUT = GND;
+	tx_revseriallpbkin[number_of_channels-1..0]		:	INPUT = GND;
+	tx_seriallpbkout[number_of_channels-1..0]		:	OUTPUT;
+)
+VARIABLE
+	IF CBXI_PARAMETER != "NOTHING" GENERATE
+		auto_generated : @CBXI_PARAMETER WITH ( CBXI_PARAMETER = "NOTHING" );
+	END GENERATE;
+BEGIN
+	ASSERT (CBXI_PARAMETER != "NOTHING")
+	REPORT "Valid clear box generator not found or Errors encountered during clear box generation"
+	SEVERITY ERROR;
+	IF (CBXI_PARAMETER != "NOTHING") GENERATE
+		IF USED(aeq_fromgxb) GENERATE
+			aeq_fromgxb[] = auto_generated.aeq_fromgxb[];
+		ELSE GENERATE
+			aeq_fromgxb[] = GND;
+		END GENERATE;
+		IF USED(aeq_togxb) GENERATE
+			auto_generated.aeq_togxb[] = aeq_togxb[];
+		END GENERATE;
+		IF USED(cal_blk_calibrationstatus) GENERATE
+			cal_blk_calibrationstatus[] = auto_generated.cal_blk_calibrationstatus[];
+		ELSE GENERATE
+			cal_blk_calibrationstatus[] = GND;
+		END GENERATE;
+		IF USED(cal_blk_clk) GENERATE
+			auto_generated.cal_blk_clk = cal_blk_clk;
+		END GENERATE;
+		IF USED(cal_blk_powerdown) GENERATE
+			auto_generated.cal_blk_powerdown = cal_blk_powerdown;
+		END GENERATE;
+		IF USED(cmu_rateswitchin) GENERATE
+			auto_generated.cmu_rateswitchin[] = cmu_rateswitchin[];
+		END GENERATE;
+		IF USED(coreclkout) GENERATE
+			coreclkout[] = auto_generated.coreclkout[];
+		ELSE GENERATE
+			coreclkout[] = GND;
+		END GENERATE;
+		IF USED(fixedclk) GENERATE
+			auto_generated.fixedclk = fixedclk;
+		END GENERATE;
+		IF USED(fixedclk_fast) GENERATE
+			auto_generated.fixedclk_fast[] = fixedclk_fast[];
+		END GENERATE;
+		IF USED(gxb_powerdown) GENERATE
+			auto_generated.gxb_powerdown[] = gxb_powerdown[];
+		END GENERATE;
+		IF USED(hip_tx_clkout) GENERATE
+			hip_tx_clkout[] = auto_generated.hip_tx_clkout[];
+		ELSE GENERATE
+			hip_tx_clkout[] = GND;
+		END GENERATE;
+		IF USED(pcie_sw) GENERATE
+			pcie_sw[] = auto_generated.pcie_sw[];
+		ELSE GENERATE
+			pcie_sw[] = GND;
+		END GENERATE;
+		IF USED(pipe8b10binvpolarity) GENERATE
+			auto_generated.pipe8b10binvpolarity[] = pipe8b10binvpolarity[];
+		END GENERATE;
+		IF USED(pipedatavalid) GENERATE
+			pipedatavalid[] = auto_generated.pipedatavalid[];
+		ELSE GENERATE
+			pipedatavalid[] = GND;
+		END GENERATE;
+		IF USED(pipeelecidle) GENERATE
+			pipeelecidle[] = auto_generated.pipeelecidle[];
+		ELSE GENERATE
+			pipeelecidle[] = GND;
+		END GENERATE;
+		IF USED(pipephydonestatus) GENERATE
+			pipephydonestatus[] = auto_generated.pipephydonestatus[];
+		ELSE GENERATE
+			pipephydonestatus[] = GND;
+		END GENERATE;
+		IF USED(pipestatus) GENERATE
+			pipestatus[] = auto_generated.pipestatus[];
+		ELSE GENERATE
+			pipestatus[] = GND;
+		END GENERATE;
+		IF USED(pll_inclk) GENERATE
+			auto_generated.pll_inclk = pll_inclk;
+		END GENERATE;
+		IF USED(pll_inclk_rx_cruclk) GENERATE
+			auto_generated.pll_inclk_rx_cruclk[] = pll_inclk_rx_cruclk[];
+		END GENERATE;
+		IF USED(pll_inclk_slave) GENERATE
+			auto_generated.pll_inclk_slave = pll_inclk_slave;
+		END GENERATE;
+		IF USED(pll_locked) GENERATE
+			pll_locked[] = auto_generated.pll_locked[];
+		ELSE GENERATE
+			pll_locked[] = GND;
+		END GENERATE;
+		IF USED(pll_locked_alt) GENERATE
+			pll_locked_alt[] = auto_generated.pll_locked_alt[];
+		ELSE GENERATE
+			pll_locked_alt[] = GND;
+		END GENERATE;
+		IF USED(pll_powerdown) GENERATE
+			auto_generated.pll_powerdown[] = pll_powerdown[];
+		END GENERATE;
+		IF USED(powerdn) GENERATE
+			auto_generated.powerdn[] = powerdn[];
+		END GENERATE;
+		IF USED(rateswitch) GENERATE
+			auto_generated.rateswitch[] = rateswitch[];
+		END GENERATE;
+		IF USED(rateswitchbaseclock) GENERATE
+			rateswitchbaseclock[] = auto_generated.rateswitchbaseclock[];
+		ELSE GENERATE
+			rateswitchbaseclock[] = GND;
+		END GENERATE;
+		IF USED(reconfig_clk) GENERATE
+			auto_generated.reconfig_clk = reconfig_clk;
+		END GENERATE;
+		IF USED(reconfig_fromgxb) GENERATE
+			reconfig_fromgxb[] = auto_generated.reconfig_fromgxb[];
+		ELSE GENERATE
+			reconfig_fromgxb[] = GND;
+		END GENERATE;
+		IF USED(reconfig_fromgxb_oe) GENERATE
+			reconfig_fromgxb_oe[] = auto_generated.reconfig_fromgxb_oe[];
+		ELSE GENERATE
+			reconfig_fromgxb_oe[] = GND;
+		END GENERATE;
+		IF USED(reconfig_togxb) GENERATE
+			auto_generated.reconfig_togxb[] = reconfig_togxb[];
+		END GENERATE;
+		IF USED(rx_a1a2size) GENERATE
+			auto_generated.rx_a1a2size[] = rx_a1a2size[];
+		END GENERATE;
+		IF USED(rx_a1a2sizeout) GENERATE
+			rx_a1a2sizeout[] = auto_generated.rx_a1a2sizeout[];
+		ELSE GENERATE
+			rx_a1a2sizeout[] = GND;
+		END GENERATE;
+		IF USED(rx_a1detect) GENERATE
+			rx_a1detect[] = auto_generated.rx_a1detect[];
+		ELSE GENERATE
+			rx_a1detect[] = GND;
+		END GENERATE;
+		IF USED(rx_a2detect) GENERATE
+			rx_a2detect[] = auto_generated.rx_a2detect[];
+		ELSE GENERATE
+			rx_a2detect[] = GND;
+		END GENERATE;
+		IF USED(rx_analogreset) GENERATE
+			auto_generated.rx_analogreset[] = rx_analogreset[];
+		END GENERATE;
+		IF USED(rx_bistdone) GENERATE
+			rx_bistdone[] = auto_generated.rx_bistdone[];
+		ELSE GENERATE
+			rx_bistdone[] = GND;
+		END GENERATE;
+		IF USED(rx_bisterr) GENERATE
+			rx_bisterr[] = auto_generated.rx_bisterr[];
+		ELSE GENERATE
+			rx_bisterr[] = GND;
+		END GENERATE;
+		IF USED(rx_bitslip) GENERATE
+			auto_generated.rx_bitslip[] = rx_bitslip[];
+		END GENERATE;
+		IF USED(rx_bitslipboundaryselectout) GENERATE
+			rx_bitslipboundaryselectout[] = auto_generated.rx_bitslipboundaryselectout[];
+		ELSE GENERATE
+			rx_bitslipboundaryselectout[] = GND;
+		END GENERATE;
+		IF USED(rx_byteorderalignstatus) GENERATE
+			rx_byteorderalignstatus[] = auto_generated.rx_byteorderalignstatus[];
+		ELSE GENERATE
+			rx_byteorderalignstatus[] = GND;
+		END GENERATE;
+		IF USED(rx_channelaligned) GENERATE
+			rx_channelaligned[] = auto_generated.rx_channelaligned[];
+		ELSE GENERATE
+			rx_channelaligned[] = GND;
+		END GENERATE;
+		IF USED(rx_clkout) GENERATE
+			rx_clkout[] = auto_generated.rx_clkout[];
+		ELSE GENERATE
+			rx_clkout[] = GND;
+		END GENERATE;
+		IF USED(rx_coreclk) GENERATE
+			auto_generated.rx_coreclk[] = rx_coreclk[];
+		END GENERATE;
+		IF USED(rx_cruclk) GENERATE
+			auto_generated.rx_cruclk[] = rx_cruclk[];
+		END GENERATE;
+		IF USED(rx_ctrldetect) GENERATE
+			rx_ctrldetect[] = auto_generated.rx_ctrldetect[];
+		ELSE GENERATE
+			rx_ctrldetect[] = GND;
+		END GENERATE;
+		IF USED(rx_datain) GENERATE
+			auto_generated.rx_datain[] = rx_datain[];
+		END GENERATE;
+		IF USED(rx_dataout) GENERATE
+			rx_dataout[] = auto_generated.rx_dataout[];
+		ELSE GENERATE
+			rx_dataout[] = GND;
+		END GENERATE;
+		IF USED(rx_dataoutfull) GENERATE
+			rx_dataoutfull[] = auto_generated.rx_dataoutfull[];
+		ELSE GENERATE
+			rx_dataoutfull[] = GND;
+		END GENERATE;
+		IF USED(rx_digitalreset) GENERATE
+			auto_generated.rx_digitalreset[] = rx_digitalreset[];
+		END GENERATE;
+		IF USED(rx_disperr) GENERATE
+			rx_disperr[] = auto_generated.rx_disperr[];
+		ELSE GENERATE
+			rx_disperr[] = GND;
+		END GENERATE;
+		IF USED(rx_elecidleinfersel) GENERATE
+			auto_generated.rx_elecidleinfersel[] = rx_elecidleinfersel[];
+		END GENERATE;
+		IF USED(rx_enabyteord) GENERATE
+			auto_generated.rx_enabyteord[] = rx_enabyteord[];
+		END GENERATE;
+		IF USED(rx_enapatternalign) GENERATE
+			auto_generated.rx_enapatternalign[] = rx_enapatternalign[];
+		END GENERATE;
+		IF USED(rx_errdetect) GENERATE
+			rx_errdetect[] = auto_generated.rx_errdetect[];
+		ELSE GENERATE
+			rx_errdetect[] = GND;
+		END GENERATE;
+		IF USED(rx_freqlocked) GENERATE
+			rx_freqlocked[] = auto_generated.rx_freqlocked[];
+		ELSE GENERATE
+			rx_freqlocked[] = GND;
+		END GENERATE;
+		IF USED(rx_invpolarity) GENERATE
+			auto_generated.rx_invpolarity[] = rx_invpolarity[];
+		END GENERATE;
+		IF USED(rx_k1detect) GENERATE
+			rx_k1detect[] = auto_generated.rx_k1detect[];
+		ELSE GENERATE
+			rx_k1detect[] = GND;
+		END GENERATE;
+		IF USED(rx_k2detect) GENERATE
+			rx_k2detect[] = auto_generated.rx_k2detect[];
+		ELSE GENERATE
+			rx_k2detect[] = GND;
+		END GENERATE;
+		IF USED(rx_locktodata) GENERATE
+			auto_generated.rx_locktodata[] = rx_locktodata[];
+		END GENERATE;
+		IF USED(rx_locktorefclk) GENERATE
+			auto_generated.rx_locktorefclk[] = rx_locktorefclk[];
+		END GENERATE;
+		IF USED(rx_patterndetect) GENERATE
+			rx_patterndetect[] = auto_generated.rx_patterndetect[];
+		ELSE GENERATE
+			rx_patterndetect[] = GND;
+		END GENERATE;
+		IF USED(rx_phase_comp_fifo_error) GENERATE
+			rx_phase_comp_fifo_error[] = auto_generated.rx_phase_comp_fifo_error[];
+		ELSE GENERATE
+			rx_phase_comp_fifo_error[] = GND;
+		END GENERATE;
+		IF USED(rx_phfifooverflow) GENERATE
+			rx_phfifooverflow[] = auto_generated.rx_phfifooverflow[];
+		ELSE GENERATE
+			rx_phfifooverflow[] = GND;
+		END GENERATE;
+		IF USED(rx_phfifordenable) GENERATE
+			auto_generated.rx_phfifordenable[] = rx_phfifordenable[];
+		END GENERATE;
+		IF USED(rx_phfiforeset) GENERATE
+			auto_generated.rx_phfiforeset[] = rx_phfiforeset[];
+		END GENERATE;
+		IF USED(rx_phfifounderflow) GENERATE
+			rx_phfifounderflow[] = auto_generated.rx_phfifounderflow[];
+		ELSE GENERATE
+			rx_phfifounderflow[] = GND;
+		END GENERATE;
+		IF USED(rx_phfifowrdisable) GENERATE
+			auto_generated.rx_phfifowrdisable[] = rx_phfifowrdisable[];
+		END GENERATE;
+		IF USED(rx_pipebufferstat) GENERATE
+			rx_pipebufferstat[] = auto_generated.rx_pipebufferstat[];
+		ELSE GENERATE
+			rx_pipebufferstat[] = GND;
+		END GENERATE;
+		IF USED(rx_pll_locked) GENERATE
+			rx_pll_locked[] = auto_generated.rx_pll_locked[];
+		ELSE GENERATE
+			rx_pll_locked[] = GND;
+		END GENERATE;
+		IF USED(rx_powerdown) GENERATE
+			auto_generated.rx_powerdown[] = rx_powerdown[];
+		END GENERATE;
+		IF USED(rx_prbscidenable) GENERATE
+			auto_generated.rx_prbscidenable[] = rx_prbscidenable[];
+		END GENERATE;
+		IF USED(rx_recovclkout) GENERATE
+			rx_recovclkout[] = auto_generated.rx_recovclkout[];
+		ELSE GENERATE
+			rx_recovclkout[] = GND;
+		END GENERATE;
+		IF USED(rx_revbitorderwa) GENERATE
+			auto_generated.rx_revbitorderwa[] = rx_revbitorderwa[];
+		END GENERATE;
+		IF USED(rx_revbyteorderwa) GENERATE
+			auto_generated.rx_revbyteorderwa[] = rx_revbyteorderwa[];
+		END GENERATE;
+		IF USED(rx_revseriallpbkout) GENERATE
+			rx_revseriallpbkout[] = auto_generated.rx_revseriallpbkout[];
+		ELSE GENERATE
+			rx_revseriallpbkout[] = GND;
+		END GENERATE;
+		IF USED(rx_rlv) GENERATE
+			rx_rlv[] = auto_generated.rx_rlv[];
+		ELSE GENERATE
+			rx_rlv[] = GND;
+		END GENERATE;
+		IF USED(rx_rmfifoalmostempty) GENERATE
+			rx_rmfifoalmostempty[] = auto_generated.rx_rmfifoalmostempty[];
+		ELSE GENERATE
+			rx_rmfifoalmostempty[] = GND;
+		END GENERATE;
+		IF USED(rx_rmfifoalmostfull) GENERATE
+			rx_rmfifoalmostfull[] = auto_generated.rx_rmfifoalmostfull[];
+		ELSE GENERATE
+			rx_rmfifoalmostfull[] = GND;
+		END GENERATE;
+		IF USED(rx_rmfifodatadeleted) GENERATE
+			rx_rmfifodatadeleted[] = auto_generated.rx_rmfifodatadeleted[];
+		ELSE GENERATE
+			rx_rmfifodatadeleted[] = GND;
+		END GENERATE;
+		IF USED(rx_rmfifodatainserted) GENERATE
+			rx_rmfifodatainserted[] = auto_generated.rx_rmfifodatainserted[];
+		ELSE GENERATE
+			rx_rmfifodatainserted[] = GND;
+		END GENERATE;
+		IF USED(rx_rmfifoempty) GENERATE
+			rx_rmfifoempty[] = auto_generated.rx_rmfifoempty[];
+		ELSE GENERATE
+			rx_rmfifoempty[] = GND;
+		END GENERATE;
+		IF USED(rx_rmfifofull) GENERATE
+			rx_rmfifofull[] = auto_generated.rx_rmfifofull[];
+		ELSE GENERATE
+			rx_rmfifofull[] = GND;
+		END GENERATE;
+		IF USED(rx_rmfifordena) GENERATE
+			auto_generated.rx_rmfifordena[] = rx_rmfifordena[];
+		END GENERATE;
+		IF USED(rx_rmfiforeset) GENERATE
+			auto_generated.rx_rmfiforeset[] = rx_rmfiforeset[];
+		END GENERATE;
+		IF USED(rx_rmfifowrena) GENERATE
+			auto_generated.rx_rmfifowrena[] = rx_rmfifowrena[];
+		END GENERATE;
+		IF USED(rx_runningdisp) GENERATE
+			rx_runningdisp[] = auto_generated.rx_runningdisp[];
+		ELSE GENERATE
+			rx_runningdisp[] = GND;
+		END GENERATE;
+		IF USED(rx_seriallpbken) GENERATE
+			auto_generated.rx_seriallpbken[] = rx_seriallpbken[];
+		END GENERATE;
+		IF USED(rx_seriallpbkin) GENERATE
+			auto_generated.rx_seriallpbkin[] = rx_seriallpbkin[];
+		END GENERATE;
+		IF USED(rx_signaldetect) GENERATE
+			rx_signaldetect[] = auto_generated.rx_signaldetect[];
+		ELSE GENERATE
+			rx_signaldetect[] = GND;
+		END GENERATE;
+		IF USED(rx_syncstatus) GENERATE
+			rx_syncstatus[] = auto_generated.rx_syncstatus[];
+		ELSE GENERATE
+			rx_syncstatus[] = GND;
+		END GENERATE;
+		IF USED(scanclk) GENERATE
+			auto_generated.scanclk = scanclk;
+		END GENERATE;
+		IF USED(scanin) GENERATE
+			auto_generated.scanin[] = scanin[];
+		END GENERATE;
+		IF USED(scanmode) GENERATE
+			auto_generated.scanmode = scanmode;
+		END GENERATE;
+		IF USED(scanshift) GENERATE
+			auto_generated.scanshift = scanshift;
+		END GENERATE;
+		IF USED(testin) GENERATE
+			auto_generated.testin[] = testin[];
+		END GENERATE;
+		IF USED(tx_bitslipboundaryselect) GENERATE
+			auto_generated.tx_bitslipboundaryselect[] = tx_bitslipboundaryselect[];
+		END GENERATE;
+		IF USED(tx_clkout) GENERATE
+			tx_clkout[] = auto_generated.tx_clkout[];
+		ELSE GENERATE
+			tx_clkout[] = GND;
+		END GENERATE;
+		IF USED(tx_coreclk) GENERATE
+			auto_generated.tx_coreclk[] = tx_coreclk[];
+		END GENERATE;
+		IF USED(tx_ctrlenable) GENERATE
+			auto_generated.tx_ctrlenable[] = tx_ctrlenable[];
+		END GENERATE;
+		IF USED(tx_datain) GENERATE
+			auto_generated.tx_datain[] = tx_datain[];
+		END GENERATE;
+		IF USED(tx_datainfull) GENERATE
+			auto_generated.tx_datainfull[] = tx_datainfull[];
+		END GENERATE;
+		IF USED(tx_dataout) GENERATE
+			tx_dataout[] = auto_generated.tx_dataout[];
+		ELSE GENERATE
+			tx_dataout[] = GND;
+		END GENERATE;
+		IF USED(tx_detectrxloop) GENERATE
+			auto_generated.tx_detectrxloop[] = tx_detectrxloop[];
+		END GENERATE;
+		IF USED(tx_digitalreset) GENERATE
+			auto_generated.tx_digitalreset[] = tx_digitalreset[];
+		END GENERATE;
+		IF USED(tx_dispval) GENERATE
+			auto_generated.tx_dispval[] = tx_dispval[];
+		END GENERATE;
+		IF USED(tx_forcedisp) GENERATE
+			auto_generated.tx_forcedisp[] = tx_forcedisp[];
+		END GENERATE;
+		IF USED(tx_forcedispcompliance) GENERATE
+			auto_generated.tx_forcedispcompliance[] = tx_forcedispcompliance[];
+		END GENERATE;
+		IF USED(tx_forceelecidle) GENERATE
+			auto_generated.tx_forceelecidle[] = tx_forceelecidle[];
+		END GENERATE;
+		IF USED(tx_invpolarity) GENERATE
+			auto_generated.tx_invpolarity[] = tx_invpolarity[];
+		END GENERATE;
+		IF USED(tx_phase_comp_fifo_error) GENERATE
+			tx_phase_comp_fifo_error[] = auto_generated.tx_phase_comp_fifo_error[];
+		ELSE GENERATE
+			tx_phase_comp_fifo_error[] = GND;
+		END GENERATE;
+		IF USED(tx_phfifooverflow) GENERATE
+			tx_phfifooverflow[] = auto_generated.tx_phfifooverflow[];
+		ELSE GENERATE
+			tx_phfifooverflow[] = GND;
+		END GENERATE;
+		IF USED(tx_phfiforeset) GENERATE
+			auto_generated.tx_phfiforeset[] = tx_phfiforeset[];
+		END GENERATE;
+		IF USED(tx_phfifounderflow) GENERATE
+			tx_phfifounderflow[] = auto_generated.tx_phfifounderflow[];
+		ELSE GENERATE
+			tx_phfifounderflow[] = GND;
+		END GENERATE;
+		IF USED(tx_pipedeemph) GENERATE
+			auto_generated.tx_pipedeemph[] = tx_pipedeemph[];
+		END GENERATE;
+		IF USED(tx_pipemargin) GENERATE
+			auto_generated.tx_pipemargin[] = tx_pipemargin[];
+		END GENERATE;
+		IF USED(tx_pipeswing) GENERATE
+			auto_generated.tx_pipeswing[] = tx_pipeswing[];
+		END GENERATE;
+		IF USED(tx_pllreset) GENERATE
+			auto_generated.tx_pllreset = tx_pllreset;
+		END GENERATE;
+		IF USED(tx_revparallellpbken) GENERATE
+			auto_generated.tx_revparallellpbken[] = tx_revparallellpbken[];
+		END GENERATE;
+		IF USED(tx_revseriallpbkin) GENERATE
+			auto_generated.tx_revseriallpbkin[] = tx_revseriallpbkin[];
+		END GENERATE;
+		IF USED(tx_seriallpbkout) GENERATE
+			tx_seriallpbkout[] = auto_generated.tx_seriallpbkout[];
+		ELSE GENERATE
+			tx_seriallpbkout[] = GND;
+		END GENERATE;
+	END GENERATE;
+END;

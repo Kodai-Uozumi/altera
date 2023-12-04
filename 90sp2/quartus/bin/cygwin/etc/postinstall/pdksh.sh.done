@@ -1,0 +1,59 @@
+#!/bin/sh
+#
+# Postinstall script for pdksh.
+
+VERSION=\
+	"@(#)PD KSH v5.2.14 99/07/13.2"
+ver=`echo "$VERSION" | sed -e 's/[^0-9]*\([0-9.]*\).*/\1/'`
+datadir=/usr/share/pdksh-$ver
+manext=1
+mandir=/usr/share/man/man$manext
+sysconf=/etc
+kshrc=ksh.kshrc
+profile=profile.ksh
+
+add_shell ()
+{
+  if [ -f $sysconf/shells ]; then
+    if grep -q "$1" $sysconf/shells; then
+      echo "$1 already in $sysconf/shells"
+    else
+      echo "Adding $1 to $sysconf/shells"
+      echo "$1" >> $sysconf/shells
+    fi
+  fi
+}
+
+# Check if we already have $sysconf/ksh.kshrc and $sysconf/profile.ksh
+if [ ! -f "$sysconf/$kshrc" ]; then
+  echo "Installing default $sysconf/$kshrc"
+  install -c -m 755 $datadir/$kshrc $sysconf/$kshrc
+else
+  echo "Keeping current $sysconf/$kshrc"
+fi
+if [ ! -f "$sysconf/$profile" ]; then
+  echo "Installing default $sysconf/$profile"
+  install -c -m 755 $datadir/$profile $sysconf/$profile
+else
+  echo "Keeping current $sysconf/$profile"
+fi
+
+# Check if ksh.exe is already installed in /bin
+if [ ! -e /bin/ksh.exe ]; then
+  cd /bin
+  ln -s pdksh.exe ksh.exe
+fi
+
+# Check if ksh.$manext is already installed in $mandir
+if [ ! -e $mandir/ksh.$manext ]; then
+  cd $mandir
+  ln -s pdksh.$manext ksh.$manext
+fi
+
+# Check if $sysconf/shells contains [/usr]/bin/{pd,}ksh
+add_shell /bin/pdksh
+add_shell /bin/ksh
+add_shell /usr/bin/pdksh
+add_shell /usr/bin/ksh
+
+exit 0

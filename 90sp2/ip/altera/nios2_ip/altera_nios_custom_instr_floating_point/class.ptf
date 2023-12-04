@@ -1,0 +1,195 @@
+CLASS altera_nios_custom_instr_floating_point
+{
+   CALIFORNIA
+   {
+      Is_Hidden = "1";
+   }
+   ASSOCIATED_FILES 
+   {
+      Add_Program = "default";
+      Edit_Program = "default";
+      Generator_Program = "make_nios_fp_instr.pl";
+   }
+   MODULE_DEFAULTS 
+   {
+      class = "altera_nios_custom_instr_floating_point";
+      class_version = "7.080902";
+      SLAVE s1
+      {
+         PORT_WIRING 
+         {
+            PORT reset
+            {
+               width = "1";
+               direction = "input";
+               type = "reset";
+            }
+            PORT clk_en
+            {
+               width = "1";
+               direction = "input";
+               type = "clk_en";
+            }
+            PORT clk
+            {
+               width = "1";
+               direction = "input";
+               type = "clk";
+            }
+            PORT dataa
+            {
+               width = "32";
+               direction = "input";
+               type = "dataa";
+            }
+            PORT datab
+            {
+               width = "32";
+               direction = "input";
+               type = "datab";
+            }
+            PORT start
+            {
+               width = "1";
+               direction = "input";
+               type = "start";
+            }
+            PORT n
+            {
+               width = "2";
+               direction = "input";
+               type = "n";
+            }
+            PORT result
+            {
+               width = "32";
+               direction = "output";
+               type = "result";
+            }
+            PORT done
+            {
+               width = "1";
+               direction = "output";
+               type = "done";
+            }
+         }
+         SYSTEM_BUILDER_INFO 
+         {
+            Bus_Type = "nios_custom_instruction";
+            Data_Width = "32";
+            Address_Width = "0";
+            Base_Address = "0x000000FC";
+	    Is_Base_Locked = "1";
+            Is_Custom_Instruction = "1";
+            Is_Visible = "0";
+            Address_Group = "0";
+         }
+      }
+      SYSTEM_BUILDER_INFO 
+      {
+         Date_Modified = "";
+         Is_Enabled = "1";
+         Is_Visible = "0";
+         Instantiate_In_System_Module = "1";
+         Is_Custom_Instruction = "1";
+         Clock_Source = "clk";
+      }
+      WIZARD_SCRIPT_ARGUMENTS 
+      {
+         ci_macro_name = "fpoint";
+         ci_cycles = "1";
+         ci_instr_format = "RR";
+         ci_has_prefix = "0";
+         ci_inst_type = "variable multicycle";
+         ci_operands = "2";
+         Precision = "1";
+	 Reduced_Operation = "0";
+         Use_Divider = "0";
+      }
+      SIMULATION 
+      {
+         DISPLAY 
+         {
+            SIGNAL a
+            {
+               name = "clk";
+            }
+            SIGNAL b
+            {
+               name = "clk_en";
+            }
+            SIGNAL c
+            {
+               name = "reset";
+            }
+            SIGNAL d
+            {
+               name = "start";
+            }
+            SIGNAL e
+            {
+               name = "n";
+               radix = "hexadecimal";
+            }
+            SIGNAL f
+            {
+               name = "dataa";
+               radix = "hexadecimal";
+            }
+            SIGNAL g
+            {
+               name = "datab";
+               radix = "hexadecimal";
+            }
+            SIGNAL h
+            {
+               name = "result";
+               radix = "hexadecimal";
+            }
+            SIGNAL i
+            {
+               name = "done";
+            }
+         }
+      }
+   }
+   USER_INTERFACE 
+   {
+      USER_LABELS 
+      {
+         name = "Floating Point Hardware";
+         technology = "";
+      }
+      WIZARD_UI default
+      {
+        title = "Nios II Floating Point Hardware";
+        align = "left";
+      
+        GROUP options
+        {  
+	  TEXT
+          {
+            title = "<BR>This component creates hardware for floating point <BR>
+                     single-precision add, subtract, multiply and optionally divide. <BR><BR>";
+            visible = "1";
+          }
+          CHECK
+          {
+            id = "div_option";
+            title = "Use floating point division hardware.";
+            DATA {
+              Use_Divider = $;
+            }
+          }
+        }
+      }
+   } 
+   DEFAULT_GENERATOR 
+   {
+      top_module_name = "fpoint";
+      black_box = "0";
+      vhdl_synthesis_files = "";
+      verilog_synthesis_files = "";
+      black_box_files = "";
+   }
+}

@@ -1,0 +1,1040 @@
+<<<<versions>>>>
+1.0
+<<<</versions>>>>
+<<<<1.0>>>>
+<get_clocks>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_clocks [-h | -help] [-long_help] [-tag <data>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -tag <data>: Option to tag data to this assignment
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::timing_assignment 1.0
+
+------------
+Description:
+------------
+
+Returns a list of lists consisting of node name and clock 
+setting name. The output has the following format:
+
+{{<node name #1> <clock setting name #1>}
+ {<node name #2> <clock setting name #2>}
+ ...
+ {<node name #N> <clock setting name #N>}}
+
+If <node name> is empty, <clock setting name> was not assigned 
+to any node. If <clock setting name> is empty, <node name> 
+was assigned to an undefined <clock setting name>.
+
+You can create <clock setting name> using the 
+"create_base_clock" or "create_relative_clock" commands. You 
+can create node names using the following command:
+
+set_instance_assignment -name CLOCK_SETTINGS -to <clock setting name> <node name>
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Search for all pairs of node names and clock setting names
+# and print the information
+
+set clock_lists [get_clocks]
+
+foreach clock_asgn $clock_lists {
+     set node_name [lindex $clock_asgn 0]
+     set clock_setting_name [lindex $clock_asgn 1]
+
+     if { $node_name == "" } {
+          puts "No node uses the clock \"$clock_setting_name\""
+     } elseif {$clock_setting_name == ""} {
+          puts "The node \"$node_name\" uses an undefined clock setting";
+     } else {
+          puts "The node \"$node_name\" uses the clock \"$clock_setting_name\""
+     }
+}
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_clocks>
+
+<create_relative_clock>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: create_relative_clock [-h | -help] [-long_help] -base_clock <Base clock> [-comment <comment>] [-disable] [-divide <integer>] [-duty_cycle <integer>] [-entity <entity>] [-invert] [-multiply <integer>] [-no_target] [-offset <offset>] [-phase_shift <integer>] [-tag <data>] [-target <name>] [-virtual] <clock_name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -base_clock <Base clock>: Base clock name
+        -comment <comment>: Comment
+        -disable: Option to disable assignment
+        -divide <integer>: Base clock division factor
+        -duty_cycle <integer>: Duty cycle
+        -entity <entity>: Entity to which to add clock assignment
+        -invert: Option to invert base clock
+        -multiply <integer>: Base clock multiplication factor
+        -no_target: Option to not assign clock to node
+        -offset <offset>: Offset from base clock
+        -phase_shift <integer>: Phase shift from base clock
+        -tag <data>: Option to tag data to this assignment
+        -target <name>: Clock node name
+        -virtual: Option to specify the clock as a virtual clock
+        <clock_name>: Clock name
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::timing_assignment 1.0
+
+------------
+Description:
+------------
+
+Creates a relative clock that derived from the absolute clock.
+
+The "-offset" option can take the format:
+
+<floating point time value><time unit>
+
+For example, if the offset is 10.55ns, "10.55" is the
+<floating point time value> and "ns" is the <time unit>.
+
+The following table displays possible time units:
+
+Time Unit                 Description
+---------                 --------------
+s                         second(s)
+ms                        millisecond(s)
+us                        microsecond(s)
+ns                        nanosecond(s)
+ps                        picosecond(s)
+fs                        femtosecond(s)
+
+The "-phase_shift" option takes an integer that represents
+degrees of phase shift from the base clock period. For example, 
+if a base clock has a period of 10ns and clk2 is a relative
+clock derived from the base clock. A phase shift value of 45
+applies a 45 degree phase shift to clk2, producing an offset
+of 1.25ns from the base clock. For a given relative clock,
+you may specify a phase shift, an offset, or both. If both
+are specified, they are additive.
+
+If you specify the "-virtual" option, the relative clock
+is not assigned to any node in the timing netlist. You cannot
+specify the "-virtual" option and the "-target" option 
+at the same time.
+
+For entity-specific assignments, use the "-entity" option to 
+force the assignment to specified entity. If you do not specify
+the "-entity" option, the value for the FOCUS_ENTITY_NAME 
+assignment is used. If the FOCUS_ENTITY_NAME value is not found, 
+the revision name is used.
+
+Assignments created or modified by using this Tcl command are 
+not saved to the Quartus II Settings File (.qsf) unless you
+explicitly call one of the following two Tcl commands:
+
+1) export_assignments
+2) project_close (unless "-dont_export_assignments" is specified)
+
+These two Tcl commands reside in the ::quartus::project Tcl 
+package. You must save assignment changes before you run 
+Quartus(R) II command-line executables. Note, however, that 
+the Tcl commands "execute_flow" and "execute_module" (part 
+of the ::quartus::flow Tcl package) automatically call 
+"export_assignments" before they run command-line executables.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+## Specify a base clock of 10ns
+create_base_clock -fmax 10ns clk10
+
+## Specify a relative clock with 2/3 the period
+create_relative_clock -base_clock clk10 -multiply 2 -divide 3 clk2_3
+
+## Specify a relative clock with a phase shift of 45 degrees
+create_relative_clock -base_clock clk10 -phase_shift 45 clk_45
+## or, equivalently, with an offset of 1.25ns
+create_relative_clock -base_clock clk10 -offset 1.25ns clk_45
+
+## Specify the entity name to which the clock
+## is added, using the -entity option
+## This is needed if the top-level entity name is 
+## other than that of the project
+## The following command generates a "top_level" entity
+create_relative_clock -base_clock clk10 -entity top_level -multiply 2 -divide 3 clk2_3
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't find active revision name. Make sure there is an open, active revision name.
+TCL_ERROR	1   	ERROR: Entity does not exist or uses illegal name characters: <string>. Specify a legal entity name.
+TCL_ERROR	1   	ERROR: Can't run Tcl command while a process is in progress: <string>. To run the command, stop the compilation or simulation; or wait for the compilation or simulation to complete.
+TCL_ERROR	1   	ERROR: Options are mutually exclusive: <string> and <string>. Specify only one of the two options.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</create_relative_clock>
+
+<create_base_clock>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: create_base_clock [-h | -help] [-long_help] [-comment <comment>] [-disable] [-duty_cycle <integer>] [-entity <entity>] -fmax <fmax> [-no_target] [-tag <data>] [-target <name>] [-virtual] <clock_name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -comment <comment>: Comment
+        -disable: Option to disable assignment
+        -duty_cycle <integer>: Duty cycle
+        -entity <entity>: Entity to which to add clock assignment
+        -fmax <fmax>: Clock frequency
+        -no_target: Option to not assign clock to node
+        -tag <data>: Option to tag data to this assignment
+        -target <name>: Clock node name
+        -virtual: Option to specify the clock as a virtual clock
+        <clock_name>: Clock name
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::timing_assignment 1.0
+
+------------
+Description:
+------------
+
+Creates the base clock. The base clock is an absolute clock.
+
+The "-fmax" option can take the format:
+
+<floating point time value><time unit>
+
+For example, if the fmax is 10.55ns, "10.55" is the
+<floating point time value> and "ns" is the <time unit>.
+
+The following table displays possible time units:
+
+Time Unit                 Description
+---------                 --------------
+s                         second(s)
+ms                        millisecond(s)
+us                        microsecond(s)
+ns                        nanosecond(s)
+ps                        picosecond(s)
+fs                        femtosecond(s)
+Hz                        hertz
+KHz                       kilohertz
+MHz                       megahertz
+GHz                       gigahertz
+
+If you specify the "-virtual" option, the base clock
+is not assigned to any node in the timing netlist. You cannot
+specify the "-virtual" option and the "-target" option 
+at the same time.
+
+For entity-specific assignments, use the "-entity" option to 
+force the assignment to specified entity. If you do not specify
+the "-entity" option, the value for the FOCUS_ENTITY_NAME 
+assignment is used. If the FOCUS_ENTITY_NAME value is not found, 
+the revision name is used.
+
+Assignments created or modified by using this Tcl command are 
+not saved to the Quartus II Settings File (.qsf) unless you
+explicitly call one of the following two Tcl commands:
+
+1) export_assignments
+2) project_close (unless "-dont_export_assignments" is specified)
+
+These two Tcl commands reside in the ::quartus::project Tcl 
+package. You must save assignment changes before you run 
+Quartus(R) II command-line executables. Note, however, that 
+the Tcl commands "execute_flow" and "execute_module" (part 
+of the ::quartus::flow Tcl package) automatically call 
+"export_assignments" before they run command-line executables.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Specify a clock named "clk50" with
+# a 50ns period
+# The command specifies a CLOCK section
+# in the active project with the 50ns
+# specification, and adds a
+# "clk50 : CLOCK_SETTING=clk50" assignment
+# to the current entity
+create_base_clock -fmax 50ns clk50
+
+# Specify the same clk50 to a pin with
+# a different name (myclkpin)
+create_base_clock -fmax 50ns -target myclkpin clk50
+
+# Specify the entity name to which the clock
+# is added, using the -entity option
+# This is needed if the top-level entity name 
+# is other than that of the project
+# The following command generates a "top_level" entity.
+create_base_clock -fmax 50ns -entity top_level clk50
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	WARNING: The option "-<string>" was ignored because it is no longer supported. No action is required.
+TCL_ERROR	1   	ERROR: Can't find active revision name. Make sure there is an open, active revision name.
+TCL_ERROR	1   	ERROR: Entity does not exist or uses illegal name characters: <string>. Specify a legal entity name.
+TCL_ERROR	1   	ERROR: Can't run Tcl command while a process is in progress: <string>. To run the command, stop the compilation or simulation; or wait for the compilation or simulation to complete.
+TCL_ERROR	1   	ERROR: Options are mutually exclusive: <string> and <string>. Specify only one of the two options.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</create_base_clock>
+
+<set_input_delay>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: set_input_delay [-h | -help] [-long_help] [-clk_ref <clock>] [-clock_fall] [-comment <comment>] [-disable] [-max] [-min] [-remove] [-tag <data>] -to <input_pin> [<value>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -clk_ref <clock>: Reference clock name
+        -clock_fall: Option to specify that delay is relative to falling edge of reference clock
+        -comment <comment>: Comment
+        -disable: Option to disable assignment
+        -max: Option to set maximum delay
+        -min: Option to set minimum delay
+        -remove: Option to remove input delay requirement
+        -tag <data>: Option to tag data to this assignment
+        -to <input_pin>: Input pin name or input assignment group
+        <value>: Input delay value after rise of reference clock
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::timing_assignment 1.0
+
+------------
+Description:
+------------
+
+Specifies the required minimum or maximum delay on the input 
+pin or input assignment group as specified by the "-to" option. 
+The Quartus II(R) timing analysis propagates this delay and 
+checks it against the actual delay. For more information 
+about assignment groups, type "assignment_group -h".
+
+The "assignment_group" command replaces the deprecated
+"timegroup" command in ::quartus::project, version 5.0.
+
+If both "-min" and "-max" options are not used, then the
+assignment is set for both minimum and maximum delay.
+
+The "-clock_fall" option specifies that the input delay is 
+relative to the falling edge of the reference clock. The 
+rising edge of the reference clock is the default.
+
+The <value> is the input delay after the rise or fall of the 
+reference clock. If you do not specify the "-clk_ref" option, 
+all clocks are assumed to be reference clocks by default.
+
+The format of <value> is "<numerical value><time unit>", 
+for example, "7.55ns". 
+
+The following table shows the available time units:
+
+Time Unit                  Description
+----------------------     ------------------
+s                          second(s)
+ms                         millisecond(s)
+us                         microsecond(s)
+ns                         nanosecond(s)
+ps                         picosecond(s)
+fs                         femtosecond(s)
+Hz                         Hertz
+KHz                        KiloHertz
+MHz                        MegaHertz
+GHz                        GigaHertz
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+## Specify the required minimum and maximum input
+## delays on the input pin named "ipin" relative to
+## the rising edge of the reference clock named "clk1"
+set_input_delay 2ns -to "ipin" -clk_ref "clk1"
+## Or, equivalently,
+set_input_delay 2ns -to "ipin" -clk_ref "clk1" -min -max
+
+## Specify the required minimum input delay on 
+## the input pin named "ipin" relative to the
+## falling edge of the reference clock named "clk1"
+set_input_delay 2ns -to "ipin" -clk_ref "clk1" -min -clock_fall
+
+## Specify the required maximum input delay on
+## input pins with names that start with "i"
+## except those that start with "ibus"
+assignment_group "input_pins" -add_member "i*" -add_exception "ibus*"
+set_input_delay 2ns -to "input_pins" -max
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't find active revision name. Make sure there is an open, active revision name.
+TCL_ERROR	1   	ERROR: Entity does not exist or uses illegal name characters: <string>. Specify a legal entity name.
+TCL_ERROR	1   	ERROR: Can't set revision: <string>. Make sure there is an open, active revision name.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Revision does not exist: <string>. Specify a legal revision name using the "-<string>" option.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</set_input_delay>
+
+<set_output_delay>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: set_output_delay [-h | -help] [-long_help] [-clk_ref <clock>] [-clock_fall] [-comment <comment>] [-disable] [-max] [-min] [-remove] [-tag <data>] -to <output_pin> [<value>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -clk_ref <clock>: Reference clock name
+        -clock_fall: Option to specify that delay is relative to falling edge of reference clock
+        -comment <comment>: Comment
+        -disable: Option to disable assignment
+        -max: Option to set maximum delay
+        -min: Option to set minimum delay
+        -remove: Option to remove output delay requirement
+        -tag <data>: Option to tag data to this assignment
+        -to <output_pin>: Output pin name or output assignment group
+        <value>: Delay value after rise of reference clock
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::timing_assignment 1.0
+
+------------
+Description:
+------------
+
+Specifies the required minimum or maximum delay on the output 
+pin or output assignment group as specified by the "-to" option. 
+The Quartus II(R) timing analysis propagates this delay and 
+checks it against the actual delay. For more information 
+about assignment groups, type "assignment_group -h".
+
+The "assignment_group" command replaces the deprecated
+"timegroup" command in ::quartus::project, version 5.0.
+
+If both "-min" and "-max" options are not used, then the
+assignment is set for both minimum and maximum delay.
+
+The "-clock_fall" option specifies that the output delay is 
+relative to the falling edge of the reference clock. The 
+rising edge of the reference clock is the default.
+
+The <value> is the output delay after the rise or fall of the 
+reference clock. If you do not specify the "-clk_ref" option, 
+all clocks are assumed to be reference clocks by default.
+
+The format of <value> is "<numerical value><time unit>", 
+for example, "7.55ns".
+
+The following table displays available time units:
+
+Time Unit                  Description
+----------------------     ------------------
+s                          second(s)
+ms                         millisecond(s)
+us                         microsecond(s)
+ns                         nanosecond(s)
+ps                         picosecond(s)
+fs                         femtosecond(s)
+Hz                         Hertz
+KHz                        KiloHertz
+MHz                        MegaHertz
+GHz                        GigaHertz
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+## Specify the required minimum and maximum output
+## delays on the output pin named "opin" relative to
+## the rising edge of the reference clock named "clk1"
+set_output_delay 2ns -to "opin" -clk_ref "clk1"
+## Or, equivalently,
+set_output_delay 2ns -to "opin" -clk_ref "clk1" -min -max
+
+## Specify the required minimum output delay on 
+## the output pin named "opin" relative to the
+## falling edge of the reference clock named "clk1"
+set_output_delay 2ns -to "opin" -clk_ref "clk1" -min -clock_fall
+
+## Specify the required maximum output delay on
+## output pins with names that start with "o"
+## except those that start with "obus"
+assignment_group "output_pins" -add_member "o*" -add_exception "obus*"
+set_output_delay 2ns -to "output_pins" -max
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't find active revision name. Make sure there is an open, active revision name.
+TCL_ERROR	1   	ERROR: Entity does not exist or uses illegal name characters: <string>. Specify a legal entity name.
+TCL_ERROR	1   	ERROR: Can't set revision: <string>. Make sure there is an open, active revision name.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Revision does not exist: <string>. Specify a legal revision name using the "-<string>" option.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</set_output_delay>
+
+<set_multicycle_assignment>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: set_multicycle_assignment [-h | -help] [-long_help] [-comment <comment>] [-disable] [-end] [-from <from_list>] [-hold] [-remove] [-setup] [-start] [-tag <data>] [-to <to_list>] <path_multiplier>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -comment <comment>: Comment
+        -disable: Option to disable multicycle assignment
+        -end: Option to indicate that destination clock cycles should be considered for path multiplier
+        -from <from_list>: List of clock names, node names, and/or assignment group names that represent start or source points of multicycle path, for example, {node1 node2 ...}
+        -hold: Option to indicate that path multiplier is meant for hold
+        -remove: Option to remove multicycle assignment
+        -setup: Option to indicate that path multiplier is meant for setup
+        -start: Option to indicate that source clock cycles must be considered for path multiplier
+        -tag <data>: Option to tag data to this assignment
+        -to <to_list>: List of clock names, node names, and/or assignment group names that represent end or destination points of multicycle path, for example, {node1 node2 ...}
+        <path_multiplier>: Multicycle path multiplier
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::timing_assignment 1.0
+
+------------
+Description:
+------------
+
+Specifies that the given timing paths have multicycle setup 
+or hold delays with the number of cycles specified by the 
+"-path_multiplier" option. 
+
+If neither the "-setup" nor "-hold" options are used, the 
+"-setup" option is the default option. If neither the "-start" 
+nor "-end" options are used, the "-end" option is the default 
+option.
+
+You must use either the "-from <from_list>" or "-to <to_list>" 
+option.
+
+Note that Quartus(R) II timing analysis is optimized to use
+assignment groups for timing constraints instead of a list of nodes.
+Of the following two methods to make multicycle assignments, 
+method (1) is the optimal method.
+
+(1) assignment_group "src_group" -add_member "s1"
+    assignment_group "src_group" -add_member "s2"
+    assignment_group "src_group" -add_member "s3"
+    assignment_group "dst_group" -add_member "d1"
+    assignment_group "dst_group" -add_member "d2"
+    set_multicycle_assignment -from "src_group" -to "dst_group"
+
+(2) set_multicycle_assignment -from {s1 s2 s3} -to {d1 d2}
+
+For more information about assignment groups, type "assignment_group -h".
+
+The "assignment_group" command replaces the deprecated
+"timegroup" command in ::quartus::project, version 5.0.
+
+The meaning of multicycle hold differs between the Quartus II 
+software timing analysis and the Synopsys PrimeTime software 
+timing analysis. Refer to the online Help of each software for 
+more information.
+
+Assignments created or modified by using this Tcl command are 
+not saved to the Quartus II Settings File (.qsf) unless you
+explicitly call one of the following two Tcl commands:
+
+1) export_assignments
+2) project_close (unless "-dont_export_assignments" is specified)
+
+These two Tcl commands reside in the ::quartus::project Tcl 
+package. You must save assignment changes before you run 
+Quartus(R) II command-line executables. Note, however, that 
+the Tcl commands "execute_flow" and "execute_module" (part 
+of the ::quartus::flow Tcl package) automatically call 
+"export_assignments" before they run command-line executables.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+## Multicycle "setup" from reg1 and reg2 to any destination points
+assignment_group "src_group" -add_member reg1
+assignment_group "src_group" -add_member reg2
+set_multicycle_assignment 2 -setup -from "src_group"
+
+## or
+assignment_group "src_group" -add_member reg1
+assignment_group "src_group" -add_member reg2
+assignment_group "dst_group" -add_member *
+set_multicycle_assignment 2 -setup -from "src_group" -to "dst_group"
+
+## Source multicycle "setup" to reg1 and reg2 from any source points 
+assignment_group "dst_group" -add_member reg1
+assignment_group "dst_group" -add_member reg2
+set_multicycle_assignment 2 -setup -start -to "dst_group"
+
+## or
+assignment_group "dst_group" -add_member reg1
+assignment_group "dst_group" -add_member reg2
+assignment_group "src_group" -add_member *
+set_multicycle_assignment 2 -setup -start -from "src_group" -to "dst_group"
+
+## Source multicycle "hold" from src1 to dst1 and dst2 and
+## from src2 to dst1 and dst2
+assignment_group "src_group" -add_member src1
+assignment_group "src_group" -add_member src2
+assignment_group "dst_group" -add_member dst1
+assignment_group "dst_group" -add_member dst2
+set_multicycle_assignment 2 -hold -from "src_group" -to "dst_group"
+
+## Source multicycle "hold" from registers clocked by clk1
+## to registers clocked by clk2
+## Timegroups are useful for making assignments to
+## more than one node. Timegroups are not necessary 
+## for making an assignment from only one clock node  
+## to another clock 
+set_multicycle_assignment 2 -hold -start -from clk1 -to clk2
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't find active revision name. Make sure there is an open, active revision name.
+TCL_ERROR	1   	ERROR: Entity does not exist or uses illegal name characters: <string>. Specify a legal entity name.
+TCL_ERROR	1   	ERROR: Can't set revision: <string>. Make sure there is an open, active revision name.
+TCL_ERROR	1   	ERROR: Invalid path multiplier value: <string>.  Specify a positive integer value.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Found two options: -<string> and -<string>. Choose one of the options.
+TCL_ERROR	1   	ERROR: Revision does not exist: <string>. Specify a legal revision name using the "-<string>" option.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</set_multicycle_assignment>
+
+<set_timing_cut_assignment>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: set_timing_cut_assignment [-h | -help] [-long_help] [-comment <comment>] [-disable] [-from <from_pin_list>] [-remove] [-tag <data>] [-to <to_pin_list>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -comment <comment>: Comment
+        -disable: Option to disable assignment
+        -from <from_pin_list>: List of start or source node names and/or assignment group names for timing path, for example, {node1 node2 ...}
+        -remove: Option to remove timing cut assignment
+        -tag <data>: Option to tag data to this assignment
+        -to <to_pin_list>: List of end node names and/or assignment group names for timing path, for example, {node1 node2 ...}
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::timing_assignment 1.0
+
+------------
+Description:
+------------
+
+Specifies that the timing paths that start from the designated 
+<from_pin_list> and end in the designated <to_pin_list> are 
+false paths.
+
+Nodes for the <from_pin_list> can be input pins, internal nodes, 
+clock pins, or assignment groups. Nodes for the <to_pin_list> can be
+output pins, internal nodes, clock pins, or assignment groups.
+
+You must use either the "-from <from_pin_list>" or the 
+"-to <to_pin_list>" option.
+
+Note that Quartus(R) II timing analysis is optimized to use
+assignment groups for timing constraints instead of a list of nodes.
+Of the following two methods to make timing cut assignments, 
+method (1) is the optimal method.
+
+(1) assignment_group "src_group" -add_member "s1"
+    assignment_group "src_group" -add_member "s2"
+    assignment_group "src_group" -add_member "s3"
+    assignment_group "dst_group" -add_member "d1"
+    assignment_group "dst_group" -add_member "d2"
+    set_timing_cut_assignment -from "src_group" -to "dst_group"
+
+(2) set_timing_cut_assignment -from {s1 s2 s3} -to {d1 d2}
+
+For more information about assignment groups, type "assignment_group -h".
+
+The "assignment_group" command replaces the deprecated
+"timegroup" command in ::quartus::project, version 5.0.
+
+Assignments created or modified by using this Tcl command are 
+not saved to the Quartus II Settings File (.qsf) unless you
+explicitly call one of the following two Tcl commands:
+
+1) export_assignments
+2) project_close (unless "-dont_export_assignments" is specified)
+
+These two Tcl commands reside in the ::quartus::project Tcl 
+package. You must save assignment changes before you run 
+Quartus(R) II command-line executables. Note, however, that 
+the Tcl commands "execute_flow" and "execute_module" (part 
+of the ::quartus::flow Tcl package) automatically call 
+"export_assignments" before they run command-line executables.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+## Set timing cut from any source points to dst1 and dst2
+assignment_group "dst_group" -add_member dst1
+assignment_group "dst_group" -add_member dst2
+set_timing_cut_assignment -to "dst_group"
+
+## or
+assignment_group "src_group" -add_member *
+assignment_group "dst_group" -add_member dst1
+assignment_group "dst_group" -add_member dst2
+set_timing_cut_assignment -from "src_group" -to "dst_group"
+
+## Set timing cut from src1 and src2 to any end points
+assignment_group "src_group" -add_member src1
+assignment_group "src_group" -add_member src2
+set_timing_cut_assignment -from "src_group"
+
+## or
+assignment_group "src_group" -add_member src1
+assignment_group "src_group" -add_member src2
+assignment_group "dst_group" -add_member *
+set_timing_cut_assignment -from "src_group" -to "dst_group"
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't find active revision name. Make sure there is an open, active revision name.
+TCL_ERROR	1   	ERROR: Entity does not exist or uses illegal name characters: <string>. Specify a legal entity name.
+TCL_ERROR	1   	ERROR: Can't set revision: <string>. Make sure there is an open, active revision name.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Found two options: -<string> and -<string>. Choose one of the options.
+TCL_ERROR	1   	ERROR: Revision does not exist: <string>. Specify a legal revision name using the "-<string>" option.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</set_timing_cut_assignment>
+
+<set_clock_uncertainty>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: set_clock_uncertainty [-h | -help] [-long_help] [-comment <comment>] [-disable] [-from <src_clock_name>] [-hold] [-remove] [-setup] [-tag <data>] -to <dst_clock_name> <value>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -comment <comment>: Comment
+        -disable: Option to disable assignment
+        -from <src_clock_name>: Source clock name
+        -hold: Option to specify hold time uncertainty
+        -remove: Option to remove assignment
+        -setup: Option to specify setup time uncertainty
+        -tag <data>: Option to tag data to this assignment
+        -to <dst_clock_name>: Destination clock name
+        <value>: Amount of expected clock jitter
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::timing_assignment 1.0
+
+------------
+Description:
+------------
+
+Specifies simple or interlock clock uncertainty (or clock
+jitter) used during setup and/or hold time analysis. The optional
+source clock <src_clock_name> is specified for interlock
+uncertainty and is not specified for simple uncertainty.
+
+You may specify the -setup option, the -hold option, or 
+neither. If neither is specified, then the command applies 
+to both setup and hold.
+
+The <value> is the expected amount of clock jitter.
+The format of <value> is "<numerical value><time unit>", 
+for example, "0.5ns". 
+
+The following table displays available time units:
+
+Time Unit                  Description
+----------------------     ------------------
+s                          second(s)
+ms                         millisecond(s)
+us                         microsecond(s)
+ns                         nanosecond(s)
+ps                         picosecond(s)
+fs                         femtosecond(s)
+Hz                         hertz
+KHz                        kilohertz
+MHz                        megahertz
+GHz                        gigahertz
+
+Assignments created or modified by using this Tcl command are 
+not saved to the Quartus II Settings File (.qsf) unless you
+explicitly call one of the following two Tcl commands:
+
+1) export_assignments
+2) project_close (unless "-dont_export_assignments" is specified)
+
+These two Tcl commands reside in the ::quartus::project Tcl 
+package. You must save assignment changes before you run 
+Quartus(R) II command-line executables. Note, however, that 
+the Tcl commands "execute_flow" and "execute_module" (part 
+of the ::quartus::flow Tcl package) automatically call 
+"export_assignments" before they run command-line executables.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+## Specify a simple setup uncertainty of .3ns
+## and a simple hold uncertainty of .1ns
+set_clock_uncertainty 0.3ns -to clk -setup
+set_clock_uncertainty 0.1ns -to clk -hold
+
+## Both of the following commands specify a
+## simple setup and hold uncertainty of .3ns
+set_clock_uncertainty 0.3ns -to clk
+## or
+set_clock_uncertainty 0.3ns -to clk -setup -hold
+
+## Specify an interlock setup uncertainty of .3ns
+## and an interlock hold uncertainty of .1ns
+set_clock_uncertainty 0.3ns -to clk -from src_clk -setup
+set_clock_uncertainty 0.1ns -to clk -from src_clk -hold
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal value: <string> -- Specify a positive time value.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</set_clock_uncertainty>
+
+<set_clock_latency>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: set_clock_latency [-h | -help] [-long_help] [-early] [-late] [-tag <data>] -to <to> [<value>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -early: Early clock latency
+        -late: Late clock latency
+        -tag <data>: Option to tag data to this assignment
+        -to <to>: Destination clock name
+        <value>: Input delay value after rise of reference clock
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::timing_assignment 1.0
+
+------------
+Description:
+------------
+
+Specifies the required early or late clock latency on the clock
+or input assignment group as specified by the "-to" option. 
+The Quartus II(R) timing analysis propagates this latency and 
+checks it against the actual latency. For more information 
+about assignment groups, type "assignment_group -h".
+
+The "assignment_group" command replaces the deprecated
+"timegroup" command in ::quartus::project, version 5.0.
+
+If both "-early" and "-late" options are not used, then the
+assignment is set for both early and late latency.
+
+The <value> is the latency of the reference clock.
+The format of <value> is "<numerical value><time unit>", 
+for example, "7.55ns". 
+
+The following table shows the available time units:
+
+Time Unit                  Description
+----------------------     ------------------
+s                          second(s)
+ms                         millisecond(s)
+us                         microsecond(s)
+ns                         nanosecond(s)
+ps                         picosecond(s)
+fs                         femtosecond(s)
+Hz                         Hertz
+KHz                        KiloHertz
+MHz                        MegaHertz
+GHz                        GigaHertz
+
+Assignments created or modified by using this Tcl command are 
+not saved to the Quartus II Settings File (.qsf) unless you
+explicitly call one of the following two Tcl commands:
+
+1) export_assignments
+2) project_close (unless "-dont_export_assignments" is specified)
+
+These two Tcl commands reside in the ::quartus::project Tcl 
+package. You must save assignment changes before you run 
+Quartus(R) II command-line executables. Note, however, that 
+the Tcl commands "execute_flow" and "execute_module" (part 
+of the ::quartus::flow Tcl package) automatically call 
+"export_assignments" before they run command-line executables.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+## Set early clock latency to Clk0
+set_clock_latency 2ns -to Clk0 -early
+
+## Set early and late clock latency to Clk*
+set_clock_latency 2ns -to Clk*
+
+## Use assignment_group to set clock latency.
+assignment_group "clock_group" -add_member "Clk*" -add_exception "Clk0"
+set_clock_latency 2ns -to "clock_group" -early
+
+## Commit the assignments to .qsf file.
+export_assignments
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't find active revision name. Make sure there is an open, active revision name.
+TCL_ERROR	1   	ERROR: Entity does not exist or uses illegal name characters: <string>. Specify a legal entity name.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</set_clock_latency>
+
+<<<</1.0>>>>

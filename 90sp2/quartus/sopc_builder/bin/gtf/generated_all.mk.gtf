@@ -1,0 +1,404 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<template name="generated_all.mk">
+
+    <call gtf="%GTF_DIR%/check_version.gtf"/>
+
+    <call gtf="%GTF_DIR%/XPATHs.gtf"/>
+
+    <call gtf="%GTF_DIR%/CPU.gtf"/>
+
+    <call gtf="%GTF_DIR%/file_heading.mk.gtf"/>
+
+    <include source="%GTF_DIR%/license.mk"/>
+
+    <include source="%GTF_DIR%/warning.mk"/>
+
+    <set_variable variable="WITH_VERSIONS" to="1"/>
+    <export variable="WITH_VERSIONS"/>
+    <call gtf="%GTF_DIR%/COMPONENT_LIST.gtf"/>
+    
+    <set_variable variable="CPU_MODULE_CLASS" to="altera_nios2"/>
+    <set_variable variable="COMPONENT_LIST_INDEX"
+                  to="list_index_of( %COMPONENT_LIST%, %CPU_MODULE_CLASS%, 0 )"/>
+    <if condition="lt( %COMPONENT_LIST_INDEX%, 0 )">
+        <error>
+ERROR: module %CPU% (%CPU_MODULE_CLASS%) not found in component directory (install.ptf)
+        </error>
+    </if>
+    <!-- get the first directory that matches altera_nios2 in install.ptf -->
+    <!-- (the first in install.ptf is guaranteed to be the most recent version -->
+    <set_variable variable="COMPONENTS_PROCESSOR_DIR"
+                  to="make_cygdrive_path(list_get( list_get( list_get( list_get( list_get( list_get( %COMPONENT_LIST%, %COMPONENT_LIST_INDEX% ), 1 ), 0), 2), 0 ), 1 ))"/>
+
+    <!-- Remove spaces in the path if they exist -->
+    <if condition='regex(".*[ ].*", %COMPONENTS_PROCESSOR_DIR% )'>
+        <set_variable variable="COMPONENTS_PROCESSOR_DIR"
+                      to="$(call remove_spaces_in_path,%COMPONENTS_PROCESSOR_DIR%)" />
+    </if>
+
+    <text>
+
+
+
+ifeq ($(HOST_OS),cyg)
+remove_spaces_in_path = $(shell cygpath --unix "$(shell cygpath --windows --short-name "$1")")
+else
+# There is no support for spaces in your IP dir on a non-Windows file system
+remove_spaces_in_path = $1
+endif
+
+
+COMPONENTS_PROCESSOR      := %COMPONENTS_PROCESSOR_DIR%
+    </text>
+
+    <set_variable variable="FULL_SOPC_KIT_NIOS2_DIR"
+                  to="make_cygdrive_path( %SOPC_KIT_NIOS2_DIR% )"/>
+
+    <set_variable variable="COMPONENTS_DIR"
+                  to="%FULL_SOPC_KIT_NIOS2_DIR%/components"/>
+
+    <set_variable variable="OS_COMPONENT_NAME"
+                  to='xpath( %STF_NAME%, "normalize-space(%OS_SPEC_XPATH%/@sopc_component_dir)" )'/>
+    <if condition="not( %OS_COMPONENT_NAME% )">
+        <!-- OS defaults to "altera_hal" -->
+        <set_variable variable="OS_COMPONENT_NAME" to="altera_hal"/>
+    </if>
+
+    <!-- TODO - there should be a software equivalent of .sopc_builder/install.ptf for this -->
+
+    <set_variable variable="COMPONENTS_OS_VAR"
+                  to="%COMPONENTS_DIR%/%OS_COMPONENT_NAME%" />
+
+    <!-- Remove spaces in the path if they exist -->
+    <if condition='regex(".*[ ].*", %COMPONENTS_OS_VAR% )'>
+        <set_variable variable="COMPONENTS_OS_VAR"
+                      to="$(call remove_spaces_in_path,%COMPONENTS_OS_VAR%)" />
+    </if>
+
+    <text>
+
+COMPONENTS_OS             := %COMPONENTS_OS_VAR%
+    </text>
+
+    <!-- make a list of all the component directories of all the modules in the PTF (mastered by the CPU) -->
+    <!-- (and look for a floating-point custom instruction while we're iterating through the modules) -->
+
+    <set_variable variable="CHECK_COMPONENT_VERSIONS"
+                  to='xpath( %STF_NAME%, "normalize-space(%OS_SPEC_XPATH%/@check_component_versions)" )'/> <!-- defaults to "no" -->
+    <set_variable variable="COMPONENT_DIR_LIST" to=""/>
+    <set_variable variable="FPCI_MODULE" to=""/>
+    <for_each variable="MODULE" ptf_path="SYSTEM/MODULE">
+        <if condition="and( ptf_module_is_mastered_by( %MODULE%, %CPU% ), ne( %MODULE%, %CPU% ) )">
+            <set_variable variable="MODULE_CLASS"
+                          ptf_path="SYSTEM/MODULE %MODULE%/class"/>
+
+	    <if condition="and( eq( %MODULE_CLASS%, altera_nios_custom_instr_floating_point ), not( %FPCI_MODULE% ) )">
+	        <set_variable variable="FPCI_MODULE" to="%MODULE%"/>
+	        <continue/>
+	    </if>
+
+            <set_variable variable="MODULE_CLASS_VERSION"
+                          ptf_path="SYSTEM/MODULE %MODULE%/class_version"/>
+
+	    <if condition="eq( %MODULE_CLASS%, no_legacy_module )">
+                <set_variable variable="MODULE_CLASS"
+                          ptf_path="SYSTEM/MODULE %MODULE%/gtf_class_name"/>
+                <set_variable variable="MODULE_CLASS_VERSION"
+                          ptf_path="SYSTEM/MODULE %MODULE%/gtf_class_version"/>
+	    </if>
+
+            <set_variable variable="MODULE_CLASS_MAJOR_VERSION"
+                          to='regex( "^(\d+)\..*$", 1, %MODULE_CLASS_VERSION% )'/>
+            <set_variable variable="COMPONENT_LIST_INDEX"
+                          to="list_index_of( %COMPONENT_LIST%, %MODULE_CLASS%, 0 )"/>
+            <if condition="lt( %COMPONENT_LIST_INDEX%, 0 )">
+                <output>
+WARNING: module %MODULE% (%MODULE_CLASS%) not found in component directory (install.ptf)
+                </output>
+                <continue/>
+            </if>
+
+            <!-- select the first version with the same major version number as the module -->
+            <set_variable variable="COMPONENT_DIRS"
+                          to="list_get( list_get( %COMPONENT_LIST%, %COMPONENT_LIST_INDEX% ), 1 )"/>
+            <set_variable variable="COMPONENT_DIR" to=""/>          
+            <for_each variable="COMPONENT_DIR_AND_VERSION" list="%COMPONENT_DIRS%">
+                <set_variable variable="COMPONENT_MAJOR_VERSION"
+                              to='regex( "^(\d+)\..*$", 1, list_get( %COMPONENT_DIR_AND_VERSION%, 1 ) )'/>
+                <!-- if CHECK_COMPONENT_VERSIONS is not "yes" (defaults to no), don't compare the versions -->
+                <!-- (just go with the first version, which is guaranteed to be the most recent) -->
+                <if condition="or( ne( yes, %CHECK_COMPONENT_VERSIONS% ), eq( %MODULE_CLASS_MAJOR_VERSION%, %COMPONENT_MAJOR_VERSION% ) )">
+                    <set_variable variable="COMPONENT_DIR"
+                                  to="list_get( list_get( list_get( %COMPONENT_DIR_AND_VERSION%, 2 ), 0 ), 1 )"/>
+                                  <!-- TODO: replace the three nested list_gets with "list_get( %COMPONENT_DIR_AND_VERSION%, 2, 0 , 1 )" -->
+                    <break/>
+                </if>
+            </for_each>
+
+            <if condition="not( %COMPONENT_DIR% )">
+                <output>
+WARNING: version %MODULE_CLASS_VERSION% of module %MODULE% (%MODULE_CLASS%) not found in component directory (install.ptf)
+                </output>
+                <continue/>
+            </if>
+
+            <if condition="or( file_exists( %COMPONENT_DIR%/inc ), file_exists( %COMPONENT_DIR%/HAL ) )"> <!-- TODO - this should depend on the OS -->
+                <set_variable variable="COMPONENT_DIR"
+                              to="make_cygdrive_path( %COMPONENT_DIR% )"/>
+                <!-- only add each directory to the list once -->
+                <if condition="lt( list_index_of( %COMPONENT_DIR_LIST%, %COMPONENT_DIR% ), 0 )">
+                    <set_variable variable="COMPONENT_DIR_LIST"
+                                  to="list_add( %COMPONENT_DIR_LIST%, %COMPONENT_DIR% )"/>
+                </if>
+            </if>
+        </if>
+    </for_each>
+
+    <set_variable variable="COMPONENTS_MACRO_NAME"
+                  to="COMPONENTS_DEVICE_DRIVERS :="/>
+    <export variable="COMPONENTS_MACRO_NAME"/>
+    <export variable="COMPONENT_DIR_LIST"/>
+    <call gtf="%GTF_DIR%/output_COMPONENT_DIR_LIST.gtf"/>
+
+    <!-- build a list of software component directories -->
+
+    <set_variable variable="COMPONENT_DIR_LIST" to=""/>
+    <for_each variable="SW_COMPONENT_XPATH" xpath="%OS_SPEC_XPATH%/sw_component" file="%STF_NAME%">
+        <set_variable variable="SW_COMPONENT_DIR"
+                      to='xpath( %STF_NAME%, "normalize-space(%SW_COMPONENT_XPATH%/@sopc_component_dir)" )'/>
+        <set_variable variable="SW_COMPONENT_DIR"
+                      to="%COMPONENTS_DIR%/%SW_COMPONENT_DIR%"/>   <!-- TODO - there should be a software equivalent of .sopc_builder/install.ptf for this -->
+        <set_variable variable="COMPONENT_DIR_LIST"
+                      to="list_add( %COMPONENT_DIR_LIST%, %SW_COMPONENT_DIR% )"/>
+    </for_each>
+
+    <set_variable variable="COMPONENTS_MACRO_NAME"
+                  to="COMPONENTS_SOFTWARE       :="/>
+    <export variable="COMPONENTS_MACRO_NAME"/>
+    <export variable="COMPONENT_DIR_LIST"/>
+    <call gtf="%GTF_DIR%/output_COMPONENT_DIR_LIST.gtf"/>
+
+    <!-- is a "custom" linker script defined in the STF? -->
+    <set_variable variable="AUTO_GEN_SCRIPT"
+                  to='xpath( %STF_NAME%, "normalize-space(%LINK_SPEC_XPATH%/@auto_gen_script)" )'/>
+    <if condition="eq( no, %AUTO_GEN_SCRIPT% )"> <!-- default to yes -->
+        <set_variable variable="SCRIPT_NAME"
+                      to='xpath( %STF_NAME%, "normalize-space(%LINK_SPEC_XPATH%/script/@name)" )'/>
+        <text>
+
+# a custom linker script has been selected
+CUSTOM_LINKER_SCRIPT = %SCRIPT_NAME%
+        </text>
+    </if>
+
+    <!-- Set up to use direct driver access. -->
+    <set_variable variable="DIRECT_DRIVERS"
+                  to='xpath( %STF_NAME%, "normalize-space(%OS_SPEC_XPATH%/@direct_drivers)" )'/>
+    <if condition="eq( yes, %DIRECT_DRIVERS% )"> <!-- default to "no" -->
+        <text>
+ALT_USE_DIRECT_DRIVERS = ALT_USE_DIRECT_DRIVERS </text>
+    </if>
+
+    <text>
+
+CPU = %CPU%
+
+CPPFLAGS += -DSYSTEM_BUS_WIDTH=32 </text> <!-- TODO: how do I generate the "32"? --> 
+
+    <set_variable variable="NO_EXIT"
+                  to='xpath( %STF_NAME%, "normalize-space(%OS_SPEC_XPATH%/@no_exit)" )'/>
+    <if condition="eq( yes, %NO_EXIT% )"> <!-- default to "no" -->
+        <text>
+ -DALT_NO_EXIT </text>
+    </if>
+
+    <set_variable variable="CLEAN_EXIT"
+                  to='xpath( %STF_NAME%, "normalize-space(%OS_SPEC_XPATH%/@clean_exit)" )'/>
+    <if condition="eq( no, %CLEAN_EXIT% )"> <!-- default to "yes" -->
+        <text>
+ -DALT_NO_CLEAN_EXIT </text>
+    </if>
+
+    <set_variable variable="NO_C_PLUS_PLUS"
+                  to='xpath( %STF_NAME%, "normalize-space(%OS_SPEC_XPATH%/@no_c_plus_plus)" )'/>
+    <if condition="eq( yes, %NO_C_PLUS_PLUS% )"> <!-- default to "no" -->
+        <text>
+ -DALT_NO_C_PLUS_PLUS </text>
+    </if>
+
+    <set_variable variable="INSTRUCTION_EMULATION"
+                  to='xpath( %STF_NAME%, "normalize-space(%OS_SPEC_XPATH%/@instruction_emulation)" )'/>
+    <if condition="eq( no, %INSTRUCTION_EMULATION% )"> <!-- default to "yes" -->
+        <text>
+ -DALT_NO_INSTRUCTION_EMULATION </text>
+    </if>
+
+    <set_variable variable="STACK_CHECKING"
+                  to='xpath( %STF_NAME%, "normalize-space(%OS_SPEC_XPATH%/@stack_checking)" )'/>
+    <if condition="eq( yes, %STACK_CHECKING% )"> <!-- default to "no" -->
+        <text>
+ -DALT_STACK_CHECK -mstack-check </text>
+    </if>
+
+    <set_variable variable="SMALL_FOOTPRINT"
+                  to='xpath( %STF_NAME%, "normalize-space(%OS_SPEC_XPATH%/@small_footprint)" )'/>
+    <if condition="eq( yes, %SMALL_FOOTPRINT% )"> <!-- default to "no" -->
+        <text>
+ -DALT_USE_SMALL_DRIVERS </text>
+    </if>
+
+    <set_variable variable="DIRECT_DRIVERS"
+                  to='xpath( %STF_NAME%, "normalize-space(%OS_SPEC_XPATH%/@direct_drivers)" )'/>
+    <if condition="eq( yes, %DIRECT_DRIVERS% )"> <!-- default to "no" -->
+        <text>
+ -DALT_USE_DIRECT_DRIVERS </text>
+    </if>
+
+    <set_variable variable="PROFILING"
+                  to='xpath( %STF_NAME%, "normalize-space(%OS_SPEC_XPATH%/@profiling)" )'/>
+    <if condition="eq( yes, %PROFILING% )"> <!-- default to "no" -->
+        <text>
+ -DALT_PROVIDE_GMON </text>
+    </if>
+
+    <!-- end line above -->
+    <text>
+
+    </text>
+
+    <set_variable variable="CFLAGS" to=""/>
+
+    <switch>
+        <set_variable variable="HARDWARE_MULTIPLY_PRESENT"
+                      ptf_path="SYSTEM/MODULE %CPU%/WIZARD_SCRIPT_ARGUMENTS/hardware_multiply_present"/>
+        <if condition="eq( 0, %HARDWARE_MULTIPLY_PRESENT% )"> <!-- default to "1" -->
+            <set_variable variable="CFLAGS" to="%CFLAGS% -mno-hw-mul"/>
+            <break/>
+        </if>
+
+        <!-- hardware multiply is present... -->
+        <set_variable variable="CFLAGS" to="%CFLAGS% -mhw-mul"/>
+
+        <!-- ...but is mulx?... -->
+        <set_variable variable="HARDWARE_MULTIPLY_OMITS_MSW"
+                      ptf_path="SYSTEM/MODULE %CPU%/WIZARD_SCRIPT_ARGUMENTS/hardware_multiply_omits_msw"/>
+        <if condition="eq( 1, %HARDWARE_MULTIPLY_OMITS_MSW% )"> <!-- default to "0" -->
+            <!-- ...it's not -->
+            <set_variable variable="CFLAGS" to="%CFLAGS% -mno-hw-mulx"/>
+            <break/>
+        </if>
+        <!-- ...it is -->
+        <set_variable variable="CFLAGS" to="%CFLAGS% -mhw-mulx"/>
+    </switch>
+
+    <switch>
+        <set_variable variable="HARDWARE_DIVIDE_PRESENT"
+                      ptf_path="SYSTEM/MODULE %CPU%/WIZARD_SCRIPT_ARGUMENTS/hardware_divide_present"/>
+        <if condition="eq( 1, %HARDWARE_DIVIDE_PRESENT% )"> <!-- default to "0" -->
+            <set_variable variable="CFLAGS" to="%CFLAGS% -mhw-div"/>
+            <break/>
+        </if>
+        <set_variable variable="CFLAGS" to="%CFLAGS% -mno-hw-div"/>
+    </switch>
+    
+    <!-- any floating point custom instructions in the PTF? -->
+    
+    <if condition="%FPCI_MODULE%">
+        <set_variable variable="CUSTOM_FPU_CFG" to="60-1"/>
+	<set_variable variable="USE_DIVIDER"
+	              ptf_path="SYSTEM/MODULE %FPCI_MODULE%/WIZARD_SCRIPT_ARGUMENTS/Use_Divider"/>
+	<if condition="%USE_DIVIDER%"> <!-- defaults to 0 -->
+            <set_variable variable="CUSTOM_FPU_CFG" to="60-2"/>
+	</if>
+        <set_variable variable="CFLAGS" to="%CFLAGS% -mcustom-fpu-cfg=%CUSTOM_FPU_CFG%"/>
+    </if>
+
+    <set_variable variable="PROFILING"
+                  to='xpath( %STF_NAME%, "normalize-space(%OS_SPEC_XPATH%/@profiling)" )'/>
+    <if condition="eq( yes, %PROFILING% )"> <!-- default to "no" -->
+        <set_variable variable="CFLAGS" to="%CFLAGS% -pg"/>
+    </if>
+
+    <set_variable variable="BIG_ENDIAN"
+                  ptf_path="SYSTEM/MODULE %CPU%/WIZARD_SCRIPT_ARGUMENTS/big_endian"/>
+    <if condition="%BIG_ENDIAN%"> <!-- default to 0 -->
+        <set_variable variable="CFLAGS" to="%CFLAGS% -EB"/>
+    </if>
+
+    <if condition="%CFLAGS%">
+        <text>
+CFLAGS   +=%CFLAGS%
+        </text>
+    </if>
+
+    <!-- look for any LDFLAGS indicated in the STF -->
+
+    <if condition="eq( no, %CLEAN_EXIT% )"> <!-- default to "yes" -->
+        <text>
+LDFLAGS  += -Wl,--defsym,exit=_exit 
+        </text>
+    </if>
+
+    <set_variable variable="FLAG_COUNT" to="0"/>
+    <for_each variable="FLAG_XPATH" xpath="%OS_SPEC_XPATH%/ldflags/flag" file="%STF_NAME%">
+        <set_variable variable="FLAG"
+                      to="xpath( %STF_NAME%, normalize-space(%FLAG_XPATH%/@name) )"/>
+        <if condition="eq( 0, %FLAG_COUNT% )">
+            <text>
+LDFLAGS  += </text>
+        </if>
+        <text>
+ %FLAG% </text>
+        <set_variable variable="FLAG_COUNT" to="add( 1, %FLAG_COUNT% )"/>
+    </for_each>
+
+    <if condition="gt( %FLAG_COUNT%, 0 )">
+        <!-- end the last line above -->
+        <text>
+
+        </text>
+    </if>
+
+    <!-- set any macros indicated in the STF -->
+
+    <set_variable variable="SW_COMPONENT_XPATH" to="%OS_SPEC_XPATH%"/>
+    <export variable="SW_COMPONENT_XPATH"/>
+    <export variable="STF_NAME"/>
+    <call gtf="%GTF_DIR%/output_make_macros.gtf"/>
+    
+    <for_each variable="SW_COMPONENT_XPATH" xpath="%OS_SPEC_XPATH%/sw_component" file="%STF_NAME%">
+        <export variable="SW_COMPONENT_XPATH"/>
+        <export variable="STF_NAME"/>
+        <call gtf="%GTF_DIR%/output_make_macros.gtf"/>
+    </for_each>
+
+    <!-- add the CHAC_HDL macro if required -->
+
+    <set_variable variable="CHAC_MODULES" to="()"/>
+    <for_each variable="MODULE" ptf_path="SYSTEM/MODULE">
+        <set_variable variable="CLASS"
+                      ptf_path="SYSTEM/MODULE %MODULE%/class"/>
+        <if condition="and( eq( %CLASS%, altera_avalon_c_hardware_accelerator ), ptf_module_is_mastered_by( %MODULE%, %CPU% ), ne( %MODULE%, %CPU% ) )">
+            <set_variable variable="CHAC_MODULES"
+                          to="list_add( %CHAC_MODULES%, %MODULE% )"/>
+        </if>
+    </for_each>
+    <if condition="gt( list_size( %CHAC_MODULES% ), 0 )">
+        <set_variable variable="HDL_LANGUAGE"
+                      ptf_path="/SYSTEM/WIZARD_SCRIPT_ARGUMENTS/hdl_language"/>
+        <text>
+
+HDL_LANGUAGE = %HDL_LANGUAGE%
+CHAC_HDL = </text>
+        <for_each variable="MODULE" list="%CHAC_MODULES%">
+            <set_variable variable="SUBROUTINE_NAME"
+                          ptf_path="/SYSTEM/MODULE %MODULE%/WIZARD_SCRIPT_ARGUMENTS/Subroutine_Name"/>
+            <text>
+ %SUBROUTINE_NAME%.%HDL_LANGUAGE% </text>
+        </for_each>
+        <text>
+        </text>
+    </if>
+
+</template>

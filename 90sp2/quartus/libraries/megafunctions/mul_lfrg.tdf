@@ -1,0 +1,134 @@
+--------------------------------------------------------------------
+--
+--	MUL_LFRG	 
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 2.0
+--
+--------------------------------------------------------------------
+
+------------------------------------------------------------------
+-- Name : mul_lfrg.tdf											--
+-- Function:  Decoder section for Booth multiplier 				--
+-- 			  implementation. This subdesign uses its           --
+--			  parameters to differentiate between the possible  --
+--			  combinations of right, left, or middle 3-bit      --
+--			  decodings.										--
+------------------------------------------------------------------  
+INCLUDE "aglobal90.inc";	% device definitions %
+
+PARAMETERS
+(
+	WIDTH = 1,
+	BIT0_OF_SELECT_IS_GND = "FALSE",
+ 	BIT2_OF_SELECT_IS_SIGN_EXT = "FALSE",
+ 	BIT0_OF_DATA_IS_GND = "FALSE",
+	INPUTS_ARE_IDENTICAL= "FALSE"
+);
+
+DEFINE USE_NO_CASCADE() = (BIT0_OF_SELECT_IS_GND == "TRUE" #
+						   BIT2_OF_SELECT_IS_SIGN_EXT == "TRUE" #
+ 						   BIT0_OF_DATA_IS_GND == "TRUE" #
+						   INPUTS_ARE_IDENTICAL == "TRUE") ? 1 : 0;
+ 
+SUBDESIGN mul_lfrg
+( 
+	data[WIDTH-1..0][1..0]		: INPUT;
+	select[WIDTH-1..0][2..0]	: INPUT;
+ 	out_bit[WIDTH-1..0]			: OUTPUT;
+)
+
+VARIABLE
+	left_bit[WIDTH-1..0]  : NODE;
+	right_bit[WIDTH-1..0] : NODE;
+
+	data0_node[WIDTH-1..0] : NODE;
+	data1_node[WIDTH-1..0] : NODE;
+
+ 	IF (USE_NO_CASCADE() == 0) GENERATE
+		casc[WIDTH-1..0] : CASCADE;
+	END GENERATE;
+
+BEGIN
+
+	data0_node[WIDTH-1..0] = data[WIDTH-1..0][0];
+	data1_node[WIDTH-1..0] = data[WIDTH-1..0][1];
+
+	FOR I IN 0 TO WIDTH-1 GENERATE
+
+%
+	 	TABLE
+		  data0_node[I], select[I][] => right_bit[I];
+			--------------------------------------------------------------------------------
+			0, 		0 		=> 	0;  	-- X  0, right_bit = 0
+			0, 		1 		=> 	0;  	-- X +1, right_bit = 0 to force out_bit to data[1]
+			0, 		2 		=>	0;  	-- X +1, right_bit = 0 to force out_bit to data[1]
+			0, 		3 		=> 	0;  	-- X +2, right_bit = data[0]
+			0, 		4 		=> 	1;  	-- X -2, right_bit = !data[0]
+			0, 		5 		=> 	0;  	-- X -1, right_bit = 0 to force out_bit to data[1]
+			0, 		6 		=> 	0;  	-- X -1, right_bit = 0 to force out_bit to data[1]
+			0, 		7 		=> 	0;  	-- X  0, right_bit = 0
+			--------------------------------------------------------------------------------
+			1, 		0 		=> 	0;  	-- X  0, right_bit = 0
+			1, 		1 		=> 	0;  	-- X +1, right_bit = 0 to force out_bit to data[1]
+			1, 		2 		=> 	0;  	-- X +1, right_bit = 0 to force out_bit to data[1]
+			1,		3 		=> 	1;  	-- X +2, right_bit = data[0]
+			1, 		4 		=> 	0;  	-- X -2, right_bit = !data[0]
+			1, 		5 		=> 	0;  	-- X -1, right_bit = 0 to force out_bit to data[1]
+			1, 		6 		=> 	0;  	-- X -1, right_bit = 0 to force out_bit to data[1]
+			1, 		7 		=> 	0;  	-- X  0, right_bit = 0
+			--------------------------------------------------------------------------------
+		END TABLE;
+
+		TABLE
+		  data1_node[I], select[I][] => left_bit[I];
+			0, 		0 		=> 	0;  	-- X  0, left_bit = 0
+			0, 		1 		=> 	0;  	-- X +1, left_bit = data[1]
+			0, 		2 		=>	0;  	-- X +1, left_bit = data[1]
+			0, 		3 		=> 	0;  	-- X +2, left_bit = 0 to force out_bit to data[0]
+			0, 		4 		=> 	0;  	-- X -2, left_bit = 0 to force out_bit to data[0]
+			0, 		5 		=> 	1;  	-- X -1, left_bit = !data[1]
+			0, 		6 		=> 	1;  	-- X -1, left-bit = !data[1]
+			0, 		7 		=> 	0;  	-- X  0, left_bit = 0
+			----------------------------------------------
+			1, 		0 		=> 	0;  	-- X  0, left_bit = 0
+			1, 		1 		=> 	1;  	-- X +1, left_bit = data[1]
+			1, 		2 		=> 	1;  	-- X +1, left_bit = data[1]
+			1,		3 		=> 	0;  	-- X +2, left_bit = 0 to force out_bit to data[0]
+			1, 		4 		=> 	0;  	-- X -2, left_bit = 0 to force out_bit to data[0]
+			1, 		5 		=> 	0;  	-- X -1, left_bit = !data[1]
+			1, 		6 		=> 	0;  	-- X -1, left_bit = !data[1]
+			1, 		7 		=> 	0;  	-- X  0, left_bit = 0
+			--------------------------------------------------------------------------------
+		END TABLE;
+%
+
+		right_bit[I] = (!data0_node[I] AND (select[I][] == 4)) OR (data0_node[I] AND (select[I][] == 3));
+		left_bit[I] = (!data1_node[I] AND ((select[I][] == 5) OR (select[I][] == 6))) OR (data1_node[I] AND ((select[I][] == 1) OR (select[I][] == 2)));
+
+	END GENERATE;
+
+ 	IF (USE_NO_CASCADE() == 0) GENERATE
+		casc[WIDTH-1..0] = !right_bit[WIDTH-1..0];
+		out_bit[WIDTH-1..0]	= !left_bit[WIDTH-1..0] & casc[WIDTH-1..0];
+	ELSE GENERATE
+		out_bit[WIDTH-1..0]	= !left_bit[WIDTH-1..0] & !right_bit[WIDTH-1..0];
+	END GENERATE;
+END;
+
+

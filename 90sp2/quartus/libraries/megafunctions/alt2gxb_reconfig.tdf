@@ -1,0 +1,253 @@
+------------------------------------------------------------------
+-- alt2gxb_reconfig parameterized megafunction
+-- Generated with 'clearbox' loader - do not edit
+------------------------------------------------------------------
+
+
+-- Copyright (C) 1991-2009 Altera Corporation
+--  Your use of Altera Corporation's design tools, logic functions 
+--  and other software and tools, and its AMPP partner logic 
+--  functions, and any output files from any of the foregoing 
+--  (including device programming or simulation files), and any 
+--  associated documentation or information are expressly subject 
+--  to the terms and conditions of the Altera Program License 
+--  Subscription Agreement, Altera MegaCore Function License 
+--  Agreement, or other applicable license agreement, including, 
+--  without limitation, that your use is for the sole purpose of 
+--  programming logic devices manufactured by Altera and sold by 
+--  Altera or its authorized distributors.  Please refer to the 
+--  applicable agreement for further details.
+
+--  Version 9.0 Build 235 06/17/2009
+
+OPTIONS NAME_SUBSTITUTION = ON;
+
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+
+PARAMETERS
+(
+	AEQ_MODE = "RUN",
+	AEQ_TRANSLATE_EQS = "YES",
+	BASE_PORT_WIDTH = 1,
+	CHANNEL_ADDRESS_WIDTH = 1,
+	ENABLE_AEQ = "OFF",
+	ENABLE_BUF_CAL = "FALSE",
+	ENABLE_BUF_CAL_FUNC_SIM = "FALSE",
+	ENABLE_CHL_ADDR_FOR_ANALOG_CTRL = "FALSE",
+	ENABLE_ILLEGAL_MODE_CHECK = "FALSE",
+	ENABLE_RX_TX_DUPLEX_SEL = "FALSE",
+	ENABLE_SELF_RECOVERY = "FALSE",
+	LOGICAL_PLL_SEL_WIDTH = 1,
+	MIF_ADDRESS_WIDTH = 5,
+	NUMBER_OF_CHANNELS,
+	NUMBER_OF_RECONFIG_PORTS,
+	READ_BASE_PORT_WIDTH = 1,
+	RECONFIG_FROMGXB_WIDTH = 1,
+	RECONFIG_MODE_SEL_WIDTH = 3,
+	RECONFIG_TOGXB_WIDTH = 3,
+	RX_EQDCGAIN_PORT_WIDTH = 2,
+	TX_PREEMP_PORT_WIDTH = 4,
+	CBXI_PARAMETER = "NOTHING"
+);
+FUNCTION @CBXI_PARAMETER (aeq_fromgxb[NUMBER_OF_CHANNELS*6-1..0], gxb_address[3-1..0], logical_channel_address[CHANNEL_ADDRESS_WIDTH-1..0], logical_tx_pll_sel[LOGICAL_PLL_SEL_WIDTH-1..0], logical_tx_pll_sel_en, rate_switch_ctrl[2-1..0], read, reconfig_address[MIF_ADDRESS_WIDTH-1..0], reconfig_clk, reconfig_data[16-1..0], reconfig_data_mask[16-1..0], reconfig_fromgxb[RECONFIG_FROMGXB_WIDTH-1..0], reconfig_mode_sel[RECONFIG_MODE_SEL_WIDTH-1..0], reset_reconfig_address, rx_eqctrl[BASE_PORT_WIDTH*4-1..0], rx_eqdcgain[BASE_PORT_WIDTH*RX_EQDCGAIN_PORT_WIDTH-1..0], rx_tx_duplex_sel[2-1..0], tx_preemp_0t[BASE_PORT_WIDTH*TX_PREEMP_PORT_WIDTH-1..0], tx_preemp_1t[BASE_PORT_WIDTH*TX_PREEMP_PORT_WIDTH-1..0], tx_preemp_2t[BASE_PORT_WIDTH*TX_PREEMP_PORT_WIDTH-1..0], tx_vodctrl[BASE_PORT_WIDTH*3-1..0], write_all)
+RETURNS (aeq_togxb[NUMBER_OF_CHANNELS*4-1..0], busy, channel_reconfig_done, data_valid, error, rate_switch_out[2-1..0], reconfig_address_en, reconfig_address_out[MIF_ADDRESS_WIDTH-1..0], reconfig_data_out[16-1..0], reconfig_togxb[RECONFIG_TOGXB_WIDTH-1..0], rx_eqctrl_out[READ_BASE_PORT_WIDTH*4-1..0], rx_eqdcgain_out[READ_BASE_PORT_WIDTH*RX_EQDCGAIN_PORT_WIDTH-1..0], tx_preemp_0t_out[READ_BASE_PORT_WIDTH*TX_PREEMP_PORT_WIDTH-1..0], tx_preemp_1t_out[READ_BASE_PORT_WIDTH*TX_PREEMP_PORT_WIDTH-1..0], tx_preemp_2t_out[READ_BASE_PORT_WIDTH*TX_PREEMP_PORT_WIDTH-1..0], tx_vodctrl_out[READ_BASE_PORT_WIDTH*3-1..0]);
+
+
+SUBDESIGN alt2gxb_reconfig
+(
+	aeq_fromgxb[NUMBER_OF_CHANNELS*6-1..0]		:	INPUT = GND;
+	aeq_togxb[NUMBER_OF_CHANNELS*4-1..0]		:	OUTPUT;
+	busy		:	OUTPUT;
+	channel_reconfig_done		:	OUTPUT;
+	data_valid		:	OUTPUT;
+	error		:	OUTPUT;
+	gxb_address[3-1..0]		:	INPUT = GND;
+	logical_channel_address[CHANNEL_ADDRESS_WIDTH-1..0]		:	INPUT = GND;
+	logical_tx_pll_sel[LOGICAL_PLL_SEL_WIDTH-1..0]		:	INPUT = GND;
+	logical_tx_pll_sel_en		:	INPUT = VCC;
+	rate_switch_ctrl[2-1..0]		:	INPUT = GND;
+	rate_switch_out[2-1..0]		:	OUTPUT;
+	read		:	INPUT = GND;
+	reconfig_address[MIF_ADDRESS_WIDTH-1..0]		:	INPUT = GND;
+	reconfig_address_en		:	OUTPUT;
+	reconfig_address_out[MIF_ADDRESS_WIDTH-1..0]		:	OUTPUT;
+	reconfig_clk		:	INPUT;
+	reconfig_data[16-1..0]		:	INPUT = GND;
+	reconfig_data_mask[16-1..0]		:	INPUT = GND;
+	reconfig_data_out[16-1..0]		:	OUTPUT;
+	reconfig_fromgxb[RECONFIG_FROMGXB_WIDTH-1..0]		:	INPUT;
+	reconfig_mode_sel[RECONFIG_MODE_SEL_WIDTH-1..0]		:	INPUT = GND;
+	reconfig_togxb[RECONFIG_TOGXB_WIDTH-1..0]		:	OUTPUT;
+	reset_reconfig_address		:	INPUT = GND;
+	rx_eqctrl[BASE_PORT_WIDTH*4-1..0]		:	INPUT = GND;
+	rx_eqctrl_out[READ_BASE_PORT_WIDTH*4-1..0]		:	OUTPUT;
+	rx_eqdcgain[BASE_PORT_WIDTH*RX_EQDCGAIN_PORT_WIDTH-1..0]		:	INPUT = GND;
+	rx_eqdcgain_out[READ_BASE_PORT_WIDTH*RX_EQDCGAIN_PORT_WIDTH-1..0]		:	OUTPUT;
+	rx_tx_duplex_sel[2-1..0]		:	INPUT = GND;
+	tx_preemp_0t[BASE_PORT_WIDTH*TX_PREEMP_PORT_WIDTH-1..0]		:	INPUT = GND;
+	tx_preemp_0t_out[READ_BASE_PORT_WIDTH*TX_PREEMP_PORT_WIDTH-1..0]		:	OUTPUT;
+	tx_preemp_1t[BASE_PORT_WIDTH*TX_PREEMP_PORT_WIDTH-1..0]		:	INPUT = GND;
+	tx_preemp_1t_out[READ_BASE_PORT_WIDTH*TX_PREEMP_PORT_WIDTH-1..0]		:	OUTPUT;
+	tx_preemp_2t[BASE_PORT_WIDTH*TX_PREEMP_PORT_WIDTH-1..0]		:	INPUT = GND;
+	tx_preemp_2t_out[READ_BASE_PORT_WIDTH*TX_PREEMP_PORT_WIDTH-1..0]		:	OUTPUT;
+	tx_vodctrl[BASE_PORT_WIDTH*3-1..0]		:	INPUT = GND;
+	tx_vodctrl_out[READ_BASE_PORT_WIDTH*3-1..0]		:	OUTPUT;
+	write_all		:	INPUT = GND;
+)
+VARIABLE
+	IF CBXI_PARAMETER != "NOTHING" GENERATE
+		auto_generated : @CBXI_PARAMETER WITH ( CBXI_PARAMETER = "NOTHING" );
+	END GENERATE;
+BEGIN
+	ASSERT (CBXI_PARAMETER != "NOTHING")
+	REPORT "Valid clear box generator not found or Errors encountered during clear box generation"
+	SEVERITY ERROR;
+	IF (CBXI_PARAMETER != "NOTHING") GENERATE
+		IF USED(aeq_fromgxb) GENERATE
+			auto_generated.aeq_fromgxb[] = aeq_fromgxb[];
+		END GENERATE;
+		IF USED(aeq_togxb) GENERATE
+			aeq_togxb[] = auto_generated.aeq_togxb[];
+		ELSE GENERATE
+			aeq_togxb[] = GND;
+		END GENERATE;
+		IF USED(busy) GENERATE
+			busy = auto_generated.busy;
+		ELSE GENERATE
+			busy = GND;
+		END GENERATE;
+		IF USED(channel_reconfig_done) GENERATE
+			channel_reconfig_done = auto_generated.channel_reconfig_done;
+		ELSE GENERATE
+			channel_reconfig_done = GND;
+		END GENERATE;
+		IF USED(data_valid) GENERATE
+			data_valid = auto_generated.data_valid;
+		ELSE GENERATE
+			data_valid = GND;
+		END GENERATE;
+		IF USED(error) GENERATE
+			error = auto_generated.error;
+		ELSE GENERATE
+			error = GND;
+		END GENERATE;
+		IF USED(gxb_address) GENERATE
+			auto_generated.gxb_address[] = gxb_address[];
+		END GENERATE;
+		IF USED(logical_channel_address) GENERATE
+			auto_generated.logical_channel_address[] = logical_channel_address[];
+		END GENERATE;
+		IF USED(logical_tx_pll_sel) GENERATE
+			auto_generated.logical_tx_pll_sel[] = logical_tx_pll_sel[];
+		END GENERATE;
+		IF USED(logical_tx_pll_sel_en) GENERATE
+			auto_generated.logical_tx_pll_sel_en = logical_tx_pll_sel_en;
+		END GENERATE;
+		IF USED(rate_switch_ctrl) GENERATE
+			auto_generated.rate_switch_ctrl[] = rate_switch_ctrl[];
+		END GENERATE;
+		IF USED(rate_switch_out) GENERATE
+			rate_switch_out[] = auto_generated.rate_switch_out[];
+		ELSE GENERATE
+			rate_switch_out[] = GND;
+		END GENERATE;
+		IF USED(read) GENERATE
+			auto_generated.read = read;
+		END GENERATE;
+		IF USED(reconfig_address) GENERATE
+			auto_generated.reconfig_address[] = reconfig_address[];
+		END GENERATE;
+		IF USED(reconfig_address_en) GENERATE
+			reconfig_address_en = auto_generated.reconfig_address_en;
+		ELSE GENERATE
+			reconfig_address_en = GND;
+		END GENERATE;
+		IF USED(reconfig_address_out) GENERATE
+			reconfig_address_out[] = auto_generated.reconfig_address_out[];
+		ELSE GENERATE
+			reconfig_address_out[] = GND;
+		END GENERATE;
+		IF USED(reconfig_clk) GENERATE
+			auto_generated.reconfig_clk = reconfig_clk;
+		END GENERATE;
+		IF USED(reconfig_data) GENERATE
+			auto_generated.reconfig_data[] = reconfig_data[];
+		END GENERATE;
+		IF USED(reconfig_data_mask) GENERATE
+			auto_generated.reconfig_data_mask[] = reconfig_data_mask[];
+		END GENERATE;
+		IF USED(reconfig_data_out) GENERATE
+			reconfig_data_out[] = auto_generated.reconfig_data_out[];
+		ELSE GENERATE
+			reconfig_data_out[] = GND;
+		END GENERATE;
+		IF USED(reconfig_fromgxb) GENERATE
+			auto_generated.reconfig_fromgxb[] = reconfig_fromgxb[];
+		END GENERATE;
+		IF USED(reconfig_mode_sel) GENERATE
+			auto_generated.reconfig_mode_sel[] = reconfig_mode_sel[];
+		END GENERATE;
+		IF USED(reconfig_togxb) GENERATE
+			reconfig_togxb[] = auto_generated.reconfig_togxb[];
+		ELSE GENERATE
+			reconfig_togxb[] = GND;
+		END GENERATE;
+		IF USED(reset_reconfig_address) GENERATE
+			auto_generated.reset_reconfig_address = reset_reconfig_address;
+		END GENERATE;
+		IF USED(rx_eqctrl) GENERATE
+			auto_generated.rx_eqctrl[] = rx_eqctrl[];
+		END GENERATE;
+		IF USED(rx_eqctrl_out) GENERATE
+			rx_eqctrl_out[] = auto_generated.rx_eqctrl_out[];
+		ELSE GENERATE
+			rx_eqctrl_out[] = GND;
+		END GENERATE;
+		IF USED(rx_eqdcgain) GENERATE
+			auto_generated.rx_eqdcgain[] = rx_eqdcgain[];
+		END GENERATE;
+		IF USED(rx_eqdcgain_out) GENERATE
+			rx_eqdcgain_out[] = auto_generated.rx_eqdcgain_out[];
+		ELSE GENERATE
+			rx_eqdcgain_out[] = GND;
+		END GENERATE;
+		IF USED(rx_tx_duplex_sel) GENERATE
+			auto_generated.rx_tx_duplex_sel[] = rx_tx_duplex_sel[];
+		END GENERATE;
+		IF USED(tx_preemp_0t) GENERATE
+			auto_generated.tx_preemp_0t[] = tx_preemp_0t[];
+		END GENERATE;
+		IF USED(tx_preemp_0t_out) GENERATE
+			tx_preemp_0t_out[] = auto_generated.tx_preemp_0t_out[];
+		ELSE GENERATE
+			tx_preemp_0t_out[] = GND;
+		END GENERATE;
+		IF USED(tx_preemp_1t) GENERATE
+			auto_generated.tx_preemp_1t[] = tx_preemp_1t[];
+		END GENERATE;
+		IF USED(tx_preemp_1t_out) GENERATE
+			tx_preemp_1t_out[] = auto_generated.tx_preemp_1t_out[];
+		ELSE GENERATE
+			tx_preemp_1t_out[] = GND;
+		END GENERATE;
+		IF USED(tx_preemp_2t) GENERATE
+			auto_generated.tx_preemp_2t[] = tx_preemp_2t[];
+		END GENERATE;
+		IF USED(tx_preemp_2t_out) GENERATE
+			tx_preemp_2t_out[] = auto_generated.tx_preemp_2t_out[];
+		ELSE GENERATE
+			tx_preemp_2t_out[] = GND;
+		END GENERATE;
+		IF USED(tx_vodctrl) GENERATE
+			auto_generated.tx_vodctrl[] = tx_vodctrl[];
+		END GENERATE;
+		IF USED(tx_vodctrl_out) GENERATE
+			tx_vodctrl_out[] = auto_generated.tx_vodctrl_out[];
+		ELSE GENERATE
+			tx_vodctrl_out[] = GND;
+		END GENERATE;
+		IF USED(write_all) GENERATE
+			auto_generated.write_all = write_all;
+		END GENERATE;
+	END GENERATE;
+END;

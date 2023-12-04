@@ -1,0 +1,87 @@
+------------------------------------------------------------------
+-- altiobuf_in parameterized megafunction
+-- Generated with 'clearbox' loader - do not edit
+------------------------------------------------------------------
+
+
+-- Copyright (C) 1991-2009 Altera Corporation
+--  Your use of Altera Corporation's design tools, logic functions 
+--  and other software and tools, and its AMPP partner logic 
+--  functions, and any output files from any of the foregoing 
+--  (including device programming or simulation files), and any 
+--  associated documentation or information are expressly subject 
+--  to the terms and conditions of the Altera Program License 
+--  Subscription Agreement, Altera MegaCore Function License 
+--  Agreement, or other applicable license agreement, including, 
+--  without limitation, that your use is for the sole purpose of 
+--  programming logic devices manufactured by Altera and sold by 
+--  Altera or its authorized distributors.  Please refer to the 
+--  applicable agreement for further details.
+
+--  Version 9.0 Build 235 06/17/2009
+
+OPTIONS NAME_SUBSTITUTION = ON;
+
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+
+PARAMETERS
+(
+	ENABLE_BUS_HOLD = "FALSE",
+	NUMBER_OF_CHANNELS,
+	USE_DIFFERENTIAL_MODE = "FALSE",
+	USE_DYNAMIC_TERMINATION_CONTROL = "FALSE",
+	USE_IN_DYNAMIC_DELAY_CHAIN = "FALSE",
+	CBXI_PARAMETER = "NOTHING"
+);
+FUNCTION @CBXI_PARAMETER (datain[NUMBER_OF_CHANNELS-1..0], datain_b[NUMBER_OF_CHANNELS-1..0], dynamicterminationcontrol[NUMBER_OF_CHANNELS-1..0], io_config_clk, io_config_clkena[NUMBER_OF_CHANNELS-1..0], io_config_datain, io_config_update)
+RETURNS (dataout[NUMBER_OF_CHANNELS-1..0]);
+
+
+SUBDESIGN altiobuf_in
+(
+	datain[NUMBER_OF_CHANNELS-1..0]		:	INPUT;
+	datain_b[NUMBER_OF_CHANNELS-1..0]		:	INPUT = GND;
+	dataout[NUMBER_OF_CHANNELS-1..0]		:	OUTPUT;
+	dynamicterminationcontrol[NUMBER_OF_CHANNELS-1..0]		:	INPUT = GND;
+	io_config_clk		:	INPUT = GND;
+	io_config_clkena[NUMBER_OF_CHANNELS-1..0]		:	INPUT = GND;
+	io_config_datain		:	INPUT = GND;
+	io_config_update		:	INPUT = GND;
+)
+VARIABLE
+	IF CBXI_PARAMETER != "NOTHING" GENERATE
+		auto_generated : @CBXI_PARAMETER WITH ( CBXI_PARAMETER = "NOTHING" );
+	END GENERATE;
+BEGIN
+	ASSERT (CBXI_PARAMETER != "NOTHING")
+	REPORT "Valid clear box generator not found or Errors encountered during clear box generation"
+	SEVERITY ERROR;
+	IF (CBXI_PARAMETER != "NOTHING") GENERATE
+		IF USED(datain) GENERATE
+			auto_generated.datain[] = datain[];
+		END GENERATE;
+		IF USED(datain_b) GENERATE
+			auto_generated.datain_b[] = datain_b[];
+		END GENERATE;
+		IF USED(dataout) GENERATE
+			dataout[] = auto_generated.dataout[];
+		ELSE GENERATE
+			dataout[] = GND;
+		END GENERATE;
+		IF USED(dynamicterminationcontrol) GENERATE
+			auto_generated.dynamicterminationcontrol[] = dynamicterminationcontrol[];
+		END GENERATE;
+		IF USED(io_config_clk) GENERATE
+			auto_generated.io_config_clk = io_config_clk;
+		END GENERATE;
+		IF USED(io_config_clkena) GENERATE
+			auto_generated.io_config_clkena[] = io_config_clkena[];
+		END GENERATE;
+		IF USED(io_config_datain) GENERATE
+			auto_generated.io_config_datain = io_config_datain;
+		END GENERATE;
+		IF USED(io_config_update) GENERATE
+			auto_generated.io_config_update = io_config_update;
+		END GENERATE;
+	END GENERATE;
+END;

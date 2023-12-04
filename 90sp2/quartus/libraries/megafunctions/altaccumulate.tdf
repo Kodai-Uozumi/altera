@@ -1,0 +1,187 @@
+-- ALTACCUMULATE MEGA FUNCTION
+
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+
+
+
+include "accumulate_no_wys";  -- no wysiwyg implementation for all families
+include "altaccumulate_stratix"; -- wysiwyg implementation for stratix
+include "altaccumulate_mercury"; -- wysiwyg implementation for mercury and Apex20KE
+include "aglobal90.inc"; 
+
+OPTIONS NAME_SUBSTITUTION = ON;
+PARAMETERS
+(
+	USE_WYS = "ON", -- USE_WYS == OFF => no wysiwyg implementation
+	WIDTH_IN, 
+	WIDTH_OUT,
+	CARRY_CHAIN = "MANUAL",
+	CARRY_CHAIN_LENGTH = 32,
+	DEVICE_FAMILY,
+	LPM_REPRESENTATION = "UNSIGNED",
+	EXTRA_LATENCY = 0,
+	CBXI_PARAMETER = "NOTHING"
+);
+
+FUNCTION @CBXI_PARAMETER (aclr, add_sub, cin, clken, clock, data[WIDTH_IN-1..0], sign_data, sload)
+RETURNS (cout, overflow, result[WIDTH_OUT-1..0]);
+
+
+SUBDESIGN altaccumulate
+(
+	data[WIDTH_IN-1..0]			:	 INPUT;
+	clock 						:	 INPUT;
+	cin							:	 INPUT;
+	clken 						:	 INPUT = VCC;
+	sload 						:	 INPUT = GND;
+	aclr 						: 	 INPUT = GND;
+	add_sub 					: 	 INPUT = VCC;
+	sign_data					:	 INPUT = GND;
+	result[WIDTH_OUT-1..0]		: 	 OUTPUT;
+	cout						:	 OUTPUT;
+	overflow					:	 OUTPUT;
+)
+
+VARIABLE
+	IF CBXI_PARAMETER == "NOTHING" GENERATE
+	-- USE_WYS is OFF or family != mercury, stratix or APEX20KE
+	IF USE_WYS == "OFF" # (FAMILY_MERCURY() != 1 & FAMILY_STRATIX() != 1 & FAMILY_APEX20KE() != 1) GENERATE
+		accum_cell		:	accumulate_no_wys WITH (USE_WYS = USE_WYS,
+													WIDTH_IN = WIDTH_IN,
+													WIDTH_OUT = WIDTH_OUT,
+													CARRY_CHAIN = CARRY_CHAIN,
+													CARRY_CHAIN_LENGTH = CARRY_CHAIN_LENGTH,
+													DEVICE_FAMILY = DEVICE_FAMILY,
+													LPM_REPRESENTATION = LPM_REPRESENTATION,
+													EXTRA_LATENCY = EXTRA_LATENCY);
+
+	ELSE GENERATE
+	-- mercury or APEX20KE
+	IF FAMILY_MERCURY() == 1 # FAMILY_APEX20KE() == 1 GENERATE
+		accum_cell		:	altaccumulate_mercury WITH (USE_WYS = USE_WYS,
+													WIDTH_IN = WIDTH_IN,
+													WIDTH_OUT = WIDTH_OUT,
+													CARRY_CHAIN = CARRY_CHAIN,
+													CARRY_CHAIN_LENGTH = CARRY_CHAIN_LENGTH,
+													LPM_REPRESENTATION = LPM_REPRESENTATION,
+													EXTRA_LATENCY = EXTRA_LATENCY,
+													DEVICE_FAMILY =  DEVICE_FAMILY);
+	
+	END GENERATE;
+	-- stratix	
+	IF FAMILY_STRATIX() == 1 GENERATE	
+		accum_cell		:	altaccumulate_stratix WITH (USE_WYS = USE_WYS,
+													WIDTH_IN = WIDTH_IN,
+													WIDTH_OUT = WIDTH_OUT,
+													CARRY_CHAIN = CARRY_CHAIN,
+													CARRY_CHAIN_LENGTH = CARRY_CHAIN_LENGTH,
+													LPM_REPRESENTATION = LPM_REPRESENTATION,
+													EXTRA_LATENCY = EXTRA_LATENCY);
+	
+	END GENERATE;
+	
+	END GENERATE;-- USE_WYS != OFF
+	
+	ELSE GENERATE -- CBX
+		accum_cell : @CBXI_PARAMETER WITH (CBXI_PARAMETER = "NOTHING");
+	END GENERATE;
+
+BEGIN
+	ASSERT (LPM_REPRESENTATION == "SIGNED" # LPM_REPRESENTATION == "UNSIGNED" # !USED(sign_data))
+			REPORT "Illegal value for LPM_REPRESENTATION parameter (""%"") -- value must be ""SIGNED"" or ""UNSIGNED""" 
+				LPM_REPRESENTATION
+			SEVERITY WARNING
+			HELP_ID ALT_ACC_REPRESENTATION;
+
+	ASSERT (WIDTH_IN > 0)
+			REPORT "WIDTH_IN parameter value must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID ALT_ACC_WIDTH_IN;
+
+	ASSERT (WIDTH_OUT > 0)
+			REPORT "WIDTH_OUT parameter value must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID ALT_ACC_WIDTH_OUT;
+
+	ASSERT (USED(clock))
+			REPORT "Clock should always be used"
+			SEVERITY ERROR
+			HELP_ID ALT_ACC_NO_CLOCK;
+
+	ASSERT (EXTRA_LATENCY <= WIDTH_OUT)
+			REPORT "Value of EXTRA_LATENCY parameter (%) should be lower than WIDTH_OUT parameter % for better performance/utilization" EXTRA_LATENCY, WIDTH_OUT
+			SEVERITY INFO
+			HELP_ID ALT_ACC_LATENCY_VALUE;
+
+	ASSERT (FAMILY_IS_KNOWN() == 1)
+		REPORT "Megafunction altaccumulate does not recognize the current device family (%) -- ensure that you are using the newest version of the megafunction"
+			DEVICE_FAMILY
+		SEVERITY WARNING
+		HELP_ID ALT_ACC_FAMILY_UNKNOWN;
+
+	ASSERT (WIDTH_IN <= WIDTH_OUT)
+			REPORT "Value of WIDTH_IN parameter (%) should be lower than or equal to WIDTH_OUT (%)" WIDTH_IN, WIDTH_OUT
+			SEVERITY ERROR
+			HELP_ID ALT_ACC_INCOMPATIBLE_WIDTH;
+
+	ASSERT (USED(sign_data) $ USED(LPM_REPRESENTATION) # !USED(sign_data))
+			REPORT "When sign_data port is used LPM_REPRESENTATION parameter has to be UNUSED"
+			SEVERITY WARNING
+			HELP_ID ALT_ACC_REPRESENTATION_USAGE;
+		
+
+		-- connect input and outputs
+		accum_cell.data[] = data[];
+		result[] =  accum_cell.result[];
+		IF USED(sload) GENERATE
+			accum_cell.sload = sload;
+		END GENERATE;
+		IF USED(cin)GENERATE
+			accum_cell.cin = cin;
+		END GENERATE;
+		IF USED(clock) GENERATE
+			accum_cell.clock = clock;
+		END GENERATE;
+		IF USED(clken) GENERATE
+			accum_cell.clken = clken;
+		END GENERATE;
+		IF USED(aclr) GENERATE
+			accum_cell.aclr = aclr;
+		END GENERATE;
+		IF USED(add_sub) GENERATE
+			accum_cell.add_sub = add_sub;
+		END GENERATE;
+		IF USED(cout) GENERATE
+			cout = accum_cell.cout;
+		END GENERATE;
+		IF USED(overflow) GENERATE
+			overflow = accum_cell.overflow;
+		END GENERATE;
+		IF USED(sign_data) GENERATE
+			accum_cell.sign_data = sign_data;
+		END GENERATE;
+	IF !USED(cout) GENERATE
+		cout = GND;
+	END GENERATE;
+	IF !USED(overflow) GENERATE
+		overflow = GND;
+	END GENERATE;
+	IF !USED(result) GENERATE
+		result[] = GND;
+	END GENERATE;
+END;
+

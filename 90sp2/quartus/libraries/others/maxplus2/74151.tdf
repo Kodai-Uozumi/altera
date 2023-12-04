@@ -1,0 +1,68 @@
+TITLE "Top-level file for the 74151 macrofunction.  Chooses a device-family optimized implementation."; 
+FUNCTION p74151 (c, b, a, d[7..0], gn) RETURNS (y, wn);
+FUNCTION f74151 (c, b, a, d[7..0], gn) RETURNS (y, wn);
+
+PARAMETERS
+(
+	DEVICE_FAMILY
+);
+INCLUDE "aglobal.inc";
+
+SUBDESIGN 74151
+(
+	c                : INPUT = GND;
+	b                : INPUT = GND;
+	a                : INPUT = GND;
+	d[7..0]          : INPUT = GND;
+	gn               : INPUT = GND;
+	y                : OUTPUT;
+	wn               : OUTPUT;
+)
+
+VARIABLE
+	IF (FAMILY_FLEX() == 1) GENERATE
+		sub  : f74151;
+	ELSE GENERATE
+		sub  : p74151;
+	END GENERATE;
+
+BEGIN
+	IF (USED(c)) GENERATE
+		sub.c = c;
+	END GENERATE;
+	IF (USED(b)) GENERATE
+		sub.b = b;
+	END GENERATE;
+	IF (USED(a)) GENERATE
+		sub.a = a;
+	END GENERATE;
+	IF (USED(d0)) GENERATE
+		sub.d0 = d0;
+	END GENERATE;
+	IF (USED(d1)) GENERATE
+		sub.d1 = d1;
+	END GENERATE;
+	IF (USED(d2)) GENERATE
+		sub.d2 = d2;
+	END GENERATE;
+	IF (USED(d3)) GENERATE
+		sub.d3 = d3;
+	END GENERATE;
+	IF (USED(d4)) GENERATE
+		sub.d4 = d4;
+	END GENERATE;
+	IF (USED(d5)) GENERATE
+		sub.d5 = d5;
+	END GENERATE;
+	IF (USED(d6)) GENERATE
+		sub.d6 = d6;
+	END GENERATE;
+	IF (USED(d7)) GENERATE
+		sub.d7 = d7;
+	END GENERATE;
+	IF (USED(gn)) GENERATE
+		sub.gn = gn;
+	END GENERATE;
+	y = sub.y;
+	wn = sub.wn;
+END;

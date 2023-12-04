@@ -1,0 +1,59 @@
+------------------------------------------------------------------------------------------------------
+-- digit_tacker
+--
+-- Version 1.0
+--
+-- Description:	This module is used to implement the OR chain of the unsigned divider as a
+--				carry chain for a speed boost to the divider
+--
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+------------------------------------------------------------------------------------------------------
+
+PARAMETERS(
+	WIDTH												-- self-explanatory ;-)
+);
+
+SUBDESIGN digit_tracker(
+	denominator[WIDTH - 1..0] : INPUT;					-- the divider's denominator
+	
+	out[WIDTH - 1..0] : OUTPUT;							-- the OR results
+)
+VARIABLE
+	IF WIDTH > 1 GENERATE
+		carries[WIDTH - 1..0] : CARRY_SUM;				-- implementing as carries
+	END GENERATE;
+BEGIN
+	-- an assert for a last minute sanity check
+	ASSERT WIDTH > 0
+		REPORT "digit_tracker WIDTH (%) parameter must be > 0" WIDTH
+		SEVERITY ERROR
+		HELP_ID LPM_MULT_WIDTHB;
+		
+	IF WIDTH == 1 GENERATE
+		out[0] = denominator[0];
+	ELSE GENERATE	-- make a chain of OR's
+		carries[].sin = (denominator[WIDTH - 1], denominator[WIDTH - 2..0] # carries[WIDTH - 1..1].cout);
+		carries[].cin = (denominator[WIDTH - 1], denominator[WIDTH - 2..0] # carries[WIDTH - 1..1].cout);
+	
+		out[] = carries[].sout;
+	END GENERATE;
+	IF !USED(out) GENERATE
+		out[] = GND;
+	END GENERATE;
+END;

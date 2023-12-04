@@ -1,0 +1,359 @@
+<<<<versions>>>>
+1.0
+<<<</versions>>>>
+<<<<1.0>>>>
+<close_session>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: close_session [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::stp 1.0
+
+------------
+Description:
+------------
+
+Saves the current session to the existing SignalTap(R) II File (.stp). 
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+#opens signaltap session
+open_session -name stp1.stp
+
+#capture data to log named log1, timeout after 5 seconds if no trigger occurs
+run -instance auto_signaltap_0 -signal_set signal_set_1 -trigger trigger_1 -data_log log_1 -timeout 5
+
+#close signaltap session
+close_session
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	INFO: Session has been saved in SignalTap II File and closed
+TCL_ERROR	1   	ERROR: Can't open SignalTap II File for writing. Make sure SignalTap II File exists, has write permission, and is not currently being used by another program.
+TCL_ERROR	1   	ERROR: Session has not been opened. Make sure a session is open before attempting to close it.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</close_session>
+
+<open_session>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: open_session [-h | -help] [-long_help] -name <.stp file name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -name <.stp file name>: SignalTap II File (.stp) name
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::stp 1.0
+
+------------
+Description:
+------------
+
+Opens a session from the specified SignalTap(R) II File (.stp).
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+#opens signaltap session
+open_session -name stp1.stp
+
+#capture data to log named log1, timeout after 5 seconds if no trigger occurs
+run -instance auto_signaltap_0 -signal_set signal_set_1 -trigger trigger_1 -data_log log_1 -timeout 5
+
+#close signaltap session
+close_session
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	INFO: Session has been opened from SignalTap II File
+TCL_ERROR	1   	ERROR: Can't open SignalTap II File for reading. Make sure the SignalTap II File exists and has read permission.
+TCL_ERROR	1   	ERROR: Session already open. Close session before attempting to open it again.
+TCL_ERROR	1   	ERROR: SignalTap II File contains syntax error. Make sure the SignalTap II File is formatted correctly before opening. Altera recommends that you do not manually edit SignalTap II Files, but use the SignalTap II dialog boxes in the Quartus II GUI.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</open_session>
+
+<run>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: run [-h | -help] [-long_help] [-check] [-data_log <data log>] [-device_name <device name>] [-hardware_name <hardware name>] [-instance <instance>] [-signal_set <signal set>] [-timeout <timeout>] [-trigger <trigger>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -check: Option to check with last compilation result
+        -data_log <data log>: Name of data log to be recorded
+        -device_name <device name>: Device to use instead of the one specified in the stp file.  Tcl command, get_device_names, can be used to obtain the valid hardware names
+        -hardware_name <hardware name>: JTAG programming hardware to use instead of the one specified in the stp file.  Tcl command, get_hardware_names, can be used to obtain the valid hardware name
+        -instance <instance>: Name of instance that defines data acquisition
+        -signal_set <signal set>: Name of signal set that defines data acquisition
+        -timeout <timeout>: Timeout period for data acquisition in seconds
+        -trigger <trigger>: Name of trigger that defines data acquisition
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::stp 1.0
+
+------------
+Description:
+------------
+
+Starts data acquisition with the specified conditions in 
+the session and saves data into the specified data log 
+within the timeout period. 
+
+The "-check" option indicates whether to compare the data 
+acquisition conditions with the last compilation result.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+#opens signaltap session
+open_session -name stp1.stp
+
+#capture data to log named log1, timeout after 5 seconds if no trigger occurs
+run -instance auto_signaltap_0 -signal_set signal_set_1 -trigger trigger_1 -data_log log_1 -timeout 5
+
+#close signaltap session
+close_session
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	INFO: Data has been acquired successfully
+TCL_ERROR	1   	ERROR: JTAG chain in use. Wait for JTAG communication to finish and run again.
+TCL_ERROR	1   	ERROR: Data acquisition stopped unexpectedly. Make sure device is stable and run again.
+TCL_ERROR	1   	ERROR: Trigger not compatible with device. Download a design with the current SRAM Object File after recompiling.
+TCL_ERROR	1   	ERROR: Instance, signal set, or trigger does not exist. Make sure the instance, signal set, and trigger exist in the SignalTap II File.
+TCL_ERROR	1   	ERROR: Session has not been opened. Make sure a session is open before attempting to close it.
+TCL_ERROR	1   	ERROR: Trigger did not occur in timeout period. Make sure trigger conditions are valid and/or increase timeout period.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</run>
+
+<run_multiple_end>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: run_multiple_end [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::stp 1.0
+
+------------
+Description:
+------------
+
+Defines the end of a set of "run" commands. This command 
+is used when multiple instances of data acquisition are 
+started simultaneously. Add "run_multiple_start" before 
+the set of "run" commands that specify data acquisition. 
+Add this command after the set of commands. 
+
+If "run_multiple_end" is not included, the "run" commands 
+do not execute.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+#opens signaltap session
+open_session -name stp1.stp
+
+#start acquisition of instance auto_signaltap_0 and auto_signaltap_1 at the same time
+#calling run_multiple_end will start all instances run after run_multiple_start call
+run_multiple_start
+run -instance auto_signaltap_0 -signal_set signal_set_1 -trigger trigger_1 -data_log log_1 -timeout 5
+run -instance auto_signaltap_1 -signal_set signal_set_1 -trigger trigger_1 -data_log log_1 -timeout 5
+run_multiple_end
+
+#close signaltap session
+close_session
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	INFO: Multiple instances of data acquisition ended successfully
+TCL_ERROR	1   	ERROR: Data acquisition stopped unexpectedly. Make sure device is stable and run again.
+TCL_ERROR	1   	ERROR: Run multiple instances has not been started. Use "run_multiple_start" before using "run_multiple_end".
+TCL_ERROR	1   	ERROR: Session has not been opened. Make sure a session is open before attempting to close it.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</run_multiple_end>
+
+<run_multiple_start>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: run_multiple_start [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::stp 1.0
+
+------------
+Description:
+------------
+
+Defines the start of a set of "run" commands. This command 
+is used when multiple instances of data acquisition are 
+started simultaneously. Add this command before the set of 
+"run" commands that specify data acquisition. Add 
+"run_multiple_end" after the set of commands. 
+
+If "run_multiple_end" is not included, the "run" commands 
+do not execute.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+#opens signaltap session
+open_session -name stp1.stp
+
+#start acquisition of instance auto_signaltap_0 and auto_signaltap_1 at the same time
+#calling run_multiple_end will start all instances run after run_multiple_start call
+run_multiple_start
+run -instance auto_signaltap_0 -signal_set signal_set_1 -trigger trigger_1 -data_log log_1 -timeout 5
+run -instance auto_signaltap_1 -signal_set signal_set_1 -trigger trigger_1 -data_log log_1 -timeout 5
+run_multiple_end
+
+#close signaltap session
+close_session
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	INFO: Multiple instances of data acquisition started
+TCL_ERROR	1   	ERROR: Run multiple instances has not ended. Use "run_multiple_end" to complete an active call to "run_multiple_start" before using "run_multiple_start" again.
+TCL_ERROR	1   	ERROR: Session has not been opened. Make sure a session is open before attempting to close it.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</run_multiple_start>
+
+<stop>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: stop [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::stp 1.0
+
+------------
+Description:
+------------
+
+Stops all data acquisition.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+stop 
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	INFO: Data acquisition has stopped
+TCL_ERROR	1   	ERROR: No data acquisition was started. Data acquisition must be in progress before stopping.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</stop>
+
+<<<</1.0>>>>

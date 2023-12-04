@@ -1,0 +1,5114 @@
+<<<<versions>>>>
+1.0
+2.0
+2.1
+<<<</versions>>>>
+<<<<1.0>>>>
+<load_report>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: load_report [-h | -help] [-long_help] [-simulator]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -simulator: Option to load the Simulation Report. If this option isn't specified, the Compilation Report is loaded instead.
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 1.0
+
+------------
+Description:
+------------
+
+By default, loads the Compilation Report for the current revision or
+the specified revision name. If the -simulator option is
+specified, loads the Simulation Report instead.
+
+After the report is loaded or reloaded, the cached panel ids,
+and row and column indices may become outdated or invalid. 
+Altera recommends that you update them before using them.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Load report package
+load_package report
+# Open chiptrip project
+project_open chiptrip
+# Load the current revision report
+load_report
+
+# Set panel name and id
+set panel {Fitter||Fitter Summary}
+set id    [get_report_panel_id $panel]
+
+# Get total logic elements
+set rname  {Total [Ll]ogic [Ee]lements}
+set rindex [get_report_panel_row_index -id $id $rname]
+set rname  [get_report_panel_data -id $id -row $rindex -col 0]
+set data   [get_report_panel_data -id $id -row $rindex -col 1]
+puts "$rname: $data"
+
+# Get total pins
+set rname  {Total [Pp]ins}
+set rindex [get_report_panel_row_index -id $id $rname]
+set rname  [get_report_panel_data -id $id -row $rindex -col 0]
+set data   [get_report_panel_data -id $id -row $rindex -col 1]
+puts "$rname: $data"
+
+# Unload the report
+unload_report
+# Close the project
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't load report for revision: <string>. A different, active revision already exists: <string>. To specify another active revision name, type "set_current_revision <string>".
+TCL_ERROR	1   	ERROR: Can't find active revision. Specify an active revision name using "set_current_revision <string>".
+TCL_ERROR	1   	ERROR: Can't find active revision. Specify an active revision name using "set_current_revision <revision name>".
+TCL_ERROR	1   	ERROR: Revision name does not exist: <string>. Run Analysis & Synthesis (quartus_map) with the specified revision name before using this Tcl command.
+TCL_ERROR	1   	ERROR: Compilation database is newer than the last call to "create_timing_netlist". Use the "delete_timing_netlist" Tcl command before using "<string>".
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Can't load report data for revision name: <string>. Make sure the report database exists for the specified revision name.
+TCL_ERROR	1   	ERROR: Existing report was not unloaded. Ensure that your load_report commands have matching unload_report commands.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</load_report>
+
+<unload_report>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: unload_report [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 1.0
+
+------------
+Description:
+------------
+
+Unloads the report for the current revision or the specified 
+revision name.
+
+After the report is loaded or reloaded, the cached panel ids,
+and row and column indices, may become outdated or invalid. 
+Altera recommends that you update them before using them.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Load report package
+load_package report
+# Open chiptrip project
+project_open chiptrip
+# Load the current revision report
+load_report
+
+# Set panel name and id
+set panel {Fitter||Fitter Summary}
+set id    [get_report_panel_id $panel]
+
+# Get total logic elements
+set rname  {Total [Ll]ogic [Ee]lements}
+set rindex [get_report_panel_row_index -id $id $rname]
+set rname  [get_report_panel_data -id $id -row $rindex -col 0]
+set data   [get_report_panel_data -id $id -row $rindex -col 1]
+puts "$rname: $data"
+
+# Get total pins
+set rname  {Total [Pp]ins}
+set rindex [get_report_panel_row_index -id $id $rname]
+set rname  [get_report_panel_data -id $id -row $rindex -col 0]
+set data   [get_report_panel_data -id $id -row $rindex -col 1]
+puts "$rname: $data"
+
+# Unload the report
+unload_report
+# Close the project
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't load report for revision: <string>. A different, active revision already exists: <string>. To specify another active revision name, type "set_current_revision <string>".
+TCL_ERROR	1   	ERROR: Can't find active revision. Specify an active revision name using "set_current_revision <string>".
+TCL_ERROR	1   	ERROR: Can't find active revision. Specify an active revision name using "set_current_revision <revision name>".
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</unload_report>
+
+<get_report_panel_row_index>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_report_panel_row_index [-h | -help] [-long_help] [-id <table_id>] [-name <table_name>] <row_name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -id <table_id>: Id of panel from which to get row index
+        -name <table_name>: Name of panel from which to get row index
+        <row_name>: Row name
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 1.0
+
+------------
+Description:
+------------
+
+Gets the row index of the specified panel row name.
+
+Row name refers to the first element content of the specified 
+row. The row index is a non-negative integer for an existing row.
+Row index is -1 if the row name is not found in the panel.
+
+Using the row index and panel id provides faster data access 
+than using row name and panel name.
+
+Row indices and panel ids that you have cached may become outdated
+or invalid if the report is unloaded or reloaded. This error
+occurs after compilation or with calls to the "project_close",
+"unload_report", and "load_report" commands.
+
+Row and panel names support wildcards.
+
+The table of contents portion of the Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of contents shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name and id
+set panel   {*Input Pins}
+set id      [get_report_panel_id $panel]
+
+# Set row name and index
+set rname   {[Cc]lock}
+set rindex  [get_report_panel_row_index -id $id $rname]
+
+# Get data out of the specified panel
+set pc_str  [get_report_panel_data -id $id -row 0 -col 1]
+set pin_cnt [get_report_panel_data -id $id -row $rindex -col 1]
+set iob_str [get_report_panel_data -id $id -row 0 -col 2]
+set io_bank [get_report_panel_data -id $id -row $rindex -col 2]
+
+# Output results
+puts "$pc_str: $pin_cnt"
+puts "$iob_str: $io_bank"
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_report_panel_row_index>
+
+<get_report_panel_column_index>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_report_panel_column_index [-h | -help] [-long_help] [-id <table_id>] [-name <table_name>] <col_name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -id <table_id>: Id of panel from which to get column index
+        -name <table_name>: Name of panel from which to get column index
+        <col_name>: Column name
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 1.0
+
+------------
+Description:
+------------
+
+Gets the column index of the specified panel column name.
+
+Column name refers to the specified name in the header row. The 
+column index is a non-negative integer for an existing column. The 
+column index is -1 if the column name is not found in the panel.
+
+Using the column index and panel id provides faster data access 
+than using column name and panel name.
+
+Column indices and panel ids that you have cached may become 
+outdated or invalid if the report is unloaded or reloaded. 
+This error occurs after compilation or with calls to the 
+"project_close", "unload_report", and "load_report" commands.
+
+Column and panel names support wildcards.
+
+The table of contents portion of the Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of content shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name and id
+set panel  {*Input Pins}
+set id     [get_report_panel_id $panel]
+
+# Set column name and index
+set cname  {Pin #}
+set cindex [get_report_panel_column_index -id $id $cname]
+
+# Get data out of the specified panel
+set clock  [get_report_panel_data -id $id -row_name clock -col $cindex]
+set enable [get_report_panel_data -id $id -row_name enable -col $cindex]
+
+# Output results
+puts "$cname of clock: $clock"
+puts "$cname of enable: $enable"
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_report_panel_column_index>
+
+<get_report_panel_data>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_report_panel_data [-h | -help] [-long_help] [-col <column>] [-col_name <column_name>] [-id <table_id>] [-name <table_name>] [-row <row>] [-row_name <row_name>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -col <column>: column (or X) coordinate
+        -col_name <column_name>: column (or X) name
+        -id <table_id>: id of panel from which to get data
+        -name <table_name>: Name of panel from which to get data
+        -row <row>: row (or Y) coordinate
+        -row_name <row_name>: row (or Y) name
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 1.0
+
+------------
+Description:
+------------
+
+Returns non-empty data for the specified row and column of
+the specified panel. If the data is empty or if the row,
+column, or panel do not exist, an error will be generated.
+To properly handle the error, make sure to catch the result
+as in the following example:
+
+if [catch {set data [get_report_panel_data ...]} result] {
+  puts "No data found"
+} else {
+  puts "Got $data"
+}
+
+Using the panel id and row and column indices provides faster 
+data access than using panel, row, and column names.
+
+Panel ids and row and column indices that you have cached may 
+become outdated or invalid if the report is unloaded or reloaded. 
+This error occurs after compilation or with calls to the 
+"project_close", "unload_report", and "load_report" commands.
+
+Panel, row, and panel names support wildcards.
+
+The table of contents portion of the Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of contents shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name and id
+set panel {Flow Settings}
+set id    [get_report_panel_id $panel]
+# Set row name
+set rname {Revision Name}
+
+# Get row 2 - column 1 data
+get_report_panel_data -row 2 -col 1 -id $id
+# Get row {Revision Name} - column 1 data
+get_report_panel_data -row_name $rname -col 1 -id $id
+# Get row {Revision Name} - column {Setting} data
+get_report_panel_data -row_name $rname -col_name Setting -id $id
+# If unsure the case of a row or column name, use glob-style pattern
+get_report_panel_data -row_name {[Rr]evision*} -col_name {[Ss]etting} -id $id
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	INFO: Report automatically reloaded because it was not up-to-date after use of Tcl command "execute_flow" or "execute_module" (which belong to ::quartus::flow package). No action is required.
+TCL_ERROR	1   	ERROR: Found conflicting column options. Specify either the "-col" or "-col_name" option.
+TCL_ERROR	1   	ERROR: Found conflicting row options. Specify either the "-row" or "-row_name" option.
+TCL_ERROR	1   	ERROR: Table is empty. Add rows to the table before accessing its data.
+TCL_ERROR	1   	ERROR: Illegal column name: "<string>".
+TCL_ERROR	1   	ERROR: Illegal column number: <string>. Specify a legal column number from <string> to <string>.
+TCL_ERROR	1   	ERROR: Illegal row name: "<string>".
+TCL_ERROR	1   	ERROR: Illegal row number: <string>. Specify a legal row number from <string> to <string>.
+TCL_ERROR	1   	ERROR: No column option specified.
+TCL_ERROR	1   	ERROR: Can't retrieve data for row and column number. Specify a legal row and column number for the command "get_report_panel_data".
+TCL_ERROR	1   	ERROR: No row option specified.
+TCL_ERROR	1   	ERROR: Can't access report panel. Use this command only for report panels with rows or columns.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_report_panel_data>
+
+<get_report_panel_names>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_report_panel_names [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 1.0
+
+------------
+Description:
+------------
+
+Returns a list of panel names for the current report.
+
+The table of contents portion of the Compilation Report
+window shows short panel names for better readability.
+However, each panel name returned by this command is the
+full panel name as shown in the right-hand side frame of the
+Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of contents shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path returned by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+## Load report database and write Timing Analyzer Summary
+## panel to file in HTML format
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name
+set fmax_panel "Timing Analyzer Summary"
+
+# Iterate through all the accessable panels
+foreach panel [get_report_panel_names] {
+    # If find the panel '*Timing Analyzer Summary', 
+    # write its content to file fmax.htm
+    if {[string match "*$fmax_panel" $panel] == 1} {
+        write_report_panel -file fmax.htm -html $panel
+        break
+    }
+}
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	INFO: Report automatically reloaded because it was not up-to-date after use of Tcl command "execute_flow" or "execute_module" (which belong to ::quartus::flow package). No action is required.
+TCL_ERROR	1   	ERROR: Can't find panel: <string>. Specify an existing report panel name.
+TCL_ERROR	1   	ERROR: Report not loaded for revision name: <string>. Type "load_report" to load the report.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_report_panel_names>
+
+<get_report_panel_row>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_report_panel_row [-h | -help] [-long_help] [-id <table_id>] [-name <table_name>] [-row <row>] [-row_name <row_name>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -id <table_id>: Id of panel from which to get data
+        -name <table_name>: Name of panel from which to get data
+        -row <row>: Row (or Y) coordinate
+        -row_name <row_name>: Row (or Y) name
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 1.0
+
+------------
+Description:
+------------
+
+Reports data of the specified panel row.
+
+Using the panel id and row index provides faster data access 
+than using panel name and row name, respectively.
+
+Panel ids and row indices that you have cached may become outdated
+or invalid if the report gets unloaded or reloaded. This error
+occurs after compilation or with calls to the "project_close",
+"unload_report", and "load_report" commands.
+
+Panel and row names support wildcards.
+
+The table of content portion of the UI Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+UI Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of content shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name and id
+set panel {Flow Settings}
+set id    [get_report_panel_id $panel]
+# Set row name
+set rname {Revision Name}
+
+# Get row {Revision Name} data (use panel id)
+get_report_panel_row -row_name $rname -id $id
+# Get row 2 data (use panel id)
+get_report_panel_row -row 2 -id $id
+# Get row 3 data (use panel name)
+get_report_panel_row -row 3 -name $panel
+
+## Get the last row data
+set row_cnt     [get_number_of_rows -id $id]
+set last_rindex [expr $row_cnt - 1]
+get_report_panel_row -row $last_rindex -id $id
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	INFO: Report automatically reloaded because it was not up-to-date after use of Tcl command "execute_flow" or "execute_module" (which belong to ::quartus::flow package). No action is required.
+TCL_ERROR	1   	ERROR: Found conflicting row options. Specify either the "-row" or "-row_name" option.
+TCL_ERROR	1   	ERROR: Table is empty. Add rows to the table before accessing its data.
+TCL_ERROR	1   	ERROR: Illegal row name: "<string>".
+TCL_ERROR	1   	ERROR: Illegal row number: <string>. Specify a legal row number from <string> to <string>.
+TCL_ERROR	1   	ERROR: No row option specified.
+TCL_ERROR	1   	ERROR: Can't access report panel. Use this command only for report panels with rows or columns.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_report_panel_row>
+
+<get_number_of_rows>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_number_of_rows [-h | -help] [-long_help] [-id <table_id>] [-name <table_name>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -id <table_id>: Id of panel from which to get data
+        -name <table_name>: Name of panel from which to get data
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 1.0
+
+------------
+Description:
+------------
+
+Returns the number of rows for the specified panel.
+
+Using the panel id provides faster data access than using the 
+panel name.
+
+Panel ids that you have cached may become outdated or invalid 
+if the report is unloaded or reloaded. This error occurs 
+after compilation or with calls to the "project_close",
+"unload_report", and "load_report" commands.
+
+Panel names support wildcards.
+
+The table of contents portion of the Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of contents shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+## Loop through a panel and print out all its row information
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name and id
+set panel   {*Fitter Settings}
+set id      [get_report_panel_id $panel]
+
+# Get the number of rows
+set row_cnt [get_number_of_rows -id $id]
+
+for {set i 0} {$i < $row_cnt} {incr i} {
+    puts [get_report_panel_row -row $i -id $id]
+}
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	INFO: Report automatically reloaded because it was not up-to-date after use of Tcl command "execute_flow" or "execute_module" (which belong to ::quartus::flow package). No action is required.
+TCL_ERROR	1   	ERROR: Can't find the top-level panel. Make sure the loaded report is not empty. You can run a successful compilation to rebuild the report.
+TCL_ERROR	1   	ERROR: Can't find panel: <string>. Specify an existing report panel name.
+TCL_ERROR	1   	ERROR: Report not loaded for revision name: <string>. Type "load_report" to load the report.
+TCL_ERROR	1   	ERROR: Can't access report panel. Use this command only for report panels with rows or columns.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_number_of_rows>
+
+<get_number_of_columns>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_number_of_columns [-h | -help] [-long_help] [-id <table_id>] [-name <table_name>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -id <table_id>: Id of panel from which to get data
+        -name <table_name>: Name of panel from which to get data
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 1.0
+
+------------
+Description:
+------------
+
+Returns the number of columns for the specified panel.
+
+Using the panel id provides faster data access than using the
+panel name.
+
+Panel ids that you have cached may become outdated or invalid 
+if the report is unloaded or reloaded. This error occurs 
+after compilation or with calls to the "project_close",
+"unload_report", and "load_report" commands.
+
+Panel names support wildcards.
+
+The table of contents portion of the Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of contents shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+## Loop through a panel row and print out all its element information
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name and id
+set panel   {*Input Pins}
+set id      [get_report_panel_id $panel]
+
+# Get the number of columns
+set col_cnt [get_number_of_columns -id $id]
+
+# Set row name and get row index
+set rname   {[Cc]lock}
+set rindex  [get_report_panel_row_index -id $id $rname]
+set rname   [get_report_panel_data -row $rindex -col 0 -id $id]
+
+puts "\[Input Pins - $rname\]"
+for {set i 1} {$i < $col_cnt} {incr i} {
+    set    result "[get_report_panel_data -row 0 -col $i -id $id]: "
+    append result [get_report_panel_data -row $rindex -col $i -id $id]
+    puts   $result
+}
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	INFO: Report automatically reloaded because it was not up-to-date after use of Tcl command "execute_flow" or "execute_module" (which belong to ::quartus::flow package). No action is required.
+TCL_ERROR	1   	ERROR: Can't find the top-level panel. Make sure the loaded report is not empty. You can run a successful compilation to rebuild the report.
+TCL_ERROR	1   	ERROR: Can't find panel: <string>. Specify an existing report panel name.
+TCL_ERROR	1   	ERROR: Report not loaded for revision name: <string>. Type "load_report" to load the report.
+TCL_ERROR	1   	ERROR: Can't access report panel. Use this command only for report panels with rows or columns.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_number_of_columns>
+
+<write_report_panel>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: write_report_panel [-h | -help] [-long_help] -file <output file name> [-html] [-id <table_id>] [-name <table_name>] [-xml] [<name>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -file <output file name>: Name of output file to be generated
+        -html: Option to generate output file in HTML format
+        -id <table_id>: id of panel from which to get data
+        -name <table_name>: Name of panel from which to get data
+        -xml: Option to generate output file in XML format
+        <name>: Name of panel from which to get data
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 1.0
+
+------------
+Description:
+------------
+
+Writes data from the specified report panel to the specified 
+output file. If the "-html" option is specified, the output file 
+is generated in HTML format. If the "-xml" option is specified,
+the output file is generated in XML format. Otherwise, the output
+file is generated in ASCII format.
+
+Using the panel id provides faster data access than using the 
+panel name.
+
+Panel ids that you have cached may become outdated or invalid 
+if the report is unloaded or reloaded. This error occurs 
+after compilation or with calls to the "project_close",
+"unload_report", and "load_report" commands.
+
+Panel names support wildcards.
+
+The table of contents portion of the Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of contents shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+## Load report database and write Timing Analyzer Summary
+## panel to file in HTML format
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name and id
+set panel "*Timing Analyzer Summary"
+set id    [get_report_panel_id $panel]
+
+# If the specified panel exists, write it to
+# fmax.htm and fmax.xml.
+# Otherwise, print out an error message
+if {$id != -1} {
+    write_report_panel -file fmax.htm -html -id $id
+    write_report_panel -file fmax.xml -xml -id $id
+} else {
+    puts "Error: report panel could not be found."
+}
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	INFO: Successfully generated HTML-Format Report File: <string>
+TCL_OK   	0   	INFO: Successfully generated output file: <string>
+TCL_OK   	0   	INFO: Successfully generated XML-Format Report File: <string>
+TCL_OK   	0   	INFO: Report automatically reloaded because it was not up-to-date after use of Tcl command "execute_flow" or "execute_module" (which belong to ::quartus::flow package). No action is required.
+TCL_ERROR	1   	ERROR: Can't create or overwrite file: <string>. Specify a file name that has write permission.
+TCL_ERROR	1   	ERROR: Can't find the top-level panel. Make sure the loaded report is not empty. You can run a successful compilation to rebuild the report.
+TCL_ERROR	1   	ERROR: Can't find panel: <string>. Specify an existing report panel name.
+TCL_ERROR	1   	ERROR: Report not loaded for revision name: <string>. Type "load_report" to load the report.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</write_report_panel>
+
+<write_xml_report>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: write_xml_report [-h | -help] [-long_help] <filename>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        <filename>: Name of XML Report Database File to which to write
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 1.0
+
+------------
+Description:
+------------
+
+Writes the current Compilation Report or Simulation Report to the specified
+XML Report Database File (.xml).
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Load the ::quartus::flow and ::quartus::report packages
+load_package flow
+load_package report
+
+# Create new project
+set project_name "chiptrip"
+project_new $project_name -overwrite
+
+# Run quartus_map
+execute_module -tool map
+
+## Create XML Report Database File (.xml)
+load_report
+file delete -force $project_name.xml
+puts [write_xml_report $project_name.xml]
+unload_report
+
+# Close project
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	INFO: Report written to XML Report Database File: <string>. No action is required.
+TCL_ERROR	1   	ERROR: Can't write XML Report Database File: <string> -- report does not exist. Make sure that an existing report is loaded. Type "load_report -h" for more information.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</write_xml_report>
+
+<read_xml_report>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: read_xml_report [-h | -help] [-long_help] <filename>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        <filename>: Name of XML Report Database File from which to read
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 1.0
+
+------------
+Description:
+------------
+
+Creates the current Compilation Report from the specified
+XML Report Database File (.xml).
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Set project name
+set project_name "chiptrip"
+
+load_package report
+project_open $project_name
+
+# Read XML Report Database File (.xml)
+read_xml_report $project_name.xml
+
+load_report
+
+# Get all the panel names
+puts {All Report Panel Names:}
+puts [get_report_panel_names]
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	INFO: Report read from XML Report Database File: <string>. No action is required.
+TCL_ERROR	1   	ERROR: Can't read XML Report Database File: <string> . Make sure that the file exists and does not contain syntax errors.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</read_xml_report>
+
+<create_report_panel>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: create_report_panel [-h | -help] [-long_help] [-folder] [-table] <panel_name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -folder: Option to create folder
+        -table: Option to create table
+        <panel_name>: Name of the panel to create
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 1.0
+
+------------
+Description:
+------------
+
+Creates a new report panel with the specified name.
+
+If -table option is specified, a table is created.
+If -folder option is specified, a folder is created.
+
+The name must be the full path to the new report panel, such as
+"Fitter||My Table". If the specified panel is created successfully,
+the corresponding panel id is returned.
+
+The table of contents portion of the Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of contents shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set folder name and id
+set folder    "My Folder"
+set folder_id [get_report_panel_id $folder]
+
+# Check if specified folder exists. If not, create it.
+if {$folder_id == -1} {
+    set folder_id [create_report_panel -folder $folder]
+}
+
+# Set table name and id
+set table    "$folder||My Table"
+set table_id [get_report_panel_id $table]
+
+# Check if specified table exists. If so, delete it.
+if {$table_id != -1} {
+    delete_report_panel -id $table_id
+}
+
+# Create the specified table and get its id
+set table_id [create_report_panel -table $table]
+
+# Add Timing Analyzer Summary to the table
+add_row_to_table -id $table_id {{Name} {Value}}
+add_row_to_table -id $table_id {{Number of Registers} {100}}
+
+# Save the changes to the report database
+save_report_database
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Report folder <string> already exists -- specify a different report folder name.
+TCL_ERROR	1   	ERROR: Can't find folder: <string>. Specify an existing report folder name.
+TCL_ERROR	1   	ERROR: Illegal color: <string>. Specify a color that is currently supported by "add_row_to_table".
+TCL_ERROR	1   	ERROR: Options "-table", "-tcl_table" and "-folder" are mutually exclusive -- specify only one of the options.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Report object is not a folder: <string>. Specify an existing report folder name.
+TCL_ERROR	1   	ERROR: Specify one of the options: "-<string>" or "-<string>".
+TCL_ERROR	1   	ERROR: Report not loaded for revision name: <string>. Type "load_report" to load the report.
+TCL_ERROR	1   	ERROR: Report panel already exists: <string>. Specify a different report panel name.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</create_report_panel>
+
+<delete_report_panel>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: delete_report_panel [-h | -help] [-long_help] [-id <panel_id>] [-name <panel_name>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -id <panel_id>: Id of panel to delete
+        -name <panel_name>: Name of panel to delete
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 1.0
+
+------------
+Description:
+------------
+
+Deletes the report panel with the specified id or name. 
+The panel can either be a report table or report folder.
+
+Using the panel id provides faster data access than using the 
+panel name.
+
+Panel ids that you have cached may become outdated or invalid 
+if the report is unloaded or reloaded. This error occurs 
+after compilation or with calls to the "project_close",
+"unload_report", and "load_report" commands.
+
+Panel names support wildcards.
+
+The table of contents portion of the Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of contents shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set table name and id
+set table    "Fitter||My Table"
+set table_id [get_report_panel_id $table]
+
+# Delete the table if the it already exists
+if {$table_id != -1} {
+    delete_report_panel -id $table_id
+}
+
+# Re-create the table
+create_report_panel -table $table
+add_row_to_table -name $table {{Name} {Value}}
+add_row_to_table -name $table {{Number of Registers} {100}}
+
+# This time, use table name instead of table id to delete it.
+delete_report_panel -name $table
+
+# Now, delete a folder
+set folder    "My Folder"
+set folder_id [get_report_panel_id $folder]
+
+# Delete it if the specified folder already exists
+if {$folder_id != -1} {
+    delete_report_panel -id $folder_id
+}
+
+# Save the changes to the report database
+save_report_database
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Found conflicting panel options. Specify only one of the options: "-name" or "-id".
+TCL_ERROR	1   	ERROR: The "delete_report_panel" command is not allowed for this report panel. You cannot delete a report panel folder.
+TCL_ERROR	1   	ERROR: Illegal panel id: <string>. Specify a legal panel id.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Specify one of the options: "-name" or "-id".
+TCL_ERROR	1   	ERROR: Can't find panel: <string>. Specify an existing report panel name.
+TCL_ERROR	1   	ERROR: Report not loaded for revision name: <string>. Type "load_report" to load the report.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</delete_report_panel>
+
+<get_report_panel_id>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_report_panel_id [-h | -help] [-long_help] <name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        <name>: Name of panel for which to get id
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 1.0
+
+------------
+Description:
+------------
+
+Gets the id of a panel with the specified name.
+
+The panel id is a non-negative integer for an existing panel.
+If the specified panel cannot be found, the id is -1.
+
+Using the panel id provides faster data access than using the 
+panel name.
+
+You can use the "get_report_panel_id" command to check for the 
+existence of a panel.(Refer to the example under the 
+"get_report_panel_id" command.)
+
+Panel ids that you have cached may become outdated or invalid 
+if the report is unloaded or reloaded. This error occurs 
+after compilation or with calls to the "project_close",
+"unload_report", and "load_report" commands.
+
+Panel names support wildcards.
+
+The table of contents portion of the Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of contents shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name
+set panel {Fitter||Fitter Settings}
+# Get the panel id
+set id [get_report_panel_id $panel]
+
+if {$id != -1} {
+    # If panel exists, add a row to it
+    add_row_to_table -id $id {{New Field} Yes No}
+    # Save the changes to the report database
+    save_report_database
+} else {
+    # Otherwise print an error message
+    puts "Error: Table $panel does not exist."
+}
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_report_panel_id>
+
+<add_row_to_table>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: add_row_to_table [-h | -help] [-long_help] [-id <table_id>] [-name <table_name>] <row>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -id <table_id>: Id of table to update
+        -name <table_name>: Name of table to update
+        <row>: Tcl list of strings to add to table
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 1.0
+
+------------
+Description:
+------------
+
+Adds the list of strings to the table as a row.
+
+Using the panel id provides faster data access than using the 
+panel name.
+
+Panel ids that you have cached may become outdated or invalid 
+if the report gets unloaded or reloaded. This error occurs 
+after compilation or with calls to the "project_close",
+"unload_report", and "load_report" commands.
+
+Panel names support wildcards.
+
+The table of content portion of the UI Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+UI Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of content shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name and id
+set panel {Fitter||Fitter Settings}
+set id [get_report_panel_id $panel]
+
+if {$id != -1} {
+    # If panel exists, add a row to it
+    add_row_to_table -id $id {{New Field} Yes No}
+    # Save the changes to the report database
+    save_report_database
+} else {
+    # Otherwise print an error message
+    puts "Error: Table $panel does not exist."
+}
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Number of elements conflict. The number of elements in the added row must be <string>.
+TCL_ERROR	1   	ERROR: Illegal color: <string>. Specify a color that is currently supported by "add_row_to_table".
+TCL_ERROR	1   	ERROR: You specified <number> colors for the -<string> option. However, you must specify <number> colors to match the number of elements specified for the <<string>> argument.
+TCL_ERROR	1   	ERROR: Value specified for -<string> option is not a valid Tcl list: <string>. Specify a valid Tcl list.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Can't find panel: <string>. Specify an existing report panel name.
+TCL_ERROR	1   	ERROR: Report not loaded for revision name: <string>. Type "load_report" to load the report.
+TCL_ERROR	1   	ERROR: Can't access report panel. Use this command only for report panels with rows or columns.
+TCL_ERROR	1   	ERROR: Value specified for <row> is not a valid Tcl list: <string>. Specify <row> as a valid Tcl list.
+TCL_ERROR	1   	ERROR: "add_row_to_table" command is not allowed for this report panel. You cannot add rows to this report panel.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</add_row_to_table>
+
+<save_report_database>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: save_report_database [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 1.0
+
+------------
+Description:
+------------
+
+Saves the report database, including any new report panel.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name and id
+set panel {Fitter||Fitter Settings}
+set id    [get_report_panel_id $panel]
+
+# If panel exists, add a row to it. Otherwise, print an error message.
+if {$id != -1} {
+    add_row_to_table -id $id {{New Field} Yes No}
+    # Save the changes to the report database
+    save_report_database
+} else {
+    puts "Error: Table $panel does not exist."
+}
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Report not loaded for revision name: <string>. Type "load_report" to load the report.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</save_report_database>
+
+<get_fitter_resource_usage>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_fitter_resource_usage [-h | -help] [-long_help] [-alm] [-alut] [-available] [-io_pin] [-lab] [-le] [-mem_bit] [-percentage] [-reg] [-used] [-utilization]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -alm: Get total adaptive logic modules
+        -alut: Get total Combinational ALUTs
+        -available: Get available resource summary
+        -io_pin: Get total I/O pins
+        -lab: Get total logic array blocks
+        -le: Get total logic elements
+        -mem_bit: Get total memory bits
+        -percentage: Get used resource summary in percentage
+        -reg: Get total registers
+        -used: Get used resource summary
+        -utilization: Get total logic utilization
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 1.0
+
+------------
+Description:
+------------
+
+Gets the Fitter resource usage results.
+
+You must use one of the following options: "-alut", "-reg", "-le",
+"-alm", "-lab", "-io_pin", "-mem_bit" or "-resource".
+
+If the above option is not "-resource", you may also optionally use
+one of the following options: "-used", "-available" or "-percentage".
+
+Option "-resource" takes resource name as parameter, which supports wildcards.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Shortcut of get_fitter_resource_usage command
+set cmd     get_fitter_resource_usage
+
+# Get total registers, logic elements, and DSP block 9-bit elements.
+set registers [$cmd -reg]
+set les       [$cmd -le -used]
+set io_pin    [$cmd -io_pin -available]
+set mem_bit   [$cmd -mem_bit -percentage]
+set dsp       [$cmd -resource "DSP blck 9*"]
+puts "Registers usage: $registers"
+puts "Total used logic elements: $les"
+puts "Total available I/O pins: $io_pin"
+puts "Total used memory bits in percentage: ${mem_bit}%"
+puts "DSP block 9-bit elements: $dsp"
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Command requires one of the following options: "-alut", "-reg", "-le", "-alm", "-lab", "-io_pin", "mem_bit" or "-resource". Specify one of the options.
+TCL_ERROR	1   	ERROR: Options "-used", "-available" and "-percentage" can't be used together. Specify either one or none of the options.
+TCL_ERROR	1   	ERROR: Option "-resource" was used with option "-used", "-available" or "-percentage". Use option "-resource" only.
+TCL_ERROR	1   	ERROR: Can't find panel: <string>. Make sure the project was compiled by quartus_fit and the panel was not deleted.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_fitter_resource_usage>
+
+<get_timing_analysis_summary_results>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_timing_analysis_summary_results [-h | -help] [-long_help] [-actual] [-clock_hold <clock_hold>] [-clock_setup <clock_setup>] [-min_tco] [-min_tpd] [-required] [-slack] [-tco] [-th] [-tpd] [-tsu]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -actual: Actual time
+        -clock_hold <clock_hold>: Clock hold name
+        -clock_setup <clock_setup>: Clock setup name
+        -min_tco: Minimum clock to output delay
+        -min_tpd: Minimum propagation delay
+        -required: Required time
+        -slack: Slack
+        -tco: Clock to output delay
+        -th: Hold time
+        -tpd: Propagation delay
+        -tsu: Setup time
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 1.0
+
+------------
+Description:
+------------
+
+Gets the Timing Analysis Summary results. This command uses 
+the "get_report_panel_data" command to access the 
+Timing Analysis Summary panel. It provides easy access to 
+the panel data without the need to know the names of the 
+corresponding row and column.
+
+You must use one of the following options: "-tsu", "-tco", "-tpd",
+"-th", "-min_tco", "-min_tpd", "-clock_setup", or "-clock_hold".
+
+You also must use one of the following options: "-slack", 
+"-required" or "-actual".
+
+Clock names support wildcards.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Shortcut of get_timing_analysis_summary_results command
+set cmd     get_timing_analysis_summary_results
+
+# Get actual tsu, clock slack, and required tco
+set act_tsu [$cmd -tsu -actual]
+set clock   [$cmd -clock_setup {[Cc]lock} -actual]
+set req_tco [$cmd -tco -required]
+puts "Actual tsu: $act_tsu"
+puts "Actual clock setup: $clock"
+puts "Required tco: $req_tco"
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't find clock <string> in Timing Analysis Summary panel.
+TCL_ERROR	1   	ERROR: Command requires one of the following options: "-tsu", "-tco", "-tpd", "-th", "-min_tco", "-min_tpd", "-clock_setup", or "-clock_hold". Specify one of the options.
+TCL_ERROR	1   	ERROR: Command requires one of the following options: "-slack", "-required" or "-actual". Specify one of the options.
+TCL_ERROR	1   	ERROR: Can't find <string> in Timing Analysis Summary panel.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_timing_analysis_summary_results>
+
+<<<</1.0>>>>
+<<<<2.0>>>>
+<load_report>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: load_report [-h | -help] [-long_help] [-simulator]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -simulator: Option to load the Simulation Report. If this option isn't specified, the Compilation Report is loaded instead.
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.0
+
+------------
+Description:
+------------
+
+By default, loads the Compilation Report for the current revision or
+the specified revision name. If the -simulator option is
+specified, loads the Simulation Report instead.
+
+After the report is loaded or reloaded, the cached panel ids,
+and row and column indices may become outdated or invalid. 
+Altera recommends that you update them before using them.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Load report package
+load_package report
+# Open chiptrip project
+project_open chiptrip
+# Load the current revision report
+load_report
+
+# Set panel name and id
+set panel {Fitter||Fitter Summary}
+set id    [get_report_panel_id $panel]
+
+# Get total logic elements
+set rname  {Total [Ll]ogic [Ee]lements}
+set rindex [get_report_panel_row_index -id $id $rname]
+set rname  [get_report_panel_data -id $id -row $rindex -col 0]
+set data   [get_report_panel_data -id $id -row $rindex -col 1]
+puts "$rname: $data"
+
+# Get total pins
+set rname  {Total [Pp]ins}
+set rindex [get_report_panel_row_index -id $id $rname]
+set rname  [get_report_panel_data -id $id -row $rindex -col 0]
+set data   [get_report_panel_data -id $id -row $rindex -col 1]
+puts "$rname: $data"
+
+# Unload the report
+unload_report
+# Close the project
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't load report for revision: <string>. A different, active revision already exists: <string>. To specify another active revision name, type "set_current_revision <string>".
+TCL_ERROR	1   	ERROR: Can't find active revision. Specify an active revision name using "set_current_revision <string>".
+TCL_ERROR	1   	ERROR: Can't find active revision. Specify an active revision name using "set_current_revision <revision name>".
+TCL_ERROR	1   	ERROR: Revision name does not exist: <string>. Run Analysis & Synthesis (quartus_map) with the specified revision name before using this Tcl command.
+TCL_ERROR	1   	ERROR: Compilation database is newer than the last call to "create_timing_netlist". Use the "delete_timing_netlist" Tcl command before using "<string>".
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Can't load report data for revision name: <string>. Make sure the report database exists for the specified revision name.
+TCL_ERROR	1   	ERROR: Existing report was not unloaded. Ensure that your load_report commands have matching unload_report commands.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</load_report>
+
+<unload_report>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: unload_report [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.0
+
+------------
+Description:
+------------
+
+Unloads the report for the current revision or the specified 
+revision name.
+
+After the report is loaded or reloaded, the cached panel ids,
+and row and column indices, may become outdated or invalid. 
+Altera recommends that you update them before using them.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Load report package
+load_package report
+# Open chiptrip project
+project_open chiptrip
+# Load the current revision report
+load_report
+
+# Set panel name and id
+set panel {Fitter||Fitter Summary}
+set id    [get_report_panel_id $panel]
+
+# Get total logic elements
+set rname  {Total [Ll]ogic [Ee]lements}
+set rindex [get_report_panel_row_index -id $id $rname]
+set rname  [get_report_panel_data -id $id -row $rindex -col 0]
+set data   [get_report_panel_data -id $id -row $rindex -col 1]
+puts "$rname: $data"
+
+# Get total pins
+set rname  {Total [Pp]ins}
+set rindex [get_report_panel_row_index -id $id $rname]
+set rname  [get_report_panel_data -id $id -row $rindex -col 0]
+set data   [get_report_panel_data -id $id -row $rindex -col 1]
+puts "$rname: $data"
+
+# Unload the report
+unload_report
+# Close the project
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't load report for revision: <string>. A different, active revision already exists: <string>. To specify another active revision name, type "set_current_revision <string>".
+TCL_ERROR	1   	ERROR: Can't find active revision. Specify an active revision name using "set_current_revision <string>".
+TCL_ERROR	1   	ERROR: Can't find active revision. Specify an active revision name using "set_current_revision <revision name>".
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</unload_report>
+
+<get_report_panel_row_index>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_report_panel_row_index [-h | -help] [-long_help] [-id <table_id>] [-name <table_name>] <row_name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -id <table_id>: Id of panel from which to get row index
+        -name <table_name>: Name of panel from which to get row index
+        <row_name>: Row name
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.0
+
+------------
+Description:
+------------
+
+Gets the row index of the specified panel row name.
+
+Row name refers to the first element content of the specified 
+row. The row index is a non-negative integer for an existing row.
+Row index is -1 if the row name is not found in the panel.
+
+Using the row index and panel id provides faster data access 
+than using row name and panel name.
+
+Row indices and panel ids that you have cached may become outdated
+or invalid if the report is unloaded or reloaded. This error
+occurs after compilation or with calls to the "project_close",
+"unload_report", and "load_report" commands.
+
+Row and panel names support wildcards.
+
+The table of contents portion of the Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of contents shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name and id
+set panel   {*Input Pins}
+set id      [get_report_panel_id $panel]
+
+# Set row name and index
+set rname   {[Cc]lock}
+set rindex  [get_report_panel_row_index -id $id $rname]
+
+# Get data out of the specified panel
+set pc_str  [get_report_panel_data -id $id -row 0 -col 1]
+set pin_cnt [get_report_panel_data -id $id -row $rindex -col 1]
+set iob_str [get_report_panel_data -id $id -row 0 -col 2]
+set io_bank [get_report_panel_data -id $id -row $rindex -col 2]
+
+# Output results
+puts "$pc_str: $pin_cnt"
+puts "$iob_str: $io_bank"
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_report_panel_row_index>
+
+<get_report_panel_column_index>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_report_panel_column_index [-h | -help] [-long_help] [-id <table_id>] [-name <table_name>] <col_name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -id <table_id>: Id of panel from which to get column index
+        -name <table_name>: Name of panel from which to get column index
+        <col_name>: Column name
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.0
+
+------------
+Description:
+------------
+
+Gets the column index of the specified panel column name.
+
+Column name refers to the specified name in the header row. The 
+column index is a non-negative integer for an existing column. The 
+column index is -1 if the column name is not found in the panel.
+
+Using the column index and panel id provides faster data access 
+than using column name and panel name.
+
+Column indices and panel ids that you have cached may become 
+outdated or invalid if the report is unloaded or reloaded. 
+This error occurs after compilation or with calls to the 
+"project_close", "unload_report", and "load_report" commands.
+
+Column and panel names support wildcards.
+
+The table of contents portion of the Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of content shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name and id
+set panel  {*Input Pins}
+set id     [get_report_panel_id $panel]
+
+# Set column name and index
+set cname  {Pin #}
+set cindex [get_report_panel_column_index -id $id $cname]
+
+# Get data out of the specified panel
+set clock  [get_report_panel_data -id $id -row_name clock -col $cindex]
+set enable [get_report_panel_data -id $id -row_name enable -col $cindex]
+
+# Output results
+puts "$cname of clock: $clock"
+puts "$cname of enable: $enable"
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_report_panel_column_index>
+
+<get_report_panel_data>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_report_panel_data [-h | -help] [-long_help] [-col <column>] [-col_name <column_name>] [-id <table_id>] [-name <table_name>] [-row <row>] [-row_name <row_name>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -col <column>: column (or X) coordinate
+        -col_name <column_name>: column (or X) name
+        -id <table_id>: id of panel from which to get data
+        -name <table_name>: Name of panel from which to get data
+        -row <row>: row (or Y) coordinate
+        -row_name <row_name>: row (or Y) name
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.0
+
+------------
+Description:
+------------
+
+Returns non-empty data for the specified row and column of
+the specified panel. If the data is empty or if the row,
+column, or panel do not exist, an error will be generated.
+To properly handle the error, make sure to catch the result
+as in the following example:
+
+if [catch {set data [get_report_panel_data ...]} result] {
+  puts "No data found"
+} else {
+  puts "Got $data"
+}
+
+Using the panel id and row and column indices provides faster 
+data access than using panel, row, and column names.
+
+Panel ids and row and column indices that you have cached may 
+become outdated or invalid if the report is unloaded or reloaded. 
+This error occurs after compilation or with calls to the 
+"project_close", "unload_report", and "load_report" commands.
+
+Panel, row, and panel names support wildcards.
+
+The table of contents portion of the Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of contents shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name and id
+set panel {Flow Settings}
+set id    [get_report_panel_id $panel]
+# Set row name
+set rname {Revision Name}
+
+# Get row 2 - column 1 data
+get_report_panel_data -row 2 -col 1 -id $id
+# Get row {Revision Name} - column 1 data
+get_report_panel_data -row_name $rname -col 1 -id $id
+# Get row {Revision Name} - column {Setting} data
+get_report_panel_data -row_name $rname -col_name Setting -id $id
+# If unsure the case of a row or column name, use glob-style pattern
+get_report_panel_data -row_name {[Rr]evision*} -col_name {[Ss]etting} -id $id
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	INFO: Report automatically reloaded because it was not up-to-date after use of Tcl command "execute_flow" or "execute_module" (which belong to ::quartus::flow package). No action is required.
+TCL_ERROR	1   	ERROR: Found conflicting column options. Specify either the "-col" or "-col_name" option.
+TCL_ERROR	1   	ERROR: Found conflicting row options. Specify either the "-row" or "-row_name" option.
+TCL_ERROR	1   	ERROR: Table is empty. Add rows to the table before accessing its data.
+TCL_ERROR	1   	ERROR: Illegal column name: "<string>".
+TCL_ERROR	1   	ERROR: Illegal column number: <string>. Specify a legal column number from <string> to <string>.
+TCL_ERROR	1   	ERROR: Illegal row name: "<string>".
+TCL_ERROR	1   	ERROR: Illegal row number: <string>. Specify a legal row number from <string> to <string>.
+TCL_ERROR	1   	ERROR: No column option specified.
+TCL_ERROR	1   	ERROR: Can't retrieve data for row and column number. Specify a legal row and column number for the command "get_report_panel_data".
+TCL_ERROR	1   	ERROR: No row option specified.
+TCL_ERROR	1   	ERROR: Can't access report panel. Use this command only for report panels with rows or columns.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_report_panel_data>
+
+<get_report_panel_names>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_report_panel_names [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.0
+
+------------
+Description:
+------------
+
+Returns a list of panel names for the current report.
+
+The table of contents portion of the Compilation Report
+window shows short panel names for better readability.
+However, each panel name returned by this command is the
+full panel name as shown in the right-hand side frame of the
+Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of contents shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path returned by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+## Load report database and write Timing Analyzer Summary
+## panel to file in HTML format
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name
+set fmax_panel "Timing Analyzer Summary"
+
+# Iterate through all the accessable panels
+foreach panel [get_report_panel_names] {
+    # If find the panel '*Timing Analyzer Summary', 
+    # write its content to file fmax.htm
+    if {[string match "*$fmax_panel" $panel] == 1} {
+        write_report_panel -file fmax.htm -html $panel
+        break
+    }
+}
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	INFO: Report automatically reloaded because it was not up-to-date after use of Tcl command "execute_flow" or "execute_module" (which belong to ::quartus::flow package). No action is required.
+TCL_ERROR	1   	ERROR: Can't find panel: <string>. Specify an existing report panel name.
+TCL_ERROR	1   	ERROR: Report not loaded for revision name: <string>. Type "load_report" to load the report.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_report_panel_names>
+
+<get_report_panel_row>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_report_panel_row [-h | -help] [-long_help] [-id <table_id>] [-name <table_name>] [-row <row>] [-row_name <row_name>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -id <table_id>: Id of panel from which to get data
+        -name <table_name>: Name of panel from which to get data
+        -row <row>: Row (or Y) coordinate
+        -row_name <row_name>: Row (or Y) name
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.0
+
+------------
+Description:
+------------
+
+Reports data of the specified panel row.
+
+Using the panel id and row index provides faster data access 
+than using panel name and row name, respectively.
+
+Panel ids and row indices that you have cached may become outdated
+or invalid if the report gets unloaded or reloaded. This error
+occurs after compilation or with calls to the "project_close",
+"unload_report", and "load_report" commands.
+
+Panel and row names support wildcards.
+
+The table of content portion of the UI Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+UI Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of content shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name and id
+set panel {Flow Settings}
+set id    [get_report_panel_id $panel]
+# Set row name
+set rname {Revision Name}
+
+# Get row {Revision Name} data (use panel id)
+get_report_panel_row -row_name $rname -id $id
+# Get row 2 data (use panel id)
+get_report_panel_row -row 2 -id $id
+# Get row 3 data (use panel name)
+get_report_panel_row -row 3 -name $panel
+
+## Get the last row data
+set row_cnt     [get_number_of_rows -id $id]
+set last_rindex [expr $row_cnt - 1]
+get_report_panel_row -row $last_rindex -id $id
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	INFO: Report automatically reloaded because it was not up-to-date after use of Tcl command "execute_flow" or "execute_module" (which belong to ::quartus::flow package). No action is required.
+TCL_ERROR	1   	ERROR: Found conflicting row options. Specify either the "-row" or "-row_name" option.
+TCL_ERROR	1   	ERROR: Table is empty. Add rows to the table before accessing its data.
+TCL_ERROR	1   	ERROR: Illegal row name: "<string>".
+TCL_ERROR	1   	ERROR: Illegal row number: <string>. Specify a legal row number from <string> to <string>.
+TCL_ERROR	1   	ERROR: No row option specified.
+TCL_ERROR	1   	ERROR: Can't access report panel. Use this command only for report panels with rows or columns.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_report_panel_row>
+
+<get_number_of_rows>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_number_of_rows [-h | -help] [-long_help] [-id <table_id>] [-name <table_name>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -id <table_id>: Id of panel from which to get data
+        -name <table_name>: Name of panel from which to get data
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.0
+
+------------
+Description:
+------------
+
+Returns the number of rows for the specified panel.
+
+Using the panel id provides faster data access than using the 
+panel name.
+
+Panel ids that you have cached may become outdated or invalid 
+if the report is unloaded or reloaded. This error occurs 
+after compilation or with calls to the "project_close",
+"unload_report", and "load_report" commands.
+
+Panel names support wildcards.
+
+The table of contents portion of the Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of contents shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+## Loop through a panel and print out all its row information
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name and id
+set panel   {*Fitter Settings}
+set id      [get_report_panel_id $panel]
+
+# Get the number of rows
+set row_cnt [get_number_of_rows -id $id]
+
+for {set i 0} {$i < $row_cnt} {incr i} {
+    puts [get_report_panel_row -row $i -id $id]
+}
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	INFO: Report automatically reloaded because it was not up-to-date after use of Tcl command "execute_flow" or "execute_module" (which belong to ::quartus::flow package). No action is required.
+TCL_ERROR	1   	ERROR: Can't find the top-level panel. Make sure the loaded report is not empty. You can run a successful compilation to rebuild the report.
+TCL_ERROR	1   	ERROR: Can't find panel: <string>. Specify an existing report panel name.
+TCL_ERROR	1   	ERROR: Report not loaded for revision name: <string>. Type "load_report" to load the report.
+TCL_ERROR	1   	ERROR: Can't access report panel. Use this command only for report panels with rows or columns.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_number_of_rows>
+
+<get_number_of_columns>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_number_of_columns [-h | -help] [-long_help] [-id <table_id>] [-name <table_name>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -id <table_id>: Id of panel from which to get data
+        -name <table_name>: Name of panel from which to get data
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.0
+
+------------
+Description:
+------------
+
+Returns the number of columns for the specified panel.
+
+Using the panel id provides faster data access than using the
+panel name.
+
+Panel ids that you have cached may become outdated or invalid 
+if the report is unloaded or reloaded. This error occurs 
+after compilation or with calls to the "project_close",
+"unload_report", and "load_report" commands.
+
+Panel names support wildcards.
+
+The table of contents portion of the Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of contents shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+## Loop through a panel row and print out all its element information
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name and id
+set panel   {*Input Pins}
+set id      [get_report_panel_id $panel]
+
+# Get the number of columns
+set col_cnt [get_number_of_columns -id $id]
+
+# Set row name and get row index
+set rname   {[Cc]lock}
+set rindex  [get_report_panel_row_index -id $id $rname]
+set rname   [get_report_panel_data -row $rindex -col 0 -id $id]
+
+puts "\[Input Pins - $rname\]"
+for {set i 1} {$i < $col_cnt} {incr i} {
+    set    result "[get_report_panel_data -row 0 -col $i -id $id]: "
+    append result [get_report_panel_data -row $rindex -col $i -id $id]
+    puts   $result
+}
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	INFO: Report automatically reloaded because it was not up-to-date after use of Tcl command "execute_flow" or "execute_module" (which belong to ::quartus::flow package). No action is required.
+TCL_ERROR	1   	ERROR: Can't find the top-level panel. Make sure the loaded report is not empty. You can run a successful compilation to rebuild the report.
+TCL_ERROR	1   	ERROR: Can't find panel: <string>. Specify an existing report panel name.
+TCL_ERROR	1   	ERROR: Report not loaded for revision name: <string>. Type "load_report" to load the report.
+TCL_ERROR	1   	ERROR: Can't access report panel. Use this command only for report panels with rows or columns.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_number_of_columns>
+
+<write_report_panel>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: write_report_panel [-h | -help] [-long_help] -file <output file name> [-html] [-id <table_id>] [-name <table_name>] [-xml] [<name>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -file <output file name>: Name of output file to be generated
+        -html: Option to generate output file in HTML format
+        -id <table_id>: id of panel from which to get data
+        -name <table_name>: Name of panel from which to get data
+        -xml: Option to generate output file in XML format
+        <name>: Name of panel from which to get data
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.0
+
+------------
+Description:
+------------
+
+Writes data from the specified report panel to the specified 
+output file. If the "-html" option is specified, the output file 
+is generated in HTML format. If the "-xml" option is specified,
+the output file is generated in XML format. Otherwise, the output
+file is generated in ASCII format.
+
+Using the panel id provides faster data access than using the 
+panel name.
+
+Panel ids that you have cached may become outdated or invalid 
+if the report is unloaded or reloaded. This error occurs 
+after compilation or with calls to the "project_close",
+"unload_report", and "load_report" commands.
+
+Panel names support wildcards.
+
+The table of contents portion of the Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of contents shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+## Load report database and write Timing Analyzer Summary
+## panel to file in HTML format
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name and id
+set panel "*Timing Analyzer Summary"
+set id    [get_report_panel_id $panel]
+
+# If the specified panel exists, write it to
+# fmax.htm and fmax.xml.
+# Otherwise, print out an error message
+if {$id != -1} {
+    write_report_panel -file fmax.htm -html -id $id
+    write_report_panel -file fmax.xml -xml -id $id
+} else {
+    puts "Error: report panel could not be found."
+}
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	INFO: Successfully generated HTML-Format Report File: <string>
+TCL_OK   	0   	INFO: Successfully generated output file: <string>
+TCL_OK   	0   	INFO: Successfully generated XML-Format Report File: <string>
+TCL_OK   	0   	INFO: Report automatically reloaded because it was not up-to-date after use of Tcl command "execute_flow" or "execute_module" (which belong to ::quartus::flow package). No action is required.
+TCL_ERROR	1   	ERROR: Can't create or overwrite file: <string>. Specify a file name that has write permission.
+TCL_ERROR	1   	ERROR: Can't find the top-level panel. Make sure the loaded report is not empty. You can run a successful compilation to rebuild the report.
+TCL_ERROR	1   	ERROR: Can't find panel: <string>. Specify an existing report panel name.
+TCL_ERROR	1   	ERROR: Report not loaded for revision name: <string>. Type "load_report" to load the report.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</write_report_panel>
+
+<write_xml_report>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: write_xml_report [-h | -help] [-long_help] <filename>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        <filename>: Name of XML Report Database File to which to write
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.0
+
+------------
+Description:
+------------
+
+Writes the current Compilation Report or Simulation Report to the specified
+XML Report Database File (.xml).
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Load the ::quartus::flow and ::quartus::report packages
+load_package flow
+load_package report
+
+# Create new project
+set project_name "chiptrip"
+project_new $project_name -overwrite
+
+# Run quartus_map
+execute_module -tool map
+
+## Create XML Report Database File (.xml)
+load_report
+file delete -force $project_name.xml
+puts [write_xml_report $project_name.xml]
+unload_report
+
+# Close project
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	INFO: Report written to XML Report Database File: <string>. No action is required.
+TCL_ERROR	1   	ERROR: Can't write XML Report Database File: <string> -- report does not exist. Make sure that an existing report is loaded. Type "load_report -h" for more information.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</write_xml_report>
+
+<read_xml_report>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: read_xml_report [-h | -help] [-long_help] <filename>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        <filename>: Name of XML Report Database File from which to read
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.0
+
+------------
+Description:
+------------
+
+Creates the current Compilation Report from the specified
+XML Report Database File (.xml).
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Set project name
+set project_name "chiptrip"
+
+load_package report
+project_open $project_name
+
+# Read XML Report Database File (.xml)
+read_xml_report $project_name.xml
+
+load_report
+
+# Get all the panel names
+puts {All Report Panel Names:}
+puts [get_report_panel_names]
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	INFO: Report read from XML Report Database File: <string>. No action is required.
+TCL_ERROR	1   	ERROR: Can't read XML Report Database File: <string> . Make sure that the file exists and does not contain syntax errors.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</read_xml_report>
+
+<create_report_panel>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: create_report_panel [-h | -help] [-long_help] [-folder] [-table] <panel_name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -folder: Option to create folder
+        -table: Option to create table
+        <panel_name>: Name of the panel to create
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.0
+
+------------
+Description:
+------------
+
+Creates a new report panel with the specified name.
+
+If -table option is specified, a table is created.
+If -folder option is specified, a folder is created.
+
+The name must be the full path to the new report panel, such as
+"Fitter||My Table". If the specified panel is created successfully,
+the corresponding panel id is returned.
+
+The table of contents portion of the Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of contents shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set folder name and id
+set folder    "My Folder"
+set folder_id [get_report_panel_id $folder]
+
+# Check if specified folder exists. If not, create it.
+if {$folder_id == -1} {
+    set folder_id [create_report_panel -folder $folder]
+}
+
+# Set table name and id
+set table    "$folder||My Table"
+set table_id [get_report_panel_id $table]
+
+# Check if specified table exists. If so, delete it.
+if {$table_id != -1} {
+    delete_report_panel -id $table_id
+}
+
+# Create the specified table and get its id
+set table_id [create_report_panel -table $table]
+
+# Add Timing Analyzer Summary to the table
+add_row_to_table -id $table_id {{Name} {Value}}
+add_row_to_table -id $table_id {{Number of Registers} {100}}
+
+# Save the changes to the report database
+save_report_database
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Report folder <string> already exists -- specify a different report folder name.
+TCL_ERROR	1   	ERROR: Can't find folder: <string>. Specify an existing report folder name.
+TCL_ERROR	1   	ERROR: Illegal color: <string>. Specify a color that is currently supported by "add_row_to_table".
+TCL_ERROR	1   	ERROR: Options "-table", "-tcl_table" and "-folder" are mutually exclusive -- specify only one of the options.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Report object is not a folder: <string>. Specify an existing report folder name.
+TCL_ERROR	1   	ERROR: Specify one of the options: "-<string>" or "-<string>".
+TCL_ERROR	1   	ERROR: Report not loaded for revision name: <string>. Type "load_report" to load the report.
+TCL_ERROR	1   	ERROR: Report panel already exists: <string>. Specify a different report panel name.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</create_report_panel>
+
+<delete_report_panel>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: delete_report_panel [-h | -help] [-long_help] [-id <panel_id>] [-name <panel_name>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -id <panel_id>: Id of panel to delete
+        -name <panel_name>: Name of panel to delete
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.0
+
+------------
+Description:
+------------
+
+Deletes the report panel with the specified id or name. 
+The panel can either be a report table or report folder.
+
+Using the panel id provides faster data access than using the 
+panel name.
+
+Panel ids that you have cached may become outdated or invalid 
+if the report is unloaded or reloaded. This error occurs 
+after compilation or with calls to the "project_close",
+"unload_report", and "load_report" commands.
+
+Panel names support wildcards.
+
+The table of contents portion of the Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of contents shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set table name and id
+set table    "Fitter||My Table"
+set table_id [get_report_panel_id $table]
+
+# Delete the table if the it already exists
+if {$table_id != -1} {
+    delete_report_panel -id $table_id
+}
+
+# Re-create the table
+create_report_panel -table $table
+add_row_to_table -name $table {{Name} {Value}}
+add_row_to_table -name $table {{Number of Registers} {100}}
+
+# This time, use table name instead of table id to delete it.
+delete_report_panel -name $table
+
+# Now, delete a folder
+set folder    "My Folder"
+set folder_id [get_report_panel_id $folder]
+
+# Delete it if the specified folder already exists
+if {$folder_id != -1} {
+    delete_report_panel -id $folder_id
+}
+
+# Save the changes to the report database
+save_report_database
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Found conflicting panel options. Specify only one of the options: "-name" or "-id".
+TCL_ERROR	1   	ERROR: The "delete_report_panel" command is not allowed for this report panel. You cannot delete a report panel folder.
+TCL_ERROR	1   	ERROR: Illegal panel id: <string>. Specify a legal panel id.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Specify one of the options: "-name" or "-id".
+TCL_ERROR	1   	ERROR: Can't find panel: <string>. Specify an existing report panel name.
+TCL_ERROR	1   	ERROR: Report not loaded for revision name: <string>. Type "load_report" to load the report.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</delete_report_panel>
+
+<get_report_panel_id>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_report_panel_id [-h | -help] [-long_help] <name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        <name>: Name of panel for which to get id
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.0
+
+------------
+Description:
+------------
+
+Gets the id of a panel with the specified name.
+
+The panel id is a non-negative integer for an existing panel.
+If the specified panel cannot be found, the id is -1.
+
+Using the panel id provides faster data access than using the 
+panel name.
+
+You can use the "get_report_panel_id" command to check for the 
+existence of a panel.(Refer to the example under the 
+"get_report_panel_id" command.)
+
+Panel ids that you have cached may become outdated or invalid 
+if the report is unloaded or reloaded. This error occurs 
+after compilation or with calls to the "project_close",
+"unload_report", and "load_report" commands.
+
+Panel names support wildcards.
+
+The table of contents portion of the Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of contents shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name
+set panel {Fitter||Fitter Settings}
+# Get the panel id
+set id [get_report_panel_id $panel]
+
+if {$id != -1} {
+    # If panel exists, add a row to it
+    add_row_to_table -id $id {{New Field} Yes No}
+    # Save the changes to the report database
+    save_report_database
+} else {
+    # Otherwise print an error message
+    puts "Error: Table $panel does not exist."
+}
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_report_panel_id>
+
+<add_row_to_table>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: add_row_to_table [-h | -help] [-long_help] [-id <table_id>] [-name <table_name>] <row>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -id <table_id>: Id of table to update
+        -name <table_name>: Name of table to update
+        <row>: Tcl list of strings to add to table
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.0
+
+------------
+Description:
+------------
+
+Adds the list of strings to the table as a row.
+
+Using the panel id provides faster data access than using the 
+panel name.
+
+Panel ids that you have cached may become outdated or invalid 
+if the report gets unloaded or reloaded. This error occurs 
+after compilation or with calls to the "project_close",
+"unload_report", and "load_report" commands.
+
+Panel names support wildcards.
+
+The table of content portion of the UI Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+UI Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of content shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name and id
+set panel {Fitter||Fitter Settings}
+set id [get_report_panel_id $panel]
+
+if {$id != -1} {
+    # If panel exists, add a row to it
+    add_row_to_table -id $id {{New Field} Yes No}
+    # Save the changes to the report database
+    save_report_database
+} else {
+    # Otherwise print an error message
+    puts "Error: Table $panel does not exist."
+}
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Number of elements conflict. The number of elements in the added row must be <string>.
+TCL_ERROR	1   	ERROR: Illegal color: <string>. Specify a color that is currently supported by "add_row_to_table".
+TCL_ERROR	1   	ERROR: You specified <number> colors for the -<string> option. However, you must specify <number> colors to match the number of elements specified for the <<string>> argument.
+TCL_ERROR	1   	ERROR: Value specified for -<string> option is not a valid Tcl list: <string>. Specify a valid Tcl list.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Can't find panel: <string>. Specify an existing report panel name.
+TCL_ERROR	1   	ERROR: Report not loaded for revision name: <string>. Type "load_report" to load the report.
+TCL_ERROR	1   	ERROR: Can't access report panel. Use this command only for report panels with rows or columns.
+TCL_ERROR	1   	ERROR: Value specified for <row> is not a valid Tcl list: <string>. Specify <row> as a valid Tcl list.
+TCL_ERROR	1   	ERROR: "add_row_to_table" command is not allowed for this report panel. You cannot add rows to this report panel.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</add_row_to_table>
+
+<save_report_database>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: save_report_database [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.0
+
+------------
+Description:
+------------
+
+Saves the report database, including any new report panel.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name and id
+set panel {Fitter||Fitter Settings}
+set id    [get_report_panel_id $panel]
+
+# If panel exists, add a row to it. Otherwise, print an error message.
+if {$id != -1} {
+    add_row_to_table -id $id {{New Field} Yes No}
+    # Save the changes to the report database
+    save_report_database
+} else {
+    puts "Error: Table $panel does not exist."
+}
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Report not loaded for revision name: <string>. Type "load_report" to load the report.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</save_report_database>
+
+<get_fitter_resource_usage>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_fitter_resource_usage [-h | -help] [-long_help] [-alm] [-alut] [-available] [-io_pin] [-lab] [-le] [-mem_bit] [-percentage] [-reg] [-used] [-utilization]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -alm: Get total adaptive logic modules
+        -alut: Get total Combinational ALUTs
+        -available: Get available resource summary
+        -io_pin: Get total I/O pins
+        -lab: Get total logic array blocks
+        -le: Get total logic elements
+        -mem_bit: Get total memory bits
+        -percentage: Get used resource summary in percentage
+        -reg: Get total registers
+        -used: Get used resource summary
+        -utilization: Get total logic utilization
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.0
+
+------------
+Description:
+------------
+
+Gets the Fitter resource usage results.
+
+You must use one of the following options: "-alut", "-reg", "-le",
+"-alm", "-lab", "-io_pin", "-mem_bit" or "-resource".
+
+If the above option is not "-resource", you may also optionally use
+one of the following options: "-used", "-available" or "-percentage".
+
+Option "-resource" takes resource name as parameter, which supports wildcards.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Shortcut of get_fitter_resource_usage command
+set cmd     get_fitter_resource_usage
+
+# Get total registers, logic elements, and DSP block 9-bit elements.
+set registers [$cmd -reg]
+set les       [$cmd -le -used]
+set io_pin    [$cmd -io_pin -available]
+set mem_bit   [$cmd -mem_bit -percentage]
+set dsp       [$cmd -resource "DSP blck 9*"]
+puts "Registers usage: $registers"
+puts "Total used logic elements: $les"
+puts "Total available I/O pins: $io_pin"
+puts "Total used memory bits in percentage: ${mem_bit}%"
+puts "DSP block 9-bit elements: $dsp"
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Command requires one of the following options: "-alut", "-reg", "-le", "-alm", "-lab", "-io_pin", "mem_bit" or "-resource". Specify one of the options.
+TCL_ERROR	1   	ERROR: Options "-used", "-available" and "-percentage" can't be used together. Specify either one or none of the options.
+TCL_ERROR	1   	ERROR: Option "-resource" was used with option "-used", "-available" or "-percentage". Use option "-resource" only.
+TCL_ERROR	1   	ERROR: Can't find panel: <string>. Make sure the project was compiled by quartus_fit and the panel was not deleted.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_fitter_resource_usage>
+
+<get_timing_analysis_summary_results>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_timing_analysis_summary_results [-h | -help] [-long_help] [-actual] [-clock_hold <clock_hold>] [-clock_setup <clock_setup>] [-min_tco] [-min_tpd] [-required] [-slack] [-tco] [-th] [-tpd] [-tsu]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -actual: Actual time
+        -clock_hold <clock_hold>: Clock hold name
+        -clock_setup <clock_setup>: Clock setup name
+        -min_tco: Minimum clock to output delay
+        -min_tpd: Minimum propagation delay
+        -required: Required time
+        -slack: Slack
+        -tco: Clock to output delay
+        -th: Hold time
+        -tpd: Propagation delay
+        -tsu: Setup time
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.0
+
+------------
+Description:
+------------
+
+Gets the Timing Analysis Summary results. This command uses 
+the "get_report_panel_data" command to access the 
+Timing Analysis Summary panel. It provides easy access to 
+the panel data without the need to know the names of the 
+corresponding row and column.
+
+You must use one of the following options: "-tsu", "-tco", "-tpd",
+"-th", "-min_tco", "-min_tpd", "-clock_setup", or "-clock_hold".
+
+You also must use one of the following options: "-slack", 
+"-required" or "-actual".
+
+Clock names support wildcards.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Shortcut of get_timing_analysis_summary_results command
+set cmd     get_timing_analysis_summary_results
+
+# Get actual tsu, clock slack, and required tco
+set act_tsu [$cmd -tsu -actual]
+set clock   [$cmd -clock_setup {[Cc]lock} -actual]
+set req_tco [$cmd -tco -required]
+puts "Actual tsu: $act_tsu"
+puts "Actual clock setup: $clock"
+puts "Required tco: $req_tco"
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't find clock <string> in Timing Analysis Summary panel.
+TCL_ERROR	1   	ERROR: Command requires one of the following options: "-tsu", "-tco", "-tpd", "-th", "-min_tco", "-min_tpd", "-clock_setup", or "-clock_hold". Specify one of the options.
+TCL_ERROR	1   	ERROR: Command requires one of the following options: "-slack", "-required" or "-actual". Specify one of the options.
+TCL_ERROR	1   	ERROR: Can't find <string> in Timing Analysis Summary panel.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_timing_analysis_summary_results>
+
+<<<</2.0>>>>
+<<<<2.1>>>>
+<load_report>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: load_report [-h | -help] [-long_help] [-simulator]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -simulator: Option to load the Simulation Report. If this option isn't specified, the Compilation Report is loaded instead.
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.1
+
+------------
+Description:
+------------
+
+By default, loads the Compilation Report for the current revision or
+the specified revision name. If the -simulator option is
+specified, loads the Simulation Report instead.
+
+After the report is loaded or reloaded, the cached panel ids,
+and row and column indices may become outdated or invalid. 
+Altera recommends that you update them before using them.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Load report package
+load_package report
+# Open chiptrip project
+project_open chiptrip
+# Load the current revision report
+load_report
+
+# Set panel name and id
+set panel {Fitter||Fitter Summary}
+set id    [get_report_panel_id $panel]
+
+# Get total logic elements
+set rname  {Total [Ll]ogic [Ee]lements}
+set rindex [get_report_panel_row_index -id $id $rname]
+set rname  [get_report_panel_data -id $id -row $rindex -col 0]
+set data   [get_report_panel_data -id $id -row $rindex -col 1]
+puts "$rname: $data"
+
+# Get total pins
+set rname  {Total [Pp]ins}
+set rindex [get_report_panel_row_index -id $id $rname]
+set rname  [get_report_panel_data -id $id -row $rindex -col 0]
+set data   [get_report_panel_data -id $id -row $rindex -col 1]
+puts "$rname: $data"
+
+# Unload the report
+unload_report
+# Close the project
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't load report for revision: <string>. A different, active revision already exists: <string>. To specify another active revision name, type "set_current_revision <string>".
+TCL_ERROR	1   	ERROR: Can't find active revision. Specify an active revision name using "set_current_revision <string>".
+TCL_ERROR	1   	ERROR: Can't find active revision. Specify an active revision name using "set_current_revision <revision name>".
+TCL_ERROR	1   	ERROR: Revision name does not exist: <string>. Run Analysis & Synthesis (quartus_map) with the specified revision name before using this Tcl command.
+TCL_ERROR	1   	ERROR: Compilation database is newer than the last call to "create_timing_netlist". Use the "delete_timing_netlist" Tcl command before using "<string>".
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Can't load report data for revision name: <string>. Make sure the report database exists for the specified revision name.
+TCL_ERROR	1   	ERROR: Existing report was not unloaded. Ensure that your load_report commands have matching unload_report commands.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</load_report>
+
+<unload_report>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: unload_report [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.1
+
+------------
+Description:
+------------
+
+Unloads the report for the current revision or the specified 
+revision name.
+
+After the report is loaded or reloaded, the cached panel ids,
+and row and column indices, may become outdated or invalid. 
+Altera recommends that you update them before using them.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Load report package
+load_package report
+# Open chiptrip project
+project_open chiptrip
+# Load the current revision report
+load_report
+
+# Set panel name and id
+set panel {Fitter||Fitter Summary}
+set id    [get_report_panel_id $panel]
+
+# Get total logic elements
+set rname  {Total [Ll]ogic [Ee]lements}
+set rindex [get_report_panel_row_index -id $id $rname]
+set rname  [get_report_panel_data -id $id -row $rindex -col 0]
+set data   [get_report_panel_data -id $id -row $rindex -col 1]
+puts "$rname: $data"
+
+# Get total pins
+set rname  {Total [Pp]ins}
+set rindex [get_report_panel_row_index -id $id $rname]
+set rname  [get_report_panel_data -id $id -row $rindex -col 0]
+set data   [get_report_panel_data -id $id -row $rindex -col 1]
+puts "$rname: $data"
+
+# Unload the report
+unload_report
+# Close the project
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't load report for revision: <string>. A different, active revision already exists: <string>. To specify another active revision name, type "set_current_revision <string>".
+TCL_ERROR	1   	ERROR: Can't find active revision. Specify an active revision name using "set_current_revision <string>".
+TCL_ERROR	1   	ERROR: Can't find active revision. Specify an active revision name using "set_current_revision <revision name>".
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</unload_report>
+
+<get_report_panel_row_index>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_report_panel_row_index [-h | -help] [-long_help] [-id <table_id>] [-name <table_name>] <row_name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -id <table_id>: Id of panel from which to get row index
+        -name <table_name>: Name of panel from which to get row index
+        <row_name>: Row name
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.1
+
+------------
+Description:
+------------
+
+Gets the row index of the specified panel row name.
+
+Row name refers to the first element content of the specified 
+row. The row index is a non-negative integer for an existing row.
+Row index is -1 if the row name is not found in the panel.
+
+Using the row index and panel id provides faster data access 
+than using row name and panel name.
+
+Row indices and panel ids that you have cached may become outdated
+or invalid if the report is unloaded or reloaded. This error
+occurs after compilation or with calls to the "project_close",
+"unload_report", and "load_report" commands.
+
+Row and panel names support wildcards.
+
+The table of contents portion of the Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of contents shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name and id
+set panel   {*Input Pins}
+set id      [get_report_panel_id $panel]
+
+# Set row name and index
+set rname   {[Cc]lock}
+set rindex  [get_report_panel_row_index -id $id $rname]
+
+# Get data out of the specified panel
+set pc_str  [get_report_panel_data -id $id -row 0 -col 1]
+set pin_cnt [get_report_panel_data -id $id -row $rindex -col 1]
+set iob_str [get_report_panel_data -id $id -row 0 -col 2]
+set io_bank [get_report_panel_data -id $id -row $rindex -col 2]
+
+# Output results
+puts "$pc_str: $pin_cnt"
+puts "$iob_str: $io_bank"
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_report_panel_row_index>
+
+<get_report_panel_column_index>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_report_panel_column_index [-h | -help] [-long_help] [-id <table_id>] [-name <table_name>] <col_name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -id <table_id>: Id of panel from which to get column index
+        -name <table_name>: Name of panel from which to get column index
+        <col_name>: Column name
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.1
+
+------------
+Description:
+------------
+
+Gets the column index of the specified panel column name.
+
+Column name refers to the specified name in the header row. The 
+column index is a non-negative integer for an existing column. The 
+column index is -1 if the column name is not found in the panel.
+
+Using the column index and panel id provides faster data access 
+than using column name and panel name.
+
+Column indices and panel ids that you have cached may become 
+outdated or invalid if the report is unloaded or reloaded. 
+This error occurs after compilation or with calls to the 
+"project_close", "unload_report", and "load_report" commands.
+
+Column and panel names support wildcards.
+
+The table of contents portion of the Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of content shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name and id
+set panel  {*Input Pins}
+set id     [get_report_panel_id $panel]
+
+# Set column name and index
+set cname  {Pin #}
+set cindex [get_report_panel_column_index -id $id $cname]
+
+# Get data out of the specified panel
+set clock  [get_report_panel_data -id $id -row_name clock -col $cindex]
+set enable [get_report_panel_data -id $id -row_name enable -col $cindex]
+
+# Output results
+puts "$cname of clock: $clock"
+puts "$cname of enable: $enable"
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_report_panel_column_index>
+
+<get_report_panel_data>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_report_panel_data [-h | -help] [-long_help] [-col <column>] [-col_name <column_name>] [-id <table_id>] [-name <table_name>] [-row <row>] [-row_name <row_name>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -col <column>: column (or X) coordinate
+        -col_name <column_name>: column (or X) name
+        -id <table_id>: id of panel from which to get data
+        -name <table_name>: Name of panel from which to get data
+        -row <row>: row (or Y) coordinate
+        -row_name <row_name>: row (or Y) name
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.1
+
+------------
+Description:
+------------
+
+Returns non-empty data for the specified row and column of
+the specified panel. If the data is empty or if the row,
+column, or panel do not exist, an error will be generated.
+To properly handle the error, make sure to catch the result
+as in the following example:
+
+if [catch {set data [get_report_panel_data ...]} result] {
+  puts "No data found"
+} else {
+  puts "Got $data"
+}
+
+Using the panel id and row and column indices provides faster 
+data access than using panel, row, and column names.
+
+Panel ids and row and column indices that you have cached may 
+become outdated or invalid if the report is unloaded or reloaded. 
+This error occurs after compilation or with calls to the 
+"project_close", "unload_report", and "load_report" commands.
+
+Panel, row, and panel names support wildcards.
+
+The table of contents portion of the Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of contents shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name and id
+set panel {Flow Settings}
+set id    [get_report_panel_id $panel]
+# Set row name
+set rname {Revision Name}
+
+# Get row 2 - column 1 data
+get_report_panel_data -row 2 -col 1 -id $id
+# Get row {Revision Name} - column 1 data
+get_report_panel_data -row_name $rname -col 1 -id $id
+# Get row {Revision Name} - column {Setting} data
+get_report_panel_data -row_name $rname -col_name Setting -id $id
+# If unsure the case of a row or column name, use glob-style pattern
+get_report_panel_data -row_name {[Rr]evision*} -col_name {[Ss]etting} -id $id
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	INFO: Report automatically reloaded because it was not up-to-date after use of Tcl command "execute_flow" or "execute_module" (which belong to ::quartus::flow package). No action is required.
+TCL_ERROR	1   	ERROR: Found conflicting column options. Specify either the "-col" or "-col_name" option.
+TCL_ERROR	1   	ERROR: Found conflicting row options. Specify either the "-row" or "-row_name" option.
+TCL_ERROR	1   	ERROR: Table is empty. Add rows to the table before accessing its data.
+TCL_ERROR	1   	ERROR: Illegal column name: "<string>".
+TCL_ERROR	1   	ERROR: Illegal column number: <string>. Specify a legal column number from <string> to <string>.
+TCL_ERROR	1   	ERROR: Illegal row name: "<string>".
+TCL_ERROR	1   	ERROR: Illegal row number: <string>. Specify a legal row number from <string> to <string>.
+TCL_ERROR	1   	ERROR: No column option specified.
+TCL_ERROR	1   	ERROR: Can't retrieve data for row and column number. Specify a legal row and column number for the command "get_report_panel_data".
+TCL_ERROR	1   	ERROR: No row option specified.
+TCL_ERROR	1   	ERROR: Can't access report panel. Use this command only for report panels with rows or columns.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_report_panel_data>
+
+<get_report_panel_names>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_report_panel_names [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.1
+
+------------
+Description:
+------------
+
+Returns a list of panel names for the current report.
+
+The table of contents portion of the Compilation Report
+window shows short panel names for better readability.
+However, each panel name returned by this command is the
+full panel name as shown in the right-hand side frame of the
+Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of contents shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path returned by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+## Load report database and write Timing Analyzer Summary
+## panel to file in HTML format
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name
+set fmax_panel "Timing Analyzer Summary"
+
+# Iterate through all the accessable panels
+foreach panel [get_report_panel_names] {
+    # If find the panel '*Timing Analyzer Summary', 
+    # write its content to file fmax.htm
+    if {[string match "*$fmax_panel" $panel] == 1} {
+        write_report_panel -file fmax.htm -html $panel
+        break
+    }
+}
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	INFO: Report automatically reloaded because it was not up-to-date after use of Tcl command "execute_flow" or "execute_module" (which belong to ::quartus::flow package). No action is required.
+TCL_ERROR	1   	ERROR: Can't find panel: <string>. Specify an existing report panel name.
+TCL_ERROR	1   	ERROR: Report not loaded for revision name: <string>. Type "load_report" to load the report.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_report_panel_names>
+
+<get_report_panel_row>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_report_panel_row [-h | -help] [-long_help] [-id <table_id>] [-name <table_name>] [-row <row>] [-row_name <row_name>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -id <table_id>: Id of panel from which to get data
+        -name <table_name>: Name of panel from which to get data
+        -row <row>: Row (or Y) coordinate
+        -row_name <row_name>: Row (or Y) name
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.1
+
+------------
+Description:
+------------
+
+Reports data of the specified panel row.
+
+Using the panel id and row index provides faster data access 
+than using panel name and row name, respectively.
+
+Panel ids and row indices that you have cached may become outdated
+or invalid if the report gets unloaded or reloaded. This error
+occurs after compilation or with calls to the "project_close",
+"unload_report", and "load_report" commands.
+
+Panel and row names support wildcards.
+
+The table of content portion of the UI Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+UI Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of content shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name and id
+set panel {Flow Settings}
+set id    [get_report_panel_id $panel]
+# Set row name
+set rname {Revision Name}
+
+# Get row {Revision Name} data (use panel id)
+get_report_panel_row -row_name $rname -id $id
+# Get row 2 data (use panel id)
+get_report_panel_row -row 2 -id $id
+# Get row 3 data (use panel name)
+get_report_panel_row -row 3 -name $panel
+
+## Get the last row data
+set row_cnt     [get_number_of_rows -id $id]
+set last_rindex [expr $row_cnt - 1]
+get_report_panel_row -row $last_rindex -id $id
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	INFO: Report automatically reloaded because it was not up-to-date after use of Tcl command "execute_flow" or "execute_module" (which belong to ::quartus::flow package). No action is required.
+TCL_ERROR	1   	ERROR: Found conflicting row options. Specify either the "-row" or "-row_name" option.
+TCL_ERROR	1   	ERROR: Table is empty. Add rows to the table before accessing its data.
+TCL_ERROR	1   	ERROR: Illegal row name: "<string>".
+TCL_ERROR	1   	ERROR: Illegal row number: <string>. Specify a legal row number from <string> to <string>.
+TCL_ERROR	1   	ERROR: No row option specified.
+TCL_ERROR	1   	ERROR: Can't access report panel. Use this command only for report panels with rows or columns.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_report_panel_row>
+
+<get_number_of_rows>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_number_of_rows [-h | -help] [-long_help] [-id <table_id>] [-name <table_name>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -id <table_id>: Id of panel from which to get data
+        -name <table_name>: Name of panel from which to get data
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.1
+
+------------
+Description:
+------------
+
+Returns the number of rows for the specified panel.
+
+Using the panel id provides faster data access than using the 
+panel name.
+
+Panel ids that you have cached may become outdated or invalid 
+if the report is unloaded or reloaded. This error occurs 
+after compilation or with calls to the "project_close",
+"unload_report", and "load_report" commands.
+
+Panel names support wildcards.
+
+The table of contents portion of the Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of contents shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+## Loop through a panel and print out all its row information
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name and id
+set panel   {*Fitter Settings}
+set id      [get_report_panel_id $panel]
+
+# Get the number of rows
+set row_cnt [get_number_of_rows -id $id]
+
+for {set i 0} {$i < $row_cnt} {incr i} {
+    puts [get_report_panel_row -row $i -id $id]
+}
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	INFO: Report automatically reloaded because it was not up-to-date after use of Tcl command "execute_flow" or "execute_module" (which belong to ::quartus::flow package). No action is required.
+TCL_ERROR	1   	ERROR: Can't find the top-level panel. Make sure the loaded report is not empty. You can run a successful compilation to rebuild the report.
+TCL_ERROR	1   	ERROR: Can't find panel: <string>. Specify an existing report panel name.
+TCL_ERROR	1   	ERROR: Report not loaded for revision name: <string>. Type "load_report" to load the report.
+TCL_ERROR	1   	ERROR: Can't access report panel. Use this command only for report panels with rows or columns.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_number_of_rows>
+
+<get_number_of_columns>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_number_of_columns [-h | -help] [-long_help] [-id <table_id>] [-name <table_name>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -id <table_id>: Id of panel from which to get data
+        -name <table_name>: Name of panel from which to get data
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.1
+
+------------
+Description:
+------------
+
+Returns the number of columns for the specified panel.
+
+Using the panel id provides faster data access than using the
+panel name.
+
+Panel ids that you have cached may become outdated or invalid 
+if the report is unloaded or reloaded. This error occurs 
+after compilation or with calls to the "project_close",
+"unload_report", and "load_report" commands.
+
+Panel names support wildcards.
+
+The table of contents portion of the Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of contents shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+## Loop through a panel row and print out all its element information
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name and id
+set panel   {*Input Pins}
+set id      [get_report_panel_id $panel]
+
+# Get the number of columns
+set col_cnt [get_number_of_columns -id $id]
+
+# Set row name and get row index
+set rname   {[Cc]lock}
+set rindex  [get_report_panel_row_index -id $id $rname]
+set rname   [get_report_panel_data -row $rindex -col 0 -id $id]
+
+puts "\[Input Pins - $rname\]"
+for {set i 1} {$i < $col_cnt} {incr i} {
+    set    result "[get_report_panel_data -row 0 -col $i -id $id]: "
+    append result [get_report_panel_data -row $rindex -col $i -id $id]
+    puts   $result
+}
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	INFO: Report automatically reloaded because it was not up-to-date after use of Tcl command "execute_flow" or "execute_module" (which belong to ::quartus::flow package). No action is required.
+TCL_ERROR	1   	ERROR: Can't find the top-level panel. Make sure the loaded report is not empty. You can run a successful compilation to rebuild the report.
+TCL_ERROR	1   	ERROR: Can't find panel: <string>. Specify an existing report panel name.
+TCL_ERROR	1   	ERROR: Report not loaded for revision name: <string>. Type "load_report" to load the report.
+TCL_ERROR	1   	ERROR: Can't access report panel. Use this command only for report panels with rows or columns.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_number_of_columns>
+
+<write_report_panel>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: write_report_panel [-h | -help] [-long_help] -file <output file name> [-html] [-id <table_id>] [-name <table_name>] [-xml] [<name>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -file <output file name>: Name of output file to be generated
+        -html: Option to generate output file in HTML format
+        -id <table_id>: id of panel from which to get data
+        -name <table_name>: Name of panel from which to get data
+        -xml: Option to generate output file in XML format
+        <name>: Name of panel from which to get data
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.1
+
+------------
+Description:
+------------
+
+Writes data from the specified report panel to the specified 
+output file. If the "-html" option is specified, the output file 
+is generated in HTML format. If the "-xml" option is specified,
+the output file is generated in XML format. Otherwise, the output
+file is generated in ASCII format.
+
+Using the panel id provides faster data access than using the 
+panel name.
+
+Panel ids that you have cached may become outdated or invalid 
+if the report is unloaded or reloaded. This error occurs 
+after compilation or with calls to the "project_close",
+"unload_report", and "load_report" commands.
+
+Panel names support wildcards.
+
+The table of contents portion of the Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of contents shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+## Load report database and write Timing Analyzer Summary
+## panel to file in HTML format
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name and id
+set panel "*Timing Analyzer Summary"
+set id    [get_report_panel_id $panel]
+
+# If the specified panel exists, write it to
+# fmax.htm and fmax.xml.
+# Otherwise, print out an error message
+if {$id != -1} {
+    write_report_panel -file fmax.htm -html -id $id
+    write_report_panel -file fmax.xml -xml -id $id
+} else {
+    puts "Error: report panel could not be found."
+}
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	INFO: Successfully generated HTML-Format Report File: <string>
+TCL_OK   	0   	INFO: Successfully generated output file: <string>
+TCL_OK   	0   	INFO: Successfully generated XML-Format Report File: <string>
+TCL_OK   	0   	INFO: Report automatically reloaded because it was not up-to-date after use of Tcl command "execute_flow" or "execute_module" (which belong to ::quartus::flow package). No action is required.
+TCL_ERROR	1   	ERROR: Can't create or overwrite file: <string>. Specify a file name that has write permission.
+TCL_ERROR	1   	ERROR: Can't find the top-level panel. Make sure the loaded report is not empty. You can run a successful compilation to rebuild the report.
+TCL_ERROR	1   	ERROR: Can't find panel: <string>. Specify an existing report panel name.
+TCL_ERROR	1   	ERROR: Report not loaded for revision name: <string>. Type "load_report" to load the report.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</write_report_panel>
+
+<write_xml_report>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: write_xml_report [-h | -help] [-long_help] <filename>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        <filename>: Name of XML Report Database File to which to write
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.1
+
+------------
+Description:
+------------
+
+Writes the current Compilation Report or Simulation Report to the specified
+XML Report Database File (.xml).
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Load the ::quartus::flow and ::quartus::report packages
+load_package flow
+load_package report
+
+# Create new project
+set project_name "chiptrip"
+project_new $project_name -overwrite
+
+# Run quartus_map
+execute_module -tool map
+
+## Create XML Report Database File (.xml)
+load_report
+file delete -force $project_name.xml
+puts [write_xml_report $project_name.xml]
+unload_report
+
+# Close project
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	INFO: Report written to XML Report Database File: <string>. No action is required.
+TCL_ERROR	1   	ERROR: Can't write XML Report Database File: <string> -- report does not exist. Make sure that an existing report is loaded. Type "load_report -h" for more information.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</write_xml_report>
+
+<read_xml_report>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: read_xml_report [-h | -help] [-long_help] <filename>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        <filename>: Name of XML Report Database File from which to read
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.1
+
+------------
+Description:
+------------
+
+Creates the current Compilation Report from the specified
+XML Report Database File (.xml).
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Set project name
+set project_name "chiptrip"
+
+load_package report
+project_open $project_name
+
+# Read XML Report Database File (.xml)
+read_xml_report $project_name.xml
+
+load_report
+
+# Get all the panel names
+puts {All Report Panel Names:}
+puts [get_report_panel_names]
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_OK   	0   	INFO: Report read from XML Report Database File: <string>. No action is required.
+TCL_ERROR	1   	ERROR: Can't read XML Report Database File: <string> . Make sure that the file exists and does not contain syntax errors.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</read_xml_report>
+
+<create_report_panel>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: create_report_panel [-h | -help] [-long_help] [-folder] [-table] <panel_name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -folder: Option to create folder
+        -table: Option to create table
+        <panel_name>: Name of the panel to create
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.1
+
+------------
+Description:
+------------
+
+Creates a new report panel with the specified name.
+
+If -table option is specified, a table is created.
+If -folder option is specified, a folder is created.
+
+The name must be the full path to the new report panel, such as
+"Fitter||My Table". If the specified panel is created successfully,
+the corresponding panel id is returned.
+
+The table of contents portion of the Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of contents shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set folder name and id
+set folder    "My Folder"
+set folder_id [get_report_panel_id $folder]
+
+# Check if specified folder exists. If not, create it.
+if {$folder_id == -1} {
+    set folder_id [create_report_panel -folder $folder]
+}
+
+# Set table name and id
+set table    "$folder||My Table"
+set table_id [get_report_panel_id $table]
+
+# Check if specified table exists. If so, delete it.
+if {$table_id != -1} {
+    delete_report_panel -id $table_id
+}
+
+# Create the specified table and get its id
+set table_id [create_report_panel -table $table]
+
+# Add Timing Analyzer Summary to the table
+add_row_to_table -id $table_id {{Name} {Value}}
+add_row_to_table -id $table_id {{Number of Registers} {100}}
+
+# Save the changes to the report database
+save_report_database
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Report folder <string> already exists -- specify a different report folder name.
+TCL_ERROR	1   	ERROR: Can't find folder: <string>. Specify an existing report folder name.
+TCL_ERROR	1   	ERROR: Illegal color: <string>. Specify a color that is currently supported by "add_row_to_table".
+TCL_ERROR	1   	ERROR: Options "-table", "-tcl_table" and "-folder" are mutually exclusive -- specify only one of the options.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Report object is not a folder: <string>. Specify an existing report folder name.
+TCL_ERROR	1   	ERROR: Specify one of the options: "-<string>" or "-<string>".
+TCL_ERROR	1   	ERROR: Report not loaded for revision name: <string>. Type "load_report" to load the report.
+TCL_ERROR	1   	ERROR: Report panel already exists: <string>. Specify a different report panel name.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</create_report_panel>
+
+<delete_report_panel>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: delete_report_panel [-h | -help] [-long_help] [-id <panel_id>] [-name <panel_name>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -id <panel_id>: Id of panel to delete
+        -name <panel_name>: Name of panel to delete
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.1
+
+------------
+Description:
+------------
+
+Deletes the report panel with the specified id or name. 
+The panel can either be a report table or report folder.
+
+Using the panel id provides faster data access than using the 
+panel name.
+
+Panel ids that you have cached may become outdated or invalid 
+if the report is unloaded or reloaded. This error occurs 
+after compilation or with calls to the "project_close",
+"unload_report", and "load_report" commands.
+
+Panel names support wildcards.
+
+The table of contents portion of the Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of contents shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set table name and id
+set table    "Fitter||My Table"
+set table_id [get_report_panel_id $table]
+
+# Delete the table if the it already exists
+if {$table_id != -1} {
+    delete_report_panel -id $table_id
+}
+
+# Re-create the table
+create_report_panel -table $table
+add_row_to_table -name $table {{Name} {Value}}
+add_row_to_table -name $table {{Number of Registers} {100}}
+
+# This time, use table name instead of table id to delete it.
+delete_report_panel -name $table
+
+# Now, delete a folder
+set folder    "My Folder"
+set folder_id [get_report_panel_id $folder]
+
+# Delete it if the specified folder already exists
+if {$folder_id != -1} {
+    delete_report_panel -id $folder_id
+}
+
+# Save the changes to the report database
+save_report_database
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Found conflicting panel options. Specify only one of the options: "-name" or "-id".
+TCL_ERROR	1   	ERROR: The "delete_report_panel" command is not allowed for this report panel. You cannot delete a report panel folder.
+TCL_ERROR	1   	ERROR: Illegal panel id: <string>. Specify a legal panel id.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Specify one of the options: "-name" or "-id".
+TCL_ERROR	1   	ERROR: Can't find panel: <string>. Specify an existing report panel name.
+TCL_ERROR	1   	ERROR: Report not loaded for revision name: <string>. Type "load_report" to load the report.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</delete_report_panel>
+
+<get_report_panel_id>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_report_panel_id [-h | -help] [-long_help] <name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        <name>: Name of panel for which to get id
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.1
+
+------------
+Description:
+------------
+
+Gets the id of a panel with the specified name.
+
+The panel id is a non-negative integer for an existing panel.
+If the specified panel cannot be found, the id is -1.
+
+Using the panel id provides faster data access than using the 
+panel name.
+
+You can use the "get_report_panel_id" command to check for the 
+existence of a panel.(Refer to the example under the 
+"get_report_panel_id" command.)
+
+Panel ids that you have cached may become outdated or invalid 
+if the report is unloaded or reloaded. This error occurs 
+after compilation or with calls to the "project_close",
+"unload_report", and "load_report" commands.
+
+Panel names support wildcards.
+
+The table of contents portion of the Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of contents shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name
+set panel {Fitter||Fitter Settings}
+# Get the panel id
+set id [get_report_panel_id $panel]
+
+if {$id != -1} {
+    # If panel exists, add a row to it
+    add_row_to_table -id $id {{New Field} Yes No}
+    # Save the changes to the report database
+    save_report_database
+} else {
+    # Otherwise print an error message
+    puts "Error: Table $panel does not exist."
+}
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_report_panel_id>
+
+<add_row_to_table>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: add_row_to_table [-h | -help] [-long_help] [-id <table_id>] [-name <table_name>] <row>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -id <table_id>: Id of table to update
+        -name <table_name>: Name of table to update
+        <row>: Tcl list of strings to add to table
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.1
+
+------------
+Description:
+------------
+
+Adds the list of strings to the table as a row.
+
+Using the panel id provides faster data access than using the 
+panel name.
+
+Panel ids that you have cached may become outdated or invalid 
+if the report gets unloaded or reloaded. This error occurs 
+after compilation or with calls to the "project_close",
+"unload_report", and "load_report" commands.
+
+Panel names support wildcards.
+
+The table of content portion of the UI Compilation Report
+window shows short panel names for better readability.
+However, the panel name used by this command is the full
+panel name as shown in the right-hand side frame of the
+UI Compilation Report window or the .rpt file of the
+corresponding command-line executable. For example, the
+table of content shows the path "Analysis & Synthesis||Summary".
+However, the corresponding full path used by this Tcl command
+is "Analysis & Synthesis||Analysis & Synthesis Summary".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name and id
+set panel {Fitter||Fitter Settings}
+set id [get_report_panel_id $panel]
+
+if {$id != -1} {
+    # If panel exists, add a row to it
+    add_row_to_table -id $id {{New Field} Yes No}
+    # Save the changes to the report database
+    save_report_database
+} else {
+    # Otherwise print an error message
+    puts "Error: Table $panel does not exist."
+}
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Number of elements conflict. The number of elements in the added row must be <string>.
+TCL_ERROR	1   	ERROR: Illegal color: <string>. Specify a color that is currently supported by "add_row_to_table".
+TCL_ERROR	1   	ERROR: You specified <number> colors for the -<string> option. However, you must specify <number> colors to match the number of elements specified for the <<string>> argument.
+TCL_ERROR	1   	ERROR: Value specified for -<string> option is not a valid Tcl list: <string>. Specify a valid Tcl list.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Can't find panel: <string>. Specify an existing report panel name.
+TCL_ERROR	1   	ERROR: Report not loaded for revision name: <string>. Type "load_report" to load the report.
+TCL_ERROR	1   	ERROR: Can't access report panel. Use this command only for report panels with rows or columns.
+TCL_ERROR	1   	ERROR: Value specified for <row> is not a valid Tcl list: <string>. Specify <row> as a valid Tcl list.
+TCL_ERROR	1   	ERROR: "add_row_to_table" command is not allowed for this report panel. You cannot add rows to this report panel.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</add_row_to_table>
+
+<save_report_database>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: save_report_database [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.1
+
+------------
+Description:
+------------
+
+Saves the report database, including any new report panel.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Set panel name and id
+set panel {Fitter||Fitter Settings}
+set id    [get_report_panel_id $panel]
+
+# If panel exists, add a row to it. Otherwise, print an error message.
+if {$id != -1} {
+    add_row_to_table -id $id {{New Field} Yes No}
+    # Save the changes to the report database
+    save_report_database
+} else {
+    puts "Error: Table $panel does not exist."
+}
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Report not loaded for revision name: <string>. Type "load_report" to load the report.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</save_report_database>
+
+<get_fitter_resource_usage>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_fitter_resource_usage [-h | -help] [-long_help] [-alm] [-alut] [-available] [-io_pin] [-lab] [-le] [-mem_bit] [-percentage] [-reg] [-used] [-utilization]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -alm: Get total adaptive logic modules
+        -alut: Get total Combinational ALUTs
+        -available: Get available resource summary
+        -io_pin: Get total I/O pins
+        -lab: Get total logic array blocks
+        -le: Get total logic elements
+        -mem_bit: Get total memory bits
+        -percentage: Get used resource summary in percentage
+        -reg: Get total registers
+        -used: Get used resource summary
+        -utilization: Get total logic utilization
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.1
+
+------------
+Description:
+------------
+
+Gets the Fitter resource usage results.
+
+You must use one of the following options: "-alut", "-reg", "-le",
+"-alm", "-lab", "-io_pin", "-mem_bit" or "-resource".
+
+If the above option is not "-resource", you may also optionally use
+one of the following options: "-used", "-available" or "-percentage".
+
+Option "-resource" takes resource name as parameter, which supports wildcards.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Shortcut of get_fitter_resource_usage command
+set cmd     get_fitter_resource_usage
+
+# Get total registers, logic elements, and DSP block 9-bit elements.
+set registers [$cmd -reg]
+set les       [$cmd -le -used]
+set io_pin    [$cmd -io_pin -available]
+set mem_bit   [$cmd -mem_bit -percentage]
+set dsp       [$cmd -resource "DSP blck 9*"]
+puts "Registers usage: $registers"
+puts "Total used logic elements: $les"
+puts "Total available I/O pins: $io_pin"
+puts "Total used memory bits in percentage: ${mem_bit}%"
+puts "DSP block 9-bit elements: $dsp"
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Command requires one of the following options: "-alut", "-reg", "-le", "-alm", "-lab", "-io_pin", "mem_bit" or "-resource". Specify one of the options.
+TCL_ERROR	1   	ERROR: Options "-used", "-available" and "-percentage" can't be used together. Specify either one or none of the options.
+TCL_ERROR	1   	ERROR: Option "-resource" was used with option "-used", "-available" or "-percentage". Use option "-resource" only.
+TCL_ERROR	1   	ERROR: Can't find panel: <string>. Make sure the project was compiled by quartus_fit and the panel was not deleted.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_fitter_resource_usage>
+
+<get_timing_analysis_summary_results>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_timing_analysis_summary_results [-h | -help] [-long_help] [-actual] [-clock_hold <clock_hold>] [-clock_setup <clock_setup>] [-min_tco] [-min_tpd] [-required] [-slack] [-tco] [-th] [-tpd] [-tsu]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -actual: Actual time
+        -clock_hold <clock_hold>: Clock hold name
+        -clock_setup <clock_setup>: Clock setup name
+        -min_tco: Minimum clock to output delay
+        -min_tpd: Minimum propagation delay
+        -required: Required time
+        -slack: Slack
+        -tco: Clock to output delay
+        -th: Hold time
+        -tpd: Propagation delay
+        -tsu: Setup time
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::report 2.1
+
+------------
+Description:
+------------
+
+Gets the Timing Analysis Summary results. This command uses 
+the "get_report_panel_data" command to access the 
+Timing Analysis Summary panel. It provides easy access to 
+the panel data without the need to know the names of the 
+corresponding row and column.
+
+You must use one of the following options: "-tsu", "-tco", "-tpd",
+"-th", "-min_tco", "-min_tpd", "-clock_setup", or "-clock_hold".
+
+You also must use one of the following options: "-slack", 
+"-required" or "-actual".
+
+Clock names support wildcards.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+load_package report
+project_open chiptrip
+load_report
+
+# Shortcut of get_timing_analysis_summary_results command
+set cmd     get_timing_analysis_summary_results
+
+# Get actual tsu, clock slack, and required tco
+set act_tsu [$cmd -tsu -actual]
+set clock   [$cmd -clock_setup {[Cc]lock} -actual]
+set req_tco [$cmd -tco -required]
+puts "Actual tsu: $act_tsu"
+puts "Actual clock setup: $clock"
+puts "Required tco: $req_tco"
+
+unload_report
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't find clock <string> in Timing Analysis Summary panel.
+TCL_ERROR	1   	ERROR: Command requires one of the following options: "-tsu", "-tco", "-tpd", "-th", "-min_tco", "-min_tpd", "-clock_setup", or "-clock_hold". Specify one of the options.
+TCL_ERROR	1   	ERROR: Command requires one of the following options: "-slack", "-required" or "-actual". Specify one of the options.
+TCL_ERROR	1   	ERROR: Can't find <string> in Timing Analysis Summary panel.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_timing_analysis_summary_results>
+
+<<<</2.1>>>>

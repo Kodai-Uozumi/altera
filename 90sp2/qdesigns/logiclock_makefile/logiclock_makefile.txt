@@ -1,0 +1,81 @@
+######################################################################
+#
+# Sample Makefile for LogicLock flow with Bottom-Up Design
+#
+######################################################################
+
+# Top Level Module
+TOP_LEVEL_MODULE_NAME = chiptrip
+SOURCE_FILES_CHIPTRIP = chiptrip.v chiptrip.qsf
+
+# Low Level Modules
+SOURCE_FILES_AUTO_MAX = auto_max.v auto_max.qsf
+SOURCE_FILES_SPEED_CH = speed_ch.v speed_ch.qsf
+SOURCE_FILES_TICK_CNT = tick_cnt.v tick_cnt.qsf
+SOURCE_FILES_TIME_CNT = time_cnt.v time_cnt.qsf
+VQM_FOLDER = atom_netlists
+VQM_FILES = $(VQM_FOLDER)/auto_max.vqm $(VQM_FOLDER)/speed_ch.vqm $(VQM_FOLDER)/tick_cnt.vqm $(VQM_FOLDER)/time_cnt.vqm
+
+###################################################################
+# Main Targets
+#
+# all: build everything
+# clean: remove output files and database
+###################################################################
+
+all: $(TOP_LEVEL_MODULE_NAME).tan.rpt 
+chiptrip: $(TOP_LEVEL_MODULE_NAME).tan.rpt 
+
+clean:
+	rm -rf *.rpt *.htm *.eqn *.pin *.sof *.pof db *.atm *.hdbx *.fit.* *.tan.* *.map.* out atom_netlists
+
+###################################################################
+# Executable Configuration
+###################################################################
+
+ANALYZE_ARGS = --analyze_project --export_settings=on
+MAP_ARGS = --export_settings=on --import_settings=on
+FIT_ARGS = --export_settings=on --import_settings=on
+TAN_ARGS = --export_settings=on --import_settings=on
+CDB_TOP_ARGS = -t merge.tcl
+CDB_SUB_ARGS = -t modular_output.tcl
+
+###################################################################
+# Compile Sub-modules when needed
+###################################################################
+
+$(VQM_FOLDER)\auto_max.vqm : $(SOURCE_FILES_AUTO_MAX)
+	quartus_map $(MAP_ARGS) auto_max
+	quartus_fit $(FIT_ARGS) auto_max
+	quartus_cdb $(CDB_SUB_ARGS) auto_max
+
+$(VQM_FOLDER)\speed_ch.vqm : $(SOURCE_FILES_SPEED_CH)
+	quartus_map $(MAP_ARGS) speed_ch
+	quartus_fit $(FIT_ARGS) speed_ch
+	quartus_cdb $(CDB_SUB_ARGS) speed_ch
+
+$(VQM_FOLDER)\time_cnt.vqm : $(SOURCE_FILES_TIME_CNT)
+	quartus_map $(MAP_ARGS) time_cnt
+	quartus_fit $(FIT_ARGS) time_cnt
+	quartus_cdb $(CDB_SUB_ARGS) time_cnt
+
+$(VQM_FOLDER)\tick_cnt.vqm : $(SOURCE_FILES_TICK_CNT)
+	quartus_map $(MAP_ARGS) tick_cnt
+	quartus_fit $(FIT_ARGS) tick_cnt
+	quartus_cdb $(CDB_SUB_ARGS) tick_cnt
+
+###################################################################
+# Compile Top Level when needed
+###################################################################
+
+# If top level source file changes, run QMAP to elaborate
+$(TOP_LEVEL_MODULE_NAME).map.rpt: $(SOURCE_FILES_CHIPTRIP)
+	quartus_map $(ANALYZE_ARGS) $(TOP_LEVEL_MODULE_NAME) 
+
+# If only bottom level modules change, delete imported logiclock regions, then
+# import new regions and then run quartus_map (called by quartus_cdb in this case) ->
+# quartus_fit -> quartus_tan for the top level
+$(TOP_LEVEL_MODULE_NAME).tan.rpt: $(TOP_LEVEL_MODULE_NAME).map.rpt $(VQM_FILES)
+	quartus_cdb $(CDB_TOP_ARGS) $(TOP_LEVEL_MODULE_NAME) 
+	quartus_fit $(FIT_ARGS) $(TOP_LEVEL_MODULE_NAME) 
+	quartus_tan $(TAN_ARGS) $(TOP_LEVEL_MODULE_NAME) 

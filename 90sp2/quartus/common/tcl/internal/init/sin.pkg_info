@@ -1,0 +1,20 @@
+# Add ::quartus::sin to the table of packages
+lappend quartus(package_table) {sin quartus_sta hidden}
+
+if {[lsearch -exact [list quartus_sta] $quartus(nameofexecutable)] != -1} {
+
+    # Make ::quartus::sin available to load
+    set qpkg_script_auto [file join [file dirname [info script]] sin.tcl]
+    if {[file exist $qpkg_script_auto]} {
+       source $qpkg_script_auto
+    }
+    unset qpkg_script_auto
+
+}
+
+if {[lsearch -exact [list quartus_sta] $quartus(nameofexecutable)] != -1} {
+
+    # Load ::quartus::sin by default
+    package require ::quartus::sin
+
+}

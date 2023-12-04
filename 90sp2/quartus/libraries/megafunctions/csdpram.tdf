@@ -1,0 +1,195 @@
+-- **************************************************************************
+-- Dual-Port RAM Megafunction
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+--	Version 1.0
+--
+-- **************************************************************************
+--
+-- PARAMETERS:
+--		LPM_WIDTH					- the width of the data bus
+--		LPM_WIDTHAD					- the width of the address bus
+--		LPM_NUMWORDS				- depth of dual-port RAM ( 2^LPM_WIDTHAD )
+-- INPUTS:
+--		dataa[LPM_WIDTH-1..0]		- input data bus a
+--		datab[LPM_WIDTH-1..0]		- input data bus b
+--		addressa[LPM_WIDTHAD-1..0]	- address a
+--		addressb[LPM_WIDTHAD-1..0]	- address b
+--		wea							- write enable a
+--		web							- write enable b
+--		clock						- system clock
+--		clockx2						- two times system clock
+-- OUTPUTS:
+--		qa[LPM_WIDTH-1..0]			- output data bus a
+--		qb[LPM_WIDTH-1..0]			- output data bus b
+--		busy						- addressa == addressb and wea asserted
+--
+-- **************************************************************************
+--
+-- NOTE:
+-- qa[] is a synchronous output that is latched on the rising edge of the 
+-- second 2X clock cycle.  
+-- qb[] is an asynchronous output.
+--
+-- **************************************************************************
+
+INCLUDE "altram";
+INCLUDE "lpm_compare";
+
+PARAMETERS
+(
+	LPM_WIDTH,
+	LPM_WIDTHAD,
+	LPM_NUMWORDS = 2^LPM_WIDTHAD,
+
+	DEVICE_FAMILY
+);
+
+include "aglobal90";
+
+SUBDESIGN csdpram
+(
+	dataa[LPM_WIDTH-1..0]		: INPUT;
+	datab[LPM_WIDTH-1..0]		: INPUT;
+	addressa[LPM_WIDTHAD-1..0]	: INPUT;
+	addressb[LPM_WIDTHAD-1..0]	: INPUT;
+	qa[LPM_WIDTH-1..0]			: OUTPUT;
+ 	qb[LPM_WIDTH-1..0]			: OUTPUT;
+	wea							: INPUT;
+	web							: INPUT;
+	clock						: INPUT;
+	clockx2						: INPUT;
+	busy						: OUTPUT;
+)
+
+VARIABLE
+	ram_block 					: altram WITH (WIDTH=LPM_WIDTH,
+										AD_WIDTH=LPM_WIDTHAD,
+										NUMWORDS=LPM_NUMWORDS);
+	compare						: lpm_compare WITH (LPM_WIDTH=LPM_WIDTHAD);
+	lbusy						: DFF;
+			
+	addr_mux[LPM_WIDTHAD-1..0]  : NODE;
+	data_mux[LPM_WIDTH-1..0]	: NODE;
+	we_mux						: NODE;
+	
+	addrb_tmp[LPM_WIDTHAD-1..0]	: DFF;				 
+	datab_tmp[LPM_WIDTH-1..0]	: DFF;
+	web_tmp	: DFF;
+
+	temp_buff[LPM_WIDTH-1..0]	: DFFE;  
+
+	cd_input					: DFF;
+	cd_output					: DFF;
+	
+BEGIN
+
+	ASSERT (LPM_WIDTH > 0)
+			REPORT "Value of LPM_WIDTH parameter value must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID LPM_CSDPRAM_WIDTH;
+
+	ASSERT (LPM_NUMWORDS > 1)
+			REPORT "Value of LPM_NUMWORDS parameter value must be greater than or equal to 2"
+			SEVERITY ERROR
+			HELP_ID LPM_CSDPRAM_NUMWORDS;
+
+	ASSERT (LPM_WIDTHAD > 0)
+			REPORT "Value of LPM_WIDTHAD parameter value must be greater than 0"
+			SEVERITY ERROR
+			HELP_ID LPM_CSDPRAM_WIDTHAD;
+
+	-- Cause: This functions was really only intended for FLEX10K with single-port EABs.
+	--		  For any other device family, the LPM equivalent function is a much better choice.
+	-- Action: Replace this function with the LPM equivalent.
+	ASSERT (FAMILY_FLEX10K())
+			report "Altera recommends using the lpm_ram_dp megafunction instead of the csdpram megafunction for the % device family"
+				DEVICE_FAMILY
+			severity warning
+			help_id CSDPRAM_FAMILY;
+
+-- **************************************************************************
+-- Generate synchronous signal from clock ( == !clock )
+--
+	cd_input.clk = clock;
+	cd_input = vcc;
+	cd_input.clrn = !cd_output;
+	cd_output.clk = clockx2;
+	cd_output.clrn = cd_input;
+	cd_output = cd_input;
+
+-- **************************************************************************
+-- Assert busy signal if addressa = addressb and wea is asserted
+--
+	compare.dataa[] = addressa[];
+	compare.datab[] = addressb[];
+	lbusy = compare.aeb & wea;
+	lbusy.clk = clock;
+	busy = lbusy;
+
+-- **************************************************************************
+-- Latch addressb, datab, and web at start of clock cycle
+--
+	addrb_tmp[] = addressb[];
+	addrb_tmp[].clk = clock;
+	datab_tmp[] = datab[];
+	datab_tmp[].clk = clock; 	
+	web_tmp = web;
+	web_tmp.clk = clock;	
+
+-- **************************************************************************
+-- Time multiplex a and b onto EAB
+--
+	IF ( !cd_input ) THEN
+		addr_mux[] = addressa[];
+		data_mux[] = dataa[];
+		we_mux = wea;
+	ELSE
+		addr_mux[] = addrb_tmp[];
+		data_mux[] = datab_tmp[];
+		we_mux = web_tmp;
+	END IF;
+	
+-- **************************************************************************
+-- Access ram_block for read and/or write
+--
+	ram_block.data[] = data_mux[];
+	ram_block.we = we_mux; 
+	ram_block.address[] = addr_mux[]; 
+	ram_block.clockI = clockx2;   -- twice per system cycle
+
+-- **************************************************************************
+-- Latch the result of read from a 
+--
+	temp_buff[] = ram_block.q[];
+	temp_buff[].ena = cd_input; -- latch on second 2x clock
+	temp_buff[].clk = clockx2; 
+	qa[] = temp_buff[];
+	qb[] = ram_block.q[];	
+	IF !USED(qa) GENERATE
+		qa[] = GND;
+	END GENERATE;
+	IF !USED(busy) GENERATE
+		busy = GND;
+	END GENERATE;
+	IF !USED(qb) GENERATE
+		qb[] = GND;
+	END GENERATE;
+END;
+
+

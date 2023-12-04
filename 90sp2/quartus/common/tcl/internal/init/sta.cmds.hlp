@@ -1,0 +1,5250 @@
+<<<<versions>>>>
+1.0
+<<<</versions>>>>
+<<<<1.0>>>>
+<enable_sdc_extension_collections>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: enable_sdc_extension_collections [-h | -help] [-long_help] [-off] [-on]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -off: Disable this setting.
+        -on: Enable this setting.
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Enable the support of SDC extension collections, such as keeper,
+register and node collections. When enable_sdc_extension_collections
+is not used, using these collections causes an error.  Default to -on
+option.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open top
+enable_sdc_extension_collections -on
+create_timing_netlist
+read_sdc
+
+report_timing -to_clock clk1
+
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Found an SDC extension Tcl collection creation command: <string>. Either switch to an SDC Tcl collection creation command or turn on enable_sdc_extension_collections.
+TCL_ERROR	1   	ERROR: Found an SDC extension collection type: <string>. Either switch to an SDC collection type or turn on enable_sdc_extension_collections.
+TCL_ERROR	1   	ERROR: Found timing netlist in memory. Delete timing netlist before use this command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</enable_sdc_extension_collections>
+
+<use_timequest_style_escaping>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: use_timequest_style_escaping [-h | -help] [-long_help] [-off] [-on]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -off: Disable this setting.
+        -on: Enable this setting.
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Use TimeQuest-style escaping.  (TimeQuest-style escaping is enabled by
+default.
+
+The values used to create a collection, whether explicitly using a
+collection command or implicitly as a value specified as a "-from",
+"-to", or similar option to various SDC and report commands, are a Tcl
+list of wildcards.  This includes a single name with an exact match.
+The value must follow standard Tcl substitution rules for Tcl lists
+and "string match" as described below, unless using TimeQuest-style
+escaping (default).
+
+For special characters such as '$', the character must be escaped
+using a single '\' character to prevent Tcl from interpreting the word
+after '$' as a Tcl variable, such as: Clk\$Signal.
+
+A '\' character itself must be escaped with another '\' as in the '$'
+case, must be escaped again for the Tcl list, and must be escaped yet
+again for Tcl "string match."  The final result is eight '\'
+characters, such as: Clk\\\\\\\\Signal.
+
+Using Tcl "list" eliminates one level of escaping, since it will
+escape any '\' characters automatically for the Tcl list, such as:
+	[list Clk\\\\Signal]
+
+Using '{' and '}' characters also eliminates the need for one or two
+levels of escaping, since '{' and '}' prevent string substitution in
+the contents, such as:
+    [List {Clk\\Signal}]
+    {{Clk\\Signal}}
+
+The use_timequest_style_escaping option, which is on by default,
+allows the user to specify a name containing '\' characters with only
+two '\' characters in all cases, such as: Clk\\Signal.  The extra '\'
+characters required for Tcl list string substitution and "string
+match" are added automatically by TimeQuest.
+
+To disable TimeQuest style string escaping, call
+"use_timequest_style_escaping -off" before adding any timing
+constraints or exceptions.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open top
+use_timequest_style_escaping -on
+create_timing_netlist
+set res [get_cells my_test|special_\\reg]
+query_collection $res -all
+
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</use_timequest_style_escaping>
+
+<enable_ccpp_removal>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: enable_ccpp_removal [-h | -help] [-long_help] [-off] [-on]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -off: Disable this setting.
+        -on: Enable this setting.
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Enables common clock path pessimism (CCPP) removal during slack
+computation. CCPP removal can improve timing results by removing
+min/max delay differences from common portions of clock paths.
+Enabling CCPP removal increases the time required to perform timing
+analysis.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open top
+create_timing_netlist
+read_sdc
+
+# Report timing without CCPP removal
+report_timing
+
+# Enable CCPP removal and re-report timing.
+enable_ccpp_removal
+report_timing
+
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</enable_ccpp_removal>
+
+<update_timing_netlist>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: update_timing_netlist [-h | -help] [-long_help] [-full]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -full: Forces creation of an updated timing netlist to ensure correctness
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Updates and applies SDC commands to the timing netlist.  The
+update_timing_netlist command expands and validates generated clocks,
+warns about sources in the design that require clock settings,
+identifies and removes combinational loops, and warns about undefined
+input/output delays.
+
+Most Tcl commands (e.g., report_timing) automatically update the
+timing netlist when necessary.  You can use the update_timing_netlist
+command explicitly to control when updating occurs, or to force a full
+update using the -full option.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open top
+create_timing_netlist
+read_sdc
+update_timing_netlist
+
+report_timing -to_clock clk1
+report_timing -to_clock clk2
+
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</update_timing_netlist>
+
+<create_timing_netlist>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: create_timing_netlist [-h | -help] [-long_help] [-force_dat] [-model <fast|slow>] [-no_latch] [-post_map] [-speed <speed>] [-temperature <value_in_C>] [-voltage <value_in_mV>] [-zero_ic_delays] [<operating_conditions>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -force_dat: Option to force delay annotation
+        -model <fast|slow>: Option to specify timing model
+        -no_latch: Option to disable the analysis of latches as synchronous elements
+        -post_map: Option to perform timing analysis on the post-synthesis netlist
+        -speed <speed>: Speed grade
+        -temperature <value_in_C>: Operating temperature
+        -voltage <value_in_mV>: Operating voltage
+        -zero_ic_delays: Option to set all IC delays to zero
+        <operating_conditions>: Operating conditions Tcl object name string
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Creates the timing netlist by annotating the atom netlist with delay
+information using post-fitting results. Use the -post_map option to
+obtain post-synthesis results.
+
+The create_timing_netlist command skips delay annotation by default.
+Use -force_dat to rerun delay annotation. This is required if any
+delay annotation setting is changed in the Quartus II project revision
+(e.g. OUTPUT_PIN_LOAD).
+
+Use "-model fast" to run the analysis using the fast corner delay
+models first.  The -temperature, -voltage, and -speed, options are
+also available. See help for set_operating_conditions for details on
+these options.
+
+You can use model, temperature and voltage options to specify
+operating conditions while creating timing netlist (temperature and
+voltage options are not supported by all families). You can also set
+operating conditions by passing an operating conditions object name as
+a positional argument to create_timing_netlist command. After timing
+netlist has been created, you can use set_operating_conditions command
+to change timing models without deleting and re-creating the timing
+netlist.
+
+    	Use the -no_latch option to analyze latches as combinational loops
+instead of synchronous elements.
+
+Use the -zero_ic_delays option to set all IC delays in the netlist to
+zero.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open my_top
+
+# Create timing netlist before calling
+# any report functions
+create_timing_netlist
+
+# Read SDC and update timing
+read_sdc
+update_timing_netlist
+
+# Ready to call report functions
+report_timing -npaths 1 -clock_setup
+
+# The following command is optional
+delete_timing_netlist
+
+project_close
+
+project_open my_top
+
+# Report worst case period for -9 speed grade
+create_timing_netlist -speed 9
+
+# Read SDC and update timing
+read_sdc
+update_timing_netlist
+
+report_timing -clock_setup -clock_filter clk
+delete_timing_netlist
+
+# Report hold violation for fastest corner
+# Use set_operating_conditions instead
+create_timing_netlist -model fast
+
+# Read SDC and update timing
+read_sdc
+update_timing_netlist
+
+report_timing -clock_hold -clock_filter clk
+delete_timing_netlist
+
+# If Delay Annotation has been run for the fast corner
+# Force Delay Annotation
+create_timing_netlist -model fast -force_dat
+
+# Read SDC and update timing
+read_sdc
+update_timing_netlist
+
+report_timing -clock_hold -clock_filter clk
+delete_timing_netlist
+
+# Report worst case period for post-technology mapping netlist
+create_timing_netlist -post_map
+
+# Read SDC and update timing
+read_sdc
+update_timing_netlist
+
+report_timing -clock_setup -clock_filter clk
+delete_timing_netlist
+
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't create timing netlist for device family <string>. Run Analysis and Synthesis (quartus_map) using this device family as a value for the --family option before running the TimeQuest analyzer (create_timing_netlist).
+TCL_ERROR	1   	ERROR: Both the -temperature and -voltage options and their values are required.
+TCL_ERROR	1   	ERROR: Can't find active revision. Make sure there is an open, active revision name.
+TCL_ERROR	1   	ERROR: Values entered did not match any valid operating conditions. Available operating conditions are: <string>
+TCL_ERROR	1   	ERROR: The <string> device family cannot perform automatic multi-corner timing analysis because the family does not support the set_operating_conditions command.
+TCL_ERROR	1   	ERROR: <string> Device family is not supported by the TimeQuest Timing Analyzer.
+TCL_ERROR	1   	ERROR: Can't create timing netlist with -post_map option for device family <string>. Create timing netlist without the -post_map OPTION
+TCL_ERROR	1   	ERROR: Can't run TimeQuest Timing Analyzer (quartus_sta) -- Fitter (quartus_fit) failed or was not run. Run the Fitter (quartus_fit) successfully before running the TimeQuest analyzer (create_timing_netlist).
+TCL_ERROR	1   	ERROR: Can't run the TimeQuest Timing Analyzer (quartus_sta) -- Partition Merge (quartus_cdb --merge) failed or was not run. Run the Partition Merge (quartus_cdb --merge) successfully before running the TimeQuest Timing Analyzer (create_timing_netlist -post_map).
+TCL_ERROR	1   	ERROR: Can't run TimeQuest Timing Analyzer (quartus_sta) -- Analysis and Synthesis (quartus_map) failed or was not run. Run the Analysis and Synthesis (quartus_map) successfully before running the TimeQuest analyzer (create_timing_netlist -post_map).
+TCL_ERROR	1   	ERROR: Delay annotation not run. Run delay annotation before running the Timing Analyzer (quartus_sta).
+TCL_ERROR	1   	ERROR: Timing netlist already exists. Delete the timing netlist before running this command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</create_timing_netlist>
+
+<delete_timing_netlist>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: delete_timing_netlist [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Use this command to delete a timing netlist previously created using
+create_timing_netlist. This should be done at the end of a script or
+before calling create_timing_netlist again using different options or
+after recompiling the design.
+
+Use the set_operating_conditions command instead of
+delete_timing_netlist and create_timing_netlist to change timing
+models. This avoids the cost of deleting and re-creating the timing
+netlist, and also preserves current timing assignments.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+This command currently contains no example usage.
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</delete_timing_netlist>
+
+<timing_netlist_exist>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: timing_netlist_exist [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Checks if the timing netlist exists.
+
+Returns 1, if the timing netlist exists.
+Returns 0, otherwise.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+if {![timing_netlist_exist]} {
+	create_timing_netlist
+}
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</timing_netlist_exist>
+
+<get_path_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_path_info [-h | -help] [-long_help] [-arrival_points] [-arrival_time] [-ccpp] [-clock_relationship] [-clock_skew] [-data_delay] [-from] [-from_clock] [-from_clock_is_inverted] [-hold_end_multicycle] [-hold_start_multicycle] [-latch_time] [-launch_time] [-num_logic_levels] [-required_points] [-required_time] [-setup_end_multicycle] [-setup_start_multicycle] [-slack] [-to] [-to_clock] [-to_clock_is_inverted] [-type] <path_ref>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -arrival_points: Return a collection of point objects for the arrival path
+        -arrival_time: Return the data arrival time for the path
+        -ccpp: Return the common clock path pessimism for the path
+        -clock_relationship: Return the clock relationship for the path
+        -clock_skew: Return the clock skew for the path
+        -data_delay: Return the data delay for the path
+        -from: Return the source node ID
+        -from_clock: Return the source clock ID
+        -from_clock_is_inverted: Return 1 if the source clock is inverted, 0 otherwise
+        -hold_end_multicycle: Return the hold end multicycle for the path
+        -hold_start_multicycle: Return the hold start multicycle for the path
+        -latch_time: Return the latch time for the path
+        -launch_time: Return the launch time for the path
+        -num_logic_levels: Return the number of logic levels on the path between the to node and from node
+        -required_points: Return a collection of point objects for the required path
+        -required_time: Return the data required time for the path
+        -setup_end_multicycle: Return the setup end multicycle for the path
+        -setup_start_multicycle: Return the setup start multicycle for the path
+        -slack: Return the slack for the path
+        -to: Return the destination node ID
+        -to_clock: Return the destination clock ID
+        -to_clock_is_inverted: Return 1 if the destination clock is inverted, 0 otherwise
+        -type: Return the type of this path.  Possible return values are: "setup", "hold", "recovery", "removal", "max_path", "min_path"
+        <path_ref>: Path object
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Get information about the referenced timing path object.
+
+References to path objects can be generated using the get_timing_paths
+and get_path functions.
+
+The -type option returns one of the following types: "setup", "hold",
+"recovery", "removal", "max_path", "min_path".
+
+The -from and -to options return the ID of the nodes at the start and 
+end, respecitvely, of the arrival path.  If there is no node, an empty
+string is returned.  The "to" node remains the same, regardless of the 
+level of clock detail provided (that is, it is always the first node 
+clocked by the "from" clock in the data arrival path).  The node ID may
+be used with the get_node_info function to obtain additional informaion
+about the node.
+
+The -from_clock and -to_clock options return the ID of the launching and
+latching clocks, respectively.  If there is no clock, an empty string is
+returned.  Additional information on the clocks can be obtained using the
+get_clock_info function.
+
+The -arrival_points and -required_points options return a collection of
+point objects for the arrival and required paths, respecitvely.  By 
+iterating over the collection, and using the get_point_info function, the
+specific details of each portion of the path can be obtained.  
+
+If a path was created with additional clock detail, the	elements of the 
+clock path will be included in each collection of points.
+
+The values of the -from, -to, etc. are either collections or a Tcl
+list of wildcards used to create collections of appropriate types.
+The values used must follow standard Tcl or TimeQuest-extension
+substitution rules.  See the help for use_timequest_style_escaping for
+details.
+
+Path objects generated by get_path do not have clock information, 
+required points, or meaningful slack values.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Define a few helper procedures to print out points
+# on a path, and the path itself
+proc get_clock_string { path clk } {
+	set clk_str ""
+	set clk_id [ get_path_info $path -${clk}_clock ]
+
+	if { $clk_id ne "" } {
+		set clk_str [ get_clock_info $clk_id -name ]
+		
+ 		if { [ get_path_info $path -${clk}_clock_is_inverted ] } {
+			append clk_str " (INVERTED)"
+		}
+	}
+
+	return $clk_str
+}
+	
+proc print_point { point } {
+	set total     [ get_point_info $point -total    ]
+	set incr      [ get_point_info $point -incr     ]
+	set node_id   [ get_point_info $point -node     ]
+	set type      [ get_point_info $point -type     ]
+	set rf        [ get_point_info $point -rise_fall]
+	set node_name ""
+
+	if { $node_id ne "" } {
+		set node_name [ get_node_info $node_id -name ]
+	}
+
+	puts [format "%10s %8s %2s %-6s %s" $total $incr $rf $type $node_name ]
+}
+
+proc print_path { path } {
+	puts "Slack      : [ get_path_info $path -slack]"
+	puts "To Clock   : [ get_clock_string $path to ]"
+	puts "From Clock : [ get_clock_string $path from]"
+	puts ""
+	puts [format "%10s %8s %-2s %-6s %s" "Total" "Incr" "RF" "Type" "Name"]
+	puts "=================================================================="
+
+	foreach_in_collection pt [ get_path_info $path -arrival_points ] {
+		print_point $pt
+	}
+}
+
+project_open my_project
+
+# Always create the netlist first
+create_timing_netlist
+read_sdc my_project.sdc
+update_timing_netlist
+
+# And now simply iterate over the 10 worst setup paths, printing each path
+foreach_in_collection path [ get_timing_paths -npaths 10 -setup ] {
+	print_path $path
+	puts ""
+}
+
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Object with ID "<string>" is not an object of type <string>. Specify the ID of an object with the correct type.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_path_info>
+
+<get_point_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_point_info [-h | -help] [-long_help] [-edge] [-incremental_delay] [-location] [-node] [-number_of_fanout] [-rise_fall] [-total_delay] [-type] <point_ref>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -edge: Return the edge ID for the edge associated with this point.  If the point has no edge, this returns an empty string
+        -incremental_delay: Return the incremental delay through this point
+        -location: Return a string indicating the location of the point's node, if there is one, else an empty string
+        -node: Return the node ID for the node associated with this point.  If the point has no node, this returns an empty string
+        -number_of_fanout: Return the number of fanout that this point has in the netlist
+        -rise_fall: Return a string indicating the rise_fall type of this point.  Return values are r, f, rr, rf, fr, ff, or an empty string for undefined
+        -total_delay: Return the total delay of the path at this point.  This includes the incremental delay for the point itself
+        -type: Return a string indicating the type of the point
+        <point_ref>: Point object
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+
+Returns information about the referenced timing point object.
+References to path objects can be generated using the get_path_info
+function.
+
+A point object is the equivalent of a row in a path in the output from
+report_timing.
+
+The -node option returns a node ID for the corrsponding node in the
+path.  For points that do not have a corresponding node (such as
+points for the lumped clock network delay, launch time, latch time,
+individual routing elements, etc.), the node ID is an empty string.  A
+non-empty node ID can be used in conjunction with the get_node_info
+function to obtain additional information about the node.
+
+The -edge option returns an edge ID for the corresponding edge in the
+path.  Only points of type "ic", "cell", and "comp" may have edges.
+For other point types, an empty string will be returned.  A non-empty
+edge ID can be used in conjunction with the get_edge_info function to
+obtain additional information about the edge.
+
+The -total_delay option returns the total delay along the path, up to
+and including the current point.  The -incremental_delay option
+returns the delay incurred by going through this point in the path.
+Both delays are formated in terms of the current time units, excluding
+the unit string.
+
+The -number_of_fanout option returns the number of fanouts that the 
+corresponding node has in the timing netlist.  If there is no node for
+this point, the return value is 0.
+
+The -location option returns a string indicating the location of the 
+corresponding node in the part.  If there is no corresponding node,
+this returns an empty string.
+
+The -rise_fall option returns the transition type of this point.  
+
+Possible values for -rise_fall are:
+
+	Value     Description
+	-------   ------------------------------
+	(empty)   Unknown transition
+	r         Rising output
+	f         Falling output
+	rr        Rising input, rising output
+	rf        Rising input, falling output
+	fr        Falling input, rising output
+	ff        Falling input, falling output
+	
+The -type option returns a string indicating the type of delay that
+this point represents in the path.
+
+Possible return values for -type are:
+
+   Value     Description
+   -------   -------------------------------------------------------
+   cell      Cell delay
+   clknet    Lumped clock network delay
+   clksrc    Clock source.  Used to ensure that the end-point of a
+             clock segment is marked in the path when source latency
+             is specified, or when the actual path cannot be found.
+   comp      PLL clock network compensation delay
+   ic        Interconnect delay
+   iext      External input delay
+   latch     Clock latch time
+   launch    Clock launch time
+   loop      Lumped combinational loop delay
+   oext      External output delay
+   re        Routing element (only for paths generated with the 
+             -show_routing option)
+   srclat    Source latency for a clock segment. This will appear
+             if latency was specified between two clocks, or if a
+             path could not be found between them.
+   unc       Clock uncertainty
+   utco      Register micro-Tco time
+   utsu      Register micro-Tsu time
+   uth       Register micro-Th time
+
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Define a few helper procedures to print out points
+# on a path, and the path itself
+proc get_clock_string { path clk } {
+	set clk_str ""
+	set clk_id [ get_path_info $path -${clk}_clock ]
+
+	if { $clk_id ne "" } {
+		set clk_str [ get_clock_info $clk_id -name ]
+		
+ 		if { [ get_path_info $path -${clk}_clock_is_inverted ] } {
+			append clk_str " (INVERTED)"
+		}
+	}
+
+	return $clk_str
+}
+	
+proc print_point { point } {
+	set total     [ get_point_info $point -total    ]
+	set incr      [ get_point_info $point -incr     ]
+	set node_id   [ get_point_info $point -node     ]
+	set type      [ get_point_info $point -type     ]
+	set rf        [ get_point_info $point -rise_fall]
+	set node_name ""
+
+	if { $node_id ne "" } {
+		set node_name [ get_node_info $node_id -name ]
+	}
+
+	puts [format "%10s %8s %2s %-6s %s" $total $incr $rf $type $node_name ]
+}
+
+proc print_path { path } {
+	puts "Slack      : [ get_path_info $path -slack]"
+	puts "To Clock   : [ get_clock_string $path to ]"
+	puts "From Clock : [ get_clock_string $path from]"
+	puts ""
+	puts [format "%10s %8s %-2s %-6s %s" "Total" "Incr" "RF" "Type" "Name"]
+	puts "=================================================================="
+
+	foreach_in_collection pt [ get_path_info $path -arrival_points ] {
+		print_point $pt
+	}
+}
+
+project_open my_project
+
+# Always create the netlist first
+create_timing_netlist
+read_sdc my_project.sdc
+update_timing_netlist
+
+# And now simply iterate over the 10 worst setup paths, printing each path
+foreach_in_collection path [ get_timing_paths -npaths 10 -setup ] {
+	print_path $path
+	puts ""
+}
+
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Object with ID "<string>" is not an object of type <string>. Specify the ID of an object with the correct type.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_point_info>
+
+<get_timing_paths>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_timing_paths [-h | -help] [-long_help] [-detail <summary|path_only|path_and_clock|full_path>] [-fall_from_clock <names>] [-fall_to_clock <names>] [-false_path] [-from <names>] [-from_clock <names>] [-hold] [-less_than_slack <slack limit>] [-npaths <number>] [-nworst <number>] [-pairs_only] [-recovery] [-removal] [-rise_from_clock <names>] [-rise_to_clock <names>] [-setup] [-show_routing] [-through <names>] [-to <names>] [-to_clock <names>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -detail <summary|path_only|path_and_clock|full_path>: Option to determine how much detail should be shown in the path report
+        -fall_from_clock <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+        -fall_to_clock <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+        -false_path: Report only paths that are cut by a false path assignment
+        -from <names>: Valid sources (string patterns are matched using Tcl string matching)
+        -from_clock <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+        -hold: Option to report clock hold paths
+        -less_than_slack <slack limit>: Limit the paths reported to those with slack values less than the specified limit.
+        -npaths <number>: Specifies the number of paths to report (default=1, or the same value as nworst, if nworst is specified)
+        -nworst <number>: Specifies the maximum number of paths to report for each endpoint.  If unspecified, there is no limit.  If nworst is specified, but npaths is not, npaths defaults to the same value as nworst
+        -pairs_only: When set, paths with the same start and end points are considered equivalent.  Only the worst case path for each unique combination is displayed.
+        -recovery: Option to report recovery paths
+        -removal: Option to report removal paths
+        -rise_from_clock <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+        -rise_to_clock <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+        -setup: Option to report clock setup paths
+        -show_routing: Option to display detailed routing in the path
+        -through <names>: Valid through nodes (string patterns are matched using Tcl string matching)
+        -to <names>: Valid destinations (string patterns are matched using Tcl string matching)
+        -to_clock <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Get a collection of path objects for the worst-case paths.
+
+This command behaves the same as the report_timing command.
+However, instead of reporting the paths, it returns a Tcl
+collection of path objects. You can retrieve path object data
+using the get_path_info and get_point_info commands.
+
+For help on the options shared with report_timing, see the 
+report_timing help page.
+
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Define a few helper procedures to print out points
+# on a path, and the path itself
+proc get_clock_string { path clk } {
+	set clk_str ""
+	set clk_id [ get_path_info $path -${clk}_clock ]
+
+	if { $clk_id ne "" } {
+		set clk_str [ get_clock_info $clk_id -name ]
+		
+ 		if { [ get_path_info $path -${clk}_clock_is_inverted ] } {
+			append clk_str " (INVERTED)"
+		}
+	}
+
+	return $clk_str
+}
+	
+proc print_point { point } {
+	set total     [ get_point_info $point -total    ]
+	set incr      [ get_point_info $point -incr     ]
+	set node_id   [ get_point_info $point -node     ]
+	set type      [ get_point_info $point -type     ]
+	set rf        [ get_point_info $point -rise_fall]
+	set node_name ""
+
+	if { $node_id ne "" } {
+		set node_name [ get_node_info $node_id -name ]
+	}
+
+	puts [format "%10s %8s %2s %-6s %s" $total $incr $rf $type $node_name ]
+}
+
+proc print_path { path } {
+	puts "Slack      : [ get_path_info $path -slack]"
+	puts "To Clock   : [ get_clock_string $path to ]"
+	puts "From Clock : [ get_clock_string $path from]"
+	puts ""
+	puts [format "%10s %8s %-2s %-6s %s" "Total" "Incr" "RF" "Type" "Name"]
+	puts "=================================================================="
+
+	foreach_in_collection pt [ get_path_info $path -arrival_points ] {
+		print_point $pt
+	}
+}
+
+project_open my_project
+
+# Always create the netlist first
+create_timing_netlist
+read_sdc my_project.sdc
+update_timing_netlist
+
+# And now simply iterate over the 10 worst setup paths, printing each path
+foreach_in_collection path [ get_timing_paths -npaths 10 -setup ] {
+	print_path $path
+	puts ""
+}
+
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Option <string> has illegal value: <string>. Specify a legal option value.
+TCL_ERROR	1   	ERROR: Collection type '<string>' is not a valid type for a through collection.  Valid collection types are 'pin' and 'net'
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+TCL_ERROR	1   	ERROR: Report database is not open
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_timing_paths>
+
+<get_path>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_path [-h | -help] [-long_help] [-from <names>] [-min_path] [-npaths <number>] [-nworst <number>] [-pairs_only] [-show_routing] [-through <names>] [-to <names>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -from <names>: Valid sources (string patterns are matched using Tcl string matching)
+        -min_path: Find the minimum delay path(s)
+        -npaths <number>: Specifies the number of paths to report. The default value is 1 or the same value as nworst, if nworst is specified
+        -nworst <number>: Specifies the maximum number of paths to report for each endpoint.  If unspecified, there is no limit.  If nworst is specified, but npaths is not, npaths defaults to the same value as nworst
+        -pairs_only: When set, paths with the same start and end points are considered equivalent.  Only the longest delay path for each unique combination is displayed.
+        -show_routing: Option to display detailed routing in the path
+        -through <names>: Valid through nodes (string patterns are matched using Tcl string matching)
+        -to <names>: Valid destinations (string patterns are matched using Tcl string matching)
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Returns a collection of path objects for the longest delay paths 
+between arbitrary points in the netlist.
+
+This command behaves the same as the report_path command.
+However, instead of reporting the paths, it returns a Tcl
+collection of path objects. You can retrieve path object data
+using the get_path_info and get_point_info commands.  
+
+Note that get_path_info does not provide any clock-related
+information, required points, or meaningful slack values, for
+paths represented by the path objects returned by this function.
+
+For help on the options shared with report_path, see help for the 
+report_path command.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Define a few helper procedures to print out points
+# on a path, and the path itself
+
+proc print_point { point } {
+	set total     [ get_point_info $point -total    ]
+	set incr      [ get_point_info $point -incr     ]
+	set node_id   [ get_point_info $point -node     ]
+	set type      [ get_point_info $point -type     ]
+	set rf        [ get_point_info $point -rise_fall]
+	set node_name ""
+
+	if { $node_id ne "" } {
+		set node_name [ get_node_info $node_id -name ]
+	}
+
+	puts [format "%10s %8s %2s %-6s %s" $total $incr $rf $type $node_name ]
+}
+
+proc print_path { path } {
+	puts "Delay      : [ get_path_info $path -arrival_time]"
+	puts ""
+	puts [format "%10s %8s %-2s %-6s %s" "Total" "Incr" "RF" "Type" "Name"]
+	puts "=================================================================="
+
+	foreach_in_collection pt [ get_path_info $path -arrival_points ] {
+		print_point $pt
+	}
+}
+
+project_open my_project
+
+# Always create the netlist first
+create_timing_netlist
+read_sdc my_project.sdc
+update_timing_netlist
+
+# And now simply iterate over the 10 longest delay paths,
+# printing each as we go.
+foreach_in_collection path [ get_path ] {
+	print_path $path
+	puts ""
+}
+
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Option <string> has illegal value: <string>. Specify a legal option value.
+TCL_ERROR	1   	ERROR: Collection type '<string>' is not a valid type for a through collection.  Valid collection types are 'pin' and 'net'
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+TCL_ERROR	1   	ERROR: Report database is not open
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_path>
+
+<report_timing>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: report_timing [-h | -help] [-long_help] [-append] [-detail <summary|path_only|path_and_clock|full_path>] [-fall_from_clock <names>] [-fall_to_clock <names>] [-false_path] [-file <name>] [-from <names>] [-from_clock <names>] [-hold] [-less_than_slack <slack limit>] [-npaths <number>] [-nworst <number>] [-pairs_only] [-panel_name <name>] [-recovery] [-removal] [-rise_from_clock <names>] [-rise_to_clock <names>] [-setup] [-show_routing] [-stdout] [-through <names>] [-to <names>] [-to_clock <names>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+        -detail <summary|path_only|path_and_clock|full_path>: Option to determine how much detail should be shown in the path report
+        -fall_from_clock <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+        -fall_to_clock <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+        -false_path: Report only paths that are cut by a false path assignment
+        -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+        -from <names>: Valid sources (string patterns are matched using Tcl string matching)
+        -from_clock <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+        -hold: Option to report clock hold paths
+        -less_than_slack <slack limit>: Limit the paths reported to those with slack values less than the specified limit.
+        -npaths <number>: Specifies the number of paths to report (default=1, or the same value as nworst, if nworst is specified)
+        -nworst <number>: Specifies the maximum number of paths to report for each endpoint.  If unspecified, there is no limit.  If nworst is specified, but npaths is not, npaths defaults to the same value as nworst
+        -pairs_only: When set, paths with the same start and end points are considered equivalent.  Only the worst case path for each unique combination is displayed.
+        -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+        -recovery: Option to report recovery paths
+        -removal: Option to report removal paths
+        -rise_from_clock <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+        -rise_to_clock <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+        -setup: Option to report clock setup paths
+        -show_routing: Option to display detailed routing in the path
+        -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+        -through <names>: Valid through nodes (string patterns are matched using Tcl string matching)
+        -to <names>: Valid destinations (string patterns are matched using Tcl string matching)
+        -to_clock <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Reports the worst-case paths and associated slack.
+
+Use the "-setup", "-hold", "-recovery", or "-removal" options to
+specify which kind of analysis should be performed.
+
+The report can be directed to the Tcl console ("-stdout", default), a
+file ("-file"), the TimeQuest graphical user interface
+("-panel_name"), or any combination of the three.
+
+You can limit the analysis performed by this command to specific start
+and end points, using the "-from" and "-to" options.  The anlaysis can
+be further limited to clocks using the "-from_clock" and "-to_clock"
+options, or to specific edges of the clock using the
+"-rise_from_clock", "-fall_from_clock", "-rise_to_clock", and
+"-fall_to_clock" options.  Additionally, the "-through" option can be
+used to restrict analysis to paths which go through specified pins or
+nets.
+
+Use "-npaths" to limit the number of paths to report.  If you do not
+specify this option, only the single worst-case path is provided.  Use
+the "-less_than_slack" option to limit output to all paths with slack
+less than the specified value, up to the number specified by
+"-npaths".
+
+Use "-nworst" to limit the number of paths reported for each unique
+endpoint.  If you do not specify this option, the number of paths
+reported for each destination node is bounded only by the "-npaths"
+option.  If this option is used, but "-npaths" is not specified, then
+"-npaths" will default to the same value specified for "-nworst".
+
+Use the "-detail" option to specify the desired level of report
+detail.  "summary" generates a single table listing only the
+highlights of each path (and is the same as "-summary" option, which
+this replaces). "path_only" reports the path from the source to the
+destination without any detail about the clock path.  Instead, the
+clock network delay is shown as a single number.  This is the default
+behavior. "path_and_clock" extends the arrival and required paths back
+to the launch and latch clocks.  "full_path" will continue tracing
+back through generated clocks to the underlying base clock.
+
+Use the "-pairs_only" option to filter the output further, restricting
+the results to only unique combinations of start and end points.  This
+filtering is performed after the number of paths has been generated in
+accordance to the "-npaths" option.  As a result, there may be fewer
+paths displayed than specified by "-npaths", if a particular set of
+start and end points appeared multiple times.
+
+The "-show_routing" option displays detailed routing information in
+the path.  Lines that were marked as "IC" without the option are still
+shown, but only as a placeholder.  The routing elements for that line
+are broken out individually and listed before the line.
+
+The "-false_path" option reports only those paths that are normally
+hidden by false_path assignments or clock to clock cuts.  Like the
+default report, this option only reports constrained paths.
+
+The return value of this command is a two-element list.  The first
+number is the number of paths found in the analysis.  The second is
+the worst-case slack, in terms of the current default time unit.
+
+The "RF" column in the report output uses a two-letter symbol to
+indicate the rise/fall transition that occurs at that point in the
+path.
+
+Possible "RF" values are:
+
+	Value     Description
+	-------   -------------------------------
+	(empty)   Unknown transition
+	R         Rising output
+	F         Falling output
+	RR        Rising input, rising output
+	RF        Rising input, falling output
+	FR        Falling input, rising output
+	FF        Falling input, falling output
+
+
+The "Type" column in the report uses a symbol to indicate what type
+of delay occurs at that point in the path. 
+
+Possible "Type" values are:
+
+   Value     Description
+   -------   -------------------------------------------------------
+   CELL      Cell delay
+   COMP      PLL clock network compensation delay
+   IC        Interconnect delay
+   iExt      External input delay
+   LOOP      Lumped combinational loop delay
+   oExt      External output delay
+   RE        Routing element (only for paths generated with the 
+             -show_routing option)
+   uTco      Register micro-Tco time
+   uTsu      Register micro-Tsu time
+   uTh       Register micro-Th time
+
+The values of the "-from", "-to", and "-through" options are either 
+collections or a Tcl list of wildcards used to create collections 
+of appropriate types. The values used must follow standard Tcl or 
+TimeQuest-extension substitution rules.  See the help for 
+use_timequest_style_escaping for details.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open my_project
+
+# Always create the netlist first
+create_timing_netlist
+read_sdc my_project.sdc
+update_timing_netlist
+
+# Run a setup analysis between nodes "foo" and "bar",
+# reporting the worst-case slack if a path is found.
+
+set my_list [report_timing -from foo -to bar]
+set num_paths [lindex $my_list 0]
+set wc_slack [lindex $my_list 1]
+if { $num_paths > 0 } {
+	puts "Worst case slack -from foo -to bar is $wc_slack"
+}
+
+# The following command is optional
+delete_timing_netlist
+
+project_close
+	
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Option <string> has illegal value: <string>. Specify a legal option value.
+TCL_ERROR	1   	ERROR: Collection type '<string>' is not a valid type for a through collection.  Valid collection types are 'pin' and 'net'
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+TCL_ERROR	1   	ERROR: Report database is not open
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</report_timing>
+
+<report_path>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: report_path [-h | -help] [-long_help] [-append] [-file <name>] [-from <names>] [-min_path] [-npaths <number>] [-nworst <number>] [-pairs_only] [-panel_name <name>] [-show_routing] [-stdout] [-summary] [-through <names>] [-to <names>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+        -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+        -from <names>: Valid sources (string patterns are matched using Tcl string matching)
+        -min_path: Find the minimum delay path(s)
+        -npaths <number>: Specifies the number of paths to report (default=1, or the same value as nworst, if nworst is specified)
+        -nworst <number>: Specifies the maximum number of paths to report for each endpoint.  If unspecified, there is no limit.  If nworst is specified, but npaths is not, npaths defaults to the same as nworst
+        -pairs_only: When set, paths with the same start and end points will be considered to be equivalent.  Only the longest delay path for each unique combination will be displayed.
+        -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+        -show_routing: Option to display detailed routing in the path
+        -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+        -summary: Create a single table with a summary of each path found
+        -through <names>: Valid through nodes (string patterns are matched using Tcl string matching)
+        -to <names>: Valid destinations (string patterns are matched using Tcl string matching)
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Reports the longest delay paths and the corresponding delay value.
+
+The report can be directed to the Tcl console ("-stdout", default), 
+a file ("-file"), the TimeQuest graphical user interface 
+("-panel_name"), or any combination of the three.
+
+You can limit the analysis performed by this command to specific
+start and end points, using the "-from" and "-to" options.  Any
+node or cell in the design is considered a valid endpoint.
+Additionally, the "-through" option can be used to restrict analysis 
+to paths which go through specified pins or nets.  Paths that are
+reported can not start before or go beyond a keeper node (register 
+or port); this restriction considers register pins as combinational 
+nodes in the design.
+
+Use "-npaths" to limit the number of paths to report.  If this 
+option is not specified, only the single longest delay path is 
+provided. 
+
+Use "-nworst" to limit the number of paths reported for each
+unique endpoint.  If you do not specify this option, the number
+of paths reported for each destination node is bounded only by the
+"-npaths" option.  If this option is used, but "-npaths" is not
+specified, then "-npaths" will default to the same value specified
+for  "-nworst".
+
+Use the "-pairs_only" option to filter the output further, 
+restricting the results to only unique combinations of start and 
+end points.  This filtering is performed after the number of 
+paths has been generated in accordance with the "-npaths" option.  
+As a result, there may be fewer paths displayed than specified by 
+"-npaths", if a particular set of start and end points appeared 
+multiple times.
+
+Use the "-summary" option to generate a single table listing only 
+the highlights of each path.
+
+The "-min_path" option will find the minimum delay path(s) rather
+than the maximum delay paths which is the default behavior.
+
+The "-show_routing" option will display detailed routing information
+in the path.  Lines that were marked as "IC" without the option
+will still be shown, but only as a placeholder.  The routing elements
+for that line will be broken out individually and listed before 
+the line.
+
+The return value of this command is a two-element list.  The 
+first number is the number of paths found in the analysis.  The 
+second is the longest delay, in terms of the current default 
+time unit.
+
+The values of the "-from", "-to", "-through" options are either collections 
+or a Tcl list of wildcards used to create collections of appropriate types.
+The values used must follow standard Tcl or TimeQuest-extension
+substitution rules.  See the help for use_timequest_style_escaping for
+details.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open my_project
+
+# Always create the netlist first
+create_timing_netlist
+read_sdc my_project.sdc
+update_timing_netlist
+
+# Report path delay between nodes "foo" and "bar",
+# reporting the longest delay if a path is found.
+
+set my_list [report_path -from foo -to bar]
+set num_paths [lindex $my_list 0]
+set longest_delay [lindex $my_list 1]
+if { $num_paths > 0 } {
+	puts "Longest delay -from foo -to bar is $longest_delay"
+}
+
+# The following command is optional
+delete_timing_netlist
+
+project_close
+	
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Option <string> has illegal value: <string>. Specify a legal option value.
+TCL_ERROR	1   	ERROR: Collection type '<string>' is not a valid type for a through collection.  Valid collection types are 'pin' and 'net'
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+TCL_ERROR	1   	ERROR: Report database is not open
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</report_path>
+
+<report_tccs>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: report_tccs [-h | -help] [-long_help] [-append] [-file <name>] [-panel_name <name>] [-stdout]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+        -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+        -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+        -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Reports TCCS for dedicated LVDS transmitters.
+
+In designs that implement the LVDS I/O standard, transmitter
+channel-to-channel skew (TCCS) is the timing difference between the
+fastest and slowest output transitions, including tco variations and
+clock skew.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open top
+create_timing_netlist
+read_sdc
+update_timing_netlist
+
+# Show lvds information
+report_tccs
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+TCL_ERROR	1   	ERROR: Report database is not open
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</report_tccs>
+
+<report_rskm>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: report_rskm [-h | -help] [-long_help] [-append] [-file <name>] [-panel_name <name>] [-stdout]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+        -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+        -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+        -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Reports RSKM for dedicated LVDS circuitry.
+
+In designs that use dedicated LVDS circuitry, receiver input skew
+margin (RSKM) is the time margin available before the LVDS receiver
+megafunction fails to operate. RSKM is defined as the total time
+margin that remains after subtracting the sampling window (SW) size
+and the receiver channel-to-channel skew (RCCS) from the time unit
+interval (TUI), as expressed in the following formula:
+
+RSKM = (TUI - SW - RCCS) /2
+
+The time unit interval is the LVDS clock period (1/fmax). The sampling
+window is the period of time that the input data must be stable to
+ensure that the data is successfully sampled by the LVDS receiver
+megafunction. The sampling window size varies by device speed
+grade. RCCS is the difference between the fastest and slowest data
+output transitions, including the tco variation and clock skew. To
+obtain an accurate analysis of an LVDS circuit, you should assign an
+appropriate input delay to the LVDS receiver megafunction. RCCS is
+equal to the difference between maximum input delay and minimum input
+delay. If no input delay is set, RCCS defaults to zero.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open top
+create_timing_netlist
+read_sdc
+update_timing_netlist
+
+# Ensure a tccs of 1ns
+set_input_delay -max -clock lvds_clk 2ns [get_ports lvds_input]
+set_input_delay -min -clock lvds_clk 1ns [get_ports lvds_input]
+
+# Show lvds information
+report_rskm
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+TCL_ERROR	1   	ERROR: Report database is not open
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</report_rskm>
+
+<report_min_pulse_width>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: report_min_pulse_width [-h | -help] [-long_help] [-append] [-detail <summary|full_path>] [-file <name>] [-nworst <number>] [-panel_name <name>] [-stdout] [<targets>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+        -detail <summary|full_path>: Option to determine how much detail should be shown in the report
+        -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+        -nworst <number>: Specifies the number of pulse width checks to report (default=1)
+        -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+        -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+        <targets>: Registers or ports
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Reports the results of minimum pulse width and minimum period checks.
+
+A minimum pulse width check verifies that a clock high ("High") or low
+("Low") pulse sustains long enough to qualify as a recognizable change
+in the clock signal at a register clock pin.  A failed minimum pulse
+width check indicates that the register may not recognize the clock
+transition.  Each register in the design is reported twice per clock
+for mininum pulse width checks: once for the high pulse and once for
+the low pulse.
+
+A minimum period check verifies that the clock period ("Period") is
+large enough for the device to operate.  Minimum period checks apply
+to I/O edge rate limits for clock ports and minimum period
+restrictions for RAM and DSP registers.  Output clock ports (e.g.,
+source synchronous clocks) require generated clocks in order to check
+I/O edge rate limits for those those ports.
+
+The results of the minimum pulse width checks can be output to the 
+Tcl console ("-stdout," the default), a report panel ("-panel"), 
+a file ("-file"), or a combination of the three.
+
+Results are sorted from worst-case slack to best-case slack.  To limit
+the number of checks reported, use the "-nworst" option.
+
+Results can be shown in summary ("-detail summary," the default) or in
+detail ("-detail full_path"), showing the path details for the clock
+arrival times and how they affect the actual pulse width.
+
+The value of the targets is either a collection or a Tcl list of
+wildcards used to create a collection of the appropriate type.
+The values used must follow standard Tcl or TimeQuest-extension
+substitution rules.  See the help for use_timequest_style_escaping for
+details.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open top
+create_timing_netlist
+read_sdc
+update_timing_netlist
+
+# Report the worst 100 minimum pulse width checks
+report_min_pulse_width -nworst 100
+
+# Report minimum pulse width checks for the register test_reg[*]
+report_min_pulse_width test_reg[*]
+
+# Output the previous results to a report panel and a file.
+report_min_pulse_width -panel_name "Min Pulse (test_reg)" test_reg[*]
+
+# Output the previous results to a file.
+report_min_pulse_width -file min_pulse_test_reg.txt test_reg[*]
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+TCL_ERROR	1   	ERROR: Report database is not open
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</report_min_pulse_width>
+
+<get_min_pulse_width>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_min_pulse_width [-h | -help] [-long_help] [-nworst <number>] [<targets>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -nworst <number>: Specifies the number of pulse width checks to report (default=1)
+        <targets>: Registers or ports
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+This command returns a Tcl list which contains the minimum
+pulse width report. Its format is as follows:
+
+{
+  { <slack>,
+    <actual width>,
+    <required width>,
+    <pulse>,
+	<clock>,
+	<clock edge>,
+	<target>
+  } 
+}
+
+Refer to help for the report_min_pulse_width command for help on the
+-nworst and -targets options.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+This command currently contains no example usage.
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_min_pulse_width>
+
+<report_datasheet>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: report_datasheet [-h | -help] [-long_help] [-append] [-expand_bus] [-file <name>] [-panel_name <name>] [-stdout]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+        -expand_bus: If set, bus is reported as individual ports
+        -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+        -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+        -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+This function creates a datasheet report which summarizes the timing
+characteristics of the design as a whole. It reports setup (tsu), hold
+(th), clock-to-output (tco), minimum clock-to-output (mintco),
+propagation delay (tpd), and minimum propagation delay (mintpd)
+times. These delays are reported for each clock or port for which they
+are relevant. If there is a case where there are multiple paths for a
+clock (for example if there are multiplexed clocks), then the maximum
+delay is reported for the tsu, th, tco and tpd, and the minimum delay
+is reported for mintco and mintpd.
+
+The datasheet can be outputed to the Tcl console ("-stdout", default),
+a file ("-file"), or a report panel ("-panel_name").  Additionally if
+the "-file" option is used then the "-append" option can be used to
+specify that new data should be written to the end of the specified
+file.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open proj1
+create_timing_netlist
+read_sdc
+update_timing_netlist
+
+# Report the datasheet to a report panel
+report_datasheet -panel_name Datasheet
+
+# Report the datasheet to a file
+report_datasheet -file file1.txt
+
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+TCL_ERROR	1   	ERROR: Report database is not open
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</report_datasheet>
+
+<get_datasheet>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_datasheet [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+This function returns a tcl collection which contains the datasheet
+report. Its format is as follows:
+
+{
+  { tsu,
+    { <tsu rise time>,
+      <tsu fall time>,
+      <input port>,
+      <clock> 
+    } 
+  }
+  
+  { th,
+    { <th rise time>,
+      <th fall time>,
+      <input port>,
+      <clock>
+    }
+  }
+  
+  { tco,
+    { <tco rise time>,
+      <tco fall time>,
+      <output port>,
+      <clock>
+    }
+  }
+  
+  { mintco,
+    { <mintco rise time>,
+      <mintco fall time>,
+      <output port>,
+      <clock>
+    }
+  }
+  
+  { tpd,
+    { <tpd rise time>,
+      <tpd fall time>,
+      <input port>,
+      <output port>
+    }
+  }
+      
+  { mintpd,
+    { <mintpd rise time>,
+      <mintpd fall time>,
+      <input port>,
+      <output port>
+    }
+  }
+}
+
+There are no options for this command, and the data returned
+is the same as from the report_datasheet command.
+
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open proj1
+create_timing_netlist
+read_sdc
+update_timing_netlist
+
+# get the datasheet collection
+set datasheet [get_datasheet]
+
+# loop through contents of datasheet collection
+foreach i $datasheet {
+    foreach j $i {
+        foreach k $j {
+            #
+            # extract individual items or 
+            # manipulate as necessary
+            #
+        }
+    }
+}
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+TCL_ERROR	1   	ERROR: Report database is not open
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_datasheet>
+
+<report_ucp>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: report_ucp [-h | -help] [-long_help] [-append] [-file <name>] [-panel_name <name>] [-stdout] [-summary]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+        -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+        -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+        -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+        -summary: Generate only the summary panel.
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Reports unconstrained paths.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open chiptrip
+create_timing_netlist
+read_sdc
+update_timing_netlist
+report_ucp
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</report_ucp>
+
+<report_clocks>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: report_clocks [-h | -help] [-long_help] [-append] [-desc] [-file <name>] [-panel_name <name>] [-stdout] [-summary] [-waveform]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+        -desc: Sort the clocks by name in descending order (ascending order is default)
+        -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+        -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+        -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+        -summary: Create a single table with a summary of each clock
+        -waveform: Display the clocks graphically as waveforms
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Report can be directed to the Tcl console ("-stdout", default), a file
+("-file"), the TimeQuest graphical interface ("-panel_name"), or any
+combination of the three.
+
+For the Tcl console, the clock details are reported in two sections.
+The first sections show all clocks, their period, and their waveform.
+This includes generated clocks after an update_timing_netlist.  The
+second section shows details for all generated clocks.  For the timing
+report, both sections are combined into a single timing report.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open top
+create_timing_netlist
+read_sdc
+update_timing_netlist
+
+report_clocks
+
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</report_clocks>
+
+<report_metastability>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: report_metastability [-h | -help] [-long_help] [-append] [-file <name>] [-panel_name <name>] [-stdout]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+        -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+        -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+        -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Report can be directed to the Tcl console ("-stdout", default), a file
+("-file"), the TimeQuest graphical interface ("-panel_name"), or any
+combination of the three.
+
+The report_metastability function can be used to estimate the robustness
+of asynchronous transfers in your design.  
+
+----------
+Background
+----------
+
+Synchronization register chains should be used when transferring data
+between unrelated clock domains to greatly reduce the probability of the
+captured data signal becoming metastable.  A synchronization register
+chain is a sequence of registers with the same clock, that is driven by a pin, 
+or logic from an unrelated clock domain.  The output of all but the last 
+register in the chain must connect only to the next register, either directly 
+or indirectly through logic.
+
+When a register is metastable, its output hovers at a voltage between high
+and low for a length of time beyond the normal Tco for the register.  The
+design can fail if subsequent registers that use this metastable signal
+latch different values.  Therefore, it is important to properly
+synchronize data signals to prevent such occurrences.
+
+------
+Output
+------
+
+The report_metastability function generates a list of synchronization
+register chains found in the design, and can provide estimates of the Mean 
+Time Between Failures (MTBF) of each chain.  The design MTBF is an estimate 
+of the overall robustness of the design, computed from the MTBF results from
+all synchronization chains with calculated MTBFs.  The design MTBF metric is 
+reported only when the design meets timing.  Therefore, it is important to 
+fully timing constrain your design.
+
+The typical MTBF result assumes typical silicon characteristics for the 
+selected device speed grade, with nominal operating conditions. 
+
+The worst case MTBF result uses the worst case silicon characteristics for 
+the selected device speed grade, with worst case operating conditions.
+
+--------		
+Settings
+--------
+
+To get a list of possible synchronization chains, set "Synchronizer
+Identification" to AUTO in the TimeQuest Timing Analyzer Page in the 
+Settings dialog box.  This will set the "Synchronizer Identification" QSF 
+assignment in your QSF file.  TimeQuest will use timing constraints to 
+automatically detect synchronization chains in the design. Metastability
+analysis checks for signal transfers between circuitry in unrelated or 
+asynchronous clock domains, so clock domains must be related correctly 
+with the timing constraints. 
+
+Set the maximum number of registers to consider as part of one 
+synchronization chain, via the "Synchronization Register Chain Length" 
+setting under Analysis and Synthesis Page in the Settings dialog box.  
+The default length is 2. All the registers in a chain (up to this length) 
+will be protected from optimizations that can decrease MTBF.  
+
+Note that if you change the "Synchronizer Identification" setting, you 
+should rerun the Fitter, as this setting can impact some optimization 
+algorithms.
+
+-------------
+Report Panels
+-------------
+
+The MTBF Summary report provides the estimated mean time between failure 
+for the design.  This is an estimate for the overall robustness of the 
+design in terms of metastability, and it is computed from all available 
+synchronization chain MTBFs present in the design.
+		
+The MTBF metric of automatically identified synchronization chains is not 
+computed.  To compute the MTBF of a synchronization chain, set 
+"Synchronizer Identification" to "Forced If Asynchronous" or "Forced" 
+for all registers of the synchronization chain.  By explicitly specifying 
+that this synchronization chain is valid, this chain will then be optimized 
+during the Fitter, and its MTBF will be computed.  Its MTBF will then be 
+included in the computation of the design MTBF.
+
+The Synchronizer Summary table lists all the synchronization chains
+found in your design.  It is possible that the analysis performed might
+erroneously interpret certain structures, such as shift registers, as
+synchronization chains.  If some synchronization chains are misidentified
+and you wish to remove them from the report, you can turn off analysis of
+these paths by making node-based assignments via the Assignment Editor,
+set "Synchronizer Identification" to "Off" for the first register in these
+synchronization chains.  Conversely, if there are synchronization
+chains in your design that were not detected, you can set "Synchronizer
+Identification" assignment to "Forced If Asynchronous" for all registers in 
+this chain through the Assignment Editor, and this chain will be 
+reported if it meets the criteria for being a synchronization chain.  This 
+can often occur if there is logic present between the registers of the 
+synchronization chain.  In the automatic mode of synchronizer identification,
+these structures are not considered to be synchronizers. If you want to 
+force a register to be identified as the head of a synchronizer, set the 
+"Synchronizer Identification" assignment to "Forced" to the register, 
+and it will always be identified as the first of a synchronization chain.
+This setting should not be applied to the entire design, since this will 
+identify every register in the design as a synchronizer.  
+		
+The MTBF estimates assume the data being synchronized is switching at a 
+toggle rate of 12.5% of the source clock frequency.  That is, the estimates 
+assume that the arriving data signal switches once every 8 source clock 
+cycles.  If multiple clocks apply, the highest frequency is used.	If no 
+source clocks can be determined, then the data rate is taken as 12.5% of 
+the synchronization clock frequency.  
+
+If you know the approximate rate at which the data changes, and would like
+to obtain a more accurate MTBF, use the "Synchronizer Toggle Rate" assignment
+in the Assignment Editor.  Set the data toggle rate, in number of transitions
+per second, on the first register of a synchronization chain.  TimeQuest will
+then take the specified rate into account when computing the MTBF of that 
+particular chain.  You can also apply this assignment to an entity or the
+entire design. Since a "Synchronizer Toggle Rate" assignment of 0 indicates 
+that the data signal never toggles, the affected synchronization chain will 
+not be reported since it does not affect the relibility of the design.
+
+Please refer to the Metastabiliity Optimization section in the Timing 
+Optimization Advisor for further information.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open top
+create_timing_netlist
+read_sdc
+update_timing_netlist
+
+report_metastability
+
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</report_metastability>
+
+<create_timing_summary>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: create_timing_summary [-h | -help] [-long_help] [-append] [-file <name>] [-hold] [-panel_name <name>] [-recovery] [-removal] [-setup] [-stdout]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+        -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+        -hold: Hold Analysis
+        -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+        -recovery: Recovery Analysis
+        -removal: Removal Analysis
+        -setup: Setup Analysis
+        -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Reports the worst-case Clock Setup and Clock Hold slacks and endpoint
+TNS (total negative slack) per clock domain.  Total negative slack is
+the sum of all slacks less than zero for either destination registers
+or ports in the clock domain.
+
+This command generates the most important report as it shows the
+worst-case slack for each clock domain. You right click in these
+reports to run more detailed reports like Histograms and Report Timing
+
+By default, this command creates a Setup Summary. This command can
+also generate a Hold Summary ("-hold"), Recovery Summary
+("-recovery"), or Removal Summary ("-removal").
+
+Report can be directed to the Tcl console ("-stdout", default), a file
+("-file"), the TimeQuest graphical interface ("-panel_name"), or any
+combination of the three.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open my_project
+
+# Always create the netlist first and process constraints
+create_timing_netlist
+read_sdc my_project.sdc
+update_timing_netlist
+
+# Create Clock Domain Summary
+create_timing_summary -panel_name "Setup Summary"
+create_timing_summary -hold -panel_name "Hold Summary"
+
+# The following command is optional
+delete_timing_netlist
+
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Panel name cannot contain repeated pipe characters. ("||").
+TCL_ERROR	1   	ERROR: Option <string> has illegal value: <string>. Specify a legal option value.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+TCL_ERROR	1   	ERROR: Report database is not open
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</create_timing_summary>
+
+<get_clock_domain_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_clock_domain_info [-h | -help] [-long_help] [-hold] [-recovery] [-removal] [-setup]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -hold: Hold Analysis
+        -recovery: Recovery Analysis
+        -removal: Removal Analysis
+        -setup: Setup Analysis (Default)
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Similar to create_timing_summary, get_clock_domain_info returns a Tcl
+list of information about each clock domain.  Each entry in the list
+is a list of four elements: the clock name, worst-case slack, endpoint
+TNS, and edge TNS.  TNS stands for total negative slack, and it is the
+sum of all slacks less than zero for either destination registers or
+ports in the clock domain (endpoint TNS) or for all edges affecting
+the clock domain (edge TNS).
+
+This command can generate a Setup Summary ("-setup"), Hold Summary
+("-hold"), Recovery Summary ("-recovery"), or Removal Summary
+("-removal").
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open my_project
+
+# Always create the netlist first
+create_timing_netlist
+read_sdc my_project.sdc
+update_timing_netlist
+
+# Get domain summary object
+set domain_list [get_clock_domain_info]
+foreach domain $domain_list {
+	set name [lindex $domain 0]
+	set slack [lindex $domain 1]
+	set keeper_tns [lindex $domain 2]
+	set edge_tns [lindex $domain 3]
+
+	puts "Clock $name : Slack = $slack , TNS = ( $keeper_tns , $edge_tns )"
+}
+
+# The following command is optional
+delete_timing_netlist
+
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_clock_domain_info>
+
+<get_edge_slacks>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_edge_slacks [-h | -help] [-long_help] [-hold] [-recovery] [-removal] [-setup]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -hold: Hold analysis
+        -recovery: Recovery analysis
+        -removal: Removal analysis
+        -setup: Setup analysis
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Returns a collection of edge slack pairs for the specified analysis
+type. A setup analysis is performed by default if no option is
+specified. Results are sorted by slack, then by the name of the source
+node for the edge, and last by the node name of the destination of the
+edge. 
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open top
+create_timing_netlist
+read_sdc
+update_timing_netlist
+
+foreach_in_collection edge_slack [get_edge_slacks -setup] {
+	# Each item in the collection is an {edge slack} pair
+	set edge [lindex $edge_slack 0]
+	set slack [lindex $edge_slack 1]
+
+	set src_node [get_edge_info -src $edge]
+	set dst_node [get_edge_info -dst $edge]
+
+	post_message -type info "Found edge [get_node_info -name $src_node] -> [get_node_info -name $dst_node] with slack $slack"
+}
+
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_edge_slacks>
+
+<get_clock_fmax_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_clock_fmax_info [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Reports potential Fmax for every clock in the design, regardless of
+the user-specified clock periods. Fmax is only computed for paths
+where the source and destination registers or ports are driven by the
+same clock. Paths of different clocks, including generated clocks,
+are ignored. For paths between a clock and its inversion, Fmax is
+computed as if the rising and falling edges of the clock are scaled
+along with fmax, such that the duty cycle (in terms of a percentage)
+is maintained.
+
+Restricted Fmax considers hold timing in addition to setup timing, as
+well as minimum pulse and minimum period restrictions. Similar to
+unrestricted Fmax, the restricted Fmax is computed as if the rising
+and falling edges of the clock are scaled along with Fmax, such that
+the duty cycle (in terms of a percentage) is maintained.  Refer to
+hold timing reports (e.g., report_timing with the -hold option) or
+minimum pulse width reports (report_min_pulse_width) for details about
+specific paths, registers, or ports.
+
+This command is similar to report_clock_fmax_info, except that it
+returns the results as a Tcl list for use in Tcl scripts.  Each entry
+in the list represents one clock domain. Each entry is a Tcl list of
+the clock name, fmax (MHz), and restricted Fmax (MHz).
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open my_project
+
+# Always create the netlist first
+create_timing_netlist
+read_sdc my_project.sdc
+update_timing_netlist
+
+# Get domain summary object
+set domain_list [get_clock_fmax_info]
+foreach domain $domain_list {
+	set name [lindex $domain 0]
+	set fmax [lindex $domain 1]
+	set restricted_fmax [lindex $domain 2]
+
+	puts "Clock $name : Fmax = $fmax (Restricted Fmax = $restricted_fmax)"
+}
+
+# The following command is optional
+delete_timing_netlist
+
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_clock_fmax_info>
+
+<report_clock_fmax_summary>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: report_clock_fmax_summary [-h | -help] [-long_help] [-append] [-file <name>] [-panel_name <name>] [-stdout]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+        -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+        -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+        -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+
+Reports potential fmax for every clock in the design, regardless of
+the user-specified clock periods. Fmax is only computed for paths
+where the source and destination registers or ports are driven by the
+same clock. Paths of different clocks, including generated clocks, are
+ignored. For paths between a clock and its inversion, fmax is computed
+as if the rising and falling edges of the clock are scaled along with
+fmax, such that the duty cycle (in terms of a percentage) is
+maintained.
+
+Restricted fmax considers hold timing in addition to setup timing, as
+well as minimum pulse and minimum period restrictions. Similar to
+unrestricted fmax, the restricted fmax is computed as if the rising
+and falling edges of the clock are scaled along with fmax, such that
+the duty cycle (in terms of a percentage) is maintained. The "Note"
+column reports which analyses restricted fmax.  Refer to hold timing
+reports (e.g., report_timing with the -hold option) or minimum pulse
+width reports generated by the report_min_pulse_width command for
+details of specific paths, registers, or ports.
+
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open my_project
+
+# Always create the netlist first
+create_timing_netlist
+read_sdc my_project.sdc
+update_timing_netlist
+
+# Output results in the form of messages
+report_clock_fmax_summary
+# Create "Fmax" report panel
+report_clock_fmax_summary -panel_name Fmax
+# Report both with report panel and messages
+report_clock_fmax_summary -panel_name Fmax -stdout
+
+# The following command is optional
+delete_timing_netlist
+
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</report_clock_fmax_summary>
+
+<report_advanced_io_timing>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: report_advanced_io_timing [-h | -help] [-long_help] [-append] [-file <name>] [-panel_name <name>] [-stdout]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+        -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+        -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+        -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+This command creates a report containing all of the relevant signal
+integrity measurements computed during I/O buffer simulation.
+	
+You must perform delay annotation with Advanced I/O Timing enabled
+before using this command. This option can be enabled from TimeQuest
+Timing Analyzer Page of the Settings dialog box.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open my_project
+
+# Always create the netlist first
+create_timing_netlist
+read_sdc my_project.sdc
+update_timing_netlist
+
+# Create "Advanced I/O Timing" report panel
+report_advanced_io_timing -panel_name "Advanced I/O Timing"
+
+# The following command is optional
+delete_timing_netlist
+
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</report_advanced_io_timing>
+
+<check_timing>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: check_timing [-h | -help] [-long_help] [-append] [-file <name>] [-include <check_list>] [-panel_name <name>] [-stdout]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+        -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+        -include <check_list>: Checks to perform
+        -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+        -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Checks for problems in the design or problems with design constraints.
+The check_timing command performs a series of different checks based
+on user-specified variables and options. There is no default list of
+checks. Use the -include option to specify which checks to
+perform. You must preceed check_timing with update_timing_netlist.
+
+The no_clock check reports whether registers have at least one clock
+at their clock pin, and that ports determined to be clocks have a
+clock assigned to them, and also checks that PLLs have a clock
+assignment.
+
+The multiple_clock check verifies that registers have at most one
+clock at their clock pin. (When multiple clocks reach a register clock
+pin, it is undefined which clock is used for analysis.
+
+The generated_clock check verifies that generated clocks are
+valid. Generated clocks must have a source that is triggered by a
+valid clock.
+	
+The no_input_delay check verifies that every input port that is not
+determined to be a clock has an input delay assignment.
+
+The no_output_delay check verifies that every output port has an output
+delay constraint.  
+
+The partial_input_delay check verifies that input delays are
+complete, and ensures that input delays have a rise-min, fall-min,
+rise-max, and fall-max portion set.
+
+The partial_output_delay check verifies that output delays are
+complete, and makes sure that output delays have a rise-min, fall-min,
+rise-max, and fall-max portion set.
+
+The reference_pin check verifies that reference pins specified in
+set_input_delay and set_output_delay using the -reference_pin option
+are valid. A reference_pin is valid if the -clock option specified in
+the same set_input_delay/set_output_delay command matches the clock
+that is in the direct fanin of the reference_pin. Being in the direct
+fanin of the reference_pin means that there must be no keepers between
+the clock and the reference_pin.
+
+The latency_override check reports whether the clock latency set on a
+port or pin overrides the more generic clock latency set on a
+clock. Clock latency can be set on a clock, where the latency applies
+to all keepers clocked by the clock, whereas clock latency can also be
+set on a port or pin, where the latency applies to registers in the
+fanout of the port or pin.
+
+The loops check verifies that there are no strongly connected
+components in the netlist. These loops prevent a design from being
+properly analyzed. The loops check also reports if loops exist but
+were marked so that they would not be traversed.
+
+The latches check reports latches in the design and warns that latches
+may not be analyzed properly. For best results, change your design to
+remove latches whenever possible.
+
+The pos_neg_clock_domain check determines if any register is clocked
+by both the rising and falling edges of the same clock. If this
+scenario is necessary such as in a clock multiplexer, create two
+separate clocks that have similar settings and are assigned to the
+same node.
+
+The pll_cross_check checks the clocks that are assigned to a PLL
+against the PLL settings defined in design files. Inconsistent
+settings or an unmatched number of clocks associated with the PLL are
+reported to the user.
+
+The uncertainty check reports each clock-to-clock transfer that does
+not have a clock uncertainty assignment set between the two clocks.
+When a device family has derive_clock_uncertainty support, this report
+also checks if a user-defined set_clock_uncertainty assignment has a
+less than recommended clock uncertainty value.
+
+The virtual_clock check reports all unreferenced virtual clocks. It
+also reports if design does not have any virtual clock assignment.
+
+The partial_multicycle check ensures that each setup multicycle
+assignment has a corresponding hold multicycle assignment, and each
+hold muticycle assignment has a corresponding setup multicycle
+assignment.
+
+The multicycle_consistency check reports all the multicycle cases
+where a setup multicycle does not equal one greater than the hold
+multicycle. Hold multicycle assignments are usually one cycle less
+than setup multicycle assignments.
+
+The partial_min_max_delay check verifies that each minimum delay
+assignment has a corresponding maximum delay assignment, and vica
+versa.
+
+The clock_assignments_on_output_ports check reports all the clock
+assignments that have been applied to output ports.
+
+The input_delay_assigned_to_clock check verifies that no input delay
+value is set for a clock. Input delays set on clock ports are ignored
+because clock-as-data analysis takes precedence.
+
+The generated_io_delay check reports all the IO delays that have no
+specifications for -reference_pin, -clock (generated clocks), or
+-source_latency_included.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Constrain design
+create_clock -name clk -period 4.000 -waveform { 0.000 2.000 } [get_ports clk]
+set_input_delay -clock clk2 1.5 [get_ports in*]
+set_output_delay -clock clk 1.6 [get_ports out*]
+set_false_path -from [get_keepers in] -through [get_nets r1] -to [get_keepers out]
+
+# Check if there were any problems
+check_timing -include {loops latches no_input_delay partial_input_delay}
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</check_timing>
+
+<create_slack_histogram>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: create_slack_histogram [-h | -help] [-long_help] [-append] -clock_name <name> [-file <name>] [-hold] [-max_slack <max_slack>] [-min_slack <min_slack>] [-num_bins <num_bins>] [-panel_name <name>] [-recovery] [-removal] [-setup] [-stdout]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+        -clock_name <name>: Name of the Clock Domain
+        -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+        -hold: Hold Analysis
+        -max_slack <max_slack>: Maximum slack value of the created histogram
+        -min_slack <min_slack>: Minimum slack value of the created histogram
+        -num_bins <num_bins>: Number of bins
+        -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+        -recovery: Recovery Analysis
+        -removal: Removal Analysis
+        -setup: Setup Analysis
+        -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Creates a slack histogram in the timing report for the specified clock
+domain "-clock_name," showing the number of timing edges within
+various ranges of slacks for a clock setup analysis.  The histogram
+can be named using the "-panel_name" option.
+
+Use the "-setup", "-hold", "-recovery", or "-removal" options to
+specify which kind of analysis should be performed. If none is
+specified, setup analysis is used by default.
+
+Reports can be directed to the Tcl console ("-stdout", default), a
+file ("-file"), the TimeQuest graphical interface ("-panel_name"), or
+any combination of the three.
+
+The range of reported slack values can be controlled by specifying the
+"-min_slack" and "-max_slack" options.  The number of bins (histogram
+bars) can also be specified using the "-num_bins" option.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open top
+create_timing_netlist
+read_sdc
+update_timing_netlist
+
+# Create a slack histogram for clk1, defaulting to
+# the name "Slack Histogram (clk1)"
+create_slack_histogram -clock_name clk1
+
+# Create a slack histogram for clk2 named "MyHistogram"
+create_slack_histogram -clock_name clk2 -panel_name MyHistogram
+
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Clock "<string>" has no paths with slack. Specify a clock that has paths with slack.
+TCL_ERROR	1   	ERROR: Clock node not found or specified. Check valid clocks
+TCL_ERROR	1   	ERROR: Value <string> of option "<string>" is an invalid slack. Specify a valid slack value.
+TCL_ERROR	1   	ERROR: The max_slack value is less than or equal to the min_slack value. Specify a max_slack value that is greater than the min_slack value.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+TCL_ERROR	1   	ERROR: Number of bins is 0. Specify a number greater than 0.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</create_slack_histogram>
+
+<report_clock_transfers>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: report_clock_transfers [-h | -help] [-long_help] [-append] [-file <name>] [-hold] [-panel_name <name>] [-recovery] [-removal] [-setup] [-stdout]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+        -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+        -hold: Creates a clock transfer summary for hold analysis
+        -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+        -recovery: Creates a clock transfer summary for recovery analysis
+        -removal: Creates a clock transfer summary for removal analysis
+        -setup: Creates a clock transfer summary for setup analysis
+        -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+
+Generates a timing report table showing all clock transfers (i.e.,
+data paths between one clock domain and another clock domain).  The
+from and to clocks are shown as well as the number of paths for each
+transfer: RR, RF, FR, FF.  An RF transfer, for example, occurs when
+the source register of path is clocked by the rising edge of its clock
+and the destination register is clocked by the falling edge of its
+clock.
+
+The report also indicates what clock transfers are cut ("false paths")
+by set_clock_groups or clock-to-clock set_false_path commands.  For
+transfers that are not cut, the number of paths reported does not take
+into account paths cut by path-specific set_false_path commands.
+Actual path counts may be lower than reported.
+
+The report can be directed to the Tcl console ("-stdout", default), a
+file ("-file"), the TimeQuest graphical user interface
+("-panel_name"), or any combination of the three.
+
+The -setup, -hold, -recovery, and -removal options determine the
+analysis type of the report, particularly the reporting of false_paths
+that apply to only one analysis type.  If you do not specify any of
+these options, a report is generated for each analysis.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open top
+create_timing_netlist -skip_dat
+report_clock_transfers -panel_name
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+TCL_ERROR	1   	ERROR: Netlist must be updated. Run update_timing_netlist
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</report_clock_transfers>
+
+<report_net_timing>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: report_net_timing [-h | -help] [-long_help] [-append] [-file <name>] [-nworst_delay <number>] [-nworst_fanout <number>] [-panel_name <name>] [-stdout] <name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+        -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+        -nworst_delay <number>: Report worst net delays
+        -nworst_fanout <number>: Report worst fanout nets
+        -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+        -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+        <name>: Signal or collection name
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Reports delay and fanout information about a net in the design. A net
+corresponds to a cell output pin.
+
+Report can be directed to the Tcl console ("-stdout", default), a file
+("-file"), the TimeQuest graphical interface ("-panel_name"), or any
+combination of the three.
+
+The value of the name is either a collection or a Tcl list of
+wildcards used to create a collection of the appropriate type.  The
+values used must follow standard Tcl or TimeQuest-extension
+substitution rules.  See the help for use_timequest_style_escaping for
+details.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open <design>
+create_timing_netlist
+
+# Show delay and fanout information for all nets
+# that match "abc*"
+report_net_timing [get_nets abc*]
+
+# Report delay and fanout information for the 10
+# nets showing higher delays
+report_net_timing -nworst_delay 10
+
+# Report delay and fanout information for the 10
+# nets showing higher fanout
+report_net_timing -nworst_fanout 10
+
+project_close
+
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Options -<string> and -<string> are mutually exclusive. Specify only one of the two options.
+TCL_ERROR	1   	ERROR: Open project does not exist. Open an existing project or create a new project.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+TCL_ERROR	1   	ERROR: Neither of options -<string> or -<string> is specified. Specify one of the two options.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</report_net_timing>
+
+<report_sdc>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: report_sdc [-h | -help] [-long_help] [-append] [-file <name>] [-ignored] [-panel_name <name>] [-stdout]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+        -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+        -ignored: Reports full history of assignments to locate ignored ones
+        -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+        -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Reports all SDC constraints used in the design. Use the -ignored
+option to report SDC constraints that were ignored and the reason
+they were ignored.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_new test
+create_timing_netlist
+create_clock -period 10 -name clk10 clk
+set_multicycle_path -from [get_cells a] -to [get_cells b]
+update_timing_netlist
+
+report_sdc -panel_name sdc_report_panel
+
+report_timing
+
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+TCL_ERROR	1   	ERROR: Report database is not open
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</report_sdc>
+
+<write_sdc>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: write_sdc [-h | -help] [-long_help] [-expand] [-history] [<file_name>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -expand: Generate SDC file by expanding the macros
+        -history: Reports full history of assignments
+        <file_name>: Name of output file
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Generates an SDC file with all current constraints and
+exceptions. When you use the -expand option, derive_clocks,
+derive_pll_clocks, derive_lvds_clocks and derive_clock_uncertainty
+macros are be expanded to corresponding sdc assignments before they
+are written to a file. If you do not use the -expand option, these
+macros are preserved.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_new test
+create_timing_netlist
+create_clock -period 10 -name clk10 clk
+set_multicycle_path -from [get_cells a] -to [get_cells b]
+update_timing_netlist
+
+report_timing
+
+write_sdc my_sdc_file.sdc
+
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Clock manager is not up-to-date. Run "update_timing_netlist" to generate the latest clock manager.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+TCL_ERROR	1   	ERROR: Open failed: <string>
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</write_sdc>
+
+<read_sdc>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: read_sdc [-h | -help] [-long_help] [-hdl] [<file_name>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -hdl: Read SDC commands embedded in HDL
+        <file_name>: Name of the SDC file
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Reads an SDC file with all current constraints and exceptions.
+
+If an SDC file is specified, read_sdc only reads that SDC file.  If
+the -hdl option is specified, read_sdc only reads SDC commands that
+were embedded in HDL.
+
+If no arguments are specified, read_sdc reads the default SDC files
+along with any SDC commands that were embedded in HDL.  If one or more
+SDC_FILE assignments exists in the QSF, read_sdc reads all of them in
+order. Otherwise, read_sdc reads the file <revision>.sdc if it exists.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_new test
+create_timing_netlist
+
+# Read SDC commands from test_constraints.sdc
+read_sdc test_constraints.sdc
+
+# Read SDC commands embedded in HDL
+read_sdc -hdl
+
+update_timing_netlist
+
+report_timing
+
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't find file "<string>"
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</read_sdc>
+
+<get_default_sdc_file_names>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_default_sdc_file_names [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Returns the default SDC file name(s) used by the Quartus II Compiler
+when doing timing-driven optimizations.
+
+Returns the value for the QSF variable SDC_FILE. If multiple
+assignments are found, return them as a list If not specified, return
+<revision_name>.sdc.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_new test
+create_timing_netlist
+foreach file [get_default_sdc_file_names] {
+   read_sdc $file
+}
+update_timing_netlist
+
+report_timing
+
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_default_sdc_file_names>
+
+<get_object_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_object_info [-h | -help] [-long_help] [-name] [-type] <object>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -name: Return the object name
+        -type: Return the object type
+        <object>: Object
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Gets information about the specified object (referenced by object
+ID). Object IDs can be obtained by Tcl commands such as get_clocks,
+get_ports, get_cells, and others. The -type option returns "clk",
+"reg", "port", "cell", "pin", "comb", "net", or "edge". The -name and
+-type options are mutually exclusive.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open chiptrip
+create_timing_netlist
+set ports [get_ports]
+foreach_in_collection port $ports {
+    puts [get_object_info $port -name]
+}
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Argument <string> is a collection ID that does not link to any collection. Specify a legal collection ID.
+TCL_ERROR	1   	ERROR: Argument <string> is an object ID that does not link to any object. Specify a valid object ID.
+TCL_ERROR	1   	ERROR: Argument <string> is an empty collection. Specify one that is a non-empty collection.
+TCL_ERROR	1   	ERROR: Argument <string> is not a valid object. Specify a valid object.
+TCL_ERROR	1   	ERROR: Argument <string> gives an empty collection. Specify one that gives a non-empty collection.
+TCL_ERROR	1   	ERROR: Argument <string> gives a collection with more than one object. Specify one that gives a collection with one object.
+TCL_ERROR	1   	ERROR: Argument <string> gives a collection that is not of <string> type. Specify one that gives a collection of required type.
+TCL_ERROR	1   	ERROR: Argument <string> gives an object that is not of <string> type. Specify one that gives an object of required type.
+TCL_ERROR	1   	ERROR: Argument <string> is a collection with more than one object. Specify a collection with one object.
+TCL_ERROR	1   	ERROR: Argument <string> is not a collection ID. Specify a legal collection ID.
+TCL_ERROR	1   	ERROR: Argument <string> is not an object ID. Specify a valid object ID.
+TCL_ERROR	1   	ERROR: Argument <string> is an object filter that matches more than one object. Specify a filter that  matches only one object.
+TCL_ERROR	1   	ERROR: Argument <string> is an object filter that matches no objects. Specify one matches only one object.
+TCL_ERROR	1   	ERROR: Object with ID "<string>" is not an object of type <string>. Specify the ID of an object with the correct type.
+TCL_ERROR	1   	ERROR: Cannot find object of ID "<string>". Specify an existing object ID.
+TCL_ERROR	1   	ERROR: Unsupported object type: <string>. Specify a supported object type.
+TCL_ERROR	1   	ERROR: Argument <string> is a collection that is not of <string> type. Specify a collection of required type.
+TCL_ERROR	1   	ERROR: Argument <string> is an object that is not of <string> type. Specify an object of required type.
+TCL_ERROR	1   	ERROR: Argument <string> is not <string> <string>. Specify an argument of the correct type.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_object_info>
+
+<get_clock_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_clock_info [-h | -help] [-long_help] [-divide_by] [-duty_cycle] [-edge_shifts] [-edges] [-fall] [-is_inverted] [-latency] [-master_clock] [-master_clock_pin] [-max] [-min] [-multiply_by] [-name] [-nreg_neg] [-nreg_pos] [-offset] [-period] [-phase] [-rise] [-targets] [-type] [-waveform] <clk_object>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -divide_by: Return the frequency divider (to the base clock)
+        -duty_cycle: Return the duty cycle
+        -edge_shifts: Return a list of edge shifts that the specified edges are to undergo to yield the final generated clock waveform
+        -edges: Return a list of integer representing edges from the source clock that are to form edges of the generated clock
+        -fall: Return clock fall latency
+        -is_inverted: Return a boolean value to indicate if the generated clock is inverted
+        -latency: Return clock latency
+        -master_clock: Return the master clock name
+        -master_clock_pin: Return the master clock source pin
+        -max: Return max clock latency
+        -min: Return min clock latency
+        -multiply_by: Return the frequency multiplier (to the base clock)
+        -name: Return the clock name
+        -nreg_neg: Return number of registers negatively clocked by clock
+        -nreg_pos: Return number of registers positively clocked by clock
+        -offset: Return the clock offset
+        -period: Return the clock period
+        -phase: Return the clock phase
+        -rise: Return clock rise latency
+        -targets: Return the clock targets collection
+        -type: Return the clock type
+        -waveform: Return the waveform (rise time and fall time)
+        <clk_object>: Clock object
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Returns information about the specified clock (referenced by clock
+ID). Clock IDs can be obtained by Tcl commands such as get_clocks.
+
+The "-type" option returns "clk".
+
+Options "-name", "-type", "-period", "-duty_cycle", "-waveform",
+"-edges", "-edge_shifts", "-multiply_by", "-divide_by",
+"-is_inverted", "-latency", "-master_clock", and "-targets" are
+mutually exclusive. The "-latency" option requires a specified "-max"
+or "-min" option as well as a "-rise" or "-fall" option.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open chiptrip
+create_timing_netlist
+set clocks [get_clocks]
+foreach_in_collection clk $clocks {
+    puts "[get_clock_info $clk -name]: [get_clock_info $clk -period]"
+}
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Options are mutually exclusive: <string>. Specify only one of the these options.
+TCL_ERROR	1   	ERROR: Object with ID "<string>" is not an object of type <string>. Specify the ID of an object with the correct type.
+TCL_ERROR	1   	ERROR: Cannot find object of ID "<string>". Specify an existing object ID.
+TCL_ERROR	1   	ERROR: Unsupported object type: <string>. Specify a supported object type.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_clock_info>
+
+<get_node_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_node_info [-h | -help] [-long_help] [-asynch_edges] [-cell] [-clock_edges] [-fanout_edges] [-location] [-name] [-synch_edges] [-type] <node_object>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -asynch_edges: Return a list of asynchronous edge IDs
+        -cell: Return the host cell
+        -clock_edges: Return a list of clock edge IDs
+        -fanout_edges: Return a list of fanout edge IDs
+        -location: Return the atom location in device
+        -name: Return the node name
+        -synch_edges: Return a list of synchronous edge IDs
+        -type: Return the node type
+        <node_object>: Node object
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Gets information about the specified node (referenced by node ID).
+Use Tcl commands such as get_nodes to obtain node IDs. The -type
+option returns "reg", "port", "pin", "net", or "comb". The -name, -type,
+-clock_edges, -synch_edges, -asynch_edges, -fanout_edges, -cell and
+-location options are mutually exclusive.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open chiptrip
+create_timing_netlist
+set registers [get_registers]
+foreach_in_collection reg $registers {
+    puts "[get_node_info $reg -name]: [get_node_info $reg -type]"
+}
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Object with ID "<string>" is not an object of type <string>. Specify the ID of an object with the correct type.
+TCL_ERROR	1   	ERROR: Cannot find object of ID "<string>". Specify an existing object ID.
+TCL_ERROR	1   	ERROR: Unsupported object type: <string>. Specify a supported object type.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_node_info>
+
+<get_port_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_port_info [-h | -help] [-long_help] [-edge_rate] [-is_inout_port] [-is_input_port] [-is_output_port] [-name] [-type] <port_object>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -edge_rate: Return the edge_rate value
+        -is_inout_port: Return true if it is an inout port, or false otherwise
+        -is_input_port: Return true if it is an input port, or false otherwise
+        -is_output_port: Return true if it is an output port, or false otherwise
+        -name: Return the port name
+        -type: Return the port type
+        <port_object>: Port object
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Returns information about the specified port (referenced by port ID).
+Port ID's can be obtained by Tcl commands such as get_ports. The -type
+option returns "port". The -name, -type, -edge_rate, -is_input_port,
+-is_output_port and is_inout_port options are mutually exclusive.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open chiptrip
+create_timing_netlist
+set ports [get_ports]
+foreach_in_collection port $ports {
+    set port_type ""
+    if [get_port_info $port -is_inout_port] {
+        set port_type "bidir"
+    } elseif [get_port_info $port -is_input_port {
+        set port_type "in"
+    } else {
+        set port_type "out"
+    }
+    puts "[get_port_info $port -name]: $port_type"
+}
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Options are mutually exclusive: <string>. Specify only one of the these options.
+TCL_ERROR	1   	ERROR: Object with ID "<string>" is not an object of type <string>. Specify the ID of an object with the correct type.
+TCL_ERROR	1   	ERROR: Cannot find object of ID "<string>". Specify an existing object ID.
+TCL_ERROR	1   	ERROR: Unsupported object type: <string>. Specify a supported object type.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_port_info>
+
+<get_register_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_register_info [-h | -help] [-long_help] [-asynch_edges] [-clock_edges] [-fanout_edges] [-is_latch] [-name] [-synch_edges] [-tch] [-tcl] [-tco] [-th] [-tmin] [-tsu] [-type] <reg_object>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -asynch_edges: Return a list of asynchronous edge IDs
+        -clock_edges: Return a list of clock edge IDs
+        -fanout_edges: Return a list of fanout edge IDs
+        -is_latch: Return "1" if this is a latch node, or "0" otherwise
+        -name: Return the object name
+        -synch_edges: Return a list of synchronous edge IDs
+        -tch: Return the Tch value
+        -tcl: Return the Tcl value
+        -tco: Return the Tco value
+        -th: Return the Th value
+        -tmin: Return the Tmin value
+        -tsu: Return the Tsu value
+        -type: Return the object type
+        <reg_object>: Register object
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Gets information about the specified register (referenced by register
+ID). Register IDs can be obtained by Tcl commands such as
+get_registers.
+
+The -type option returns "reg". The -name, -type, -tco, -tsu, -th,
+-tch, -tcl, -tmin, -clock_edges, -synch_edges, -asynch_edges, -fanout_edges
+and -is_latch options are mutually exclusive. 
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open chiptrip
+create_timing_netlist
+set registers [get_registers]
+foreach_in_collection reg $registers {
+	set name [get_register_info $reg -name]
+	set tco [get_register_info $reg -tco]
+    puts "Tco of $name is $tco" 
+}
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Object with ID "<string>" is not an object of type <string>. Specify the ID of an object with the correct type.
+TCL_ERROR	1   	ERROR: Cannot find object of ID "<string>". Specify an existing object ID.
+TCL_ERROR	1   	ERROR: Unsupported object type: <string>. Specify a supported object type.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_register_info>
+
+<report_exceptions>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: report_exceptions [-h | -help] [-long_help] [-append] [-detail <summary|path_summary|path_only|path_and_clock|full_path>] [-fall_from_clock <names>] [-fall_to_clock <names>] [-file <name>] [-from <names>] [-from_clock <names>] [-hold] [-less_than_slack <slack limit>] [-npaths <number>] [-nworst <number>] [-pairs_only] [-panel_name <name>] [-recovery] [-removal] [-rise_from_clock <names>] [-rise_to_clock <names>] [-setup] [-stdout] [-through <names>] [-to <names>] [-to_clock <names>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+        -detail <summary|path_summary|path_only|path_and_clock|full_path>: Option to determine how much detail should be shown in the path report
+        -fall_from_clock <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+        -fall_to_clock <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+        -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+        -from <names>: Valid sources (string patterns are matched using Tcl string matching)
+        -from_clock <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+        -hold: Option to report clock hold paths
+        -less_than_slack <slack limit>: Limit the paths reported to those with slack values less than the specified limit.
+        -npaths <number>: Specifies the number of paths to report (default=1, or the same value as nworst, if nworst is specified)
+        -nworst <number>: Specifies the maximum number of paths to report for each endpoint.  If unspecified, there is no limit.  If nworst is specified, but npaths is not, npaths defaults to the same value as nworst
+        -pairs_only: When set, paths with the same start and end points are considered equivalent.  Only the worst case path for each unique combination is displayed.
+        -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+        -recovery: Option to report recovery paths
+        -removal: Option to report removal paths
+        -rise_from_clock <names>: Valid source clocks (string patterns are matched using Tcl string matching)
+        -rise_to_clock <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+        -setup: Option to report clock setup paths
+        -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+        -through <names>: Valid through nodes (string patterns are matched using Tcl string matching)
+        -to <names>: Valid destinations (string patterns are matched using Tcl string matching)
+        -to_clock <names>: Valid destination clocks (string patterns are matched using Tcl string matching)
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Reports the status and timing analysis results per timing exception.
+
+For each timing exception, it first reports the status: Complete,
+Partially Overriden, Fully Overridden, or Invalid.  The status is
+relative to the paths and analyses coverred by the "-from", "-to", and
+other options.  Therefore, a timing exception that reports a status of
+"Complete" when using "-from" and "-to" options may not actually be
+complete with respect to the full design.
+
+Complete: The exception has not been overridden and is valid (i.e.,
+there are paths affected by this exception).
+
+Partially Overridden: The exception includes some paths that have been
+overridden by one or more higher-precedence exceptions.
+
+Fully Overridden: All paths affected by this exception have been
+overridden by one or more higher-precedence exceptions.
+
+Invalid: There are no paths applicable covered by this exception. This
+occurs when a timing exception has valid -from, -to, or -through
+collections and there are no actual paths from the -from nodes to the
+-to nodes.
+
+Use the "-setup" (default), "-hold", "-recovery", or "-removal"
+options to specify which kind of analysis should be performed.
+
+The report can be directed to the Tcl console using "-stdout"
+(default), a file using "-file", the TimeQuest graphical user
+interface using "-panel_name", or any combination of the three.
+
+You can limit the analysis performed by this command to specific start
+and end points, using the "-from" and "-to" options.  The anlaysis can
+be further limited to clocks using the "-from_clock" and "-to_clock"
+options, or to specific edges of the clock using the
+"-rise_from_clock", "-fall_from_clock", "-rise_to_clock", and
+"-fall_to_clock" options.  Additionally, the "-through" option can be
+used to restrict analysis to paths which go through specified pins or
+nets.
+
+To determine which timing exceptions overrode another timing exception
+when the status is Partially Overridden or Fully Overridden, use the
+same "-from" and "-to" options that were used with the timing
+exception.
+
+Use "-npaths" to limit the number of paths to report per timing
+exception.  If you do not specify this option, only the single
+worst-case path per timing exception is provided.  Use the
+"-less_than_slack" option to limit output to all paths with slack less
+than the specified value, up to the number specified by "-npaths".
+
+Use "-nworst" to limit the number of paths reported for each unique
+endpoint.  If you do not specify this option, the number of paths
+reported for each destination node is bounded only by the "-npaths"
+option.  If this option is used, but "-npaths" is not specified, then
+"-npaths" will default to the same value specified for "-nworst".
+
+Use the "-detail" option to specify the desired level of report
+detail.  "summary" generates a single table listing only the
+highlights of each timing exception (status and worst-case slack).
+"path_summary" generates a table per timing exception listing only the
+highlights of each path. "path_only" reports the path from the source
+to the destination without any detail about the clock path.  Instead,
+the clock network delay is shown as a single number.  This is the
+default behavior. "path_and_clock" extends the arrival and required
+paths back to the launch and latch clocks.  "full_path" will continue
+tracing back through generated clocks to the underlying base clock.
+
+Use the "-pairs_only" option to filter the output further, restricting
+the results to only unique combinations of start and end points.  This
+filtering is performed after the number of paths has been generated in
+accordance to the "-npaths" option.  As a result, there may be fewer
+paths displayed than specified by "-npaths", if a particular set of
+start and end points appeared multiple times.
+
+False path exceptions (set_false_path) report paths as if the false
+path was not applied, similar to report_timing's "-false_path" option.
+
+The "RF" column in the report output uses a two-letter symbol to
+indicate the rise/fall transition that occurs at that point in the
+path.
+
+Possible "RF" values are:
+
+	Value     Description
+	-------   -------------------------------
+	(empty)   Unknown transition
+	R         Rising output
+	F         Falling output
+	RR        Rising input, rising output
+	RF        Rising input, falling output
+	FR        Falling input, rising output
+	FF        Falling input, falling output
+
+
+The "Type" column in the report uses a symbol to indicate what type
+of delay occurs at that point in the path. 
+
+Possible "Type" values are:
+
+   Value     Description
+   -------   -------------------------------------------------------
+   CELL      Cell delay
+   COMP      PLL clock network compensation delay
+   IC        Interconnect delay
+   iExt      External input delay
+   LOOP      Lumped combinational loop delay
+   oExt      External output delay
+   RE        Routing element (only for paths generated with the 
+             -show_routing option)
+   uTco      Register micro-Tco time
+   uTsu      Register micro-Tsu time
+   uTh       Register micro-Th time
+
+The values of the "-from", "-to", and "-through" options are either
+collections or a Tcl list of wildcards used to create collections of
+appropriate types. The values used must follow standard Tcl or
+TimeQuest-extension substitution rules.  See the help for
+use_timequest_style_escaping for details.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Reports all timing exceptions for a setup analysis.
+report_exceptions
+
+# Reports all timing exceptions for a hold analysis.
+report_exceptions -hold
+
+# Reports all timing exceptions affecting input paths for
+# recovery analysis, reporting the 10 worst paths per exception.
+report_exceptions -from [all_inputs] -to [all_registers] \
+  -recovery -npaths 10 -detail full_path
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</report_exceptions>
+
+<get_cell_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_cell_info [-h | -help] [-long_help] [-buried_nodes] [-buried_regs] [-in_pin_names] [-in_pins] [-location] [-name] [-out_pin_names] [-out_pins] [-pin_names] [-pins] [-type] [-wysiwyg_type] <cell_object>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -buried_nodes: Return a collection of buried node IDs
+        -buried_regs: Return a collection of buried register IDs
+        -in_pin_names: Return a list of input pin names
+        -in_pins: Return a collection of input pin IDs
+        -location: Return the atom location in device
+        -name: Return the cell name
+        -out_pin_names: Return a list of output pin names
+        -out_pins: Return a collection of output pin IDs
+        -pin_names: Return a list of input and output pin names
+        -pins: Return a collection of input and output pin IDs
+        -type: Return the cell type
+        -wysiwyg_type: Return the WYSIWYG type of the cell
+        <cell_object>: Cell object
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Gets information about the specified cell (referenced by cell ID).
+You can obtain cell using the get_cells Tcl command.
+
+The "-type" option returns "cell".
+
+Options "-name", "-type", "-pin_name", "-in_pin_names",
+"-out_pin_names", "-pins", "-clock_pins", "-in_pins", "-out_pins",
+"-buried_nodes", "-buried_regs", "-location", and "-wysiwyg_type" are
+mutually exclusive.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open chiptrip
+create_timing_netlist
+set cells [get_cells]
+foreach_in_collection cell $cells {
+    puts "[get_cell_info $cell -name]: [get_cell_info $cell -type]"
+}
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Options are mutually exclusive: <string>. Specify only one of the these options.
+TCL_ERROR	1   	ERROR: Object with ID "<string>" is not an object of type <string>. Specify the ID of an object with the correct type.
+TCL_ERROR	1   	ERROR: Cannot find object of ID "<string>". Specify an existing object ID.
+TCL_ERROR	1   	ERROR: Unsupported object type: <string>. Specify a supported object type.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_cell_info>
+
+<get_pin_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_pin_info [-h | -help] [-long_help] [-is_clock_pin] [-is_in_pin] [-is_out_pin] [-name] [-net] [-parent_cell] [-suffix] [-type] <pin_object>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -is_clock_pin: Return true if it is a clock pin, or false otherwise
+        -is_in_pin: Return true if it is an input pin, or false otherwise
+        -is_out_pin: Return true if it is an output pin, or false otherwise
+        -name: Return the pin name
+        -net: Return the net ID if this is an output pin
+        -parent_cell: Return the parent cell ID
+        -suffix: Return the suffix of the pin
+        -type: Return the pin type
+        <pin_object>: Pin object
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Gets information about the specified pin (referenced by pin ID).  Pin
+ID's can be obtained by Tcl commands such as get_pins.
+
+The -type option returns "pin".
+
+Options -name, -type, -parent_cell, -net, -suffix, -is_clk_pin,
+-is_in_pin and -is_out_pin are mutually exclusive.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open chiptrip
+create_timing_netlist
+set pins [get_pins]
+foreach_in_collection pin $pins {
+	set pin_name [get_pin_info $pin -name]
+	set parent_cell [get_pin_info $pin -parent_cell]
+    puts "Pin $pin_name belongs to cell [get_cell_info -name $parent_cell]"
+}
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Options are mutually exclusive: <string>. Specify only one of the these options.
+TCL_ERROR	1   	ERROR: Object with ID "<string>" is not an object of type <string>. Specify the ID of an object with the correct type.
+TCL_ERROR	1   	ERROR: Cannot find object of ID "<string>". Specify an existing object ID.
+TCL_ERROR	1   	ERROR: Unsupported object type: <string>. Specify a supported object type.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_pin_info>
+
+<get_net_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_net_info [-h | -help] [-long_help] [-name] [-pin] [-type] <net_object>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -name: Return the net name
+        -pin: Return the pin ID of this net
+        -type: Return the net type.
+        <net_object>: Net object
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Returns information about the specified net (referenced by net ID).
+Net ID's can be obtained by Tcl commands such as get_nets.
+
+The "-type" option returns "net".
+
+The options "-name", "-type", and "-pin" are mutually exclusive.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open chiptrip
+create_timing_netlist
+
+set nets [get_nets]
+foreach_in_collection net $nets {
+	puts [get_net_info $net -name]
+}
+
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Option <string> is not allowed to be specified with option -<string>. Remove the disallowed option.
+TCL_ERROR	1   	ERROR: Options <string> are exclusively allowed to be specified with option -<string>. Specify one of the allowed options.
+TCL_ERROR	1   	ERROR: Options are mutually exclusive: <string>. Specify only one of the these options.
+TCL_ERROR	1   	ERROR: Object with ID "<string>" is not an object of type <string>. Specify the ID of an object with the correct type.
+TCL_ERROR	1   	ERROR: Cannot find object of ID "<string>". Specify an existing object ID.
+TCL_ERROR	1   	ERROR: Option <string> is required to be specified with option -<string>. Specify a required option.
+TCL_ERROR	1   	ERROR: Unsupported object type: <string>. Specify a supported object type.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_net_info>
+
+<get_edge_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_edge_info [-h | -help] [-long_help] [-delay] [-delay_type] [-dst] [-ff] [-fr] [-max] [-min] [-name] [-rf] [-rr] [-src] [-type] [-unateness] <edge_object>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -delay: Return the delay.
+        -delay_type: Return the type of the delay (ic/cell).
+        -dst: Return the destination node ID.
+        -ff: Return the fall-to-fall delay
+        -fr: Return the fall-to-rise delay
+        -max: Max delay
+        -min: Min delay
+        -name: Return the edge name
+        -rf: Return the rise-to-fall delay
+        -rr: Return the rise-to-rise delay
+        -src: Return the source node ID
+        -type: Return the edge type.
+        -unateness: Return the unateness.
+        <edge_object>: Edge object
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Returns information about the specified edge (referenced by edge ID).
+Edge ID's can be obtained by Tcl commands such as get_node_info <node_id>
+-synch_edges.
+
+The "-type" option Returns "edge".
+
+The "-delay" option returns the delay associated to the edge. Use
+-max/min and -rr/rf/fr/ff options to specify the type of returned
+delay. One of the -max/min options must be specified. One of the
+-rr/rf/fr/ff options must be specified.
+
+The -unateness option returns the unateness associated to the edge.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open chiptrip
+create_timing_netlist
+set nodes [get_nodes Reg*]
+foreach_in_collection node $nodes {
+	set edges [get_node_info $node -fanout_edges]
+	foreach edge $edges {
+		set rr_delay [get_edge_info $edge -delay -rr]
+		set rf_delay [get_edge_info $edge -delay -rf]
+		set fr_delay [get_edge_info $edge -delay -fr]
+		set ff_delay [get_edge_info $edge -delay -ff]
+		puts "Total cell delay of edge $edge: $rr_delay $rf_delay $fr_delay $ff_delay"
+	}
+}
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Option <string> is not allowed to be specified with option -<string>. Remove the disallowed option.
+TCL_ERROR	1   	ERROR: Options <string> are exclusively allowed to be specified with option -<string>. Specify one of the allowed options.
+TCL_ERROR	1   	ERROR: Options are mutually exclusive: <string>. Specify only one of the these options.
+TCL_ERROR	1   	ERROR: Object with ID "<string>" is not an object of type <string>. Specify the ID of an object with the correct type.
+TCL_ERROR	1   	ERROR: Cannot find object of ID "<string>". Specify an existing object ID.
+TCL_ERROR	1   	ERROR: Option <string> is required to be specified with option -<string>. Specify a required option.
+TCL_ERROR	1   	ERROR: Unsupported object type: <string>. Specify a supported object type.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_edge_info>
+
+<query_collection>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: query_collection [-h | -help] [-long_help] [-all] [-limit <limit_value>] [-list_format] [-report_format] <collection>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -all: Return all the collection objects.
+        -limit <limit_value>: Set number of collection objects to return.
+        -list_format: Return collection objects in a list format.
+        -report_format: Return collection objects in a format of one element per line.
+        <collection>: Object collection
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Query collection objects.
+
+Collections can be obtained by Tcl commands such as get_clocks,
+get_ports, get_cells. If neither the -limit nor the -all option is
+specified, then first 20 objects (if the collection has more than 20
+objects) or all objects (if the collection has less than or equal to
+20 objects) are returned.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open chiptrip
+create_timing_netlist
+
+set nodes [get_nodes Reg*]
+# Get the first 100 nodes in the collection.
+query_collection $nodes -limit 100
+
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Cannot find specified collection. Specify an existing collection.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</query_collection>
+
+<locate>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: locate [-h | -help] [-long_help] [-chip] [-color <black|blue|brown|green|grey|light_grey|orange|purple|red|white>] [-cps] [-label <label>] [-rpe] [-tmv] <items>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -chip: Locate the object in the Chip Planner
+        -color <black|blue|brown|green|grey|light_grey|orange|purple|red|white>: Specify the color to be used to identify the objects you are locating
+        -cps: Locate the object in the Critical Path Settings dialog of the Chip Planner
+        -label <label>: Specify a label used to identify the objects you are locating
+        -rpe: Locate in the Resource Property Editor
+        -tmv: Locate the object in the Technology Map Viewer
+        <items>: Items to locate.  Any collection or object (such as paths, points, nodes, nets, keepers, registers, etc) may be located by passing a reference to the corresponding collection or object.
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Locate an object from TimeQuest in another Quartus II tool.
+
+With this command, one or more objects, or collections of objects,
+can be located in a supported Quartus tool from TimeQuest.
+
+The destination can be specified with one of the following 
+options:
+
+	Option   Destination Tool
+	======   ==============================
+    -chip    Chip Planner
+    -rpe     Resource Property Editor
+    -tmv     Technology Map Viewer
+    -cps     Critical Path Settings Dialog
+               of the Chip Planner
+
+The -label option can be used to specify a label for the located
+objects.  The -color command can be used to specify a color to 
+be used to identify the located objects in the destination tool.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+proc prepare_design { } {
+	set sleep_for 2000
+
+	create_timing_netlist -risefall 
+
+	post_message -type info "Give the GUI some time to catch up to the new netlist. Sleep for $sleep_for ms"
+	after $sleep_for
+
+	read_sdc 
+	update_timing_netlist
+}
+
+prepare_design
+
+# Locate all of the nodes in the longest ten paths
+# into the Resource Property Editor
+locate [get_path -npaths 10] -rpe
+
+# Locate ten paths into the chip planner, labelling
+# each one individually.
+set path_col [get_timing_paths -npaths 10]
+set path_id 0
+
+foreach_in_collection path $path_col {
+	incr path_id
+
+	locate -label "Path #$path_id" $path -chip
+}
+
+# locate all keepers that begin with the letter t
+# to the Tech Map Viewer
+locate [get_keepers t*] -tmv
+
+
+# locate all nodes that begin with the letter a
+#
+# The TimeQuest GUI will prompt the user for the
+# tool to which the nodes should be located.
+#
+# Pause first to allow the previous locations to
+# appear, as the dialog that pops up, to ask 
+# the user for a location, will block the rest 
+# of the GUI until cleared.
+
+after 5000
+
+post_message -type info "Interactive locate"
+locate a*		
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Illegal color: <string>. Specify a color that is currently supported by the locate command.
+TCL_ERROR	1   	ERROR: An object or collection matching "<string>" could not be found, or was of a type not supported by the locate command.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</locate>
+
+<get_partition_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_partition_info [-h | -help] [-long_help] [-child] [-name] [-parent] [-type] <partition_object>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -child: Return child partition name(s)
+        -name: Return the partition name
+        -parent: Return parent partition name
+        -type: Return the partition type
+        <partition_object>: Partition object
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Gets information about the specified partition (referenced by
+partition ID). Partition ID's can be obtained by Tcl commands such as
+get_partitions.
+
+The -name, -type, -parent, and -child options are mutually exclusive.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open chiptrip
+create_timing_netlist
+set partitions [get_partitions *]
+foreach_in_collection partition $partitions {
+    puts "[get_partition_info $partition -name]"
+}
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Object with ID "<string>" is not an object of type <string>. Specify the ID of an object with the correct type.
+TCL_ERROR	1   	ERROR: Cannot find object of ID "<string>". Specify an existing object ID.
+TCL_ERROR	1   	ERROR: Unsupported object type: <string>. Specify a supported object type.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_partition_info>
+
+<set_operating_conditions>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: set_operating_conditions [-h | -help] [-long_help] [-force_dat] [-grade <c|i|m|e|a>] [-model <fast|slow>] [-speed <speed>] [-temperature <value_in_C>] [-voltage <value_in_mV>] [<operating_conditions>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -force_dat: Option to force delay annotation
+        -grade <c|i|m|e|a>: Option to specify temperature grade
+        -model <fast|slow>: Option to specify timing model
+        -speed <speed>: Speed grade
+        -temperature <value_in_C>: Operating temperature
+        -voltage <value_in_mV>: Operating voltage
+        <operating_conditions>: Operating conditions Tcl object
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Use this command to specify operating conditions different from the
+initial conditions used to create the timing netlist. When a timing
+model is not specified, the slow model is used.
+
+Voltage and temperature options must be used together. These two
+options are not available for all devices. The
+get_available_operating_conditions command returns the list of
+available operating conditions for your device.
+
+Use the -speed option to analyze the design at a different speed grade
+of the selected device.
+
+Use the -grade option to analyze the design at a different temperature
+grade. This option is provided to support what-if analysis and is not
+recommended for final sign-off analysis.
+
+By default, delay annotation is skipped if previously performed.  Use
+-force_dat to rerun delay annotation.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+#do report timing for different operating conditions
+foreach_in_collection op [get_available_operating_conditions] {
+	set_operating_conditions $op
+	update_timing_netlist
+	report_timing
+}
+
+#manually set operating conditions
+set_operating_conditions -model fast -temperature 85 -voltage 1200
+update_timing_netlist
+
+#change device speed grade and set operating conditions
+set_operating_conditions -speed 3 -model slow -temperature 0 -voltage 1100
+update_timing_netlist
+
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Cannot set operating conditions for timing netlist created from XML file. Run create_timing_netlist.
+TCL_ERROR	1   	ERROR: Both the -temperature and -voltage options and their values are required.
+TCL_ERROR	1   	ERROR: Values entered did not match any valid operating conditions. Available operating conditions are: <string>
+TCL_ERROR	1   	ERROR: The <string> device family does not support set_operating_conditions command.
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</set_operating_conditions>
+
+<get_available_operating_conditions>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_available_operating_conditions [-h | -help] [-long_help] [-all]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -all: Returns all available operating conditions
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Returns a Tcl collection of available operating conditions for the
+current device. The Tcl collection contains the most extreme operating
+conditions within a user-specified junction temperature range. Use
+the -all option to return all available operating conditions.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+
+#do report timing for different operating conditions
+foreach_in_collection op [get_available_operating_conditions] {
+	set_operating_conditions $op
+	update_timing_netlist
+	report_timing
+}
+
+#see detailed information about operating conditions
+foreach_in_collection op [get_available_operating_conditions] {
+	puts "Delay Model: [get_operating_conditions_info $op -model]"
+}
+
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_available_operating_conditions>
+
+<get_operating_conditions_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_operating_conditions_info [-h | -help] [-long_help] [-display_name] [-model] [-name] [-speed] [-temperature] [-voltage] <operating_condition>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -display_name: Returns the operating conditions display name
+        -model: Returns the operating corner
+        -name: Returns the operating conditions Tcl_Obj name
+        -speed: Returns the speed grade of the current device
+        -temperature: Returns the operating temperature
+        -voltage: Returns the operating voltage
+        <operating_condition>: Operating condition object
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Returns information about the operating_conditions Tcl object.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+
+#see detailed information about operating conditions
+foreach_in_collection op [get_available_operating_conditions] {
+	puts "Delay Model: [get_operating_conditions_info $op -model]"
+}
+
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_operating_conditions_info>
+
+<get_operating_conditions>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_operating_conditions [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Returns the current operating_conditions Tcl Obj.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+puts "Delay Model : [get_operating_conditions_info [get_operating_conditions] -model]"
+
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_operating_conditions>
+
+<report_ddr>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: report_ddr [-h | -help] [-long_help] [-append] [-file <name>] [-panel_name <name>] [-stdout]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+        -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+        -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+        -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+This command generates custom timing reports for DDR instantiations
+using the ALTMEMPHY megafunction.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_new test
+create_timing_netlist
+read_sdc
+update_timing_netlist
+
+report_ddr -panel "Report DDR"
+
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+TCL_ERROR	1   	ERROR: Report database is not open
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</report_ddr>
+
+<report_net_delay>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: report_net_delay [-h | -help] [-long_help] [-append] [-file <name>] [-nworst <number>] [-panel_name <name>] [-stdout]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+        -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+        -nworst <number>: Specifies the maximum number of paths to report for each analysis.  If unspecified, there is no limit.
+        -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+        -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Reports net delay analysis results based on set_net_delay
+commands. Each set_net_delay command is treated as a separate analysis
+and report_net_delay reports the results of all set_net_delay
+commands in a single report.
+
+The report contains each set_net_delay command with the worst case
+slack result followed by the results of each edge matching the
+criteria set by that set_net_delay command. These results are ordered
+based on the slack value.
+
+Use -nworst option to limit the number of lines reported for a
+set_net_delay command.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open my_project
+create_timing_netlist
+read_sdc
+update_timing_netlist
+
+set_net_delay -min 0.160 -from [get_pins inst9|combout] -to [get_pins *|dataf]
+set_net_delay -max 0.500 -from inst8|combout
+
+report_net_delay -panel "Net Delay"
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+TCL_ERROR	1   	ERROR: Report database is not open
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</report_net_delay>
+
+<report_max_skew>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: report_max_skew [-h | -help] [-long_help] [-append] [-detail <summary|path_only|path_and_clock|full_path>] [-file <name>] [-less_than_slack <slack limit>] [-npaths <number>] [-panel_name <name>] [-show_routing] [-stdout]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -append: If output is sent to a file, this option appends the result to that file.  Otherwise, the file will be overwritten
+        -detail <summary|path_only|path_and_clock|full_path>: Option to determine how much detail should be shown in the path report
+        -file <name>: Sends the results to an ASCII or HTML file. Depending on the extension
+        -less_than_slack <slack limit>: Limit the paths reported to those with slack values less than the specified limit.
+        -npaths <number>: Specifies the number of paths to report for each latest and earliest arrival skew result per set_max_skew assignment (default=1)
+        -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+        -show_routing: Option to display detailed routing in the path report
+        -stdout: Send output to stdout, via messages.  You only need to use this option if you have selected another output format, such as a file, and would also like to receive messages.
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Reports max skew analysis results for all set_max_skew commands in a
+single report. For each valid set_max_skew constraint, this report 
+computes skew with respect to the latest and the earliest arrival 
+of each path. 
+
+"Skew for the Latest Arrival" is computed by comparing the latest 
+arrival of each path with the earliest arrival of the path that 
+has the smallest value for early arrival of all other paths included 
+in the constraint. Similarly, "Skew for the Earliest Arrival" is 
+computed by comparing the earliest arrival of each path with the 
+latest arrival of the path that has the largest value for late 
+arrival of all other paths included in the constraint. No path is 
+compared with itself. 
+
+Use the -stdout option to direct the report to the Tcl console
+(default), the -file option to write the report to a file or the
+-panel_name option to direct the report to the TimeQuest graphical
+user interface. You can use these options in any combination.
+
+Use the -npaths option to limit the number of path result pairs
+reported for each set_max_skew constraint. If you do not specify this
+option, report_max_skew only reports the result pair for the single
+worst-case path. Use the -less_than_slack option to limit output to
+all paths with slack less than the specified value, up to the number
+specified with -npaths.
+
+Use the -detail option to specify the desired level of report
+detail. "-detail summary" generates a single table listing only the
+highlights of each path (and is the same as -summary option, which
+this replaces. "-detail path_only" (default) reports the path from the
+source to the destination without any detail about the clock
+path. Instead, the clock network delay is shown as a single
+number. "-detail path_and_clock" extends the arrival and required
+paths back to the launch and latch clocks. "-detail full_path"
+continues tracing back through generated clocks to the underlying base
+clock.
+
+The -show_routing option displays detailed routing information in the
+path. Lines marked "IC" without the option are shown, but only as a
+placeholder. The routing elements for that line are broken out
+individually and listed before the line.
+
+The return value of this command is a two-element list. The first
+number is the number of paths found in the analysis. The second is
+the worst-case slack, in terms of the current default time unit.
+
+The "RF" column in the report output uses a two-letter symbol to
+indicate the rise/fall transition that occurs at that point in the
+path.
+
+Possible "RF" values are:
+
+	Value     Description
+	-------   -------------------------------
+	(empty)   Unknown transition
+	R         Rising output
+	F         Falling output
+	RR        Rising input, rising output
+	RF        Rising input, falling output
+	FR        Falling input, rising output
+	FF        Falling input, falling output
+
+
+The "Type" column in the report uses a symbol to indicate what type
+of delay occurs at that point in the path. 
+
+Possible "Type" values are:
+
+   Value     Description
+   -------   -------------------------------------------------------
+   CELL      Cell delay
+   COMP      PLL clock network compensation delay
+   IC        Interconnect delay
+   iExt      External input delay
+   LOOP      Lumped combinational loop delay
+   oExt      External output delay
+   RE        Routing element (only for paths generated with the 
+             -show_routing option)
+   uTco      Register micro-Tco time
+   uTsu      Register micro-Tsu time
+   uTh       Register micro-Th time
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open my_project
+create_timing_netlist
+read_sdc
+update_timing_netlist
+
+# create max skew constraints
+set_max_skew -from [get_ports data_ports[*]] -to [get_keepers *] 0.200
+set_max_skew -from [get_keepers *] -to [get_ports output_ports[*]] 0.100
+
+# show worst 10 paths for each earliest and latest arrival results 
+# per max_skew assignment assuming that their slack is less than 0.100
+report_max_skew -panel_name "Report Max Skew" -npaths 10 -less_than_slack 0.100 -detail full_path		
+
+delete_timing_netlist
+project_close
+
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+TCL_ERROR	1   	ERROR: Report database is not open
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</report_max_skew>
+
+<report_bottleneck>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: report_bottleneck [-h | -help] [-long_help] [-cmetric <cmetric_name>] [-details] [-metric <default|tns|num_paths|num_fpaths|num_fanins|num_fanouts>] [-nworst <number>] [-panel_name <panel_name>] [-stdout] [<paths>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -cmetric <cmetric_name>: Custom metric function to evaluate individual nodes
+        -details: Show the detailed information (number of failing edges, number of fanins, etc)
+        -metric <default|tns|num_paths|num_fpaths|num_fanins|num_fanouts>: Indicate the metric to use to rate individual nodes
+        -nworst <number>: Specifies the maximum number of nodes to report.  If unspecified, there is no limit
+        -panel_name <panel_name>: Sends the results to the panel and specifies the name of the new panel
+        -stdout: Output the result onto stdout
+        <paths>: Paths to be analyzed
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+
+Reports bottleneck nodes in a design based on 
+user-specified criteria for rating each node.
+
+The following considerations are pre-defined
+
+	num_fpaths: (default) returns the number of paths 
+	that fail timing through the node.
+
+	num_fanins: returns the number of fanin edges from 
+	the node.
+
+	num_fanouts: returns the number of fanout edges from 
+	the node.
+
+	num_paths: returns the number of paths through the node.
+
+	tns: returns the total negative slack of all the paths 
+	through the node.
+
+The paths to be analyzed can be specified by passing the result of any
+get_timing_paths call as the last argument to report_bottleneck. If no
+paths are specified, report_bottleneck analyzes the worst 1000 setup
+paths in the design.
+
+You can also create your own custom criteria for evaluating nodes
+based on the combination of the number of fanouts, fanins, failing
+paths, and total paths.
+
+To use custom criteria, do the following:
+
+	1. Create a Tcl procedure that takes one argument, "arg",
+	for example.
+
+	2. Use "upvar $arg metric" in the procedure.
+
+	3. Calculate the rating based on $metric(tns), 
+	$metric(num_fanouts), $metric(num_fanins), and $metric(num_fpaths).
+
+	4. Return the rating with "return $rating".
+
+	5. Pass the name of your custom criteria procedure to 
+	report_bottleneck using the -cmetric option.
+
+Reports can be directed to the Tcl console (-stdout), the TimeQuest
+graphical interface (-panel), or a combination of the two.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open my_project
+create_timing_netlist
+read_sdc
+update_timing_netlist
+
+# use the worst 500 hold paths
+set paths [ get_timing_paths -npaths 500 -hold ]
+report_bottleneck -metric default -panel "Timing Analysis Bottleneck Report - Default Metric" $paths
+report_bottleneck -metric tns -panel "Timing Analysis Bottleneck Report - TNS" $paths
+report_bottleneck -metric num_paths -panel "Timing Analysis Bottleneck Report - Number of Paths" $paths
+report_bottleneck -metric num_fpaths -panel "Timing Analysis Bottleneck Report - Number of Failing Paths" $paths
+report_bottleneck -metric num_fanouts -panel "Timing Analysis Bottleneck Report - Number of Fanouts" $paths
+
+# create custom metric and use the worst 2000 setup paths
+proc report_bottleneck_custom_metric {arg} {
+	# Description: use the number of fanins as the custom metric.
+	upvar $arg metric
+	set rating $metric(num_fanins)
+	return $rating
+}
+
+set paths [ get_timing_paths -npaths 2000 -setup ]
+report_bottleneck -cmetric report_bottleneck_custom_metric -panel "Timing Analysis Bottleneck Report - Custom" $paths
+
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</report_bottleneck>
+
+<report_partitions>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: report_partitions [-h | -help] [-long_help] [-nworst <number>] [-panel_name <name>] [-stdout]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -nworst <number>: Specifies the maximum number of paths to report between partitions.  If unspecified, the limit defaults to 1000
+        -panel_name <name>: Sends the results to the panel and specifies the name of the new panel
+        -stdout: Output the result onto stdout
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sta 1.0
+
+------------
+Description:
+------------
+
+Reports timing information related to design partitions.
+
+The report_partitions command analyzes the worst 1000 setup paths in
+the design by default, but you can optionally set the nworst option to
+increase or decrase this number.
+
+This function reports the total number of failing paths for each
+partition and the worst-case slack for any path involving the
+partition in a Partition Timing Overview table.
+
+The function also creates a Partition Timing Details table that lists
+the number of failing paths and worst-case slack from each partition
+to the others, which provides a more detailed breakdown of where the
+critical paths in the design are with respect to design partitions.
+
+Reports can be directed to the Tcl console (-stdout, by default) or the
+TimeQuest graphical interface (-panel_name <name>)or both.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+
+project_open my_project
+create_timing_netlist
+read_sdc
+update_timing_netlist
+
+# Report a maximum of 500 failing paths between partitions to the
+# TimeQuest graphical interface and to the Tcl console.
+report_partitions -panel_name "Partition Timing Report" -nworst 500 -stdout
+
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</report_partitions>
+
+<<<</1.0>>>>

@@ -1,0 +1,3054 @@
+
+#
+# Infinitely splitable paned window manager
+#
+#  Lets you create a paned window that can recursively orient panes in either direction
+#
+#  +---+--+------+-------------+
+#  |   |  |      |             |
+#  +---+  |      |             |
+#  |   |  |      |             |
+#  +---+--+      |             |
+#  |      |      +------+------+
+#  |      |      |      |      |
+#  +------+------+      +---+--+
+#  |             |      |   |  |
+#  |             |      |   |  |
+#  +-------------+------+---+--+
+#
+# ----------------------------------------------------------------------
+#  AUTHOR: Brian S. Griffin              EMAIL: bgriffin@model.com    
+#
+#  @(#) $Id: //dvt/mti/rel/6.4a/src/tkgui/mtipanemgr.itk#1 $
+# ----------------------------------------------------------------------
+#            Copyright 1991-2008 Mentor Graphics Corporation
+#
+# ======================================================================
+# See the file "license.terms" for information on usage and
+# redistribution of this file, and for a DISCLAIMER OF ALL WARRANTIES.
+
+
+package require Tk 8.4
+package require Itk
+
+if {[itcl::find class ::mtiwidgets::Panemanager] ne ""} {
+	delete class ::mtiwidgets::Panemanager
+}
+if {[itcl::find class ::mtiwidgets::Paneframe] ne ""} {
+	delete class ::mtiwidgets::Paneframe
+}
+
+package provide ::mtiwidgets::Panemanager 0.1
+package provide ::mtiwidgets::Paneframe 0.1
+
+
+#
+# Provide a lowercased access method for the class.
+# 
+proc ::mtiwidgets::panemanager {pathName args} {
+    uplevel ::mtiwidgets::Panemanager $pathName $args
+}
+
+#
+# Reverse default bindings for Panedwindow
+#
+if {0} {
+	# Note: these bindings are reimplemented at the end of the file
+	#       so no need to juggle them here.
+foreach e {<Button-%d> <B%d-Motion> <ButtonRelease-%d>} {
+	set tmp [bind Panedwindow [format $e 1]]
+	bind Panedwindow [format $e 1] [bind Panedwindow [format $e 2]]
+	bind Panedwindow [format $e 2] $tmp
+}
+unset e
+}
+
+# ------------------------------------------------------------------
+#                            Panemanager
+# ------------------------------------------------------------------
+itcl::class ::mtiwidgets::Panemanager {
+	inherit itk::Widget
+
+	constructor {args} {}
+	destructor {}
+
+    itk_option define -propertyprefix propertyPrefix PropertyPrefix {}
+    itk_option define -propertycommand propertyCommand PropertyCommand {} 
+    itk_option define -layoutname layoutName LayoutName "default"
+	itk_option define -minsize minsize MinSize 40
+
+	public method add {window args}
+	public method create {cmd args}
+	public method FocusNext {window}
+	public method FocusPrev {window}
+	public method exists {window}
+	public method hide {window}
+	public method join {window}
+	public method maximize {{window ""}}
+	public method normal {}
+	public method panecget {window option}
+	public method paneconfigure {window args}
+	public method panes {{nested no}}
+	public method rip {window x y width height}
+	public method sash {cmd args}
+	public method serialize {}
+	public method show {window}
+	public method state {window}
+	public method subpanes {}
+	public method togglemax {window}
+	public method togglerip {window {geometry ""}}
+	public method unserialize {state}
+	public method visible {window}
+
+	public method _dragging {window header x y}
+	public method _enddrag {window header x y}
+	public method _startdrag {window childsite header x y}
+	public method _makedragmap {}
+	public method _report_map {x y}
+	public method _join {state window alt offset}
+
+	# Debugging tools
+	public method _see_map_ {} 
+	public method _hide_map_ {} 
+	public method _pane_tree_ {}
+	private method _pane_tree_query_ {node}
+
+	# Internal only
+	private method coalesce {pane {retarget ""}}
+	private method flatten {pane {retarget ""}}
+	private method rotate {pane}
+	private method splitwindow {window}
+	private method _addpane {parent orient}
+	private method _panes {pane nested}
+	private method _subpanes {p}
+	private method _pushdown {pane below {retarget ""}}
+	private method _windowgone {window}
+	private method _serialize {pane}
+	private method _clear_all_ {pane}
+	public method patch_state {state}
+	public method _patch_state_ {state width height orient}
+	private method _unserialize_ {pane state size}
+	private method _restoreSashes_ {sash_stack}
+	private method _restoreSashesLater_ {sash_stack}
+	private method _get_pane_options_ {pane window}
+	private method _get_pane_offset_ {pane window}
+	private method _get_pane_size_ {pane window}
+	private method _get_prior_ {window}
+	private method _setProperty {prop var}
+	private method _getProperty {prop var def}
+	private method _updateBindtags {w oldTop}
+
+	private method _draw_bbox {wid at where x y}
+	private method _make_bbox {wid}
+	private method _rm_bbox {wid}
+	private method nextfc {rr gg bb}
+	private method _type_cmp_ {t1 t2}
+	private method _adjustGeometry {w geom}
+
+	private variable panes
+	private variable paneCnt 0
+	private variable current_bbox
+	private variable mapchild
+	private variable maptype
+	private variable _sash_stack
+	private variable _startx
+	private variable _starty
+	private variable _startbbox
+	private variable sashDelayId ""
+	private variable maxed_window ""
+	private variable normalDelayId ""
+	private variable restore_state ""
+	private variable ripQue [list]
+	private variable inToggleRip 0
+	private variable _create_cmds
+	private variable rip_save_size
+}
+
+# ------------------------------------------------------------------
+#                    Panemanager CONSTRUCTOR
+# ------------------------------------------------------------------
+itcl::body ::mtiwidgets::Panemanager::constructor {args} {
+
+	frame $itk_interior.df
+	itk_component add dm {
+		#canvas $itk_component(test).dm
+		canvas $itk_interior.df.dm
+	} {
+	}
+	pack $itk_component(dm) -side top -fill both -expand 1
+
+	itk_component add cs {
+		panedwindow $itk_interior.cs
+	} {
+		ignore -orient
+		keep -background -borderwidth -cursor
+		keep -handlepad -handlesize -height 
+		keep -opaqueresize -relief
+		keep -sashcursor -sashpad -sashrelief
+		keep -sashwidth -showhandle -width 
+	}
+	pack $itk_component(cs) -expand 1 -fill both
+	set wname ""
+	set panes($wname) $itk_component(cs)
+	set panes($itk_component(cs)) $itk_component(cs)
+	eval itk_initialize $args
+}
+
+# ------------------------------------------------------------------
+#                        Private Methods
+# ------------------------------------------------------------------
+itcl::body ::mtiwidgets::Panemanager::_setProperty {prop var} {
+    if {$itk_option(-propertycommand) != ""} {
+		upvar $var data
+		return [eval $itk_option(-propertycommand) set $prop data]
+    }
+    return ""
+}
+
+itcl::body ::mtiwidgets::Panemanager::_getProperty {prop var def} {
+    upvar $var data
+    if {$itk_option(-propertycommand) != ""} {
+		return [eval $itk_option(-propertycommand) get $prop data $def]
+    }
+    set data $def
+}
+
+itcl::body ::mtiwidgets::Panemanager::_panes {pane nested} {
+	set rv [list]
+	foreach p [$pane panes] {
+		if {[lsearch -exact [array get itk_component] $p] >= 0} {
+			if {$nested} {
+				lappend rv [_panes $p $nested]
+			} else {
+				set rv [concat $rv [_panes $p $nested]]
+			}
+		} else {
+			lappend rv $p
+		}
+	}
+	return $rv
+}
+
+itcl::body ::mtiwidgets::Panemanager::panes {{nested no}} {
+	set pl [_panes $itk_component(cs) $nested]
+	return $pl
+}
+
+itcl::body ::mtiwidgets::Panemanager::_subpanes {p} {
+	set rv [list]
+	foreach sp [$p panes] {
+		if {[winfo class $sp] eq "Panedwindow"} {
+			set rv [concat $rv [list $sp] [_subpanes $sp]]
+		}
+	}
+	return $rv
+}
+
+itcl::body ::mtiwidgets::Panemanager::subpanes {} {
+	return [concat [list $itk_component(cs)] [_subpanes $itk_component(cs)]]
+}
+
+itcl::body ::mtiwidgets::Panemanager::paneconfigure {window args} {
+	if {[info exists panes($window)]} {
+		set pp $panes($window)
+		return [eval $pp paneconfigure $window $args]
+	} elseif {[info exists panes(${window},ph)]} {
+		set pp $panes(${window},ph)
+		return [eval $pp paneconfigure ${window},ph $args]
+	} else {
+		return [$itk_component(cs) paneconfigure $window]
+	}
+}
+
+itcl::body ::mtiwidgets::Panemanager::panecget {window option} {
+	if {$maxed_window eq $window} {
+		set window ${maxed_window},mx
+		set check_hide 1
+	} elseif {[info exists panes($window)]} {
+		set check_hide 0
+	} elseif {[info exists panes(${window},ph)]} {
+		set window ${window},ph
+		set check_hide 1
+	}
+	if {[info exists panes($window)]} {
+		set pp $panes($window)
+		if {$check_hide && $option eq "-hide"} {
+			if {[wm toplevel ${window}]} {
+				if {[winfo ismapped ${window}]} { return 0 } else { return 1 }
+			} else {
+				return 0
+			}
+		} else {
+			return [$pp panecget $window $option]
+		}
+	} else {
+		return [$itk_component(cs) panecget $window $option]
+	}
+}
+
+itcl::body ::mtiwidgets::Panemanager::exists {window} {
+	if {[info exists panes($window)] ||
+		[info exists panes(${window},ph)]} {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+itcl::body ::mtiwidgets::Panemanager::sash {cmd args} {
+	switch $cmd {
+		coords {
+			if {[llength $args] != 1} {
+				# Generate argument error
+				eval $itk_component(cs) sash
+			}
+			set idx [lindex $args 0]
+			if {[string is integer $idx]} {
+			} else {
+				
+			}
+		}
+		mark {
+		}
+		place {
+		}
+	}
+}
+
+itcl::body ::mtiwidgets::Panemanager::_addpane {parent orient} {
+	set pn $paneCnt
+	incr paneCnt
+	itk_component add -private $pn {
+		panedwindow $itk_component(cs).$pn -orient $orient
+	} {
+		ignore -orient
+		keep -background -borderwidth -cursor
+		keep -handlepad -handlesize -height 
+		keep -opaqueresize -relief
+		keep -sashcursor -sashpad -sashrelief
+		keep -sashwidth -showhandle -width 
+	}
+	return $itk_component($pn)
+}
+
+itcl::body ::mtiwidgets::Panemanager::_windowgone {window} {
+	# Cleanup after a managed window goes away
+	foreach win [list $window ${window},ph] {
+		if {[info exists panes($win)]} {
+			set pp $panes($win)
+			catch {$pp forget $win}
+			unset panes($win)
+			if {[info exists itk_component(cs)]} {
+				coalesce $pp
+			}
+		}
+	}
+}
+
+itcl::body ::mtiwidgets::Panemanager::_get_prior_ {window} {
+	set pl [panes]
+	if {[set ix [lsearch -regexp $pl -?$window]] > 0} {
+		set prior [lindex $pl [expr {$ix - 1}]]
+		if {[string index $prior 0] eq "-"} {
+			set prior [string range $prior 1 end]
+		}
+		return $prior
+	}
+	return {}
+}
+
+itcl::body ::mtiwidgets::Panemanager::hide {window} {
+	if {[wm toplevel $window]} {
+		wm withdraw $window
+	} else {
+		if {[info exists panes(${window},ph)]} {
+			set window ${window},ph
+		} elseif {$maxed_window eq $window} {
+			normal
+		}
+		set pp $panes($window)
+		$pp paneconfigure $window -hide yes
+
+		# Notify potential focus change to update Active window pane
+		event generate $window <<ActivateDefault>>
+		
+		foreach w [$pp panes] {
+			if {![$pp panecget $w -hide]} {
+				return ""
+			}
+		}
+		# Well, they're all hidden!
+		if {$itk_component(cs) ne $pp} {
+			hide $pp
+		}
+	}
+
+	return ""
+}
+
+itcl::body ::mtiwidgets::Panemanager::show {window} {
+	if {[info exists panes($window)] ||
+		[info exists panes(${window},ph)]} {
+		if {[wm toplevel $window]} {
+			wm deiconify $window
+		} else {
+			if { $maxed_window eq $window } {
+				return
+			}
+			set pp $panes($window)
+			if {$pp ne $itk_component(cs) && [$panes($pp) panecget $pp -hide]} {
+				show $pp
+			}
+			$pp paneconfigure $window -hide no
+		}
+	}
+	return ""
+}
+
+itcl::body ::mtiwidgets::Panemanager::add {window target where args} {
+	if {[info exists panes($window)] ||
+		[info exists panes(${window},ph)]} {
+		if {[wm toplevel $window]} {
+			join $window
+			# Remove -hide option, join will set correct hide state
+			if {[set ix [lsearch -exact $args -hide]] >= 0} {
+				set args [lreplace $args $ix [expr {$ix + 1}]]
+			}
+		}
+		set wp $panes($window)
+		$wp forget $window
+		coalesce $wp target
+		unset panes($window)
+	} else {
+		set bt [bindtags $window]
+		bindtags $window [concat panemanager-destroy-$window $bt]
+		bind panemanager-destroy-$window <Destroy> [itcl::code $this _windowgone $window]
+	}
+
+	if {$target eq $itk_component(cs)} {
+		set target ""
+	}
+	
+	if {$target ne "" && 
+		[winfo exists $target] && 
+		[wm toplevel $target]} {
+		set target ${target},ph
+	}
+
+	set pp $panes($target)
+
+	if {$where eq ""} {
+		if {[$pp cget -orient] eq "horizontal"} {
+			set where e
+		} else {
+			set where s
+		}
+	}
+
+	if {$target eq ""} {
+		switch $where {
+			n { set where above }
+			s { set where below }
+			e { set where right }
+			w { set where left  }
+		}
+	}
+
+	switch $where {
+		n {
+			if {[$pp cget -orient] eq "horizontal"} {
+				set pp [splitwindow $target]
+			}
+			eval [concat $pp add $window -minsize $itk_option(-minsize) $args -before [list $target]]
+			set panes($window) $pp
+		}
+		s {
+			if {[$pp cget -orient] eq "horizontal"} {
+				set pp [splitwindow $target]
+			}
+			eval [concat $pp add $window -minsize $itk_option(-minsize) $args -after [list $target]]
+			set panes($window) $pp
+		}
+		e {
+			if {[$pp cget -orient] eq "vertical"} {
+				set pp [splitwindow $target]
+			}
+			eval [concat $pp add $window -minsize $itk_option(-minsize) $args -after [list $target]]
+			set panes($window) $pp
+		}
+		w {
+			if {[$pp cget -orient] eq "vertical"} {
+				set pp [splitwindow $target]
+			}
+			eval [concat $pp add $window -minsize $itk_option(-minsize) $args -before [list $target]]
+			set panes($window) $pp
+		}
+		above {
+			if {[$pp cget -orient] eq "horizontal"} {
+				rotate $pp
+			}
+			set location [lindex [$pp panes] 0]
+			eval [concat $pp add $window -minsize $itk_option(-minsize) $args -before [list $location]]
+			set panes($window) $pp
+		}
+		below {
+			if {[$pp cget -orient] eq "horizontal"} {
+				rotate $pp
+			}
+			set location [lindex [$pp panes] end]
+			eval [concat $pp add $window -minsize $itk_option(-minsize) $args -after [list $location]]
+			set panes($window) $pp
+		}
+		left {
+			if {[$pp cget -orient] eq "vertical"} {
+				rotate $pp
+			}
+			set location [lindex [$pp panes] 0]
+			eval [concat $pp add $window -minsize $itk_option(-minsize) $args -before [list $location]]
+			set panes($window) $pp
+		}
+		right {
+			if {[$pp cget -orient] eq "vertical"} {
+				rotate $pp
+			}
+			set location [lindex [$pp panes] end]
+			eval [concat $pp add $window -minsize $itk_option(-minsize) $args -after [list $location]]
+			set panes($window) $pp
+		}
+	}
+	if {[info exists wp] && [winfo exists $wp]} {
+		# Cleanup at windows original location
+		coalesce $wp
+	}
+	# Cleanup windows destination
+	coalesce $pp
+	flatten $pp
+}
+
+#
+# Create a window using <cmd> which must return the window's pathname.
+# Then add the window using [$this add $window $args].
+# The <cmd> will be saved with the layout so that the windows can be 
+# recreated when restoring the layout, if they don't already exist
+itcl::body ::mtiwidgets::Panemanager::create {cmd args} {
+	if {[catch {uplevel $cmd} window]} {
+		error $window
+	}
+	if {[winfo exists $window]} {
+		eval add $window $args
+		set _create_cmds($window) $cmd
+	} else {
+		error "Window $window not found from $cmd"
+	}
+}
+
+#
+# If you need to reference a window after coalescing, pass
+# in the window reference as the retarget.  If this window gets
+# reassigned during the coalesceing, the new window path
+# will be replaced in the retarget variable
+#
+itcl::body ::mtiwidgets::Panemanager::coalesce {pane {retarget ""}} {
+	if {$pane eq $itk_component(cs)} {
+		return
+	}
+	if {$retarget ne ""} {
+		upvar $retarget target
+	} else {
+		set target ""
+	}
+	set pc [llength [$pane panes]]
+	if {$pc == 1} {
+		set pp $panes($pane)
+		set window [$pane panes]
+		set ppanes [$pp panes]
+		set idx [lsearch -exact $ppanes $pane]
+		set max [expr {[llength $ppanes] - 1}]
+		if {$idx == $max} {
+			set location [list -after {}]
+		} else {
+			incr idx
+			set location [list -before [lindex $ppanes $idx]]
+		}
+		if {[winfo class $window] ne "Panedwindow"} {
+			set options [_get_pane_options_ $pane $window]
+			$pane forget $window
+			$pp forget $pane
+			eval [concat [list $pp add $window -minsize $itk_option(-minsize)] $options $location]
+			destroy $pane
+			if {$pane eq $target} {
+				set target $pp
+			}
+			unset panes($pane)
+			set panes($window) $pp
+		} else {
+			foreach lw [$window panes] {
+				set options [_get_pane_options_ $window $lw]
+				$window forget $lw
+				eval [concat [list $pp add $lw -minsize $itk_option(-minsize)] $options $location]
+				unset panes($lw)
+				set panes($lw) $pp
+			}
+			unset panes($window)
+			$pane forget $window
+			destroy $window
+			$pp forget $pane
+			unset panes($pane)
+			destroy $pane
+		}
+		coalesce $pp target
+##
+## TODO:  Get stretch mode to propagate up the hierarchy correctly. 
+##        we don't want to use "always" everywhere,
+##
+#		set stretch last
+#		foreach p [_panes $pp 0] {
+#			if {[panecget $p -stretch] eq "always"} {
+#				set stretch always
+#				break
+#			}
+#		}
+#		echo $panes($pp) paneconfigure $pp -stretch $stretch
+	} elseif {$pc > 1 && $target eq ""} {
+		# Verify that the remaining panes are visible
+		# If not, then hide the panedwindow as well
+		set hide 1
+		foreach w [$pane panes] {
+			if {![$pane panecget $w -hide]} {
+				set hide 0
+				break
+			}
+		}
+		if {$hide} {
+			hide $pane
+		}
+		coalesce $panes($pane)
+	} elseif {$pc == 0 && $target eq ""} {
+		# If nothing is left, then eliminate this panedwindow
+		set pp $panes($pane)
+		destroy $pane
+		unset panes($pane)
+		coalesce $pp
+##
+## TODO:  Get stretch mode to propagate up the hierarchy correctly. 
+##        we don't want to use "always" everywhere,
+##
+# 		set stretch last
+# 		foreach p [_panes $pp 0] {
+# 			if {[panecget $p -stretch] eq "always"} {
+# 				set stretch always
+# 				break
+# 			}
+# 		}
+# 		echo $panes($pp) paneconfigure $pp -stretch $stretch
+	}
+}
+
+itcl::body ::mtiwidgets::Panemanager::flatten {pane {retarget ""}} {
+	foreach p [$pane panes] {
+		if {[winfo class $p] eq "Panedwindow"} {
+			flatten $p
+
+			if {[$p cget -orient] eq [$pane cget -orient]} {
+				set location $p
+				foreach lp [$p panes] {
+					set options [_get_pane_options_ $p $lp]
+					$p forget $lp
+					if {[winfo class $lp] eq "Panedwindow"} {
+						set newwindow [_pushdown $lp $pane]
+						# Sometimes pushdown doesn't, so check
+						if {$lp ne $newwindow} {
+							destroy $lp
+						}
+						unset panes($lp)
+						set lp $newwindow
+					}
+					eval [concat [list $pane add $lp -minsize $itk_option(-minsize)] $options [list -after $location]]
+					set panes($lp) $pane
+					set location $lp
+				}
+				$pane forget $p
+				destroy $p
+				unset panes($p)
+			}
+		}
+	}
+}
+
+itcl::body ::mtiwidgets::Panemanager::_pushdown {pane below {retarget ""}} {
+	if {([llength [split $pane .]] - 1) == [llength [split $below .]] &&
+		[winfo parent $pane] eq $below} {
+		# This pane is already below!"
+		return $pane
+	}
+	set newpane [_addpane $below [$pane cget -orient]]
+	if {$retarget ne ""} {
+		upvar $retarget target
+	} else {
+		set target ""
+	}
+	foreach p [$pane panes] {
+		set options [_get_pane_options_ $pane $p]
+		$pane forget $p
+		if {[winfo class $p] eq "Panedwindow" && 
+			[info exists panes($p)]} {
+			set newp [_pushdown $p $newpane target]
+			if {$p ne $newp} {
+				destroy $p
+			}
+			unset panes($p)
+			if {$p eq $target} {
+				set target $newp
+			}
+			set p $newp
+		}
+		eval [concat [list $newpane add $p] $options]
+		set panes($p) $newpane
+	}
+	if {$pane eq $target} {
+		set target $newpane
+	}
+	return $newpane
+}
+
+itcl::body ::mtiwidgets::Panemanager::rotate {pane} {
+	set orient [$pane cget -orient]
+	if {$orient eq "horizontal"} {
+		set neworient vertical
+	} else {
+		set neworient horizontal
+	}
+	set width [winfo width $pane]
+	set height [winfo height $pane]
+	if {[llength [$pane panes]] > 1} {
+		set newpane [_pushdown $pane $pane]
+		$pane configure -orient $neworient
+		$pane add $newpane -stretch always -minsize $itk_option(-minsize) -width $width -height $height
+		set panes($newpane) $pane
+	} else {
+		$pane configure -orient $neworient
+	}
+}
+
+itcl::body ::mtiwidgets::Panemanager::splitwindow {window} {
+	set pp $panes($window)
+	set orient [$pp cget -orient]
+	if {$orient eq "horizontal"} {
+		set neworient vertical
+		set sizeopt [list -width [$pp panecget $window -width]]
+	} else {
+		set neworient horizontal
+		set sizeopt [list -height [$pp panecget $window -height]]
+	}
+	set pane [_addpane $pp $neworient]
+	set ppanes [$pp panes]
+	set idx [lsearch -exact $ppanes $window]
+	set max [expr {[llength $ppanes] - 1}]
+	if {$idx == $max} {
+		set location [list -after {}]
+	} else {
+		incr idx
+		set location [list -before [lindex $ppanes $idx]]
+	}
+	set options [_get_pane_options_ $pp $window]
+	set i 0
+	foreach wx [$pp panes] {
+		if {$wx eq $window} {
+			break
+		}
+		if {[$pp panecget $wx -hide]} {
+			continue
+		}
+		incr i
+	}
+
+	$pp forget $window
+	eval [concat [list $pp add $pane -minsize $itk_option(-minsize)] $sizeopt $location]
+	set panes($pane) $pp
+	eval [concat [list $pane add $window] $options]
+	set panes($window) $pane
+	$panes($pane) paneconfigure $pane -stretch always
+
+	return $pane
+}
+
+itcl::body ::mtiwidgets::Panemanager::_get_pane_options_ {pane window} {
+	set options [list]
+	set minsize $itk_option(-minsize)
+	foreach opt [$pane paneconfigure $window] {
+		set o [lindex $opt 0]
+		switch -- $o {
+			"-width" {
+				lappend options $o [winfo width $window]
+			}
+			"-height" {
+				lappend options $o [winfo height $window]
+# 				if {[lindex $opt 4] > 0} {
+# 					lappend options $o [lindex $opt 4]
+# 				}
+			}
+			"-before" -
+			"-after" {
+				# Ignore these options
+			}
+			"-sticky" {
+				# The individual letters (n, s, e, w) are important
+				# their order is not, so we need to normalize
+				# the order before comparing them
+				set s1 [lsort [split [lindex $opt 3] {}]]
+				set s2 [lsort [split [lindex $opt 4] {}]]
+				if {$s1 ne $s2} {
+					lappend options $o [lindex $opt 4]
+				}
+			}
+			"-minsize" {
+				if {[lindex $opt 4] > $minsize} {
+					set minsize [lindex $opt 4]
+				}
+				if {[lindex $opt 3] != $minsize} {
+					lappend options $o $minsize
+				}
+			}
+			"-hide" {
+				if {[regexp {(.*),ph} $window dummy true_p] &&
+					[winfo toplevel $true_p] eq $true_p &&
+					[wm state $true_p] eq "withdrawn"} {
+					set withdrawn 2
+				} else {
+					set withdrawn 0
+				}
+
+				if {[lindex $opt 3] ne [lindex $opt 4]} {
+					lappend options $o [expr {$withdrawn | [lindex $opt 4]}]
+				}
+			}
+			default {
+				if {[lindex $opt 3] ne [lindex $opt 4]} {
+					lappend options $o [lindex $opt 4]
+				}
+			}
+		}
+	}
+	return $options
+}
+
+itcl::body ::mtiwidgets::Panemanager::_get_pane_offset_ {pane window} {
+	set pl [$pane panes]
+	set idx [lsearch -exact $pl $window]
+	if {$idx < 0} {
+		return {}
+	}
+	# Set current width & height so these up-to-date values are stored with the layout
+	$pane paneconfigure $window -width [winfo width $window] -height [winfo height $window]
+	set size [if {[$pane cget -orient] eq "horizontal"} {winfo width $pane} else {winfo height $pane}]
+	if {$idx == ([llength $pl] - 1)} {
+		#return 100%
+		return $size
+	}
+	set offset [lindex [$pane sash coord $idx] [expr {([$pane cget -orient] eq "horizontal") ? 0 : 1}]]
+	#set perc [expr {double($offset) / double($size) * 100.0}]
+	#return ${perc}%
+	return  $offset
+}
+	
+itcl::body ::mtiwidgets::Panemanager::_get_pane_size_ {pane window} {
+	set pl [$pane panes]
+	set idx [lsearch -exact $pl $window]
+	if {$idx < 0} {
+		return {}
+	}
+	# Set current width & height so these up-to-date values are stored with the layout
+	set size [if {[$pane cget -orient] eq "horizontal"} {winfo width $window} else {winfo height $window}]
+	return $size
+}
+	
+itcl::body ::mtiwidgets::Panemanager::_serialize {pane} {
+	set rl [list]
+	foreach p [$pane panes] {
+		if {[winfo class $p] eq "Panedwindow"} {
+			set subtree [_serialize $p]
+			# Skip empty panedwindows
+			if {[llength $subtree] > 0} {
+				# offset function has side effect, must be called before options
+				set offset [_get_pane_offset_ $pane $p]
+				lappend rl $subtree [_get_pane_options_ $pane $p] $offset "na"
+			}
+		} else {
+			if {[regexp {(.*),ph} $p dummy true_p]} {
+				set geom [wm geometry $true_p]
+			} else {
+				set true_p $p
+				set geom "na"
+			}
+			# offset function has side effect, must be called before options
+			set offset [_get_pane_offset_ $pane $p]
+			lappend rl $true_p [_get_pane_options_ $pane $p] $offset $geom
+		}
+	}
+	return $rl
+}
+
+itcl::body ::mtiwidgets::Panemanager::serialize {} {
+	if {$maxed_window ne ""} {
+		set sv [lrange $restore_state 0 1]
+	} else {
+		set sv [list [$itk_component(cs) cget -orient] [_serialize $itk_component(cs)]]
+	}
+	# Fix dts0100345847
+	if {[winfo exists $maxed_window] &&
+		[winfo class $maxed_window] eq "Paneframe" &&
+		[$maxed_window cget -headervisible]} {
+		lappend sv $maxed_window
+		set addzoom 0
+	} else {
+		set addzoom 1
+	}
+	if {[info exists _create_cmds]} {
+		# Clear out dead windows
+		foreach win [array names _create_cmds] {
+			if {![winfo exists $win]} {
+				unset _create_cmds($win)
+			}
+		}
+		if {[llength [array names _create_cmds]] > 0} {
+			if {$addzoom} {
+				lappend sv {}
+			}
+			lappend sv [array get _create_cmds]
+		}
+	}
+	return $sv
+}
+
+itcl::body ::mtiwidgets::Panemanager::_clear_all_ {pane} {
+	# We only destroy the panedwindows, not the true client windows.
+	set destroyIt 0
+	foreach p [$pane panes] {
+		if {[winfo class $p] eq "Panedwindow"} {
+			_clear_all_ $p
+			set destroyIt 1
+		}
+		$pane forget $p
+		unset panes($p)
+		if {[regexp {(.*),ph} $p dummy true_p]} {
+			wm toplevel $true_p 0
+			# Make sure to put everything back in order for a joined window
+			event generate $true_p <<DockPane>>
+			if {[$true_p cget -expelcommand] ne ""} {
+				if {[catch {eval $true_p component expelbutton configure [GetButtonIcon expel]} foo]} {
+					puts stderr "expel image error: $foo\n$::errorInfo"
+				}
+			}
+			if {[info exists panes($true_p)]} {unset panes($true_p)}
+			set destroyIt 1
+		}
+		if {[regexp {(.*),mx} $p dummy true_p]} {
+			pack forget $true_p
+			if {[info exists panes($true_p)]} {unset panes($true_p)}
+			set destroyIt 1
+			if {[winfo exists $maxed_window]} {
+				pack forget $maxed_window
+				set maxed_window ""
+				pack $itk_component(cs) -expand 1 -fill both
+			}
+		}
+		if {$destroyIt} {
+			destroy $p
+			set destroyIt 0
+		}
+	}
+	set restore_state ""
+}
+
+itcl::body ::mtiwidgets::Panemanager::patch_state {state} {
+	lset state 1 [_patch_state_ [lindex $state 1] [winfo width $itk_interior] [winfo height $itk_interior] [lindex $state 0]]
+}
+
+itcl::body ::mtiwidgets::Panemanager::_patch_state_ {state width height orient} {
+	set iw [string equal $orient "horizontal"]
+	set size [expr {$iw ? $width : $height}]
+	if {$iw} {
+		set neworient "vertical"
+		set swtch -width
+	} else {
+		set neworient "horizontal"
+		set swtch -height
+	}
+	set last_offset 0
+	set ix 0
+	foreach {p opt offset geom} $state {
+		if {[llength $p] == 0} {
+			# Skip emty panes
+			continue
+		}
+		if {[regexp {(\d+\.?\d*)%} $offset dummy perc]} {
+			set offset [expr {int($size * $perc / 100.0)}]
+			lset state [expr {($ix * 4) + 2}] $offset
+			if {[set ox [lsearch $opt $swtch]] >= 0} {
+				# Remove sizing switch to be replaced later
+				set oxs [incr ox]
+				set opt [lreplace $opt $oxs $ox]
+			}
+		}
+		incr ix
+	}
+	set last_offset 0
+	set ix 0
+	set pw $width
+	set ph $height
+	foreach {p opt offset geom} $state {
+		if {[llength $p] == 0} {
+			# Skip emty panes
+			continue
+		}
+		if {$iw} {
+			set pw [expr {$offset - $last_offset}]
+			set wid $pw
+		} else {
+			set ph [expr {$offset - $last_offset}]
+			set wid $ph
+		}
+		if {[llength $p] > 1} {
+			lset state [expr {($ix * 4) + 0}] [_patch_state_ $p $pw $ph $neworient]
+		}
+		if {[set ox [lsearch $opt $swtch]] < 0} {
+			lappend opt $swtch $wid
+		}
+		lset state [expr {($ix * 4) + 1}] $opt
+		set last_offset $offset
+		incr ix
+	}
+	return $state
+}
+
+itcl::body ::mtiwidgets::Panemanager::unserialize {state} {
+	set tmp [serialize]
+	if {$tmp eq $state} {
+		set normalDelayId ""
+		return
+	}
+	unset tmp
+	set state [patch_state $state]
+	_clear_all_ $itk_component(cs)
+	array unset _create_cmds
+	if {[llength $state] == 4} {
+		array set _create_cmds [lindex $state 3]
+	}
+	$itk_component(cs) configure -orient [lindex $state 0]
+	set pane $itk_component(cs)
+	set _sash_stack [list]
+	set pane [_unserialize_ $pane [lindex $state 1] 0]
+	if {$sashDelayId ne ""} {
+		after cancel $sashDelayId
+	}
+	foreach cmds $ripQue {
+	    foreach cmd $cmds {
+		eval $cmd
+	    }
+	}
+	set ripQue [list]
+	if {[lindex $state 2] ne ""} {
+		set window [lindex $state 2]
+		set restore_state [lrange $state 0 1]
+		# Create a place holder for this window
+		# since only one geometry manager can "own"
+		# a window at a time, this window will be
+		# removed from the panedwindow once [wm] gets
+		# a hold of it.
+		set ph [frame ${window},mx]
+		set pp $panes($window)
+		hide $window
+		eval [linsert [_get_pane_options_ $pp $window] 0 $pp add $ph -before $window]
+		set panes($ph) $pp
+		hide ${window},mx
+		if {[winfo manage $itk_component(cs)] ne ""} {
+			pack forget $itk_component(cs)
+		}
+		pack $window -fill both -expand 1
+		set maxed_window $window
+		catch "$window component maxbutton configure [GetButtonIcon minus]"
+		
+	} else {
+		set done 0
+		while {! $done} {
+			set done 1
+			foreach p [subpanes] {
+				if {[winfo exists $p]} {
+					coalesce $p
+				} else {
+					set done 0
+					break
+				}
+			}
+		}
+	}
+}
+
+itcl::body ::mtiwidgets::Panemanager::_restoreSashes_ {sash_stack} {
+	set mpc 0
+
+	set top [winfo toplevel $itk_component(cs)]
+	if {[wm state $top] eq "withdrawn"} {
+		# None of the panedwindows have been mapped to the screen yet
+		# So wait some more until that happens, otherwise the
+		# work in placing the sashes will be for naught
+		wm deiconify $top
+		after 797 [itcl::code $this _restoreSashes_ $sash_stack]
+		return ""
+	}
+	foreach p [panes] {
+		if {[panecget $p -hide] ||
+			[regexp {(.*),ph} $p dummy true_p]} {
+			continue
+		}
+		incr mpc [winfo ismapped $p]
+	}
+	if {$mpc <= 0} {
+		# None of the panes have been mapped to the screen yet
+		# So wait some more until that happens, otherwise the
+		# work in placing the sashes will be for naught
+		set sashDelayId [after 797 [itcl::code $this _restoreSashes_ $sash_stack]]
+		return
+	}
+	foreach {p i os or} $sash_stack {
+		update idletask
+		if {![winfo exists $p]} { continue }
+		if {[regexp {(\d+\.?\d*)%} $os dummy perc]} {
+			if {[winfo ismapped $p]} {
+				set pw [winfo width $p]
+				set ph [winfo height $p]
+			} else {
+				set pw [winfo reqwidth $p]
+				set ph [winfo reqheight $p]
+			}
+			set size [expr {($or eq "horizontal") ? $pw : $ph}]
+			set offset [expr {int($size * $perc / 100.0)}]
+		} else {
+			set offset $os
+		}
+		if {$offset == 0} {
+			continue
+		}
+		if {$or eq "horizontal"} {
+			#$p sash place $i $offset 0
+#			puts stderr "[lindex [$p panes] $i] configure -width $offset"
+			$p paneconfigure [lindex [$p panes] $i] -width $offset
+		} else {
+			#$p sash place $i 0 $offset
+#			puts stderr "[lindex [$p panes] $i] configure -height $offset"
+			$p paneconfigure [lindex [$p panes] $i] -height $offset
+		}
+	}
+	set sashDelayId ""
+}
+
+itcl::body ::mtiwidgets::Panemanager::_unserialize_ {pane state size} {
+	set orient [$pane cget -orient]
+	set prior {}
+	set last_offset 0
+	foreach {p opt offset geom} $state {
+		if {[llength $p] == 0} {
+			# Skip empty panes
+			continue
+		}
+		if {[llength $p] == 1} {
+			if {![winfo exists $p]} {
+				if {[info exists _create_cmds($p)]} {
+					set cmd $_create_cmds($p)
+					if {[catch {uplevel "#0" $cmd} window]} {
+						puts stderr "Error: $window"
+						unset _create_cmds($p)
+						continue
+					}
+					if {$window ne $p} {
+						puts stderr "Recreate from $cmd did not create the same window"
+						unset _create_cmds($p)
+						continue
+					}
+				} else {
+					continue
+				}
+			}
+			if {[regexp {(\d+\.?\d*)%} $offset dummy perc]} {
+				if {[winfo ismapped $pane]} {
+					set pw [winfo width $pane]
+					set ph [winfo height $pane]
+				} else {
+					set pw [winfo reqwidth $pane]
+					set ph [winfo reqheight $pane]
+				}
+				set size [expr {($orient eq "horizontal") ? $pw : $ph}]
+				set offset [expr {int($size * $perc / 100.0)}]
+			}
+			set major [expr {$offset - $last_offset}]
+
+			if {$major > 5} {
+				if {$orient eq "horizontal"} {
+					#$p sash place $i $offset 0
+					#lappend opt -width $major -height $size
+				} else {
+					#$p sash place $i 0 $offset
+					#lappend opt -height $major -width $size
+				}
+				set last_offset $offset
+			}
+			if {[winfo toplevel $p] eq $p} {
+				set winIsRipped 1
+			} else {
+				set winIsRipped 0
+			}
+			eval [concat [list $pane add $p] $opt]
+			set panes($p) $pane
+ 			if {[regexp {(\d+)x(\d+)\+(-?\d+)\+(-?\d+)} $geom dummy width height x y] } {
+			    set cmd [list [list rip $p $x $y $width $height]]
+			    set hide_ix [lsearch -exact $opt "-hide"]
+			    incr hide_ix
+			    if {$hide_ix > 0 &&
+					[lindex $opt $hide_ix] & 2} {
+					lappend cmd [list wm withdraw $p]
+			    }
+			    lappend ripQue $cmd
+			} elseif {$geom ne "na"} {
+				CallTrace stderr "Bad geometry spec: $geom\nState=$state"
+			} else {
+				if {$winIsRipped} {
+#					puts stderr "window $p is joined!"
+				}
+			}
+		} else {
+
+			if {$orient eq "horizontal"} {
+				set neworient vertical
+			} else {
+				set neworient horizontal
+			}
+			if {[regexp {(\d+\.?\d*)%} $offset dummy perc]} {
+				if {[winfo ismapped $pane]} {
+					set pw [winfo width $pane]
+					set ph [winfo height $pane]
+				} else {
+					set pw [winfo reqwidth $pane]
+					set ph [winfo reqheight $pane]
+				}
+				set size [expr {($orient eq "horizontal") ? $pw : $ph}]
+				set offset [expr {int($size * $perc / 100.0)}]
+			}
+			set major [expr {$offset - $last_offset}]
+
+			set newpane [_addpane $pane $neworient]
+			set newpane [_unserialize_ $newpane $p $major]
+
+			if {$offset > 5} {
+				if {$orient eq "horizontal"} {
+					#$p sash place $i $offset 0
+					#lappend opt -width $major -height $size
+				} else {
+					#$p sash place $i 0 $offset
+					#lappend opt -height $major -width $size
+				}
+				set last_offset $offset
+			}
+			eval [concat [list $pane add $newpane] $opt]
+
+			set panes($newpane) $pane
+		}
+		set prior $p
+	}
+	return $pane
+}
+
+itcl::body ::mtiwidgets::Panemanager::_make_bbox {wid} {
+	_rm_bbox $wid
+	toplevel $wid.top -bg black ; wm overrideredirect $wid.top 1
+	toplevel $wid.btm -bg black ; wm overrideredirect $wid.btm 1
+	toplevel $wid.lft -bg black ; wm overrideredirect $wid.lft 1
+	toplevel $wid.rgt -bg black ; wm overrideredirect $wid.rgt 1
+	_draw_bbox $wid $wid xx 0 0
+}
+
+itcl::body ::mtiwidgets::Panemanager::_rm_bbox {wid} {
+	destroy $wid.top $wid.btm $wid.lft $wid.rgt
+}
+
+itcl::body ::mtiwidgets::Panemanager::_draw_bbox {wid at where x y} {
+	if {![winfo exists $wid.top]} {
+		return
+	}
+	set rx [winfo rootx $at]
+	set ry [winfo rooty $at]
+	set h [winfo height $at]
+	set w [winfo width $at]
+	set h5 [expr {$h / 5}]
+	set w5 [expr {$w / 5}]
+	switch -glob $where {
+		neutral {
+			set x1 $rx;             set y1 $ry
+			set x2 [expr {$rx+$w}]; set y2 [expr {$ry+$h}]
+		}
+		to {
+			set x1 $rx;             set y1 $ry
+			set x2 [expr {$rx+$w}]; set y2 [expr {$ry+$h5}]
+		}
+		ti {
+			set x1 $rx;             set y1 $ry
+			set x2 [expr {$rx+$w}]; set y2 [expr {$ry+($h/2)}]
+		}
+		bi {
+			set x1 $rx;             set y1 [expr {$ry+($h/2)}]
+			set x2 [expr {$rx+$w}]; set y2 [expr {$ry+$h}]
+		}
+		bo {
+			set x1 $rx;             set y1 [expr {$ry+(4*$h5)}]
+			set x2 [expr {$rx+$w}]; set y2 [expr {$ry+$h}]
+		}
+		lo {
+			set x1 $rx;              set y1 $ry
+			set x2 [expr {$rx+$w5}]; set y2 [expr {$ry+$h}]
+		}
+		li {
+			set x1 $rx;                 set y1 $ry
+			set x2 [expr {$rx+($w/2)}]; set y2 [expr {$ry+$h}]
+		}
+		ri {
+			set x1 [expr {$rx+($w/2)}]; set y1 $ry
+			set x2 [expr {$rx+$w}];     set y2 [expr {$ry+$h}]
+		}
+		ro {
+			set x1 [expr {$rx+(4*$w5)}]; set y1 $ry
+			set x2 [expr {$rx+$w}];      set y2 [expr {$ry+$h}]
+		}
+		xx {
+			set x1 $rx;               set y1 $ry
+			set x2 [expr {$rx + $w}]; set y2 [expr {$ry + $h}]
+		}
+		mv* {
+			regexp {mv(\d)} $where dummy si
+			set offset [lindex [$at sash coord $si] 1]
+
+			set x1 $rx;               set y1 [expr {$ry + $offset - 20}]
+			set x2 [expr {$rx + $w}]; set y2 [expr {$ry + $offset + 20}]
+		}
+		mh* {
+			regexp {mh(\d)} $where dummy si
+			set offset [lindex [$at sash coord $si] 0]
+
+			set x1 [expr {$rx + $offset - 20}]; set y1 $ry
+			set x2 [expr {$rx + $offset + 20}]; set y2 [expr {$ry + $h}]
+		}
+		outed {
+			set dx [expr {$_startx - [winfo rootx $wid]}]
+			set dy [expr {$_starty - [winfo rooty $wid]}]
+			set x1 [expr {$x-$dx}]; set y1 [expr {$y-$dy}]
+			set x2 [expr {$x1+$w}]; set y2 [expr {$y1+$h}]
+		}
+		center {
+			set x1 [expr {$rx+($w/3)}]; set y1 [expr {$ry+$h/3}]
+			set x2 [expr {$rx+$w*2/3}]; set y2 [expr {$ry+$h*2/3}]
+		}
+	}
+
+	wm geom $wid.top [format "%dx%d+%d+%d" [expr {$x2-$x1}] 2                $x1 $y1]
+	wm geom $wid.lft [format "%dx%d+%d+%d" 2                [expr {$y2-$y1}] $x1 $y1]
+	wm geom $wid.rgt [format "%dx%d+%d+%d" 2                [expr {$y2-$y1}] $x2 $y1]
+	wm geom $wid.btm [format "%dx%d+%d+%d" [expr {$x2-$x1}] 2                $x1 $y2]
+}
+
+itcl::body ::mtiwidgets::Panemanager::_startdrag {window childsite header x y} {
+	set _startx $x
+	set _starty $y
+	set _startbbox(x1) [winfo rootx $itk_component(hull)]
+	set _startbbox(y1) [winfo rooty $itk_component(hull)]
+	set _startbbox(x2) [expr {[winfo width $itk_component(hull)] + $_startbbox(x1)}]
+	set _startbbox(y2) [expr {[winfo height $itk_component(hull)] + $_startbbox(y1)}]
+	set current_bbox $window
+	_makedragmap
+}
+
+itcl::body ::mtiwidgets::Panemanager::_dragging {window header x y} {
+	if {![info exists _startx]} {
+		return
+	}
+	if {($_startx-3 < $x && $x < $_startx+3) &&
+		($_starty-3 < $y && $y < $_starty+3)} {
+		# Haven't moved very far
+		return
+	}
+	if {![winfo exists $window.top]} {
+		_make_bbox $window
+	}
+	_report_map $x $y
+}
+
+itcl::body ::mtiwidgets::Panemanager::_enddrag {window header x y} {
+	if {![info exists _startbbox]} {
+		return
+	}
+	set mt [_report_map $x $y]
+	_rm_bbox $window
+	if {($_startx-3 < $x && $x < $_startx+3) &&
+		($_starty-3 < $y && $y < $_starty+3)} {
+		# Haven't moved very far
+		return
+	}
+	if {[llength $mt] == 2} {
+		set dest [lindex $mt 0]
+		set compass [lindex $mt 1]
+		if {$compass eq "rip"} {
+			set dx [expr {$_startx - [winfo rootx $window]}]
+			set dy [expr {$_starty - [winfo rooty $window]}]
+			rip $window [expr {$x - $dx}] [expr {$y - $dy}] [winfo width $window] [winfo height $window]
+		} else {
+			if {$dest eq $window} {
+				return
+			}
+			if {[wm toplevel $window]} {
+				set options [_get_pane_options_ $panes(${window},ph) ${window},ph]
+			} else {
+				set options [_get_pane_options_ $panes($window) $window]
+			}
+			eval [concat [list add $window $dest $compass] $options]
+		}
+	}
+}
+
+itcl::body ::mtiwidgets::Panemanager::rip {window x y width height} {
+	incr inToggleRip
+	if {![wm toplevel $window]} {
+		if {$maxed_window eq $window} {
+			normal
+		}	
+                if { $width < 200 } {
+                        set width 200
+                }
+                if { $height < 200 } {
+                        set height 200
+                }
+		# Create a place holder for this window
+		# since only one geometry manager can "own"
+		# a window at a time, this window will be
+		# removed from the panedwindow once [wm] gets
+		# a hold of it.
+		set ph [frame ${window},ph]
+		set pp $panes($window)
+		set rip_save_size($window) [_get_pane_size_ $pp $window]
+		hide $window
+		eval [linsert [_get_pane_options_ $pp $window] 0 $pp add $ph -before $window]
+		set panes($ph) $pp
+		unset panes($window)
+		hide ${window},ph
+		set oldTop [winfo toplevel $window]
+		wm toplevel $window 1
+		if {[$window cget -hidecommand] ne ""} {
+			wm protocol $window WM_DELETE_WINDOW [$window cget -hidecommand]
+		} else {
+			wm protocol $window WM_DELETE_WINDOW [itcl::code $this join $window]
+		}
+		if {[$window cget -expelcommand] ne ""} {
+			catch "$window component expelbutton configure [GetButtonIcon join]"
+		}
+		if {[$window cget -maximizecommand] ne ""} {
+			catch "$window component maxbutton configure -state disabled"
+		}
+		_updateBindtags $window $oldTop
+		wm title $window [$window cget -text]
+
+		if {[catch {$window invoke expel} foo]} {
+			puts stderr "Expel error:$foo\n$::errorInfo"
+		}
+		wm geometry $window [format %dx%d+%d+%d $width $height $x $y]
+		event generate $window <<UndockPane>>
+		update idletasks
+	} else {
+		# move it
+		set width [winfo width $window]
+		set height [winfo height $window]
+		after idle wm geometry $window [format %dx%d+%d+%d $width $height $x $y]		
+	}
+	incr inToggleRip -1
+}
+
+itcl::body ::mtiwidgets::Panemanager::_join {orient state window size} {
+	set i 0
+	foreach {p opt offset geom} $state {
+		if {[llength $p] == 1} {
+			if {$p eq $window} {
+				lset state [expr {$i + 0}] $window
+				set ix [lsearch -exact $opt -hide]
+				lset state [expr {$i + 1}] [expr {$ix + 1}] 0
+				if {$orient eq "vertical"} {
+					set ix [lsearch -exact $opt -height]
+					lset state [expr {$i + 1}] [expr {$ix + 1}] $size
+				} else {
+					set ix [lsearch -exact $opt -width]
+					lset state [expr {$i + 1}] [expr {$ix + 1}] $size
+				}
+				lset state [expr {$i + 3}] na
+				break
+			}
+		} else {
+			if {$orient eq "vertical"} {
+				set norient "horizontal"
+			} else {
+				set norient "vertical"
+			}
+			lset state [expr {$i + 0}] [_join $norient $p $window $size]
+		}
+		incr i 4
+	}
+	return $state
+}
+
+itcl::body ::mtiwidgets::Panemanager::join {window} {
+	incr inToggleRip
+	if {[wm toplevel $window]} {
+		set lo [serialize]
+		#lset lo 1 [_join [lindex $lo 0] [lindex $lo 1] $window $rip_save_size($window)]
+		set oldTop [winfo toplevel $window]
+		wm toplevel $window 0
+		set ph ${window},ph
+		set pp $panes($ph)
+		set panes($window) $pp
+		set opt [_get_pane_options_ $pp $ph]
+		if {[$pp cget -orient] eq "vertical"} {
+			set ix [lsearch -exact $opt -height]
+			lset opt [expr {$ix + 1}] $rip_save_size($window)
+		} else {
+			set ix [lsearch -exact $opt -width]
+			lset opt [expr {$ix + 1}] $rip_save_size($window)
+		}
+		eval [linsert $opt 0 $pp add $window -after $ph ]
+		$pp forget $ph
+		unset panes($ph)
+		destroy $ph
+		unset rip_save_size($window)
+		if {[$window cget -expelcommand] ne ""} {
+			catch "$window component expelbutton configure [GetButtonIcon expel]"
+		}
+		if {[$window cget -maximizecommand] ne ""} {
+			catch "$window component maxbutton configure -state normal"
+		}
+		_updateBindtags $window $oldTop
+		show $window
+		if {[catch {$window invoke expel} foo]} {
+			puts stderr "Expel error: $foo\n$::errorInfo"
+		}
+		event generate $window <<DockPane>>
+	}
+	incr inToggleRip -1
+}
+
+itcl::body ::mtiwidgets::Panemanager::togglerip {window {geometry ""}} {
+	if {$inToggleRip} { return }
+	incr inToggleRip
+	normal
+	if {[wm toplevel $window]} {
+		set geo [wm geometry $window]
+		join $window
+		if {[winfo class $window] eq "Paneframe"} {
+			$window Activate $window
+		}
+		incr inToggleRip -1
+		return $geo
+	} else {
+		set x [expr {[winfo rootx $window] + 10}]
+		set y [expr {[winfo rooty $window] - 10}]
+		set width [winfo width $window]
+		set height [winfo height $window]
+		if {[info exists ::mtiwidgets::Paneframe::_currentActive_] &&
+			$::mtiwidgets::Paneframe::_currentActive_ ne ""} {
+			set caw [$::mtiwidgets::Paneframe::_currentActive_ component hull]
+			if {$window eq $caw} {
+				set nf [FocusNext $window]
+				if {$nf ne "" && $nf ne $window} {
+					$nf Activate $window
+				}
+			}
+		}
+		rip $window $x $y $width $height
+		set title [$window cget -text]
+		wm title $window $title
+		if {$geometry ne ""} {
+		    after idle [code $this _adjustGeometry $window $geometry]
+		}
+		incr inToggleRip -1
+		return ""
+	}
+}
+
+itcl::body mtiwidgets::Panemanager::_adjustGeometry {w geom} {
+	if {[catch {wm geometry $w $geom} err]} {
+		puts stderr "error in adjustGeometry: $err"
+	}
+}
+
+itcl::body mtiwidgets::Panemanager::_updateBindtags {w oldTop} {
+	set top [winfo toplevel $w]
+	set bt [bindtags $w]
+	set oldtags [lsearch -all -exact $bt $oldTop]
+	set newtags [lsearch -all -exact $bt $top]
+	if {$w ne $top && 
+		[list [winfo class $w] all] eq [lrange $bt end-1 end]} {
+		set bt [linsert $bt end-1 $top]
+	} elseif {[llength $newtags] <= 0} {
+		foreach ix [lsort -decreasing -integer $oldtags] {
+			set bt [lreplace $bt $ix $ix $top]
+		}
+	} else {
+		foreach ix [lsort -decreasing -integer $oldtags] {
+			set bt [lreplace $bt $ix $ix]
+		}
+	}
+	bindtags $w $bt
+	foreach c [winfo children $w] {
+		_updateBindtags $c $oldTop
+	}
+}
+
+itcl::body mtiwidgets::Panemanager::maximize {{window ""}} {
+	if {$window eq ""} {
+		return $maxed_window
+	}
+	if {![info exists panes($window)] || [wm toplevel $window]} {
+		return
+	}
+	if {[regexp {^(.*),mx$} $window -> rw]} {
+		set window $rw
+	}
+	if {[regexp {^(.*),ph$} $window -> rw]} {
+		set window $rw
+	}
+	if {$maxed_window eq "" || $maxed_window != $window} {
+		if {$maxed_window ne ""} {
+			# put current maxed_window back into panes
+			set ph ${maxed_window},mx
+			set pp $panes($maxed_window)
+			eval [linsert [_get_pane_options_ $pp $ph] 0 $pp add $maxed_window -after $ph]
+			$pp forget $ph
+			catch {unset panes($ph)}
+			destroy $ph
+			show $maxed_window
+		}
+		if {$restore_state eq ""} {
+			set restore_state [serialize]
+		}
+
+		# Create a place holder for this window
+		# since only one geometry manager can "own"
+		# a window at a time, this window will be
+		# removed from the panedwindow once [wm] gets
+		# a hold of it.
+		set ph [frame ${window},mx]
+		set pp $panes($window)
+#		hide $window
+		eval [linsert [_get_pane_options_ $pp $window] 0 $pp add $ph -before $window]
+		set panes($ph) $pp
+#		hide ${window},mx
+		if {[winfo manage $itk_component(cs)] ne ""} {
+			pack forget $itk_component(cs)
+		}
+		pack $window -fill both -expand 1
+		set maxed_window $window
+		catch "$window component maxbutton configure [GetButtonIcon minus]"
+		event generate $itk_component(hull) <<MaxView>>
+	}
+	return
+}
+
+itcl::body mtiwidgets::Panemanager::normal {} {
+	if {$maxed_window ne ""} {
+		set window $maxed_window
+		set maxed_window ""
+		set ph ${window},mx
+		set pp $panes($window)
+		eval [linsert [_get_pane_options_ $pp $ph] 0 $pp add $window -after $ph]
+		$pp forget $ph
+		unset panes($ph)
+		destroy $ph
+		catch "$window component maxbutton configure [GetButtonIcon plus]"
+		show $window
+		pack $itk_component(cs) -expand 1 -fill both
+		unserialize $restore_state
+		set restore_state ""
+		event generate $itk_component(hull) <<NormalView>>
+	}
+	return
+}
+
+itcl::body mtiwidgets::Panemanager::togglemax {window} {
+	while {[winfo exists $window] &&
+		   $window ne "." &&
+		   [winfo class $window] ne "Paneframe"} {
+		set window [winfo parent $window]
+	}
+	if {$maxed_window eq ""} {
+		maximize $window
+		return 1
+	} else {
+		normal
+		return 0
+	}
+}
+
+itcl::body mtiwidgets::Panemanager::state {window} {
+	while {[winfo exists $window] &&
+		   $window ne "." &&
+		   [winfo class $window] ne "Paneframe"} {
+		if {[regexp {(.*),ph} $window dummy true_win]} {
+			set window $true_win
+		} else {
+			set window [winfo parent $window]
+		}
+	}
+	if {![winfo exists $window]} {
+		error "$window not a Paneframe"
+	}
+	if {[wm toplevel $window]} {
+		if {[wm state $window] eq "withdrawn"} {
+			return hidden
+		} else {
+			return undocked
+		}
+	} elseif {$maxed_window eq $window} {
+		return zoomed
+	} elseif {[panecget $window -hide]} {
+		return hidden
+	} else {
+		return normal
+	}
+}
+
+itcl::body ::mtiwidgets::Panemanager::nextfc {rr gg bb} {
+	upvar $rr r
+	upvar $gg g
+	upvar $bb b
+
+	incr r 40
+	if {$r > 255} {
+		set r 70
+	} else {
+		return [format "#%02x%02x%02x" $r $g $b]
+	}
+	incr g 40
+	if {$g > 255} {
+		set g 70
+	} else {
+		return [format "#%02x%02x%02x" $r $g $b]
+	}
+	incr b 40
+	if {$b > 255} {
+		set b 70
+	}
+	return [format "#%02x%02x%02x" $r $g $b]
+}
+
+itcl::body ::mtiwidgets::Panemanager::_type_cmp_ {t1 t2} {
+	switch -glob $t1 {
+		A -
+		B -
+		C {
+			if {$t1 eq "C"} {
+				return 1
+			} elseif {$t2 eq "B" || $t2 eq "A"} {
+				return 0
+			} else {
+				return -1
+			}
+		}
+		First -
+		Middle* -
+		Last {
+			switch -glob $t2 {
+				Lead -
+				Tail -
+				A -
+				B {
+					return 1
+				}
+				First -
+				Middle* -
+				Last {
+					return 0
+				}
+				default {
+					return -1
+				}
+			}
+		}
+		Lead -
+		Tail {
+			if {$t2 eq "Lead" || $t2 eq "Tail"} {
+				return 0
+			} else {
+				return -1
+			}
+		}
+		Neutral {
+			if {$t2 eq "Neutral"} {
+				return 0
+			} else {
+				return -1
+			}
+		}
+	}
+}
+
+itcl::body ::mtiwidgets::Panemanager::_report_map {x y} {
+	if {![info exists _startbbox]} {
+		return [list]
+	}
+	# First check outside bbox
+	if {$maxed_window ne ""} {
+		set type Outside
+	} elseif {$x < $_startbbox(x1)-5 || $_startbbox(x2)+5 < $x ||
+		$y < $_startbbox(y1)-5 || $_startbbox(y2)+5 < $y} {
+		set type Outside
+	} else {
+		set dm $itk_component(dm)
+		set dx [expr {$x - [winfo rootx $itk_interior]}]
+		set dy [expr {$y - [winfo rooty $itk_interior]}]
+		set cx $x ;#[$dm canvasx $dx]
+		set cy $y ;#[$dm canvasy $dy]
+		set tag [$dm find closest $cx $cy 0]
+		set starttag $tag
+		set tag [$dm find closest $cx $cy 0 $tag]
+		while {$tag ne ""} {
+			if {[info exists mapchild($tag)]} {
+				if {![info exists type] ||
+					[_type_cmp_ $maptype($tag) $type] > 0} {
+					set type $maptype($tag)
+					set child $mapchild($tag)
+				}
+			}
+			set tag [$dm find closest $cx $cy 0 $tag]
+			if {$tag eq $starttag} {
+				break
+			}
+		}
+		if {![info exists child] ||
+			![winfo exists $child] ||
+			![winfo exists $current_bbox.top]} {
+			return [list]
+		}
+	}
+
+	switch -glob $type {
+		A {
+			set p $panes($child)
+			set orient [$p cget -orient]
+			if {$orient eq "horizontal"} {
+				set where ti
+				set compass n
+			} else {
+				set where li
+				set compass w
+			}
+			set dest $child
+		}
+		B {
+			set p $panes($child)
+			set orient [$p cget -orient]
+			if {$orient eq "horizontal"} {
+				set where bi
+				set compass s
+			} else {
+				set where ri
+				set compass e
+			}
+			set dest $child
+		}
+		C {
+			set p $panes($child)
+			set orient [$p cget -orient]
+			set where center
+			set compass pivot
+			set dest $child
+		}
+		First {
+			set orient [$child cget -orient]
+			if {$orient eq "horizontal"} {
+				set where lo
+				set compass w
+			} else {
+				set where to
+				set compass n
+			}
+			foreach dest [$child panes] {
+				if {![regexp {.*,ph} $dest]} {
+					break
+				}
+			}
+		}
+		Middle* {
+			set orient [$child cget -orient]
+			regexp {Middle\((\d)\)} $type dummy si
+			if {$orient eq "horizontal"} {
+				set where mh$si
+				set compass w
+			} else {
+				set where mv$si
+				set compass n
+			}
+			incr si
+			foreach dest [lrange [$child panes] $si end] {
+				if {![regexp {.*,ph} $dest]} {
+					break
+				}
+			}
+		}
+		Last {
+			set orient [$child cget -orient]
+			if {$orient eq "horizontal"} {
+				set where ro
+				set compass e
+			} else {
+				set where bo
+				set compass s
+			}
+			# search backwards starting from the end
+			foreach dest [lreverse [$child panes]] {
+				if {![regexp {.*,ph} $dest]} {
+					break
+				}
+			}
+		}
+		Lead {
+			set orient [$child cget -orient]
+			if {$orient eq "horizontal"} {
+				set where to
+				set compass above
+			} else {
+				set where lo
+				set compass left
+			}
+			set dest ""
+		}
+		Trail {
+			set orient [$child cget -orient]
+			if {$orient eq "horizontal"} {
+				set where bo
+				set compass below
+			} else {
+				set where ro
+				set compass right
+			}
+			set dest ""
+		}
+		Outside {
+			set where "outed"
+			set child $current_bbox
+			set dest $child
+			set compass "rip"
+		}
+		Neutral {
+			set where "neutral"
+			set child $current_bbox
+			set dest $child
+			set compass "neutral"
+		}
+		default {
+			return [list]
+		}
+	}
+	_draw_bbox $current_bbox $child $where $x $y
+	return [list $dest $compass]
+}
+
+itcl::body ::mtiwidgets::Panemanager::_makedragmap {} {
+	array unset maptype
+	array unset mapchild
+	set width [winfo width $itk_interior]
+	set height [winfo height $itk_interior]
+	set dm $itk_component(dm)
+	$dm configure -width [expr {$width + 40}] -height [expr {$height + 40}]
+	$dm delete all
+	set x1 [winfo rootx $itk_interior] 
+	set y1 [winfo rooty $itk_interior] 
+	set x2 [expr {$x1 + $width}]
+	set y2 [expr {$y1 + $height}]
+	#set oltag [$dm create rectangle $x1 $y1 $x2 $y2 -outline black -width 1]
+	set orient [$itk_component(cs) cget -orient]
+	set r 70
+	set g 70
+	set b 70
+	set b2 254
+	set wlist [concat $itk_component(cs) [$itk_component(cs) panes]]
+	while {[llength $wlist] > 0} {
+		set nextlist [list]
+		foreach p $wlist {
+			if {($p eq "") ||
+				(($panes($p) ne $itk_component(cs)) &&
+				 [$panes($p) panecget $p -hide])} {
+				continue
+			}
+
+			if {[winfo class $p] eq "Panedwindow"} {
+				if {[llength [$p panes]] <= 0} {
+					# $p has No panes!
+					continue
+				}
+				set depth 0
+				set dp $p
+				while {$dp ne $itk_component(cs)} {
+					set dp [winfo parent $dp]
+					incr depth
+				}
+				set depth [expr {$depth * 5}]
+				set nextlist [concat $nextlist [$p panes]]
+				# make inserts
+				set orient [$p cget -orient]
+
+				#
+				# Drop zone before first pane
+				#
+				foreach px [$p panes] {
+					if {![$p panecget $px -hide]} break
+				}
+				set first_px $px
+				if {$first_px ne $current_bbox} {
+					if {$orient eq "horizontal"} {
+						set x1 [expr {[winfo rootx $p] + 2 + $depth}]
+						set x2 [expr {[winfo rootx $p] + 10 + $depth}]
+						set y1 [expr {[winfo rooty $p] + $depth}]
+						set y2 [expr {[winfo rooty $p] + [winfo height $p] - $depth}]
+					} else {
+						set x1 [expr {[winfo rootx $p] + $depth}]
+						set x2 [expr {[winfo rootx $p] + [winfo width $p] - $depth}]
+						set y1 [expr {[winfo rooty $p] + 2 + $depth}]
+						set y2 [expr {[winfo rooty $p] + 10 + $depth}]
+					}
+					set tag [$dm create rectangle $x1 $y1 $x2 $y2 -fill [nextfc r g b]]
+					set mapchild($tag) $p
+					set maptype($tag) First
+				}
+
+				#
+				# Drop zone in between each pane
+				#
+				set sashcnt [expr {[llength [$p panes]] - 1}]
+				set sash -1
+				set last_px ""
+				foreach px [concat [$p panes] {}] {
+					if {[$p panecget $px -hide]} {
+						continue
+					}
+					if {$sash >= 0 && $px ne $current_bbox && $last_px ne $current_bbox} {
+						if {$orient eq "horizontal"} {
+							set offset [lindex [$p sash coord $sash] 0]
+							set x1 [expr {[winfo rootx $p] + $offset - 10}]
+							set y1 [expr {[winfo rooty $p]}]
+							set x2 [expr {[winfo rootx $p] + $offset + 10}]
+							set y2 [expr {[winfo rooty $p] + [winfo height $p]}]
+						} else {
+							set offset [lindex [$p sash coord $sash] 1]
+							set x1 [expr {[winfo rootx $p]}]
+							set y1 [expr {[winfo rooty $p] + $offset - 10}]
+							set x2 [expr {[winfo rootx $p] + [winfo width $p]}]
+							set y2 [expr {[winfo rooty $p] + $offset + 10}]
+						}
+						set tag [$dm create rectangle $x1 $y1 $x2 $y2 -fill [nextfc r g b]]
+						set mapchild($tag) $p
+						set maptype($tag) Middle($sash)
+					}
+					set last_px $px
+					incr sash
+				}
+				#
+				# Drop zone after last pane
+				#
+				foreach px [$p panes] {
+					if {![$p panecget $px -hide]} {set last_px $px}
+				}
+				if {$last_px ne $current_bbox} {
+					if {$orient eq "horizontal"} {
+						set x1 [expr {[winfo rootx $p] + [winfo width $p] - 10}]
+						set y2 [expr {[winfo rooty $p]}]
+						set x2 [expr {[winfo rootx $p] + [winfo width $p] - 2}]
+						set y2 [expr {[winfo rooty $p] + [winfo height $p]}]
+					} else {
+						set x1 [expr {[winfo rootx $p]}]
+						set y1 [expr {[winfo rooty $p] + [winfo height $p] - 10}]
+						set x2 [expr {[winfo rootx $p] + [winfo width $p]}]
+						set y2 [expr {[winfo rooty $p] + [winfo height $p] - 2}]
+					}
+					set tag [$dm create rectangle $x1 $y1 $x2 $y2 -fill [nextfc r g b]]
+					set mapchild($tag) $p
+					set maptype($tag) Last
+				}
+				# make outer
+				if {$p ne $itk_component(cs)} {
+					continue
+				}
+				if {$orient eq "horizontal"} {
+					set x1 [expr {[winfo rootx $p] + $depth}]
+					set x2 [expr {[winfo rootx $p] + [winfo width $p] - $depth}]
+					set y1 [expr {[winfo rooty $p] + $depth}]
+					set y2 [expr {[winfo rooty $p] + 20 + $depth}]
+					set tag [$dm create rectangle $x1 $y1 $x2 $y2 -fill [nextfc r g b]]
+					set mapchild($tag) $p
+					set maptype($tag) Lead
+					set x1 [expr {[winfo rootx $p] + $depth}]
+					set x2 [expr {[winfo rootx $p] + [winfo width $p] - $depth}]
+					set y1 [expr {[winfo rooty $p] + [winfo height $p] - 20 - $depth}]
+					set y2 [expr {[winfo rooty $p] + [winfo height $p] - $depth}]
+					set tag [$dm create rectangle $x1 $y1 $x2 $y2 -fill [nextfc r g b]]
+					set mapchild($tag) $p
+					set maptype($tag) Trail
+				} else {
+					set x1 [expr {[winfo rootx $p] + $depth}]
+					set x2 [expr {[winfo rootx $p] + 20 + $depth}]
+					set y1 [expr {[winfo rooty $p] + $depth}]
+					set y2 [expr {[winfo rooty $p] + [winfo height $p] - $depth}]
+					set tag [$dm create rectangle $x1 $y1 $x2 $y2 -fill [nextfc r g b]]
+					set mapchild($tag) $p
+					set maptype($tag) Lead
+					set x1 [expr {[winfo rootx $p] + [winfo width $p] - 20 - $depth}]
+					set x2 [expr {[winfo rootx $p] + [winfo width $p] - $depth}]
+					set y1 [expr {[winfo rooty $p] + $depth}]
+					set y2 [expr {[winfo rooty $p] + [winfo height $p] - $depth}]
+					set tag [$dm create rectangle $x1 $y1 $x2 $y2 -fill [nextfc r g b]]
+					set mapchild($tag) $p
+					set maptype($tag) Trail
+				}
+			} elseif {$p ne $current_bbox} {
+				# make AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+				set orient [$panes($p) cget -orient]
+				if {$orient eq "horizontal"} {
+					set x1 [expr {[winfo rootx $p] + 20}]
+					set x2 [expr {[winfo rootx $p] + [winfo width $p] - 20}]
+					set y1 [expr {[winfo rooty $p] + 20}]
+					set y2 [expr {[winfo rooty $p] + [winfo height $p]/2}]
+				} else {
+					set x1 [expr {[winfo rootx $p] + 20}]
+					set x2 [expr {[winfo rootx $p] + [winfo width $p]/2}]
+					set y1 [expr {[winfo rooty $p] + 20}]
+					set y2 [expr {[winfo rooty $p] + [winfo height $p] - 20}]
+				}
+				set tag [$dm create rectangle $x1 $y1 $x2 $y2 -fill [nextfc r g b2]]
+				set mapchild($tag) $p
+				set maptype($tag) A
+				# make BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+				if {$orient eq "horizontal"} {
+					set x1 [expr {[winfo rootx $p] + 20}]
+					set x2 [expr {[winfo rootx $p] + [winfo width $p] - 20}]
+					set y1 [expr {[winfo rooty $p] + [winfo height $p]/2}]
+					set y2 [expr {[winfo rooty $p] + [winfo height $p] - 20}]
+				} else {
+					set x1 [expr {[winfo rootx $p] + [winfo width $p]/2}]
+					set x2 [expr {[winfo rootx $p] + [winfo width $p] - 20}]
+					set y1 [expr {[winfo rooty $p] + 20}]
+					set y2 [expr {[winfo rooty $p] + [winfo height $p] - 20}]
+				}
+				set tag [$dm create rectangle $x1 $y1 $x2 $y2 -fill [nextfc r g b2]]
+				set mapchild($tag) $p
+				set maptype($tag) B
+				# make CCCCCCCCCCC center CCCCCCCCCCCCCCCC
+				if {0} { # disabled for now
+				set orient [$panes($p) cget -orient]
+				set x1 [expr {[winfo rootx $p] + [winfo width $p]/3}]
+				set x2 [expr {[winfo rootx $p] + [winfo width $p]*2/3}]
+				set y1 [expr {[winfo rooty $p] + [winfo height $p]/3}]
+				set y2 [expr {[winfo rooty $p] + [winfo height $p]*2/3}]
+				set tag [$dm create rectangle $x1 $y1 $x2 $y2 -fill [nextfc r g b2]]
+				set mapchild($tag) $p
+				set maptype($tag) C
+				}
+			} else {
+				# Current location (no-drop)
+				set x1 [expr {[winfo rootx $p] + 5}]
+				set x2 [expr {[winfo rootx $p] + [winfo width $p] - 5}]
+				set y1 [expr {[winfo rooty $p] + 5}]
+				set y2 [expr {[winfo rooty $p] + [winfo height $p] - 5}]
+			
+				set tag [$dm create rectangle $x1 $y1 $x2 $y2 -fill [nextfc r g b]]
+				set mapchild($tag) $p
+				set maptype($tag) Neutral
+			}
+		}
+		set wlist $nextlist
+	}
+	$dm configure -scrollregion [list [expr {[winfo rootx $itk_interior] - 20}] [expr {[winfo rooty $itk_interior] - 20}] [expr {[winfo rootx $itk_interior] + $width + 20}] [expr {[winfo rooty $itk_interior] + $height + 20}]]
+	#$dm configure -scrollregion [$dm bbox all]
+	#$dm move all [expr {20 - [winfo rootx $itk_interior]}] [expr {20 -[winfo rooty $itk_interior]}]
+	$dm yview moveto 0
+	$dm xview moveto 0
+	bind $dm <Motion> [itcl::code $this _report_map %X %Y]
+}
+
+itcl::body ::mtiwidgets::Panemanager::_see_map_ {} {
+	wm toplevel $itk_interior.df 1
+	wm protocol $itk_interior.df WM_DELETE_WINDOW [itcl::code $this _hide_map_]
+	set current_bbox ""
+	_makedragmap
+}
+
+itcl::body ::mtiwidgets::Panemanager::_hide_map_ {} {
+	wm toplevel $itk_interior.df 0
+}
+
+itcl::body ::mtiwidgets::Panemanager::_pane_tree_ {} {
+	if {[winfo exists $itk_component(hull).pane_tree]} {
+		return
+	}
+	set pt [toplevel $itk_component(hull).pane_tree]
+	set h [::vsimwidgets::hierarchy $pt.h \
+			  -hscrollmode dynamic -vscrollmode dynamic \
+			  -relief sunken \
+			  -expanded true \
+			  -selectmode single \
+			  -alwaysquery 1 \
+			  -header 1 \
+			  -height 250]
+
+	$h configure -querycommand [itcl::code $this _pane_tree_query_ %n]
+	$h header configure 0 -text Window
+	$h column add Class
+	$h column add Orient
+	pack $h -side top -expand 1 -fill both
+}
+
+itcl::body ::mtiwidgets::Panemanager::_pane_tree_query_ {node} {
+	if {$node eq ""} {
+		set entry [list $itk_component(cs) cs branch "" [winfo class $itk_component(cs)] "" "" [$itk_component(cs) cget -orient] "" ""]
+		lappend rv $entry
+	} else {
+		if {[winfo exists $node] &&
+			[winfo class $node] eq "Panedwindow"} {
+			# good
+		} else {
+			return ""
+		}
+		if {[$node cget -orient] eq "horizontal"} {
+			set child_orient vertical
+		} else {
+			set child_orient horizontal
+		}
+		set children [$node panes]
+		set rv [list]
+		set entry [list]
+		foreach kid $children {
+			set class [winfo class $kid]
+			if {$class eq "Panedwindow"} {
+				set tag branch
+				set orient [$kid cget -orient]
+			} else {
+				set tag leaf
+				set orient $child_orient
+			}
+			set entry [list $kid $kid $tag "" $class "" "" $orient "" ""]
+			lappend rv $entry
+		}
+	}
+	return $rv
+}
+
+itcl::body ::mtiwidgets::Panemanager::visible {window} {
+	if {$window eq $maxed_window} {
+		return 1
+	}
+	if {[info exists panes(${window},ph)]} {
+		if {[wm toplevel ${window}] && 
+			[winfo ismapped ${window}]} {
+			return 1
+		} else {
+			return 0
+		}
+	}
+	if {[info exists panes($window)]} {
+		return [expr {[panecget $window -hide] != 1}]
+	}
+	return 0
+}
+
+itcl::body ::mtiwidgets::Panemanager::FocusNext {w} {
+	set pf [::mtiwidgets::FindPaneframe $w]
+	set pl [panes]
+	if {$pf eq $maxed_window} {
+		set pf ${pf},mx
+	}
+	set i [lsearch -exact $pl $pf]
+	set j [expr {($i + 1) % [llength $pl]}]
+	set np [lindex $pl $j]
+	while {[state $np] eq "hidden" || [state $np] eq "undocked"} {
+		set j [expr {($j + 1) % [llength $pl]}]
+		set np [lindex $pl $j]
+		if {$i == $j} {
+			break
+		}
+	}
+	if {[regexp {(.*),ph} $np dummy true_win]} {
+		set np $true_win
+	}
+	return $np
+}
+
+itcl::body ::mtiwidgets::Panemanager::FocusPrev {w} {
+	set pf [::mtiwidgets::FindPaneframe $w]
+	set pl [panes]
+	if {$pf eq $maxed_window} {
+		set pf ${pf},mx
+	}
+	set i [lsearch -exact $pl $pf]
+	set j [expr {$i - 1}]
+	if {$j < 0} {set j [expr {[llength $pl] - 1}]}
+	set np [lindex $pl $j]
+	while {[state $np] eq "hidden" || [state $np] eq "undocked"} {
+		set j [expr {$j - 1}]
+		if {$j < 0} {set j [expr {[llength $pl] - 1}]}
+		set np [lindex $pl $j]
+		if {$i == $j} {
+			break
+		}
+	}	
+	if {[regexp {(.*),ph} $np dummy true_win]} {
+		set np $true_win
+	} elseif {[regexp {(.*),mx} $np dummy true_win]} {
+		set np $true_win
+	}
+
+	return $np
+}
+
+
+
+# ------------------------------------------------------------------
+#                            Paneframe
+#
+# This class is the  frame for a pane that can be inserted into
+# the main window grid.  It contains the header frame that adds
+# the close button and it fields the drag commands
+#
+# ------------------------------------------------------------------
+
+itk::usual ::mtiwidgets::Paneframe {
+    keep -background \
+	-cursor -font -foreground -highlightbackground \
+	-highlightcolor -highlightthickness -takefocus -text -textvariable \
+	-image -bitmap -justify -padx -pady -underline -wraplength \
+	-activeforeground -activebackground -menu
+}
+
+itcl::class ::mtiwidgets::Paneframe {
+	#inherit itk::Widget
+	inherit itk::Archetype
+
+    constructor {args} {}
+    destructor {}
+
+	itk_option define -activebackground activeBackground Foreground white
+	itk_option define -activeforeground activeForeground Background black
+	itk_option define -activatecommand activateCommand ActivateCommand {}
+	itk_option define -anchor anchor Anchor center
+	itk_option define -background background Background grey
+	itk_option define -bitmap bitmap Bitmap {}
+	itk_option define -borderwidth borderWidth BorderWidth 2 
+	itk_option define -childsiteclass childsiteClass ChildSiteClass Frame
+	itk_option define -cursor cursor Cursor {} 
+	itk_option define -expelcommand command Command {}
+	itk_option define -foreground foreground Foreground black
+	itk_option define -headervisible headerVisible HeaderVisible 1
+	itk_option define -height height Height 0 
+	itk_option define -hidecommand command Command {}
+	itk_option define -highlightbackground highlightBackground HighlightBackground lightgray
+	itk_option define -highlightcolor highlightColor HighlightColor white
+	itk_option define -highlightthickness highlightThickness HighlightThickness 0 
+	itk_option define -image image Image {} 
+	itk_option define -justify justify Justify center 
+	itk_option define -maximizecommand maximizeCommand Command {}
+	itk_option define -padx padX Pad 1 
+	itk_option define -pady padY Pad 1 
+	itk_option define -panemanager paneManager PaneManager {}
+	itk_option define -relief relief Relief groove
+	itk_option define -showcommand command Command {}
+	itk_option define -sortstate sortState SortState {}
+	itk_option define -state state State normal
+	itk_option define -takefocus takeFocus TakeFocus 0 
+	itk_option define -text text Text {} 
+	itk_option define -textvariable textVariable Variable {} 
+	itk_option define -underline underline Underline -1 
+	itk_option define -width width Width 0 
+	itk_option define -window	window Window {}
+	itk_option define -wraplength wrapLength WrapLength 0 
+
+	public method Activate {args} 
+	public method Deactivate {args} 
+	public method childsite {} { return $itk_component(cs) }
+	public method invoke {what}
+
+
+    private method _startdrag {w x y} 
+    private method _dragging {w x y}
+    private method _enddrag {w x y}
+
+	private method _trigger_show_cmd {}
+	private method _hidecommand_ {}
+
+    protected variable pane_mgr ""
+    private variable _in_dragging_ 0
+    private variable state normal
+	private variable itk_interior
+
+	common _currentActive_
+
+	common handle_image [image create photo -data "R0lGODlhFgAKAJEAANnZ2f///wAAAP///yH5BAEAAAAALAAAAAAWAAoAAAI/hI+pF0YBAiAA\nKEAQfBATEwJkYkLwMXXDKEAABAAFCIIPYmJCgExMCD6mZhgFCIAAoABB8EFMTAiQiQnBx1Qs\nADs="]
+
+}
+
+#
+# Provide a lowercased access method for the class.
+# 
+proc ::mtiwidgets::paneframe {pathName args} {
+    uplevel ::mtiwidgets::Paneframe $pathName $args
+}
+
+
+
+# ------------------------------------------------------------------
+#                   Paneframe CONSTRUCTOR
+# ------------------------------------------------------------------
+itcl::body ::mtiwidgets::Paneframe::constructor {args} {
+	#
+	#  Create a toplevel window with the same name as this object
+	#
+	set itk_hull [namespace tail $this]
+	set itk_interior $itk_hull
+	itk_component add hull {
+		::toplevel $itk_hull -class [namespace tail [info class]]
+	} {
+		keep -background -cursor -takefocus -menu
+		keep -height -width
+	}
+	bind itk-delete-$itk_hull <Destroy> "itcl::delete object $this"
+
+	set tags [bindtags $itk_hull]
+	bindtags $itk_hull [linsert $tags 0 itk-delete-$itk_hull]
+
+	# Turn it into a Frame straight away
+	wm toplevel $itk_hull 0
+
+	if {[set ix [lsearch $args -use]] >= 0} {
+		set use [lindex $args [expr {$ix + 1}]]
+		set args [lreplace $args $ix [expr {$ix+1}]]
+		set itk_interior [::toplevel $itk_component(hull).interior -use $use]
+	} else {
+		set use {}
+		set itk_interior [frame $itk_component(hull).interior]
+		pack $itk_interior -fill both -expand 1
+	}
+
+    itk_component add header {
+		frame $itk_interior.header \
+			-borderwidth 0 \
+			-relief flat
+	} {
+		ignore -background
+		ignore -height -width -relief -borderwidth
+	}
+
+    itk_component add label {
+		label $itk_component(header).label \
+			-borderwidth 0 \
+			-relief flat
+    } {
+		keep -text -textvariable -activeforeground -activebackground
+		rename -font -textfont textFont Font
+		ignore -relief -borderwidth -height -width
+    }
+    grid $itk_component(label) -column 0 -row 0 -sticky w -padx 2
+
+    grid columnconfig $itk_component(header) 0 -weight 1      ;# For the label, if any
+    grid columnconfig $itk_component(header) 1 -weight 5000   ;# For the relief
+    grid columnconfig $itk_component(header) 2 -weight 0      ;# For the close button, if any
+
+    itk_component add -private gf {
+		frame $itk_component(header).gf -borderwidth 0 -relief flat
+    } {
+		ignore -height -borderwidth -relief -width -background
+    }
+    itk_component add -private g1 {
+		frame $itk_component(gf).g1 -height 3 -borderwidth 1 -relief raised
+    } {
+		ignore -height -borderwidth -relief -width
+    }
+    itk_component add -private g2 {
+		frame $itk_component(gf).g2 -height 3 -borderwidth 1 -relief raised
+    } {
+		ignore -height -borderwidth -relief -width
+    }
+	itk_component add -private handle {
+		label $itk_component(gf).handle -image $handle_image -relief flat -bd 0 -cursor fleur
+	} {
+		ignore -height -borderwidth -relief -width -image -text -textvariable
+	}
+    pack $itk_component(g1) -side top -anchor center -expand 1 -fill x -pady 1
+    pack $itk_component(g2) -side top -anchor center -expand 1 -fill x -pady 1
+	place $itk_component(handle) -relx 0.5 -rely 0.5 -anchor center
+    grid $itk_component(gf) -column 1 -row 0 -sticky ew -padx 2
+    pack $itk_component(header) -side top -fill x
+    if { $pane_mgr == "" } {
+		set w $itk_interior
+		while {[winfo parent $w] ne ""} {
+			if {[winfo class $w] eq "Panemanager"} {
+				set pane_mgr $w
+				break
+			}
+			set w [winfo parent $w]
+		}
+    }
+
+	# Disable global move binding
+	bind $itk_interior          <Button-1> [itcl::code $this Activate %W] ;# Disabled global move binding
+	bind $itk_component(gf)     <Button-1> [itcl::code $this Activate %W] ;# Disabled global move binding
+	bind $itk_component(g1)     <Button-1> [itcl::code $this Activate %W] ;# Disabled global move binding
+	bind $itk_component(g2)     <Button-1> [itcl::code $this Activate %W] ;# Disabled global move binding
+	bind $itk_component(header) <Button-1> [itcl::code $this Activate %W] ;# Disabled global move binding
+	bind $itk_component(label)  <Button-1> [itcl::code $this Activate %W] ;# Disabled global move binding
+    bind $itk_component(handle) <Button-1>        [itcl::code $this _startdrag $itk_component(header) %X %Y]
+    bind $itk_component(handle) <B1-Motion>       [itcl::code $this _dragging  $itk_component(header) %X %Y]
+    bind $itk_component(handle) <ButtonRelease-1> [itcl::code $this _enddrag   $itk_component(header) %X %Y]
+
+    eval itk_initialize $args
+}
+
+# ------------------------------------------------------------------
+#                           DESTRUCTOR
+# ------------------------------------------------------------------
+itcl::body ::mtiwidgets::Paneframe::destructor {} {
+}
+ 
+
+# ------------------------------------------------------------------
+#                           Configure Options
+# ------------------------------------------------------------------
+itcl::configbody ::mtiwidgets::Paneframe::relief {
+	$itk_interior configure -relief $itk_option(-relief)
+}
+
+itcl::configbody ::mtiwidgets::Paneframe::borderwidth {
+	$itk_interior configure -borderwidth $itk_option(-borderwidth)
+}
+
+itcl::configbody ::mtiwidgets::Paneframe::activeforeground {
+    if {$state eq "active"} {
+		Activate
+    } else {
+		Deactivate
+    }
+}
+
+itcl::configbody ::mtiwidgets::Paneframe::activebackground {
+    if {$state eq "active"} {
+		Activate
+    } else {
+		Deactivate
+    }
+}
+
+itcl::configbody ::mtiwidgets::Paneframe::childsiteclass {
+	# Destroy the old frame as long as it's not being used
+	if {[info exists itk_component(cs)] &&
+		[winfo exists $itk_component(cs)]} {
+		if {$itk_option(-childsiteclass) eq [winfo class $itk_component(cs)]} {
+			# Already the right class!
+			return
+		}
+		if {[llength [winfo children $itk_component(cs)]] > 0} {
+			error "Cannot change class when childsite in use"
+		}
+		destroy $itk_component(cs)
+	}
+
+	# Create a new frame with the new class
+    itk_component add cs {
+		frame $itk_interior.cs \
+			-class $itk_option(-childsiteclass) \
+			-borderwidth 0 \
+			-height 8 \
+			-relief flat \
+			-background blue
+	} {
+		keep -background
+		ignore -relief -borderwidth -height -width 
+	}
+
+	bind $itk_component(cs) <Map> [itcl::code $this _trigger_show_cmd]
+	pack $itk_component(cs) -side top -fill both -expand yes
+
+}
+
+itcl::configbody ::mtiwidgets::Paneframe::hidecommand {
+	if {$itk_option(-hidecommand) eq "" &&
+		[info exists itk_component(closebutton)] &&
+		[winfo exists $itk_component(closebutton)]} {
+		destroy $itk_component(closebutton)
+	}
+	if {$itk_option(-hidecommand) ne ""} {
+		itk_component add closebutton {
+			eval button $itk_component(header).close [GetButtonIcon mdi_close] \
+				-borderwidth 1 \
+				-cursor left_ptr
+		} {
+			ignore -height -width
+			ignore -borderwidth -relief
+			ignore -command
+		}
+		$itk_component(closebutton) configure -command [itcl::code $this _hidecommand_]
+		mtiBalloon $itk_component(closebutton) "Hide pane"
+		grid $itk_component(closebutton) -column 4 -row 0 -sticky e -padx 2
+	}
+
+}
+
+itcl::body mtiwidgets::Paneframe::_hidecommand_ {} {
+	if {$itk_option(-hidecommand) ne ""} {
+		$pane_mgr normal
+		after 20 $itk_option(-hidecommand)
+	}
+	# Notify potential focus change to update Active window pane
+	event generate $itk_component(hull) <<ActivateDefault>>
+}
+
+itcl::configbody ::mtiwidgets::Paneframe::expelcommand {
+	if {$itk_option(-expelcommand) eq "" &&
+		[info exists itk_component(expelbutton)] &&
+		[winfo exists $itk_component(expelbutton)]} {
+		destroy $itk_component(expelbutton)
+	}
+	if {$itk_option(-expelcommand) ne ""} {
+		itk_component add expelbutton {
+			eval button $itk_component(header).expel [GetButtonIcon expel] \
+				-borderwidth 1 \
+				-cursor left_ptr
+		} {
+			ignore -height -width
+			ignore -borderwidth -relief
+			ignore -command
+		}
+		$itk_component(expelbutton) configure -command $itk_option(-expelcommand)
+		mtiBalloon $itk_component(expelbutton) "Dock/Undock pane"
+		grid $itk_component(expelbutton) -column 3 -row 0 -sticky e -padx 2	
+	}
+}
+
+itcl::configbody ::mtiwidgets::Paneframe::maximizecommand {
+	if {$itk_option(-maximizecommand) eq "" &&
+		[info exists itk_component(maxbutton)] &&
+		[winfo exists $itk_component(maxbutton)]} {
+		destroy $itk_component(maxbutton)
+	}
+	if {$itk_option(-maximizecommand) ne ""} {
+		itk_component add maxbutton {
+			eval button $itk_component(header).max [GetButtonIcon plus] \
+				-borderwidth 1 \
+				-cursor left_ptr
+		} {
+			ignore -height -width
+			ignore -borderwidth -relief
+			ignore -command
+		}
+		$itk_component(maxbutton) configure -command $itk_option(-maximizecommand)
+		mtiBalloon $itk_component(maxbutton) "Zoom/Unzoom pane"
+		grid $itk_component(maxbutton) -column 2 -row 0 -sticky e -padx 2
+	}
+}
+
+itcl::configbody ::mtiwidgets::Paneframe::headervisible {
+	if {$itk_option(-headervisible)} {
+		if {[info exists itk_component(cs)]} {
+			pack $itk_component(header) -before $itk_component(cs) -side top -fill x
+		} else {
+			pack $itk_component(header) -side top -fill x
+		}
+	} else {
+		pack forget $itk_component(header)
+	}
+}
+
+# ------------------------------------------------------------------
+#                           Method body
+# ------------------------------------------------------------------
+
+itcl::body ::mtiwidgets::Paneframe::_startdrag {w x y} {
+	if {[$pane_mgr state $itk_component(hull)] eq "zoomed"} {
+		return
+	}
+	set _in_dragging_ 1
+	if {[info exists itk_option(-window)] &&
+		[winfo exists $itk_option(-window)]} {
+		set focus_window [focus -displayof $itk_option(-window)]
+	} else {
+		set focus_window [focus]
+	}
+
+    $pane_mgr _startdrag $itk_component(hull) $focus_window $w $x $y
+}
+
+itcl::body ::mtiwidgets::Paneframe::_dragging {w x y} {
+    if {$_in_dragging_} {
+		$pane_mgr _dragging $itk_component(hull) $w $x $y
+    }
+}
+
+# 1 = top 
+# 2 = right
+# 3 = bottom
+# 4 = left
+
+
+itcl::body ::mtiwidgets::Paneframe::_enddrag {w x y} {
+    if {$_in_dragging_} {
+		$pane_mgr _enddrag $itk_component(hull) $w $x $y
+	}
+	set _in_dragging_ 0
+}
+
+bind Paneframe <FocusIn> {%W Activate}
+#bind Paneframe <FocusOut> {%W Deactivate}
+
+itcl::body ::mtiwidgets::Paneframe::Activate {args} {
+	if {[info exists _currentActive_] &&
+		$_currentActive_ ne ""} {
+		$_currentActive_ Deactivate
+	}
+	set _currentActive_ $this
+    set state active
+    if {[info exists itk_component(header)]} {
+		$itk_component(header) configure -background $itk_option(-activebackground)
+    }
+    if {[info exists itk_component(gf)]} {
+		$itk_component(gf) configure -background $itk_option(-activebackground)
+    }
+    if {[info exists itk_component(g1)]} {
+		$itk_component(g1) configure -background $itk_option(-activebackground)
+    }
+    if {[info exists itk_component(g2)]} {
+		$itk_component(g2) configure -background $itk_option(-activebackground)
+    }
+    if {[info exists itk_component(handle)]} {
+		$itk_component(handle) configure -background $itk_option(-activebackground)
+    }
+    if {[info exists itk_component(label)]} {
+		$itk_component(label) configure -state active
+    }
+
+	if {[info exists itk_option(-activatecommand)] &&
+		$itk_option(-activatecommand) ne ""} {
+		set cmd [concat $itk_option(-activatecommand) [list active] $args]
+		if {[catch $cmd rv]} {
+			puts stderr "Paneframe -activatecommand error: $::errorInfo"
+		}
+	}
+
+		
+	set cf [split [lindex $args 0] .]
+	set fw [split $itk_option(-window) .]
+	set hw [split $itk_component(hull) .]
+	if {[lrange $cf 0 [expr {[llength $fw] - 1}]] eq $fw} {
+		return
+	}
+	if {[lrange $cf 0 [expr {[llength $hw] - 1}]] eq $hw &&
+		[llength $cf] < [llength $fw] &&
+		[winfo exists $itk_option(-window)]} {
+		focus $itk_option(-window)
+	}
+	set currentFocus [focus]
+	if {[llength $args] > 0 &&
+		[winfo exists [lindex $args 0]] &&
+		[lindex $args 0] ne $currentFocus } {
+		if {[winfo exists $itk_option(-window)]} {
+			focus $itk_option(-window)
+		}
+	}
+	return
+}
+
+itcl::body ::mtiwidgets::Paneframe::Deactivate {args} {
+    set state normal
+    if {[info exists itk_component(header)]} {
+		$itk_component(header) configure -background $itk_option(-background)
+    }
+    if {[info exists itk_component(gf)]} {
+		$itk_component(gf) configure -background $itk_option(-background)
+    }
+    if {[info exists itk_component(g1)]} {
+		$itk_component(g1) configure -background $itk_option(-background) -relief raised
+    }
+    if {[info exists itk_component(g2)]} {
+		$itk_component(g2) configure -background $itk_option(-background) -relief raised
+    }
+    if {[info exists itk_component(handle)]} {
+		$itk_component(handle) configure -background $itk_option(-background) -relief ridge -height 10
+    }
+    if {[info exists itk_component(label)]} {
+		$itk_component(label) configure -state normal
+    }
+
+	if {[info exists itk_option(-activatecommand)] &&
+		$itk_option(-activatecommand) ne ""} {
+		set cmd [concat $itk_option(-activatecommand) [list inactive] $args]
+		if {[catch $cmd rv]} {
+			puts stderr "Paneframe -activatecommand error: $::errorInfo"
+		}
+	}
+}
+
+itcl::body ::mtiwidgets::Paneframe::_trigger_show_cmd {} {
+	if {$itk_option(-showcommand) ne ""} {
+		if {[catch {uplevel "#0" $itk_option(-showcommand)} msg]} {
+			puts stderr "error: $this $itk_option(-showcommand)\n$msg"
+		}
+	}
+}
+
+itcl::body ::mtiwidgets::Paneframe::invoke {what} {
+	switch $what {
+		expel {
+			if {$itk_option(-expelcommand) ne ""} {
+				uplevel "#0" $itk_option(-expelcommand)
+			}
+		}
+		hide {
+			_hidecommand_
+		}
+		maximize {
+			if {$itk_option(-maximizecommand) ne ""} {
+				uplevel "#0" $itk_option(-maximizecommand)
+			}
+		}
+		show {
+			_trigger_show_cmd
+		}
+	}
+}
+
+
+proc ::mtiwidgets::FindPaneframe { w } { 
+ 	if {[string index $w 0] != "."} {
+		return -code error "Error: Illegal widget path for paneFrame: $w"
+	}
+	
+	if {[winfo exists $w]} {
+		set top [winfo parent [winfo toplevel $w]]
+		for {set p $w} {$p ne $top} {set p $parent} {
+			if {[catch {winfo class $p} class]} {
+				set class Unknown
+			}
+			switch $class {
+				Paneframe {
+					return $p
+				}
+			}
+			if {[catch {winfo parent $p} parent]} {
+				return ""
+			}
+		}
+	}
+	return ""
+}
+
+#
+# Reverse the order of a list
+#
+# from: http://wiki.tcl.tk/43
+# author: KPV
+#
+proc lreverse {l} {
+    set start -1
+    set end [llength $l]
+	
+    while {[incr start] < [incr end -1]} {
+        set tmp [lindex $l $start]
+        lset l $start [lindex $l $end]
+        lset l $end $tmp
+    }
+    return $l
+}
+
+#
+# Load button icon images.  
+# Searches certain library areas for images.
+# Written such that this routine can be provided by the application.
+#
+if {[info commands GetButtonIcon] eq ""} {
+proc GetButtonIcon {icon {prefix -image}} {
+
+	if { $icon eq "_undobm" || \
+		 $icon eq "_redobm" } {
+		lappend prefix $icon
+		return $prefix
+	}
+
+
+	set icon_name _${icon}_icon
+	if {[lsearch -exact [image names] _${icon_name}] != -1} {
+		lappend prefix _${icon_name}
+		return $prefix
+	}
+	foreach dir [list [file join $::mtiwidgets::library bitmaps] \
+					 [file join $::mtiwidgets::library .. bitmaps] \
+					 . \
+					 bitmaps] {
+		set f [file join $dir ${icon}.gif]
+		if {[file exists $f]} {
+			set img [image create photo _${icon_name} -file $f]
+			lappend prefix $img
+			return $prefix
+		}
+	}
+	return ""
+}
+}
+
+#
+# Provide corner dragging
+#
+#  Override the sash drag operations to recognize and perform 2D resize on a T or + corner.
+#
+proc ::tk::panedwindow::2DSash {W x y X Y opaque} {
+	set off [$W cget -sashwidth]
+	set wlist [list $W 0 0]
+	set mark($W) 1
+	::tk::panedwindow::MarkSash $W $x $y $opaque
+	foreach {xx yy} [list [expr {$X + $off}] $Y \
+						 [expr {$X - $off}] $Y \
+						 $X [expr {$Y + $off}] $X \
+						 [expr {$Y - $off}]] {
+		set w [winfo containing $xx $yy]
+		if {$w ne "" && ![info exists mark($w)] && 
+			[winfo class $w] eq "Panedwindow"} {
+			set mark($w) 1
+			lappend wlist $w [expr {$xx - $X}] [expr {$yy - $Y}]
+			set _x [expr {$xx - $X + $x}]
+			set _y [expr {$yy - $Y + $y}]
+			::tk::panedwindow::MarkSash $w $_x $_y $opaque 
+		}
+	}
+	set ::tk::panedwindow::2DWList $wlist
+}
+
+proc ::tk::panedwindow::2DDragSash {W x y X Y opaque} {
+	if {[info exists ::tk::panedwindow::2DWList]} {
+		set wlist $::tk::panedwindow::2DWList
+	} else {
+		set wlist [list $W 0 0]
+	}
+	foreach {w ox oy} $wlist {
+		set _x [expr {$x + $ox}]
+		set _y [expr {$y + $oy}]
+		::tk::panedwindow::DragSash $w $_x $_y $opaque
+	}
+}
+
+proc ::tk::panedwindow::2DReleaseSash {W x y X Y opaque} {
+	if {[info exists ::tk::panedwindow::2DWList]} {
+		set wlist $::tk::panedwindow::2DWList
+	} else {
+		set wlist [list $W]
+	}
+	foreach {w ox oy} $wlist {
+		::tk::panedwindow::ReleaseSash $w $opaque
+	}
+}
+bind Panedwindow <Button-1> { 
+	::tk::panedwindow::2DSash %W %x %y %X %Y 0
+}
+bind Panedwindow <B1-Motion> { 
+	::tk::panedwindow::2DDragSash %W %x %y %X %Y 0
+}
+bind Panedwindow <ButtonRelease-1> {
+	::tk::panedwindow::2DReleaseSash %W %x %y %X %Y 0
+}
+
+bind Panedwindow <Button-2> { 
+	::tk::panedwindow::2DSash %W %x %y %X %Y 1
+}
+bind Panedwindow <B2-Motion> { 
+	::tk::panedwindow::2DDragSash %W %x %y %X %Y 1
+}
+bind Panedwindow <ButtonRelease-2> {
+	::tk::panedwindow::2DReleaseSash %W %x %y %X %Y 1
+}
+
+proc ::tk::panedwindow::ReleaseSash {w proxy} {
+    if {[$w cget -opaqueresize]} { set proxy 0 }
+    if { [info exists ::tk::Priv($w,sash)] } {
+		if {$proxy} {
+			foreach {x y} [$w proxy coord] break
+			$w sash place $::tk::Priv($w,sash) $x $y
+			$w proxy forget
+		}
+		unset ::tk::Priv($w,sash) ::tk::Priv($w,dx) ::tk::Priv($w,dy)
+    }
+}
+
+proc ::tk::panedwindow::MarkSash {w x y proxy} {
+    if {[$w cget -opaqueresize]} { set proxy 0 }
+    set what [$w identify $x $y]
+    if { [llength $what] == 2 } {
+		foreach {index which} $what break
+		if { !$::tk_strictMotif || [string equal $which "handle"] } {
+			if {!$proxy} { $w sash mark $index $x $y }
+			set ::tk::Priv($w,sash) $index
+			foreach {sx sy} [$w sash coord $index] break
+			set ::tk::Priv($w,dx) [expr {$sx-$x}]
+			set ::tk::Priv($w,dy) [expr {$sy-$y}]
+			# Do this to init the proxy location
+			DragSash $w $x $y $proxy
+		}
+    }
+}
+
+proc ::tk::panedwindow::DragSash {w x y proxy} {
+    if {[$w cget -opaqueresize]} { set proxy 0 }
+    if { [info exists ::tk::Priv($w,sash)] } {
+		if {$proxy} {
+			$w proxy place  [expr {$x+$::tk::Priv($w,dx)}] [expr {$y+$::tk::Priv($w,dy)}]
+		} else {
+			$w sash place $::tk::Priv($w,sash)  [expr {$x+$::tk::Priv($w,dx)}] [expr {$y+$::tk::Priv($w,dy)}]
+		}
+    }
+}
+
+proc ::tk::panedwindow::Motion {w x y} {
+    variable ::tk::Priv
+    set id [$w identify $x $y]
+    if {([llength $id] == 2) &&  (!$::tk_strictMotif || [string equal [lindex $id 1] "handle"])} {
+		set off [expr {[$w cget -sashwidth] - 1}]
+		set mark 0
+		set X [expr {[winfo rootx $w] + $x}]
+		set Y [expr {[winfo rooty $w] + $y}]
+	    if {[info exists Priv($w,panecursor)]} {$w configure -cursor $Priv($w,panecursor)}
+		foreach {xx yy} [list [expr {$X + $off}] $Y [expr {$X - $off}] $Y $X [expr {$Y + $off}] $X [expr {$Y - $off}]] {
+			set xw [winfo containing $xx $yy]
+			if {$xw ne "" && 
+				$xw ne $w &&
+				[winfo class $xw] eq "Panedwindow"} {
+				set mark 1
+				break
+			}
+		}
+		
+		if { 1 || ![info exists Priv($w,panecursor)]} {
+			set Priv($w,panecursor) [$w cget -cursor]
+			if { [string equal [$w cget -sashcursor] ""] } {
+				if {$mark} {
+					$w configure -cursor fleur
+				} elseif { [string equal [$w cget -orient] "horizontal"] } {
+					$w configure -cursor sb_h_double_arrow
+				} else {
+					$w configure -cursor sb_v_double_arrow
+				}
+			} else {
+				$w configure -cursor [$w cget -sashcursor]
+			}
+			if {[info exists Priv($w,pwAfterId)]} {
+				after cancel $Priv($w,pwAfterId)
+			}
+			set Priv($w,pwAfterId) [after 150  [list ::tk::panedwindow::Cursor $w]]
+		}
+		return
+    }
+    if { [info exists Priv($w,panecursor)] } {
+		$w configure -cursor $Priv($w,panecursor)
+		unset Priv($w,panecursor)
+    }
+}

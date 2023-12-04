@@ -1,0 +1,20 @@
+# Add ::quartus::pin_planner_db to the table of packages
+lappend quartus(package_table) {pin_planner_db quartus_cdb hidden}
+
+if {[lsearch -exact [list quartus_cdb] $quartus(nameofexecutable)] != -1} {
+
+    # Make ::quartus::pin_planner_db available to load
+    set qpkg_script_auto [file join [file dirname [info script]] pin_planner_db.tcl]
+    if {[file exist $qpkg_script_auto]} {
+       source $qpkg_script_auto
+    }
+    unset qpkg_script_auto
+
+}
+
+if {[lsearch -exact [list quartus_cdb] $quartus(nameofexecutable)] != -1} {
+
+    # Load ::quartus::pin_planner_db by default
+    package require ::quartus::pin_planner_db
+
+}

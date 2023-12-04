@@ -1,0 +1,717 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<!-- system.stf.gtf - generates a system library STF given a temporary STF
+                      (and an actual PTF)
+-->
+
+<template name="system.stf">
+
+	<call gtf="%GTF_DIR%/check_version.gtf"/>
+
+    <call gtf="%GTF_DIR%/XPATHs.gtf"/>
+
+    <call gtf="%GTF_DIR%/CPU.gtf"/>
+
+    <switch>
+        <if condition="not( %CPU% )">
+            <!-- the CPU was not indicated in the temporary STF -->
+            <!-- so go with the first Nios II CPU in the PTF -->
+            <for_each variable="MODULE" ptf_path="SYSTEM/MODULE">
+                <set_variable variable="CLASS"
+                              ptf_path="SYSTEM/MODULE %MODULE%/class"/>
+                <if condition="eq( altera_nios2, %CLASS% )">
+                    <set_variable variable="IS_ENABLED"
+                                  ptf_path="SYSTEM/MODULE %MODULE%/SYSTEM_BUILDER_INFO/Is_Enabled"/>
+                    <if condition="ne( 0, %IS_ENABLED% )"> <!-- default to 1 -->
+                        <set_variable variable="CPU" to="%MODULE%"/>
+                        <break/>
+                    </if>
+                </if>
+            </for_each>
+            <switch>
+                <if condition="not( %CPU% )">
+                    <error>
+
+system.stf - ### ERROR: unable to find an "altera_nios2" CPU
+                    </error>
+                </if>
+            </switch>
+            <break/>
+        </if>
+        <switch>
+            <!-- CPU was indicated in the temporary STF... -->
+            <!-- ...make sure it's valid -->
+            <set_variable variable="CLASS"
+                          ptf_path="SYSTEM/MODULE %CPU%/class"/>
+            <if condition="ne( altera_nios2, %CLASS% )">
+                <error>
+
+system.stf - ### ERROR: Nios II CPU "%CPU%" not found
+                </error>
+            </if>
+            <set_variable variable="IS_ENABLED"
+                          ptf_path="SYSTEM/MODULE %CPU%/SYSTEM_BUILDER_INFO/Is_Enabled"/>
+            <if condition="eq( 0, %IS_ENABLED% )"> <!-- default to 1 -->
+                <error>
+
+system.stf - ### ERROR: Nios II CPU "%CPU%" not enabled
+                </error>
+            </if>
+        </switch>
+    </switch>    
+
+    <!-- figure out which module to use for stdio -->
+    <!-- go with the first jtag_uart we find, otherwise the last printable device -->
+
+    <set_variable variable="STDIO_MODULE" to=""/>
+    <for_each variable="MODULE" ptf_path="SYSTEM/MODULE">
+        <set_variable variable="IS_ENABLED"
+                      ptf_path="SYSTEM/MODULE %MODULE%/SYSTEM_BUILDER_INFO/Is_Enabled"/>
+        <if condition="ne( 0, %IS_ENABLED% )"> <!-- default to 1 -->
+            <for_each variable="SLAVE" ptf_path="SYSTEM/MODULE %MODULE%/SLAVE">
+                <set_variable variable="IS_ENABLED"
+                              ptf_path="SYSTEM/MODULE %MODULE%/SLAVE %SLAVE%/SYSTEM_BUILDER_INFO/Is_Enabled"/>
+                <if condition="ne( 0, %IS_ENABLED% )"> <!-- default to 1 -->
+                    <set_variable variable="IS_PRINTABLE_DEVICE"
+                                  ptf_path="SYSTEM/MODULE %MODULE%/SLAVE %SLAVE%/SYSTEM_BUILDER_INFO/Is_Printable_Device"/>
+                    <if condition="%IS_PRINTABLE_DEVICE%"> <!-- default to 0 -->
+                        <set_variable variable="STDIO_MODULE" to="%MODULE%"/>
+                        <set_variable variable="CLASS"
+                                      ptf_path="SYSTEM/MODULE %MODULE%/class"/>
+                        <if condition="eq( altera_avalon_jtag_uart, %CLASS% )">
+                            <!-- stop looking if we found a jtag_uart -->
+                            <break/>
+                        </if>
+                    </if>
+                </if>
+            </for_each>
+            <if condition="eq( altera_avalon_jtag_uart, %CLASS% )">
+                <!-- break out of both for_each loops -->
+                <break/>
+            </if>
+        </if>
+    </for_each>
+
+    <!-- figure out which module to use for alt_sys_clk -->
+    <!-- go with the first enabled altera_avalon_timer we find... -->
+
+    <set_variable variable="SYS_CLK" to=""/>
+    <for_each variable="MODULE" ptf_path="SYSTEM/MODULE">
+        <set_variable variable="CLASS"
+                      ptf_path="SYSTEM/MODULE %MODULE%/class"/>
+        <if condition="eq( altera_avalon_timer, %CLASS% )">
+            <set_variable variable="IS_ENABLED"
+                          ptf_path="SYSTEM/MODULE %MODULE%/SYSTEM_BUILDER_INFO/Is_Enabled"/>
+            <if condition="ne( 0, %IS_ENABLED% )"> <!-- default to 1 -->
+                <!-- go through all the slaves... -->
+                <for_each variable="SLAVE" ptf_path="SYSTEM/MODULE %MODULE%/SLAVE">
+                    <set_variable variable="IS_ENABLED"
+                                  ptf_path="SYSTEM/MODULE %MODULE%/SLAVE %SLAVE%/SYSTEM_BUILDER_INFO/Is_Enabled"/>
+                    <if condition="ne( 0, %IS_ENABLED% )"> <!-- default to 1 -->
+                        <set_variable variable="HAS_IRQ"
+                                      ptf_path="SYSTEM/MODULE %MODULE%/SLAVE %SLAVE%/SYSTEM_BUILDER_INFO/Has_IRQ"/>
+                        <if condition="%HAS_IRQ%"> <!-- default to 0 -->
+                            <!-- go through all the IRQ masters... -->
+                            <for_each variable="IRQ_MASTER"
+                                      ptf_path="SYSTEM/MODULE %MODULE%/SLAVE %SLAVE%/SYSTEM_BUILDER_INFO/IRQ_MASTER">
+                                <set_variable variable="IRQ_MASTER_MODULE"
+                                              to="split( %IRQ_MASTER%, /, 0 )"/>
+                                <if condition="eq( %IRQ_MASTER_MODULE%, %CPU% )">
+                                    <!-- we found one... -->
+                                    <set_variable variable="IRQ_MASTER_PORT"
+                                                  to="split( %IRQ_MASTER%, /, 1 )"/>
+                                     <!-- need to quote the slash in IRQ_MASTER to get at the IRQ_Number assignment -->
+                                    <set_variable variable="IRQ_NUMBER"
+                                                  ptf_path="SYSTEM/MODULE %MODULE%/SLAVE %SLAVE%/SYSTEM_BUILDER_INFO/IRQ_MASTER %IRQ_MASTER_MODULE%\/%IRQ_MASTER_PORT%/IRQ_Number"/>
+                                    <!-- ...make sure the IRQ number is valid... -->
+                                    <if condition="numeric( %IRQ_NUMBER% )">
+                                        <!-- ...it is...we found our ALT_SYS_CLK timer -->
+                                        <set_variable variable="ALT_SYS_CLK" to="uppercase( %MODULE% )"/>
+                                        <break/>
+                                    </if>
+                                </if>
+                            </for_each>
+                            <if condition="%ALT_SYS_CLK%">
+                                <break/> <!-- break out of the outer for_each loops too -->
+                            </if>
+                        </if>
+                    </if>
+                </for_each>
+                <if condition="%ALT_SYS_CLK%">
+                    <break/> <!-- break out of the outer for_each loops too -->
+                </if>
+            </if>
+        </if>
+    </for_each>
+    <switch>
+        <if condition="not( %ALT_SYS_CLK% )">
+   			<set_variable variable="ALT_SYS_CLK" to="none"/>
+            <output>
+
+system.stf - ### Warning: unable to find an "altera_avalon_timer" module
+				ALT_SYS_CLK set to "none"
+            </output>
+         </if>
+    </switch>
+   <!-- define and macro defaults -->
+    <set_variable variable="ALT_SYS_CLK_QUOTE" to="no"/>
+    <set_variable variable="ALT_TIMESTAMP_CLK" to="none"/>
+    <set_variable variable="ALT_TIMESTAMP_CLK_QUOTE" to="no"/>
+    <set_variable variable="ALT_MAX_FD" to="32"/>
+    <set_variable variable="ALT_MAX_FD_QUOTE" to="no"/>
+    <set_variable variable="ALT_SIM_OPTIMIZE" to="0"/>
+    <set_variable variable="ALT_SIM_OPTIMIZE_QUOTE" to="no"/>
+
+    <!-- figure out which module to use for .text, .rodata & .rwdata -->
+    <!-- go with the memory with the biggest address span -->
+
+    <set_variable variable="MEMORY_MODULES_ONLY" to="1"/>
+    <export variable="MEMORY_MODULES_ONLY"/>
+    <call gtf="%GTF_DIR%/MODULE_lists.gtf"/>
+    <set_variable variable="MEMORY" to=""/>
+    <set_variable variable="BIGGEST_SPAN" to="0"/>
+    <for_each variable="MODULE_SLAVE" index_variable="MODULE_SLAVE_LIST_INDEX" list="%MODULE_SLAVE_LIST%">
+        <export variable="MODULE_SLAVE"/>
+        <set_variable variable="IS_NONVOLATILE_STORAGE"
+		ptf_path="SYSTEM/MODULE %MODULE_SLAVE%/SYSTEM_BUILDER_INFO/Is_Nonvolatile_Storage"/>
+	<if condition="not( eq( %IS_NONVOLATILE_STORAGE%, 1 ) )">
+
+        <call gtf="%GTF_DIR%/BASE_ADDRESS_and_ADDRESS_SPAN.gtf"/>
+        <if condition="gt( %ADDRESS_SPAN%, %BIGGEST_SPAN% )">
+            <set_variable variable="MEMORY"
+                          to="list_get( %MODULE_SLAVE_NAME_LIST%, %MODULE_SLAVE_LIST_INDEX% )"/>
+            <set_variable variable="BIGGEST_SPAN" to="%ADDRESS_SPAN%"/>
+        </if>
+
+        </if>
+    </for_each>    
+
+    <!-- link_spec defaults -->
+    <set_variable variable="AUTO_GEN_SCRIPT" to="yes"/>
+    <set_variable variable="LINKER_SCRIPT_NAME" to="none"/>
+
+    <!-- is there a template XML file indicated in the temporary STF? -->
+
+    <set_variable variable="MORE_OS_SPEC_ATTRIBUTES" to=""/>
+    <set_variable variable="DEFINE_ELEMENTS" to=""/>
+    <set_variable variable="MACRO_ELEMENTS" to=""/>
+    <set_variable variable="SW_COMPONENT_ELEMENTS" to=""/>
+    <set_variable variable="SW_COMPONENTS" to=""/>
+    <set_variable variable="TEMPLATE"
+                  to='xpath( %STF_NAME%, "normalize-space(%PROJECT_XPATH%/@template)" )'/>
+    <set_variable variable="LDFLAG_ELEMENTS" to=""/>
+    <if condition='regex( "^ERROR.*$", %TEMPLATE% )'>
+        <!-- if there was an error (such as a non-existant STF), TEMPLATE should be null -->
+        <set_variable variable="TEMPLATE" to=""/>
+    </if>
+    <if condition="%TEMPLATE%">
+
+        <!-- yes... -->
+
+        <set_variable variable="TEMPLATE_SETTINGS_XPATH"
+                      to="/template_settings/stf"/>
+
+        <!-- ...get the CPU name -->
+        <set_variable variable="TEMPLATE_CPU"
+                      to='xpath( %TEMPLATE%, "normalize-space(%TEMPLATE_SETTINGS_XPATH%/cpu/@name)" )'/>
+        <if condition="%TEMPLATE_CPU%">
+            <set_variable variable="CPU" to="%TEMPLATE_CPU%"/>
+        </if>
+
+        <set_variable variable="TEMPLATE_SETTINGS_OS_SPEC_XPATH"
+                      to="%TEMPLATE_SETTINGS_XPATH%/os_spec"/>
+
+        <!-- ...get the OS name -->
+        <set_variable variable="OS_NAME"
+                      to='xpath( %TEMPLATE%, "normalize-space(%TEMPLATE_SETTINGS_OS_SPEC_XPATH%/@name)" )'/>
+
+
+
+
+        <!-- ...get the stdio settings -->
+        <set_variable variable="STDERR_MODULE"
+                      to='xpath( %TEMPLATE%, "normalize-space(%TEMPLATE_SETTINGS_OS_SPEC_XPATH%/@stderr)" )'/>
+        <set_variable variable="STDIN_MODULE"
+                      to='xpath( %TEMPLATE%, "normalize-space(%TEMPLATE_SETTINGS_OS_SPEC_XPATH%/@stdin)" )'/>
+        <set_variable variable="STDOUT_MODULE"
+                      to='xpath( %TEMPLATE%, "normalize-space(%TEMPLATE_SETTINGS_OS_SPEC_XPATH%/@stdout)" )'/>
+
+        <!-- are there more <os_spec> attributes? -->
+        <set_variable variable="NO_EXIT"
+                      to='xpath( %TEMPLATE%, "normalize-space(%TEMPLATE_SETTINGS_OS_SPEC_XPATH%/@no_exit)" )'/>
+        <if condition="%NO_EXIT%">
+            <set_variable variable="MORE_OS_SPEC_ATTRIBUTES" to='%MORE_OS_SPEC_ATTRIBUTES%&#x0A;             no_exit="%NO_EXIT%"'/>
+        </if>
+        <set_variable variable="CLEAN_EXIT"
+                      to='xpath( %TEMPLATE%, "normalize-space(%TEMPLATE_SETTINGS_OS_SPEC_XPATH%/@clean_exit)" )'/>
+        <if condition="%CLEAN_EXIT%">
+            <set_variable variable="MORE_OS_SPEC_ATTRIBUTES" to='%MORE_OS_SPEC_ATTRIBUTES%&#x0A;             clean_exit="%CLEAN_EXIT%"'/>
+        </if>
+        <set_variable variable="NO_C_PLUS_PLUS"
+                      to='xpath( %TEMPLATE%, "normalize-space(%TEMPLATE_SETTINGS_OS_SPEC_XPATH%/@no_c_plus_plus)" )'/>
+        <if condition="%NO_C_PLUS_PLUS%">
+            <set_variable variable="MORE_OS_SPEC_ATTRIBUTES" to='%MORE_OS_SPEC_ATTRIBUTES%&#x0A;             no_c_plus_plus="%NO_C_PLUS_PLUS%"'/>
+        </if>
+        <set_variable variable="SMALL_FOOTPRINT"
+                      to='xpath( %TEMPLATE%, "normalize-space(%TEMPLATE_SETTINGS_OS_SPEC_XPATH%/@small_footprint)" )'/>
+        <if condition="%SMALL_FOOTPRINT%">
+            <set_variable variable="MORE_OS_SPEC_ATTRIBUTES" to='%MORE_OS_SPEC_ATTRIBUTES%&#x0A;             small_footprint="%SMALL_FOOTPRINT%"'/>
+        </if>
+        <set_variable variable="DIRECT_DRIVERS"
+                      to='xpath( %TEMPLATE%, "normalize-space(%TEMPLATE_SETTINGS_OS_SPEC_XPATH%/@direct_drivers)" )'/>
+        <if condition="%DIRECT_DRIVERS%">
+            <set_variable variable="MORE_OS_SPEC_ATTRIBUTES" to='%MORE_OS_SPEC_ATTRIBUTES%&#x0A;             direct_drivers="%DIRECT_DRIVERS%"'/>
+        </if>
+        <set_variable variable="EXCEPTION_STACK"
+                      to='xpath( %TEMPLATE%, "normalize-space(%TEMPLATE_SETTINGS_OS_SPEC_XPATH%/@exception_stack)" )'/>
+        <if condition="%EXCEPTION_STACK%">
+            <set_variable variable="MORE_OS_SPEC_ATTRIBUTES" to='%MORE_OS_SPEC_ATTRIBUTES%&#x0A;             exception_stack="%EXCEPTION_STACK%"'/>
+        </if>
+        <set_variable variable="INSTRUCTION_EMULATION"
+                      to='xpath( %TEMPLATE%, "normalize-space(%TEMPLATE_SETTINGS_OS_SPEC_XPATH%/@instruction_emulation)" )'/>
+        <if condition="%INSTRUCTION_EMULATION%">
+            <set_variable variable="MORE_OS_SPEC_ATTRIBUTES" to='%MORE_OS_SPEC_ATTRIBUTES%&#x0A;             instruction_emulation="%INSTRUCTION_EMULATION%"'/>
+        </if>
+        <!-- instruction emulation defaults to no if it doesn't exist in template -->
+        <if condition="not( %INSTRUCTION_EMULATION% )">
+            <set_variable variable="MORE_OS_SPEC_ATTRIBUTES" to='%MORE_OS_SPEC_ATTRIBUTES%&#x0A;             instruction_emulation="no"'/>
+        </if>
+		<!-- is sopc_component_dir specified in the template ? -->
+        <set_variable variable="SOPC_COMPONENT_DIR"
+                      to='xpath( %TEMPLATE%, "normalize-space(%TEMPLATE_SETTINGS_OS_SPEC_XPATH%/@sopc_component_dir)" )'/>
+        <if condition="%SOPC_COMPONENT_DIR%">
+            <set_variable variable="MORE_OS_SPEC_ATTRIBUTES" to='%MORE_OS_SPEC_ATTRIBUTES%&#x0A;             sopc_component_dir="%SOPC_COMPONENT_DIR%"'/>
+        </if>
+		<!-- if os is MicroC RTOS and dir is not template specified then we will hard-code microc/os-ii path here -->
+		<if condition="not( %SOPC_COMPONENT_DIR% )">
+        	<if condition="eq( MicroC/OS-II, %OS_NAME% )">
+            	<set_variable variable="MORE_OS_SPEC_ATTRIBUTES" to='%MORE_OS_SPEC_ATTRIBUTES%&#x0A;             sopc_component_dir="micrium_uc_osii"'/>
+			</if>
+		</if>
+
+
+
+        <!-- ...get any <define> elements -->
+        <set_variable variable="DEFINE_INDEX" to="1"/>
+        <loop>
+            <set_variable variable="DEFINE_ELEMENT_TEXT"
+                          to='xpath_element_to_string( %TEMPLATE%, %TEMPLATE_SETTINGS_OS_SPEC_XPATH%/sys_defines/define[%DEFINE_INDEX%] )'/>
+            <if condition="eq( ####, ##%DEFINE_ELEMENT_TEXT%## )">
+                <break/>
+            </if>
+            <if condition='regex( "^ERROR.*", ##%DEFINE_ELEMENT_TEXT%## )'>
+                <error>
+
+%DEFINE_ELEMENT_TEXT%
+                </error>
+            </if>
+            <set_variable variable="DEFINE_NAME" to='xpath_string( ##%DEFINE_ELEMENT_TEXT%##, "normalize-space(/define/@name)" )'/>
+            <switch>
+                <if condition="eq( alt_sys_clk, %DEFINE_NAME% )">
+                    <set_variable variable="ALT_SYS_CLK" to='xpath_string( ##%DEFINE_ELEMENT_TEXT%##, "normalize-space(/define/@value)" )'/>
+                    <set_variable variable="ALT_SYS_CLK_QUOTE" to='xpath_string( ##%DEFINE_ELEMENT_TEXT%##, "normalize-space(/define/@quote)" )'/>
+                    <break/>
+                </if>
+                <if condition="eq( alt_timestamp_clk, %DEFINE_NAME% )">
+                    <set_variable variable="ALT_TIMESTAMP_CLK" to='xpath_string( ##%DEFINE_ELEMENT_TEXT%##, "normalize-space(/define/@value)" )'/>
+                    <set_variable variable="ALT_TIMESTAMP_CLK_QUOTE" to='xpath_string( ##%DEFINE_ELEMENT_TEXT%##, "normalize-space(/define/@quote)" )'/>
+                    <break/>
+                </if>
+                <if condition="eq( alt_max_fd, %DEFINE_NAME% )">
+                    <set_variable variable="ALT_MAX_FD" to='xpath_string( ##%DEFINE_ELEMENT_TEXT%##, "normalize-space(/define/@value)" )'/>
+                    <set_variable variable="ALT_MAX_FD_QUOTE" to='xpath_string( ##%DEFINE_ELEMENT_TEXT%##, "normalize-space(/define/@quote)" )'/>
+                    <break/>
+                </if>
+                <set_variable variable="DEFINE_ELEMENTS" to="%DEFINE_ELEMENTS%&#x0A;            %DEFINE_ELEMENT_TEXT%"/>
+            </switch>
+
+            <set_variable variable="DEFINE_INDEX" to="add( 1, %DEFINE_INDEX% )"/>
+        </loop>
+
+        <!-- ...get any <ldflags> elements -->
+        <set_variable variable="FLAG_INDEX" to="1"/>
+        <loop>
+            <set_variable variable="FLAG_ELEMENT_TEXT"
+                          to='xpath_element_to_string( %TEMPLATE%, %TEMPLATE_SETTINGS_OS_SPEC_XPATH%/ldflags/flag[%FLAG_INDEX%] )'/>
+ 			<if condition="eq( ####, ##%FLAG_ELEMENT_TEXT%## )">
+				<break/>
+            </if>
+            <if condition='regex( "^ERROR.*", ##%FLAG_ELEMENT_TEXT%## )'>
+                <error>
+%FLAG_ELEMENT_TEXT%
+                </error>
+            </if>
+            <set_variable variable="LDFLAG_ELEMENTS" to="%LDFLAG_ELEMENTS%&#x0A;            %FLAG_ELEMENT_TEXT%"/>
+            <set_variable variable="FLAG_INDEX" to="add( 1, %FLAG_INDEX% )"/>
+        </loop>
+
+        <!-- ...get any <macro> elements -->
+        <!-- TODO - this code is duplicated above -->
+        <set_variable variable="MACRO_INDEX" to="1"/>
+        <loop>
+            <set_variable variable="MACRO_ELEMENT_TEXT"
+                          to='xpath_element_to_string( %TEMPLATE%, %TEMPLATE_SETTINGS_OS_SPEC_XPATH%/make_macros/macro[%MACRO_INDEX%] )'/>
+            <if condition="eq( ####, ##%MACRO_ELEMENT_TEXT%## )">
+                <break/>
+            </if>
+            <if condition='regex( "^ERROR.*", ##%MACRO_ELEMENT_TEXT%## )'>
+                <error>
+
+%MACRO_ELEMENT_TEXT%
+                </error>
+            </if>
+            <set_variable variable="MACRO_NAME" to='xpath_string( ##%MACRO_ELEMENT_TEXT%##, "normalize-space(/macro/@name)" )'/>
+            <switch>
+                <if condition="eq( alt_sim_optimize, %MACRO_NAME% )">
+                    <set_variable variable="ALT_SIM_OPTIMIZE" to='xpath_string( ##%MACRO_ELEMENT_TEXT%##, "normalize-space(/macro/@value)" )'/>
+                    <set_variable variable="ALT_SIM_OPTIMIZE_QUOTE" to='xpath_string( ##%MACRO_ELEMENT_TEXT%##, "normalize-space(/macro/@quote)" )'/>
+                    <break/>
+                </if>
+                <set_variable variable="MACRO_ELEMENTS" to="%MACRO_ELEMENTS%&#x0A;            %MACRO_ELEMENT_TEXT%"/>
+            </switch>
+
+            <set_variable variable="MACRO_INDEX" to="add( 1, %MACRO_INDEX% )"/>
+        </loop>
+
+        <!-- ...get any <sw_component> elements -->
+		    <!-- ...there are sw component(s) !  -->
+		<set_variable variable="SW_COMPONENTS" to=""/>
+        <set_variable variable="SW_COMPONENT_INDEX" to="1"/>
+        <loop>
+		    <!-- ...are there any sw components ? if not...bail. -->
+
+            <set_variable variable="SW_COMPONENT_ELEMENT_TEXT"
+                          to='xpath_element_to_string( %TEMPLATE%, %TEMPLATE_SETTINGS_OS_SPEC_XPATH%/sw_component[%SW_COMPONENT_INDEX%] )'/>
+            <if condition="eq( ####, ##%SW_COMPONENT_ELEMENT_TEXT%## )">
+                <break/>
+            </if>
+            <if condition='regex( "^ERROR.*", ##%SW_COMPONENT_ELEMENT_TEXT%## )'>
+                <error>
+
+%SW_COMPONENT_ELEMENT_TEXT%
+                </error>
+            </if>
+
+		    <!-- ...there are sw component(s) !  -->
+			<set_variable variable="SW_COMPONENT_XPATH"
+                      to="%TEMPLATE_SETTINGS_OS_SPEC_XPATH%/sw_component[%SW_COMPONENT_INDEX%]"/>
+
+
+			<set_variable variable="SWCOMP_NAME" to='xpath( %TEMPLATE%, "normalize-space(%SW_COMPONENT_XPATH%/@name)" )'/>
+       		<set_variable variable="SWCOMP_ID" to='xpath( %TEMPLATE%, "normalize-space(%SW_COMPONENT_XPATH%/@id)" )'/>
+			<if condition="eq( INICHE, %SWCOMP_ID% )">
+		    	<set_variable variable="SWCOMP_DIR" to="altera_iniche"/>
+			</if>
+			<if condition="eq( LWIP4UCOS_1, %SWCOMP_ID% )">
+		    	<set_variable variable="SWCOMP_DIR" to="altera_lwip"/>
+			</if>
+			<if condition="eq( ROZIPFS, %SWCOMP_ID% )">
+		    	<set_variable variable="SWCOMP_DIR" to="altera_ro_zipfs"/>
+			</if>
+          	<set_variable variable="SW_COMPONENT" to="&lt;sw_component id=&quot;%SWCOMP_ID%&quot; name=&quot;%SWCOMP_NAME%&quot; sopc_component_dir=&quot;%SWCOMP_DIR%&quot;&gt;"/>
+
+          	<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;            &lt;sys_defines&gt;"/>
+			<if condition="eq( INICHE, %SWCOMP_ID% )">
+           		<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;                &lt;define name=&quot;dhcp_client&quot; quote=&quot;no&quot; value=&quot;1&quot;/&gt;"/>
+           		<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;                &lt;define name=&quot;include_tcp&quot; quote=&quot;no&quot; value=&quot;1&quot;/&gt;"/>
+			</if>
+			<if condition="eq( LWIP4UCOS_1, %SWCOMP_ID% )">
+           		<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;                &lt;define name=&quot;mem_size&quot; quote=&quot;no&quot; value=&quot;32768&quot;/&gt;"/>
+           		<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;                &lt;define name=&quot;memp_num_pbuf&quot; quote=&quot;no&quot; value=&quot;32&quot;/&gt;"/>
+           		<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;                &lt;define name=&quot;memp_num_netbuf&quot; quote=&quot;no&quot; value=&quot;8&quot;/&gt;"/>
+           		<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;                &lt;define name=&quot;memp_num_udp_pcb&quot; quote=&quot;no&quot; value=&quot;8&quot;/&gt;"/>
+           		<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;                &lt;define name=&quot;memp_num_tcp_pcb&quot; quote=&quot;no&quot; value=&quot;8&quot;/&gt;"/>
+           		<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;                &lt;define name=&quot;memp_num_tcp_pcb_listen&quot; quote=&quot;no&quot; value=&quot;2&quot;/&gt;"/>
+           		<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;                &lt;define name=&quot;memp_num_api_msg&quot; quote=&quot;no&quot; value=&quot;32&quot;/&gt;"/>
+           		<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;                &lt;define name=&quot;memp_num_tcpip_msg&quot; quote=&quot;no&quot; value=&quot;32&quot;/&gt;"/>
+           		<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;                &lt;define name=&quot;pbuf_pool_size&quot; quote=&quot;no&quot; value=&quot;16&quot;/&gt;"/>
+           		<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;                &lt;define name=&quot;pbuf_pool_bufsize&quot; quote=&quot;no&quot; value=&quot;1536&quot;/&gt;"/>
+          		<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;                &lt;define name=&quot;arp_table_size&quot; quote=&quot;no&quot; value=&quot;10&quot;/&gt;"/>
+          		<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;                &lt;define name=&quot;ip_forward&quot; quote=&quot;no&quot; value=&quot;0&quot;/&gt;"/>
+          		<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;                &lt;define name=&quot;icmp_ttl&quot; quote=&quot;no&quot; value=&quot;255&quot;/&gt;"/>
+           		<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;                &lt;define name=&quot;lwip_dhcp&quot; quote=&quot;no&quot; value=&quot;1&quot;/&gt;"/>
+           		<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;                &lt;define name=&quot;dhcp_does_arp_check&quot; quote=&quot;no&quot; value=&quot;1&quot;/&gt;"/>
+           		<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;                &lt;define name=&quot;lwip_udp&quot; quote=&quot;no&quot; value=&quot;1&quot;/&gt;"/>
+           		<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;                &lt;define name=&quot;lwip_tcp&quot; quote=&quot;no&quot; value=&quot;1&quot;/&gt;"/>
+           		<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;                &lt;define name=&quot;tcp_wnd&quot; quote=&quot;no&quot; value=&quot;2048&quot;/&gt;"/>
+           		<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;                &lt;define name=&quot;tcp_maxrtx&quot; quote=&quot;no&quot; value=&quot;4&quot;/&gt;"/>
+           		<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;                &lt;define name=&quot;tcp_synmaxrtx&quot; quote=&quot;no&quot; value=&quot;4&quot;/&gt;"/>
+           		<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;                &lt;define name=&quot;tcp_mss&quot; quote=&quot;no&quot; value=&quot;1476&quot;/&gt;"/>
+           		<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;                &lt;define name=&quot;tcp_snd_buf&quot; quote=&quot;no&quot; value=&quot;32768&quot;/&gt;"/>
+           		<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;                &lt;define name=&quot;lwip_stats&quot; quote=&quot;no&quot; value=&quot;0&quot;/&gt;"/>
+           		<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;                &lt;define name=&quot;lwip_stack_size&quot; quote=&quot;no&quot; value=&quot;2048&quot;/&gt;"/>
+			</if>
+
+       		<!-- ...get any <define> elements -->
+        	<set_variable variable="DEFINE_INDEX" to="1"/>
+        	<loop>
+            	<set_variable variable="DEFINE_ELEMENT_TEXT"
+                          to='xpath_element_to_string( %TEMPLATE%, %TEMPLATE_SETTINGS_OS_SPEC_XPATH%/sw_component[%SW_COMPONENT_INDEX%]/sys_defines/define[%DEFINE_INDEX%] )'/>
+            	<if condition="eq( ####, ##%DEFINE_ELEMENT_TEXT%## )">
+                	<break/>
+            	</if>
+            	<if condition='regex( "^ERROR.*", ##%DEFINE_ELEMENT_TEXT%## )'>
+                	<error>
+
+%DEFINE_ELEMENT_TEXT%
+                	</error>
+            	</if>
+
+            	<set_variable variable="DEFINE_NAME" to='xpath_string( ##%DEFINE_ELEMENT_TEXT%##, "normalize-space(/define/@name)" )'/>
+            	<set_variable variable="DEFINE_QUOTE" to='xpath_string( ##%DEFINE_ELEMENT_TEXT%##, "normalize-space(/define/@quote)" )'/>
+            	<set_variable variable="DEFINE_VALUE" to='xpath_string( ##%DEFINE_ELEMENT_TEXT%##, "normalize-space(/define/@value)" )'/>
+           		<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;                &lt;define name=&quot;%DEFINE_NAME%&quot; quote=&quot;%DEFINE_QUOTE%&quot; value=&quot;%DEFINE_VALUE%&quot;/&gt;"/>
+          		<set_variable variable="DEFINE_INDEX" to="add( 1, %DEFINE_INDEX% )"/>
+			</loop>
+          	<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;            &lt;/sys_defines&gt;"/>
+
+       		<!-- ...get any <macro> elements -->
+          	<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;            &lt;make_macros&gt;"/>
+        	<set_variable variable="MACRO_INDEX" to="1"/>
+        	<loop>
+            	<set_variable variable="MACRO_ELEMENT_TEXT"
+                          to='xpath_element_to_string( %TEMPLATE%, %TEMPLATE_SETTINGS_OS_SPEC_XPATH%/sw_component[%SW_COMPONENT_INDEX%]/make_macros/macro[%MACRO_INDEX%] )'/>
+            	<if condition="eq( ####, ##%MACRO_ELEMENT_TEXT%## )">
+                	<break/>
+            	</if>
+            	<if condition='regex( "^ERROR.*", ##%DEFINE_ELEMENT_TEXT%## )'>
+                	<error>
+
+%MACRO_ELEMENT_TEXT%
+                	</error>
+            	</if>
+            	<set_variable variable="MACRO_NAME" to='xpath_string( ##%MACRO_ELEMENT_TEXT%##, "normalize-space(/macro/@name)" )'/>
+           		<set_variable variable="MACRO_QUOTE" to='xpath_string( ##%MACRO_ELEMENT_TEXT%##, "normalize-space(/macro/@quote)" )'/>
+            	<set_variable variable="MACRO_VALUE" to='xpath_string( ##%MACRO_ELEMENT_TEXT%##, "normalize-space(/macro/@value)" )'/>
+           		<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;                &lt;macro name=&quot;%MACRO_NAME%&quot; quote=&quot;%MACRO_QUOTE%&quot; value=&quot;%MACRO_VALUE%&quot;/&gt;"/>
+           		<set_variable variable="MACRO_INDEX" to="add( 1, %MACRO_INDEX% )"/>
+			</loop>
+          	<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;            &lt;/make_macros&gt;"/>
+          	<set_variable variable="SW_COMPONENT" to="%SW_COMPONENT%&#x0A;        &lt;/sw_component&gt;"/>
+            <set_variable variable="SW_COMPONENTS" to="%SW_COMPONENTS%&#x0A;        %SW_COMPONENT%"/>
+            <set_variable variable="SW_COMPONENT_INDEX" to="add( 1, %SW_COMPONENT_INDEX% )"/>
+        </loop>
+
+        <set_variable variable="LINK_SPEC_XPATH"
+                      to="%TEMPLATE_SETTINGS_XPATH%/link_spec"/>
+
+        <!-- ...get the link_spec settings -->
+        <set_variable variable="TEMPLATE_AUTO_GEN_SCRIPT"
+                      to='xpath( %TEMPLATE%, "normalize-space(%LINK_SPEC_XPATH%/@auto_gen_script)" )'/>
+        <if condition="%TEMPLATE_AUTO_GEN_SCRIPT%">
+            <set_variable variable="AUTO_GEN_SCRIPT" to="%TEMPLATE_AUTO_GEN_SCRIPT%"/>
+        </if>
+        <set_variable variable="TEMPLATE_LINKER_SCRIPT_NAME"
+                      to='xpath( %TEMPLATE%, "normalize-space(%LINK_SPEC_XPATH%/script/@name)" )'/>
+        <if condition="%TEMPLATE_LINKER_SCRIPT_NAME%">
+            <set_variable variable="LINKER_SCRIPT_NAME" to="%TEMPLATE_LINKER_SCRIPT_NAME%"/>
+        </if>
+
+        <set_variable variable="SECTION_XPATH"
+                      to="%LINK_SPEC_XPATH%/script/section"/>
+
+        <set_variable variable="TEXT_MEMORY"
+                      to='xpath( %TEMPLATE%, "normalize-space(%SECTION_XPATH%[@name=\".text\"]/@memory)" )'/>
+        <set_variable variable="RODATA_MEMORY"
+                      to='xpath( %TEMPLATE%, "normalize-space(%SECTION_XPATH%[@name=\".rodata\"]/@memory)" )'/>
+        <set_variable variable="RWDATA_MEMORY"
+                      to='xpath( %TEMPLATE%, "normalize-space(%SECTION_XPATH%[@name=\".rwdata\"]/@memory)" )'/>
+        <set_variable variable="STACK_MEMORY"
+                      to='xpath( %TEMPLATE%, "normalize-space(%SECTION_XPATH%[@name=\".stack\"]/@memory)" )'/>
+        <set_variable variable="HEAP_MEMORY"
+                      to='xpath( %TEMPLATE%, "normalize-space(%SECTION_XPATH%[@name=\".heap\"]/@memory)" )'/>
+
+	<!-- support for germ templates which need to use reset slave -->
+        <if condition="eq( %TEXT_MEMORY%, __reset )">
+			<call gtf="%GTF_DIR%/RESET_ADDRESS.gtf"/>
+			<set_variable variable="TEXT_MEMORY"
+						to="%RESET_SLAVE_MODULE%" />
+	</if>
+        <if condition="eq( %RODATA_MEMORY%, __reset )">
+			<call gtf="%GTF_DIR%/RESET_ADDRESS.gtf"/>
+			<set_variable variable="RODATA_MEMORY"
+						to="%RESET_SLAVE_MODULE%" />
+	</if>
+        <if condition="eq( %RWDATA_MEMORY%, __reset )">
+			<call gtf="%GTF_DIR%/RESET_ADDRESS.gtf"/>
+			<set_variable variable="RWDATA_MEMORY"
+						to="%RESET_SLAVE_MODULE%" />
+	</if>
+    </if> <!-- condition="%TEMPLATE%" -->
+
+    <!-- defaults -->
+
+    <if condition="not( %OS_NAME% )">
+        <set_variable variable="OS_NAME" to="none (single-threaded)"/> <!-- default OS name -->
+    </if>
+    <if condition="not( %STDERR_MODULE% )">
+        <set_variable variable="STDERR_MODULE" to="%STDIO_MODULE%"/>
+    </if>
+    <if condition="not( %STDIN_MODULE% )">
+        <set_variable variable="STDIN_MODULE" to="%STDIO_MODULE%"/>
+    </if>
+    <if condition="not( %STDOUT_MODULE% )">
+        <set_variable variable="STDOUT_MODULE" to="%STDIO_MODULE%"/>
+    </if>
+    <if condition="not( %TEXT_MEMORY% )">
+        <set_variable variable="TEXT_MEMORY" to="%MEMORY%"/>
+    </if>
+    <if condition="not( %RODATA_MEMORY% )">
+        <set_variable variable="RODATA_MEMORY" to="%MEMORY%"/>
+    </if>
+    <if condition="not( %RWDATA_MEMORY% )">
+        <set_variable variable="RWDATA_MEMORY" to="%MEMORY%"/>
+    </if>
+
+    <!-- output -->
+
+    <output>
+
+system.stf - Using "%CPU%" CPU
+    </output>
+    <switch>
+        <if condition="eq( %STDERR_MODULE%, %STDIN_MODULE%, %STDOUT_MODULE% )">
+            <output>
+
+system.stf - Using "%STDERR_MODULE%" module for stdio
+            </output>
+            <break/>
+        </if>
+        <output>
+
+system.stf - Using: "%STDIN_MODULE%" for stdin, "%STDOUT_MODULE%" for stdout,
+                    &amp; "%STDERR_MODULE%" for stderr
+        </output>
+    </switch>
+    <output>
+
+system.stf - ALT_SYS_CLK will be defined (in system.h) as %ALT_SYS_CLK%
+    </output>
+    <switch>
+        <if condition="eq( %TEXT_MEMORY%, %RODATA_MEMORY%, %RWDATA_MEMORY% )">
+            <output>
+
+system.stf - "%TEXT_MEMORY%" will be used for .text, .rodata and .rwdata
+            </output>
+            <break/>
+        </if>
+        <output>
+
+system.stf - Using: "%TEXT_MEMORY%" for .text, "%RODATA_MEMORY%" for .rodata,
+                    "%RWDATA_MEMORY%" for .rwdata, "%STACK_MEMORY%" for
+                    .stack, &amp; "%HEAP_MEMORY%" for .heap.
+        </output>
+    </switch>
+
+    <set_variable variable="GENERATE_FULLPATH"
+                  to="directory_only( full_path( %GENERATE_DIR% ) )"/>
+
+    <!-- generate -->
+
+    <text>
+<![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<stf>
+    <project ptf="%PTF_NAME%" target="Nios II System Library" template="%TEMPLATE%" dir="%GENERATE_FULLPATH%" name="%GENERATE_DIR%"/>
+    <cpu name="%CPU%"/>
+    <os_spec name="%OS_NAME%"
+             stderr="%STDERR_MODULE%" stdin="%STDIN_MODULE%" stdout="%STDOUT_MODULE%"%MORE_OS_SPEC_ATTRIBUTES%>
+        <sys_defines>
+    ]]></text>
+<if condition="eq( MicroC/OS-II, %OS_NAME% )">
+    <text>
+<![CDATA[            <define name="os_max_tasks" value="10" quote="no"/>
+            <define name="os_lowest_prio" value="20" quote="no"/>
+            <define name="os_flag_en" value="1" quote="no"/>
+            <define name="os_thread_safe_newlib" value="1" quote="no"/>
+            <define name="os_mutex_en" value="1" quote="no"/>
+            <define name="os_sem_en" value="1" quote="no"/>
+            <define name="os_mbox_en" value="1" quote="no"/>
+            <define name="os_q_en" value="1" quote="no"/>
+            <define name="os_mem_en" value="1" quote="no"/>
+            <define name="os_flag_wait_clr_en" value="1" quote="no"/>
+            <define name="os_flag_accept_en" value="1" quote="no"/>
+            <define name="os_flag_del_en" value="1" quote="no"/>
+            <define name="os_flag_query_en" value="1" quote="no"/>
+            <define name="os_flag_name_size" value="32" quote="no"/>
+            <define name="os_flags_nbits" value="16" quote="no"/>
+            <define name="os_max_flags" value="20" quote="no"/>
+            <define name="os_mutex_accept_en" value="1" quote="no"/>
+            <define name="os_mutex_del_en" value="1" quote="no"/>
+            <define name="os_mutex_query_en" value="1" quote="no"/>
+            <define name="os_sem_accept_en" value="1" quote="no"/>
+            <define name="os_sem_set_en" value="1" quote="no"/>
+            <define name="os_sem_del_en" value="1" quote="no"/>
+            <define name="os_sem_query_en" value="1" quote="no"/>
+            <define name="os_mbox_accept_en" value="1" quote="no"/>
+            <define name="os_mbox_del_en" value="1" quote="no"/>
+            <define name="os_mbox_post_en" value="1" quote="no"/>
+            <define name="os_mbox_post_opt_en" value="1" quote="no"/>
+            <define name="os_mbox_query_en" value="1" quote="no"/>
+            <define name="os_q_accept_en" value="1" quote="no"/>
+            <define name="os_q_del_en" value="1" quote="no"/>
+            <define name="os_q_flush_en" value="1" quote="no"/>
+            <define name="os_q_post_en" value="1" quote="no"/>
+            <define name="os_q_post_front_en" value="1" quote="no"/>
+            <define name="os_q_post_opt_en" value="1" quote="no"/>
+            <define name="os_q_query_en" value="1" quote="no"/>
+            <define name="os_max_qs" value="20" quote="no"/>
+            <define name="os_mem_query_en" value="1" quote="no"/>
+            <define name="os_mem_name_size" value="32" quote="no"/>
+            <define name="os_max_mem_part" value="60" quote="no"/>
+            <define name="os_arg_chk_en" value="1" quote="no"/>
+            <define name="os_cpu_hooks_en" value="1" quote="no"/>
+            <define name="os_debug_en" value="1" quote="no"/>
+            <define name="os_sched_lock_en" value="1" quote="no"/>
+            <define name="os_task_stat_en" value="1" quote="no"/>
+            <define name="os_task_stat_stk_chk_en" value="1" quote="no"/>
+            <define name="os_tick_step_en" value="1" quote="no"/>
+            <define name="os_event_name_size" value="32" quote="no"/>
+            <define name="os_max_events" value="60" quote="no"/>
+            <define name="os_task_idle_stk_size" value="512" quote="no"/>
+            <define name="os_task_stat_stk_size" value="512" quote="no"/>
+            <define name="os_task_change_prio_en" value="1" quote="no"/>
+            <define name="os_task_create_en" value="1" quote="no"/>
+            <define name="os_task_create_ext_en" value="1" quote="no"/>
+            <define name="os_task_del_en" value="1" quote="no"/>
+            <define name="os_task_name_size" value="32" quote="no"/>
+            <define name="os_task_profile_en" value="1" quote="no"/>
+            <define name="os_task_query_en" value="1" quote="no"/>
+            <define name="os_task_suspend_en" value="1" quote="no"/>
+            <define name="os_task_sw_hook_en" value="1" quote="no"/>
+            <define name="os_time_tick_hook_en" value="1" quote="no"/>
+            <define name="os_time_get_set_en" value="1" quote="no"/>
+            <define name="os_time_dly_resume_en" value="1" quote="no"/>
+            <define name="os_time_dly_hmsm_en" value="1" quote="no"/>
+            <define name="os_tmr_en" value="1" quote="no"/>
+            <define name="os_tmr_cfg_max" value="16" quote="no"/>
+            <define name="os_tmr_cfg_name_size" value="16" quote="no"/>
+            <define name="os_tmr_cfg_ticks_per_sec" value="10" quote="no"/>
+            <define name="os_tmr_cfg_wheel_size" value="2" quote="no"/>
+            <define name="os_task_tmr_stk_size" value="512" quote="no"/>
+            <define name="os_task_tmr_prio" value="63" quote="no"/>
+]]> </text>
+</if>
+    <text>
+<![CDATA[            <define name="alt_sys_clk" quote="%ALT_SYS_CLK_QUOTE%" value="%ALT_SYS_CLK%"/>
+            <define name="alt_timestamp_clk" quote="%ALT_TIMESTAMP_CLK_QUOTE%" value="%ALT_TIMESTAMP_CLK%"/>
+            <define name="alt_max_fd" quote="%ALT_MAX_FD_QUOTE%" value="%ALT_MAX_FD%"/> %DEFINE_ELEMENTS%
+        </sys_defines>
+        <ldflags>%LDFLAG_ELEMENTS%
+        </ldflags>
+        <make_macros>
+            <macro name="alt_sim_optimize" quote="%ALT_SIM_OPTIMIZE_QUOTE%" value="%ALT_SIM_OPTIMIZE%"/> %MACRO_ELEMENTS%
+        </make_macros> %SW_COMPONENTS%
+    </os_spec>
+    <link_spec auto_gen_script="%AUTO_GEN_SCRIPT%">
+        <script name="%LINKER_SCRIPT_NAME%">
+            <section memory="%TEXT_MEMORY%" name=".text"/>
+            <section memory="%RODATA_MEMORY%" name=".rodata"/>
+            <section memory="%RWDATA_MEMORY%" name=".rwdata"/>
+            <section memory="%STACK_MEMORY%" name=".stack"/>
+            <section memory="%HEAP_MEMORY%" name=".heap"/>
+        </script>
+    </link_spec>
+</stf>
+]]> </text>
+
+</template>

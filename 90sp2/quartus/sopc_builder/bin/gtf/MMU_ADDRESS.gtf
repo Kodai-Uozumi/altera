@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<!-- MMU_ADDRESS.gtf - If an MMU is present, this "subroutine" checks that
+                       an address is valid, and modifies it for an MMU.
+
+     Inputs:
+        MMU_PRESENT         - true if the CPU has an MMU
+        ADDRESS             - the address to check and modify
+        ADDRESS_DESCRIPTION - (optional) a description of the address for use
+                              in the error message
+        SHOW_OR             - (optional, defaults to false) if true, put
+                              the or operator in the returned address value;
+                              if false, return the result of the or
+        OR_VALUE            - (optional, defaults to 0xC0000000) the value
+                              to or with the address
+        OR_OUTPUT_VALUE     - non-numerical version of OR_VALUE used when
+                              SHOW_OR is true
+
+     Returns:
+        ADDRESS             - the modified address, with the or operator if
+                              SHOW_OR is true
+        VALUE               - the modified address, guaranteed to be numerical
+-->     
+
+<generate_set>
+
+    <if condition="%MMU_PRESENT%">
+        <if condition="not( %OR_VALUE% )">
+            <!-- map address to kernel region -->
+            <set_variable variable="OR_VALUE" to="0xC0000000"/>
+        </if>    
+
+        <switch>
+            <set_variable variable="VALUE" to="bitwise_or( %ADDRESS%, %OR_VALUE% )"/>
+            <if condition="%SHOW_OR%">
+                <set_variable variable="ADDRESS" to="(%ADDRESS% | %OR_OUTPUT_VALUE%)"/>
+                <break/>
+            </if>
+            <set_variable variable="ADDRESS" to="%VALUE%"/>
+        </switch>
+
+    </if>
+
+</generate_set>

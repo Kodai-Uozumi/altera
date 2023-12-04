@@ -1,0 +1,135 @@
+#//START_MODULE_HEADER/////////////////////////////////////////////////////////
+# 
+#  Filename:	makefile.mak
+# 
+#  Description: Gets boot libraries from pvcs.
+# 
+#  Authors:	Chris Dettmar
+# 
+#  Copyright (c)  Altera Corporation 2001
+# 
+#  All rights reserved.
+# 
+# 
+#//END_MODULE_HEADER///////////////////////////////////////////////////////////
+
+#
+#  $Log:   /pvcs/quartus/libraries/software/boot/makefile.ma_  $
+#**	
+#**	   Rev 25.0   08 Jul 2007 04:05:52   max
+#**	Quartus II 8.0 
+#**	SJ, Sat Jul  7 09:05:51 2007
+#**	
+#**	   Rev 24.1   22 Mar 2007 04:19:34   dsundara
+#**	move base dir setting to very beginning 
+#**	SJ, Wed Mar 21 09:19:34 2007
+#**	
+#**	   Rev 24.0   11 Feb 2007 02:57:58   max
+#**	Quartus II 7.2 
+#**	SJ, Sat Feb 10 06:57:59 2007
+#**	
+#**	   Rev 23.0   10 Sep 2006 00:48:40   max
+#**	Quartus II 7.1 
+#**	SJ, Sat Sep  9 05:48:40 2006
+#**	
+#**	   Rev 22.0   05 Feb 2006 00:16:44   max
+#**	Quartus II 6.1 
+#**	SJ, Sat Feb  4 04:16:44 2006
+#**	
+#**	   Rev 21.0   07 Aug 2005 00:16:04   max
+#**	Quartus II 6.0 
+#**	SJ, Sat Aug  6 05:16:04 2005
+#**	
+#**	   Rev 20.0   06 Feb 2005 06:21:56   max
+#**	Quartus II 5.1 
+#**	SJ, Sat Feb  5 10:21:56 2005
+#**	
+#**	   Rev 19.0   12 Sep 2004 04:17:24   max
+#**	Quartus II 5.0 
+#**	SJ, Sat Sep 11 09:17:24 2004
+#**	
+#**	   Rev 18.0   10 Apr 2004 04:39:10   max
+#**	Quartus II 4.2 
+#**	SJ, Fri Apr  9 09:39:11 2004
+#**	
+#**	   Rev 17.1   16 Dec 2003 22:11:08   adraper
+#**	Split boot libraries into GCC and ADS versions 
+#**	UK, Tue Dec 16 10:12:26 2003
+#**	
+#**	   Rev 17.0   04 Oct 2003 19:10:06   max
+#**	Quartus II 4.1
+#**	SJ, Sat Oct 04 00:10:06 2003
+#**	
+#**	   Rev 16.0   05 Apr 2003 21:58:00   max
+#**	Quartus II 3.1
+#**	SJ, Sat Apr 05 01:58:00 2003
+#**	
+#**	   Rev 15.0   08 Sep 2002 07:12:24   max
+#**	Quartus II 3.0
+#**	SJ, Sat Sep 07 12:12:24 2002
+#**	
+#**	   Rev 14.0   21 Apr 2002 06:10:42   max
+#**	Quartus II 2.2
+#**	SJ, Sat Apr 20 11:10:40 2002
+#**	
+#**	   Rev 13.2   17 Feb 2002 13:31:50   barchell
+#**	Adding OWNED_FILES target
+#**	SJ, Sat Feb 16 17:31:50 2002
+#**	
+#**	   Rev 13.1   03 Dec 2001 20:50:00   cdettmar
+#**	Remove mips libraries and arm gnu library
+#**	UK, Mon Dec 03 08:49:56 2001
+#**	
+#**	   Rev 13.0   04 Nov 2001 15:13:18   max
+#**	Quartus II 2.1
+#**	SJ, Sat Nov 03 19:13:18 2001
+#**	
+#**	   Rev 12.0   23 Apr 2001 02:35:30   max
+#**	Quartus II 1.2
+#**	SJ, Sun Apr 22 07:35:30 2001
+#**	
+#**	   Rev 1.0   13 Apr 2001 03:46:02   cdettmar
+#**	Initial revision
+#**	UK, Thu Apr 12 16:45:50 2001
+#
+
+###############################################################################
+# Set up the environment
+###############################################################################
+
+BASE_DIR = ../../..
+
+
+include $(BASE_DIR)/environ.gmake
+
+PVCS_DIR = $(PVCS_ROOT)/libraries/software/boot
+
+###############################################################################
+# Set target(s) and files used.
+###############################################################################
+
+OWNED_FILES = \
+	libboot_xa_ads.a \
+	libboot_xa_gcc.a \
+
+###############################################################################
+# Builtins.mak
+###############################################################################
+
+
+include $(BASE_DIR)/builtins.gmake
+
+ifneq ($(if $(if $(NO_PVCS),T,),,T),)
+vpath %.a__ $(PVCS_DIR)
+%.a : %.a__
+	$(GET_FILE)
+endif
+
+###############################################################################
+# Now the targets
+###############################################################################
+
+all : $(OWNED_FILES)
+
+clean : 
+	rm -f *.a

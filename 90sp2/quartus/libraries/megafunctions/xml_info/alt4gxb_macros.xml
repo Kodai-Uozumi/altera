@@ -1,0 +1,163 @@
+<?xml version="1.0" ?>
+<ROOT>
+	<INCLUDE FILE="mfam_family_macros.xml" />
+	<MACROS>
+		<MACRO NAME="m_basic_like" DEFINITION="m_basic || m_srio || m_sdi" />
+		<MACRO NAME="m_basic_rev_ser" DEFINITION="m_basic and ((Wiz_Subprotocol == 'Rev. Serial Loopback') || (Wiz_Subprotocol == 'Rev. Serial Loopback(pre-CDR)'))" />
+		<MACRO NAME="single_mode" DEFINITION="m_tx_only ? (tx_use_serializer_double_data_mode == false) : (rx_use_deserializer_double_data_mode == false)" />
+		<MACRO NAME="double_mode" DEFINITION="m_tx_only ? (tx_use_serializer_double_data_mode == true) : (rx_use_deserializer_double_data_mode == true)" />
+		<MACRO NAME="m_rx_only" DEFINITION="(operation_mode == RX)" />
+		<MACRO NAME="m_tx_only" DEFINITION="(operation_mode == TX)" />
+		<MACRO NAME="m_duplex" DEFINITION="(operation_mode == DUPLEX)" />
+		<MACRO NAME="m_inclock_period" DEFINITION="m_rx_only ? rx_cru_inclock0_period : tx_pll_inclk0_period" />
+		<MACRO NAME="m_data_rate" DEFINITION="m_rx_only ? RX_DATA_RATE : TX_DATA_RATE" />
+		<MACRO NAME="m_data_rate_remainder" DEFINITION="m_rx_only ? RX_DATA_RATE_REMAINDER : TX_DATA_RATE_REMAINDER" />
+		<MACRO NAME="m_reconfig_data_rate" DEFINITION="TX_RECONFIG_DATA_RATE" />
+		<MACRO NAME="m_reconfig_data_rate_remainder" DEFINITION="TX_RECONFIG_DATA_RATE_REMAINDER" />
+		<MACRO NAME="m_no_8b10b" DEFINITION="m_rx_only ? (rx_8b_10b_mode == none) : (tx_8b_10b_mode == none)" />
+		<MACRO NAME="chn_width_8_or_16" DEFINITION="m_tx_only ? ((tx_channel_width == 8) || (tx_channel_width == 16)) : ((rx_channel_width == 8) || (rx_channel_width == 16))" />
+		<MACRO NAME="chn_width_10" DEFINITION="m_tx_only ? (tx_channel_width == 10) : (rx_channel_width == 10)" />
+		<MACRO NAME="chn_width_10_multiple" DEFINITION="m_tx_only ? ((tx_channel_width % 10) == 0) : ((rx_channel_width % 10) == 0)" />
+		<MACRO NAME="chn_width_gte_32" DEFINITION="m_tx_only ? (tx_channel_width gte 32) : (rx_channel_width gte 32)" />
+		<MACRO NAME="m_pll_type" DEFINITION="m_rx_only ? RX_CDR_PLL : (m_tx_only ? CMU_PLL : BOTH_PLLS)" />
+		<MACRO NAME="m_chn_width" DEFINITION="m_tx_only ? tx_channel_width : rx_channel_width" />
+		<MACRO NAME="m_8b_10b_mode" DEFINITION="m_tx_only ? tx_8b_10b_mode : rx_8b_10b_mode" />
+		<MACRO NAME="m_int_ser_factor" DEFINITION="((m_chn_width == 8 || m_chn_width == 16 || m_chn_width == 32) and (m_8b_10b_mode == none)) ? 8 : 10" />
+		<MACRO NAME="m_deser_factor" DEFINITION="double_mode ? m_int_ser_factor*2 : m_int_ser_factor" />
+		<MACRO NAME="m_low_latency_mode" DEFINITION="m_basic and (m_tx_only ? (tx_datapath_low_latency_mode == true) : (rx_datapath_low_latency_mode == true))" />
+		<MACRO NAME="m_datapath_basic" DEFINITION="!(m_pcie || m_gige || m_xaui)" />	
+		<MACRO NAME="m_double_byte_order_allowed" DEFINITION="(rx_bitslip_enable == false) and (rx_align_pattern_length != 7 and rx_align_pattern_length != 8 and rx_align_pattern_length != 10) and (rx_rate_match_fifo_mode == none) and (rx_use_double_data_mode == true)" />			
+		<MACRO NAME="m_channel_type" DEFINITION="(m_gt_device and (WIZ_DATA_RATE gt 8500)) ? GT : AUTO" />
+		<MACRO NAME="m_tx_serializer_clk_select" >
+			<DEFINITION>
+				((tx_channel_bonding == "x8") || (tx_channel_bonding == "x8_unbundled")) ? "analogx8refclk" :
+				((tx_channel_bonding == "x4") || (tx_channel_bonding == "x4_unbundled")) ? "analogx4refclk" :
+				(m_duplex and (rx_use_cruclk != "true" and enable_pll_inclk_drive_rx_cru != "true")) ? "analogx4refclk" :
+				((use_global_clk_divider == "auto") || (use_global_clk_divider == "false")) ? "local" :
+				(use_global_clk_divider == "true") ? "analogx4refclk" : "local"
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_tx_clkin_select" >
+			<DEFINITION>
+				(m_tx_serializer_clk_select == "local") ? 0 :
+				(m_tx_serializer_clk_select == "analogx4refclk") ? 1 : 1
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_tx_vco_data_rate" >
+			<DEFINITION>
+				(2000000 * tx_pll_m_divider)/(m_inclock_period * tx_pll_n_divider * tx_pll_vco_post_scale_divider)
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_vco_data_rate" DEFINITION="(m_base_data_rate == 0) ? (m_rx_only ? wiz_data_rate : m_tx_vco_data_rate) : wiz_base_data_rate" />
+		<MACRO NAME="m_prbs_auto_align" >
+			<DEFINITION>
+				((rx_channel_width == 8) and ((rx_self_test_mode == prbs7) || (rx_self_test_mode == prbs8) || (rx_self_test_mode == prbs23))) ||
+				((rx_channel_width == 10) and (rx_self_test_mode == prbs10)) ||
+				((rx_channel_width == 16) and ((rx_self_test_mode == prbs7) || (rx_self_test_mode == prbs23))) ||
+				((rx_channel_width == 20) and ((rx_self_test_mode == prbs7) || (rx_self_test_mode == prbs23)))
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_prbs_bitslip" >
+			<DEFINITION>
+				((rx_channel_width == 8) and (rx_self_test_mode == 'high frequency')) ||
+				((rx_channel_width == 10) and ((rx_self_test_mode == 'high frequency') || (rx_self_test_mode == 'low frequency'))) ||
+				((rx_channel_width == 16) and (rx_self_test_mode == 'high frequency')) ||
+				((rx_channel_width == 20) and ((rx_self_test_mode == 'high frequency') || (rx_self_test_mode == 'low frequency')))				
+			</DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_hip_enable" DEFINITION="used(hip_enable) ? hip_enable : false" />		
+	    <MACRO NAME="m_m_divider" DEFINITION="m_rx_only ? rx_cru_m_divider : tx_pll_m_divider" />
+		<MACRO NAME="m_n_divider" DEFINITION="m_rx_only ? rx_cru_n_divider : tx_pll_n_divider" />
+		<MACRO NAME="m_pcie" ARGUMENTS="Wiz_Protocol" DEFINITION="Wiz_Protocol == 'PCI Express (PIPE)'" />
+		<MACRO NAME="m_pcie_gen2" ARGUMENTS="Wiz_Protocol, Wiz_Subprotocol" DEFINITION="m_pcie(Wiz_Protocol) and (m_pcie_sp_gen2(Wiz_Subprotocol) || (Wiz_Subprotocol == 'Gen 2'))" />
+		<MACRO NAME="m_pcie_gen1" ARGUMENTS="Wiz_Protocol, Wiz_Subprotocol" DEFINITION="m_pcie(Wiz_Protocol) and (m_pcie_sp_gen1(Wiz_Subprotocol) || (Wiz_Subprotocol == 'Gen 1'))" />
+		<MACRO NAME="m_pcie_sp_gen1" ARGUMENTS="Wiz_Subprotocol" DEFINITION="(Wiz_Subprotocol == 'Gen 1-x1') || (Wiz_Subprotocol == 'Gen 1-x4') || (Wiz_Subprotocol == 'Gen 1-x8')" />
+		<MACRO NAME="m_pcie_sp_gen2" ARGUMENTS="Wiz_Subprotocol" DEFINITION="(Wiz_Subprotocol == 'Gen 2-x1') || (Wiz_Subprotocol == 'Gen 2-x4') || (Wiz_Subprotocol == 'Gen 2-x8')" />
+		<MACRO NAME="m_pcie_sp_x1" ARGUMENTS="Wiz_Subprotocol" DEFINITION="(Wiz_Subprotocol == 'Gen 1-x1') || (Wiz_Subprotocol == 'Gen 2-x1')" />
+		<MACRO NAME="m_pcie_sp_x4" ARGUMENTS="Wiz_Subprotocol" DEFINITION="(Wiz_Subprotocol == 'Gen 1-x4') || (Wiz_Subprotocol == 'Gen 2-x4')" />
+		<MACRO NAME="m_pcie_sp_x8" ARGUMENTS="Wiz_Subprotocol" DEFINITION="(Wiz_Subprotocol == 'Gen 1-x8') || (Wiz_Subprotocol == 'Gen 2-x8')" />		
+		<MACRO NAME="m_pciex4" ARGUMENTS="Wiz_Protocol, Wiz_Subprotocol" DEFINITION="m_pcie(Wiz_Protocol) and m_pcie_sp_x4(Wiz_Subprotocol)" />
+		<MACRO NAME="m_pciex8" ARGUMENTS="Wiz_Protocol, Wiz_Subprotocol" DEFINITION="m_pcie(Wiz_Protocol) and m_pcie_sp_x8(Wiz_Subprotocol)" />
+		<MACRO NAME="m_pciex1" ARGUMENTS="Wiz_Protocol, Wiz_Subprotocol" DEFINITION="m_pcie(Wiz_Protocol) and m_pcie_sp_x1(Wiz_Subprotocol)" />
+		<MACRO NAME="m_cei" ARGUMENTS="Wiz_Protocol" DEFINITION="Wiz_Protocol == '(OIF) CEI Phy Interface'" />
+		<MACRO NAME="m_sonet" ARGUMENTS="Wiz_Protocol" DEFINITION="Wiz_Protocol == 'SONET/SDH'" />
+		<MACRO NAME="m_sonet48" ARGUMENTS="Wiz_Protocol, Wiz_Subprotocol"  DEFINITION="(Wiz_Subprotocol == OC48) and m_sonet(Wiz_Protocol)" />
+		<MACRO NAME="m_sonet12"  ARGUMENTS="Wiz_Protocol, Wiz_Subprotocol" DEFINITION="(Wiz_Subprotocol == OC12) and m_sonet(Wiz_Protocol)" />
+		<MACRO NAME="m_sonet96"  ARGUMENTS="Wiz_Protocol, Wiz_Subprotocol" DEFINITION="(Wiz_Subprotocol == OC96) and m_sonet(Wiz_Protocol)" />
+		<MACRO NAME="m_basic"  ARGUMENTS="Wiz_Protocol" DEFINITION="Wiz_Protocol == Basic" />
+		<MACRO NAME="m_srio"  ARGUMENTS="Wiz_Protocol" DEFINITION="Wiz_Protocol == 'Serial RapidIO'" />
+		<MACRO NAME="m_gige"  ARGUMENTS="Wiz_Protocol" DEFINITION="Wiz_Protocol == GIGE" />
+		<MACRO NAME="m_xaui"  ARGUMENTS="Wiz_Protocol" DEFINITION="Wiz_Protocol == XAUI" />
+		<MACRO NAME="m_sdi"  ARGUMENTS="Wiz_Protocol" DEFINITION="Wiz_Protocol == SDI" />
+		<MACRO NAME="m_sdi_3g"  ARGUMENTS="Wiz_Protocol, Wiz_Subprotocol" DEFINITION="(Wiz_Subprotocol == 3G) and m_sdi(Wiz_Protocol)" />
+		<MACRO NAME="m_sdi_hd"  ARGUMENTS="Wiz_Protocol, Wiz_Subprotocol" DEFINITION="(Wiz_Subprotocol == HD) and m_sdi(Wiz_Protocol)" />
+    <MACRO NAME="m_basic_none"  ARGUMENTS="Wiz_Protocol, Wiz_Subprotocol" DEFINITION="m_basic(Wiz_Protocol) and (Wiz_Subprotocol == None)" />
+    <MACRO NAME="m_basic_x4"  ARGUMENTS="Wiz_Protocol, Wiz_Subprotocol" DEFINITION="m_basic(Wiz_Protocol) and (Wiz_Subprotocol == X4)" />
+		<MACRO NAME="m_basic_x8"  ARGUMENTS="Wiz_Protocol, Wiz_Subprotocol" DEFINITION="m_basic(Wiz_Protocol) and (Wiz_Subprotocol == X8)" />
+	  <MACRO NAME="m_cpri"  ARGUMENTS="Wiz_Protocol" DEFINITION="Wiz_Protocol == 'Deterministic Latency'" />
+    <MACRO NAME="m_cpri_x4"  ARGUMENTS="Wiz_Protocol, Wiz_Subprotocol" DEFINITION="m_cpri(Wiz_Protocol) and (Wiz_Subprotocol == X4)" />
+    <MACRO NAME="m_basic_pma_direct"  ARGUMENTS="Wiz_Protocol" DEFINITION="Wiz_Protocol == 'Basic (PMA Direct)'" />
+		<MACRO NAME="m_basic_pma_direct_xN"  ARGUMENTS="Wiz_Protocol, Wiz_Subprotocol" DEFINITION="m_basic_pma_direct(Wiz_Protocol) and (Wiz_Subprotocol == xN)" />
+		<MACRO NAME="m_bist"  ARGUMENTS="Wiz_Protocol, Wiz_Subprotocol" DEFINITION="m_basic(Wiz_Protocol) and (Wiz_Subprotocol == BIST)" />
+		<MACRO NAME="m_prbs"  ARGUMENTS="Wiz_Protocol, Wiz_Subprotocol" DEFINITION="m_basic(Wiz_Protocol) and (Wiz_Subprotocol == PRBS)" />
+		<MACRO NAME="m_base_data_rate" DEFINITION="(WIZ_BASE_DATA_RATE_ENABLE == 1) ? WIZ_BASE_DATA_RATE : WIZ_DATA_RATE" />
+    <MACRO NAME="m_base_data_rate_in_big_time" DEFINITION="(WIZ_BASE_DATA_RATE_ENABLE == 1) ? base_data_rate : effective_data_rate" />
+		<MACRO NAME="m_refclk_freq" DEFINITION="0" />
+		<MACRO NAME="m_use_refclk_pin" DEFINITION="false" />
+		<MACRO NAME="m_valid_cei" ARGUMENTS="Wiz_Protocol, m_data_rate" DEFINITION="m_cei(Wiz_Protocol) and ((m_data_rate lte 6375) and (m_data_rate gte 3125))" />
+		<MACRO NAME="m_valid_srio" ARGUMENTS="WIZ_PROTOCOL, Wiz_DATA_RATE" DEFINITION="m_srio(WIZ_PROTOCOL) and (WIZ_DATA_RATE == 1250) || (WIZ_DATA_RATE == 2500) || (WIZ_DATA_RATE == 3125)" />
+		<MACRO NAME="m_protocol" DEFINITION="protocol" />
+		<MACRO NAME="m_pcs_protocol" >
+			<DEFINITION> (m_basic_pma_direct == "true") ? "UNUSED" : m_protocol </DEFINITION>
+		</MACRO>
+		<MACRO NAME="m_tx_clk_div_type" DEFINITION="((tx_channel_bonding == x4) || (tx_channel_bonding == x8)) ? CENTRAL_ENHANCED : CHANNEL_REGULAR" />
+		<MACRO NAME="m_dprio_inclock_period" DEFINITION="1000000 double_div WIZ_DPRIO_INCLK_FREQ" />		
+		<MACRO NAME="m_wys_tx_termination" >
+			<DEFINITION>
+				((transmitter_termination == "OCT_100_Ohms")	?	"OCT 100 Ohms"	:
+				((transmitter_termination == "OCT_150_Ohms")	?	"OCT 150 Ohms"	:
+				((transmitter_termination == "OCT_120_Ohms")	?	"OCT 120 Ohms"	:
+				((transmitter_termination == "OCT_85_Ohms")		?	"OCT 85 Ohms"	:
+																"OCT 100 Ohms"))))
+			</DEFINITION>
+		</MACRO>
+    <MACRO NAME="m_bist_prbs_run_length" >
+      <DEFINITION>
+        m_deser_factor == 8 ? 4 :
+        (m_deser_factor == 16 ? 8 :
+        (m_deser_factor == 10 ? 5 :
+        (m_deser_factor == 20 ? 10 : 10)))
+      </DEFINITION>
+    </MACRO>
+    <MACRO NAME="m_cpri_run_length" >
+      <DEFINITION>
+        (m_deser_factor == 10) ? 160 :
+        ((m_deser_factor == 20) ? 640 : 640)
+      </DEFINITION>
+    </MACRO>
+    <MACRO NAME="m_rateswitch_allowed" >
+      <DEFINITION>
+          m_pcie_gen2 ? "true" : "false" 
+      </DEFINITION> 
+    </MACRO>
+    <MACRO NAME="m_gt_device" DEFINITION="(INTENDED_DEVICE_VARIANT == GT)" />
+    <MACRO NAME="m_tx_pll_type" DEFINITION="ENABLE_LC_TX_PLL == TRUE ? LC : CMU" />
+    <MACRO NAME="m_clk_divider_type" >
+      <DEFINITION>
+        enable_lc_tx_pll ? ATX_REGULAR :
+        (m_basic_pma_direct || use_global_clock_divider) ? CENTRAL_ENHANCED :
+        CHANNEL_REGULAR
+      </DEFINITION>
+    </MACRO>
+    <MACRO NAME="m_lc_disabled" >
+      <DEFINITION>
+        m_bist || m_prbs || (m_basic_pma_direct and !m_basic_pma_direct_xN) || m_pciex1 || m_gige || m_xaui
+      </DEFINITION>
+    </MACRO>
+    <MACRO NAME="m_aii_double_cpri_mode" >
+      <DEFINITION>
+        mfam_family_arriaii and m_cpri and double_mode
+      </DEFINITION>
+    </MACRO>
+  </MACROS>
+</ROOT>

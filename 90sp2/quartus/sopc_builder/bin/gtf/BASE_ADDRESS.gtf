@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<generate_set>
+
+    <!-- this "subroutine" requires %MODULE% to be exported,
+         and "returns" %BASE_ADDRESS%, which is the first base address found
+         when iterating through all the slaves of that module -->
+
+    <for_each variable="SLAVE" ptf_path="SYSTEM/MODULE %MODULE%/SLAVE">
+        <set_variable variable="BASE_ADDRESS"
+                      ptf_path="SYSTEM/MODULE %MODULE%/SLAVE %SLAVE%/SYSTEM_BUILDER_INFO/Base_Address"/>
+        <if condition='not( eq( %BASE_ADDRESS%, "" ) )'>
+            <break/>
+        </if>
+    </for_each>
+
+    <if condition='eq( %BASE_ADDRESS%, "" )'>
+        <set_variable variable="BASE_ADDRESS" to="N/A"/>
+    </if>
+
+</generate_set>

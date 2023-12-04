@@ -1,0 +1,196 @@
+<?xml version="1.0"?>
+<ROOT>
+	<INCLUDE FILE="mfam_family_macros.xml" />
+	<MACROS>
+		<MACRO NAME="m_actual_d_int" DEFINITION="m_non_stx ? 1 : ((INPUT_DATA_RATE gt 0) ? (m_le_impl ? (2000000 double_div INPUT_DATA_RATE) : (1000000 double_div INPUT_DATA_RATE)) : 1)" />
+		<MACRO NAME="m_actual_d" DEFINITION="to_int(m_actual_d_int)" />		
+		<MACRO NAME="m_aurora_dpa" DEFINITION="mfam_family_stratixgx and (ENABLE_DPA_MODE == ON)" />
+		<MACRO NAME="m_stxii_dpa" DEFINITION="mfam_family_stratixii and (ENABLE_DPA_MODE == ON)" />
+		<MACRO NAME="m_stxii_rx" DEFINITION="mfam_family_stratixii and (IMPLEMENT_IN_LES == OFF)" />
+		<MACRO NAME="m_stx_rx" DEFINITION="(mfam_family_stratix_strict || (mfam_family_stratixgx and (ENABLE_DPA_MODE == OFF))) and (IMPLEMENT_IN_LES == OFF)" />
+		<MACRO NAME="m_non_stx" DEFINITION="mfam_family_apexii || m_apex20k" />
+		<MACRO NAME="m_stx" DEFINITION="(IMPLEMENT_IN_LES == OFF) and mfam_family_stratix and !mfam_family_stratixii and !mfam_family_cyclone and !mfam_family_cycloneii" />		
+		<MACRO NAME="m_apex20k" DEFINITION="mfam_family_apex20ke || mfam_family_apex20kc_strict" />
+		<MACRO NAME="m_ext_pll" DEFINITION="USE_EXTERNAL_PLL == ON" />
+		<MACRO NAME="m_d1" DEFINITION="DESERIALIZATION_FACTOR == 1" />
+		<MACRO NAME="m_d2" DEFINITION="DESERIALIZATION_FACTOR == 2" />
+		<MACRO NAME="m_d1d2" DEFINITION="m_d1 || m_d2" />
+		<MACRO NAME="m_le_impl" DEFINITION="mfam_family_cyclone || mfam_family_cycloneii || mfam_family_stratix and (IMPLEMENT_IN_LES == ON)" />
+		<MACRO NAME="m_titan" DEFINITION="mfam_family_stratixiii and (IMPLEMENT_IN_LES == OFF)" />
+		<MACRO NAME="m_regd_output" DEFINITION="(REGISTERED_OUTPUT == ON)" />
+    <MACRO NAME="m_pll_cal_used" DEFINITION="ENABLE_DPA_PLL_CALIBRATION == ON" />
+	</MACROS>
+	<PARAMETER_RULES>
+		<PARAMETER NAME="IMPLEMENT_IN_LES" >
+			<FORCE_RANGE TO="UNUSED|OFF" WHEN="m_non_stx" />
+		</PARAMETER>
+		<PARAMETER NAME="DESERIALIZATION_FACTOR" >
+			<FORCE_RANGE TO="1|2|4|7|8|10" WHEN="m_stx" />
+			<FORCE_RANGE TO="1|4|7|8" WHEN="m_apex20k" />
+			<FORCE_RANGE TO="1|2|4|5|6|7|8|9|10" WHEN="m_stxii_rx || m_le_impl || mfam_family_apexii" />
+			<FORCE_RANGE TO="1|2|3|4|5|6|7|8|9|10" WHEN="m_titan" />
+			<FORCE_RANGE TO="8|10" WHEN="m_aurora_dpa" />
+		</PARAMETER>
+		<PARAMETER NAME="INCLOCK_PERIOD" TYPE="INTEGER" >
+			<FORCE_RANGE TO="ccl_pll_mwiz$get_inclk_period_list_for_data_rate(INPUT_DATA_RATE, m_le_impl)" WHEN="!m_non_stx" /> 
+			<VALUE_RULE> (INCLOCK_PERIOD gt 0) || m_non_stx </VALUE_RULE>
+			<VALUE_RULE> m_non_stx || ((INPUT_DATA_RATE double_div (1000000 double_div INCLOCK_PERIOD)) lte 30) </VALUE_RULE>			
+		</PARAMETER>
+		<PARAMETER NAME="USE_EXTERNAL_PLL" >
+			<FORCE_VALUE TO="OFF" WHEN="!m_le_impl and !m_stxii_rx" />
+			<FORCE_VALUE TO="OFF" WHEN="m_d1d2 || ((DESERIALIZATION_FACTOR == 5) || (DESERIALIZATION_FACTOR == 7) || (DESERIALIZATION_FACTOR == 9)) and m_le_impl" />
+		</PARAMETER>
+		<PARAMETER NAME="CDS_MODE" >
+			<FORCE_VALUE TO="UNUSED" WHEN="!mfam_family_apexii || m_d1d2" />
+		</PARAMETER>
+		<PARAMETER NAME="REGISTERED_DATA_ALIGN_INPUT" >
+			<FORCE_RANGE TO="UNUSED" WHEN="!is_used(rx_data_align) || !is_used(rx_channel_data_align)" />
+		</PARAMETER>
+		<PARAMETER NAME="ENABLE_DPA_FIFO" >
+			<FORCE_RANGE TO="UNUSED|OFF" WHEN="!m_aurora_dpa" />
+		</PARAMETER>
+		<PARAMETER NAME="USE_DPLL_RAWPERROR" >
+			<FORCE_VALUE TO="UNUSED" />
+		</PARAMETER>
+		<PARAMETER NAME="USE_CORECLOCK_INPUT" >
+			<FORCE_VALUE IF="is_used(rx_coreclk)" THEN="ON" ELSE="OFF" />
+		</PARAMETER>
+		<PARAMETER NAME="LOSE_LOCK_ON_ONE_CHANGE" >
+			<FORCE_VALUE TO="UNUSED" WHEN="m_stxii_dpa" />
+		</PARAMETER>
+		<PARAMETER NAME="RESET_FIFO_AT_FIRST_LOCK" >
+			<FORCE_VALUE TO="UNUSED" WHEN="m_stxii_dpa" />
+		</PARAMETER>
+		<PARAMETER NAME="INCLOCK_BOOST" >
+			<FORCE_RANGE TO="1|2|4|5|6|7|8|9|10" WHEN="mfam_family_apexii" />
+		<!--	<FORCE_VALUE TO="UNUSED" WHEN="!mfam_family_apexii || m_d1d2" /> -->
+		</PARAMETER>
+		<PARAMETER NAME="DPLL_LOCK_COUNT" >
+		<!--	<FORCE_VALUE TO="UNUSED" /> -->
+		</PARAMETER>
+		<PARAMETER NAME="DPLL_LOCK_WINDOW" >
+		<!--	<FORCE_VALUE TO="UNUSED" /> -->
+		</PARAMETER>
+		<PARAMETER NAME="DATA_ALIGN_ROLLOVER" >
+		<!--	<FORCE_VALUE TO="UNUSED" WHEN="!m_stxii_rx" /> -->
+		</PARAMETER>
+		<PARAMETER NAME="PORT_RX_DATA_ALIGN" >
+			<FORCE_VALUE IF="is_used(rx_data_align)" THEN="PORT_USED" ELSE="PORT_UNUSED" />
+		</PARAMETER>
+		<PARAMETER NAME="ENABLE_DPA_MODE" >
+			<FORCE_VALUE TO="OFF" WHEN="!mfam_family_stratixii and !mfam_family_stratixgx" />
+			<FORCE_VALUE TO="OFF" WHEN="IMPLEMENT_IN_LES == ON" />
+		</PARAMETER>
+		<PARAMETER NAME="PLL_OPERATION_MODE" >
+			<FORCE_VALUE TO="UNUSED" WHEN="!(mfam_family_cycloneii || mfam_family_stratixii and IMPLEMENT_IN_LES==ON) || m_d1d2" />
+		</PARAMETER>
+		<PARAMETER NAME="RX_ALIGN_DATA_REG" >
+			<FORCE_VALUE TO="UNUSED" WHEN="!mfam_family_stratixiii" />
+		</PARAMETER>
+		<PARAMETER NAME="PLL_SELF_RESET_ON_LOSS_LOCK" >
+			<FORCE_VALUE TO="UNUSED" WHEN="!(mfam_family_cycloneiii || mfam_family_stratixiii and IMPLEMENT_IN_LES==ON) || m_d1d2" />
+		</PARAMETER>
+		<PARAMETER NAME="PORT_RX_CHANNEL_DATA_ALIGN" >
+			<FORCE_VALUE TO="UNUSED" WHEN="!is_used(rx_channel_data_align)" ELSE="USED" />
+		</PARAMETER>
+    <PARAMETER NAME="ENABLE_DPA_PLL_CALIBRATION" >
+      <FORCE_VALUE TO="OFF|UNUSED" WHEN="!mfam_family_stratixiii || mfam_family_arriaii" />
+    </PARAMETER>
+	</PARAMETER_RULES>
+	<PORT_RULES>
+		<PORT NAME="rx_locked" USAGE="VARIABLE" >
+			<STATE TO="UNUSED" WHEN="m_ext_pll || m_d1d2" />
+		</PORT>
+		<PORT NAME="rx_readclock"  USAGE="VARIABLE" />
+		<PORT NAME="rx_pll_enable"  USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="m_ext_pll || m_d1d2 || mfam_family_has_no_pll_enable" />
+		</PORT>
+		<PORT NAME="pll_areset" USAGE="VARIABLE" >
+			<STATE TO="UNUSED" WHEN="m_ext_pll || m_d1d2" />
+		</PORT>
+		<PORT NAME="rx_outclock" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="m_ext_pll || m_d1" />
+		</PORT>
+		<PORT NAME="rx_out" USAGE="USED" />
+		<PORT NAME="rx_data_align" USAGE="VARIABLE" >
+			<STATE TO="UNUSED" WHEN="!m_stx_rx and !m_le_impl || m_d1d2" />
+		</PORT>
+		<PORT NAME="rx_reset" >
+			<STATE TO="UNUSED" WHEN="!m_aurora_dpa and !m_stxii_dpa" />
+		</PORT>
+		<PORT NAME="rx_dpll_reset" USAGE="VARIABLE" >
+			<STATE TO="UNUSED" WHEN="!m_aurora_dpa" />
+		</PORT>
+		<PORT NAME="rx_data_align_reset" USAGE="VARIABLE" >
+			<STATE TO="UNUSED" WHEN="!m_le_impl || !is_used(rx_data_align)" />
+		</PORT>
+		<PORT NAME="rx_channel_data_align" USAGE="VARIABLE" >
+			<STATE TO="UNUSED" WHEN="!m_aurora_dpa and !m_stxii_rx and !m_le_impl" />
+		</PORT>
+		<PORT NAME="rx_coreclk" USAGE="VARIABLE" >
+			<STATE TO="UNUSED" WHEN="!m_aurora_dpa" />
+		</PORT>
+		<PORT NAME="rx_dpll_hold" USAGE="VARIABLE" >
+			<STATE TO="UNUSED" WHEN="!m_stxii_dpa" />
+		</PORT>
+		<PORT NAME="rx_dpll_enable" USAGE="VARIABLE" >
+			<STATE TO="UNUSED" WHEN="!m_stxii_dpa" />
+		</PORT>
+		<PORT NAME="rx_fifo_reset" USAGE="VARIABLE" >
+			<STATE TO="UNUSED" WHEN="!m_stxii_dpa" />
+		</PORT>
+		<PORT NAME="rx_cda_reset" USAGE="VARIABLE" >
+			<STATE TO="UNUSED" WHEN="!m_stxii_rx || (mfam_family_stratixii and !is_used(rx_channel_data_align))" />
+		</PORT>
+		<PORT NAME="rx_enable" USAGE="VARIABLE" >
+			<STATE TO="UNUSED" WHEN="!m_ext_pll" ELSE="USED" />
+		</PORT>
+		<PORT NAME="rx_dpa_locked" USAGE="VARIABLE" >
+			<STATE TO="UNUSED" WHEN="!m_stxii_dpa and !m_aurora_dpa" />
+		</PORT>
+		<PORT NAME="rx_cda_max"  USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="!mfam_family_stratixii || !is_used(rx_channel_data_align)" />
+		</PORT>
+		<PORT NAME="rx_deskew" USAGE="VARIABLE" >
+			<STATE TO="UNUSED" WHEN="!mfam_family_apexii || m_d1d2" />
+		</PORT>
+		<PORT NAME="rx_inclock" USAGE="VARIABLE">
+			<STATE TO="UNUSED" WHEN="m_d1 and !m_regd_output" ELSE="USED" />
+		</PORT>
+		<PORT NAME="rx_in" USAGE="USED" />
+		<PORT NAME="rx_cds_ena" TYPE="INPUT" >
+			<STATE TO="UNUSED" WHEN="!mfam_family_apexii || mfam_family_apexii and (CDS_MODE == UNUSED)" ELSE="USED" />
+		</PORT>
+		<PORT NAME="rx_divfwdclk"  TYPE="OUTPUT" USAGE="VARIABLE" >
+			<STATE TO="UNUSED" WHEN="!mfam_family_stratixiii" />
+		</PORT>
+    <PORT NAME="dpa_pll_cal_busy" TYPE="OUTPUT" USAGE="VARIABLE" >
+      <STATE TO="UNUSED" WHEN="!m_pll_cal_used" ELSE="USED" />
+    </PORT>
+    <PORT NAME="dpa_pll_recal" TYPE="INPUT" USAGE="VARIABLE" >
+      <STATE TO="UNUSED" WHEN="!m_pll_cal_used" />
+    </PORT>
+    <PORT NAME="dpa_pll_cal_busy" TYPE="OUTPUT" USAGE="VARIABLE" >
+      <STATE TO="UNUSED" WHEN="!m_pll_cal_used" ELSE="USED" />
+    </PORT>
+    <PORT NAME="rx_dpa_lock_reset" TYPE="INPUT" USAGE="VARIABLE" >
+      <STATE TO="UNUSED" WHEN="!is_used(rx_dpa_locked) || !mfam_family_stratixiii" />
+    </PORT>
+    <PORT NAME="pll_phasedone" TYPE="INPUT" USAGE="VARIABLE" >
+      <STATE TO="USED" WHEN="m_pll_cal_used and m_ext_pll" ELSE="UNUSED" />
+    </PORT>
+    <PORT NAME="pll_phasecounterselect" TYPE="OUTPUT" USAGE="VARIABLE" >
+      <STATE TO="USED" WHEN="m_pll_cal_used and m_ext_pll" ELSE="UNUSED" />
+    </PORT>
+    <PORT NAME="pll_phaseupdown" TYPE="OUTPUT" USAGE="VARIABLE" >
+      <STATE TO="USED" WHEN="m_pll_cal_used and m_ext_pll" ELSE="UNUSED" />
+    </PORT>
+    <PORT NAME="pll_phasestep" TYPE="OUTPUT" USAGE="VARIABLE" >
+      <STATE TO="USED" WHEN="m_pll_cal_used and m_ext_pll" ELSE="UNUSED" />
+    </PORT>
+    <PORT NAME="pll_scanclk" TYPE="OUTPUT" USAGE="VARIABLE" >
+      <STATE TO="USED" WHEN="m_pll_cal_used and m_ext_pll" ELSE="UNUSED" />
+    </PORT>
+  </PORT_RULES>
+
+</ROOT>

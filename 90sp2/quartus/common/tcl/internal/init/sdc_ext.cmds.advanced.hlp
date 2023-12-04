@@ -1,0 +1,1172 @@
+<<<<versions>>>>
+1.0
+<<<</versions>>>>
+<<<<1.0>>>>
+<set_time_format>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: set_time_format [-h | -help] [-long_help] [-decimal_places <decimal_places>] [-unit <unit>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -decimal_places <decimal_places>: Number of decimal places to use
+        -unit <unit>: Default time unit to use
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc_ext 1.0
+
+------------
+Description:
+------------
+
+Sets time format, including time unit and decimal places.
+
+Time units are assumed to be nanoseconds (ns) by default.  The "-unit"
+option overrides the default time units.  Legal time unit values are:
+ps, ns, us, ms.
+
+Time units are displayed with three decimal places by default.  The
+"-decimal_places" option overrides the default number of decimal
+places to show.
+
+The smallest resolution of all times units is one picosecond (ps).
+Any additional specified precision will be truncated.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Create two clocks with a clock period of 8 nanoseconds.
+create_clock -period 8.000 clk1
+
+set_time_format -unit ps -decimal_places 0
+create_clock -period 8000 clk2
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: The default time unit can be set to ms, us, ns, or ps. Please specify one of these units instead.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</set_time_format>
+
+<set_scc_mode>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: set_scc_mode [-h | -help] [-long_help] [-size <size>] [-use_heuristic]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -size <size>: Maximum SCC loop size
+        -use_heuristic: Always use heuristic for SCC processing
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc_ext 1.0
+
+------------
+Description:
+------------
+
+Allows you to set maximum Strongly Connected Components (SCC) loop
+size or force TimeQuest Timing Analyzer to always estimate delays
+through SCCs.
+
+When TimeQuest Timing Analyzer encounters a loop of size greater than
+the specified maximum SCC loop size, it uses a heuristic which only
+estimates delays through the loop.
+
+If the loop is smaller than the maximum SCC loop size, a full
+processing of loops is performed unless the -use_heuristic option is
+used.  
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Make TimeQuest Timing Analyzer use normal processing for all loops
+# the size of which is less than or equal to 100. For loops of size
+# greater than 100, a runtime-saving heuristic will be used
+set_scc_mode -size 100
+
+# Force TimeQuest Timing Analyzer to use heuristic for all SCCs
+# disregarding their size
+set_scc_mode -use_heuristic
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</set_scc_mode>
+
+<derive_pll_clocks>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: derive_pll_clocks [-h | -help] [-long_help] [-create_base_clocks] [-use_tan_name]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -create_base_clocks: Creates base clocks on input clock ports of the design that are feeding the PLL
+        -use_tan_name: Use net names as clock names
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc_ext 1.0
+
+------------
+Description:
+------------
+
+Identifies PLLs or similar resources in the design and creates
+generated clocks for their output clock pins. Multiple generated
+clocks may be created for each output clock pin if the PLL is using
+clock switchover, one for the inclk[0] input clock pin and one for the
+inclk[1] input clock pin.
+
+By default this command does not create base clocks on input clock
+ports that are driving the PLL. When you use the create_base_clocks
+option, derive_pll_clocks also creates the base clock on an input
+clock port deriving the PLL. This option does not overwrite an
+existing clock.
+
+By default the clock name is the same as the output clock pin name.
+To use the net name (the same name the classic Timing Analyzer would
+use), use the -use_tan_name option.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open top
+create_timing_netlist
+
+# Create the base clock for the input clock port driving the PLL
+create_clock -period 10.0 [get_ports sysclk]
+
+# Create the generated clocks for the PLL.
+derive_pll_clocks
+
+update_timing_netlist
+
+# Other user actions
+report_timing
+
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</derive_pll_clocks>
+
+<derive_clock_uncertainty>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: derive_clock_uncertainty [-h | -help] [-long_help] [-add] [-overwrite]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -add: Adds results user-defined clock uncertainty assignments
+        -overwrite: Overwrites user-defined clock uncertainty assignments
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc_ext 1.0
+
+------------
+Description:
+------------
+
+Applies inter-clock, intra-clock and I/O interface uncertainties based
+on timing model characterization. This command calculates and applies
+setup and hold clock uncertainties for each clock-to-clock transfer
+found in the design. The calculation of the uncertainties is delayed
+until the next update_timing_netlist call.
+
+To get I/O interface uncertainty in addition to inter-clock and
+intra-clock uncertainties, create a virtual clock to represent an
+off-chip clock for input or output delay specification and assign
+delays to input/output ports with set_input_delay and set_output_delay
+commands that specify the virtual clock.
+
+If set_input_delay and set_output_delay commands specifying a non-
+virtual clock are called, derive_clock_uncertainty applies either
+inter-clock or intra-clock uncertainty for that clock transfer since
+those transfers represent a clock-to-clock domain rather than an
+I/O-to-register clock domain.
+		
+These uncertainties are applied in addition to any previous
+set_clock_uncertainty calls. However, if there is already a clock
+uncertainty assignment for a source clock and destination clock pair,
+the new one is ignored. Either use the -overwrite option to overwrite
+previous clock uncertainty assignments or manually remove them by
+using remove_clock_uncertainty command. Use the -add option to add the
+previous user-defined clock uncertainty values to the derived ones.
+
+This command auto-generates a file named PLLJ_PLLSPE_INFO.txt (or
+PLLJ_PLLSPE_INFO_M.txt if a military temperature range is selected)
+that lists the names of the PLLs in the design as well as their jitter
+and SPE values. This text file can be used by HCII_DTW_CU_Calculator.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# create a virtual clock
+create_clock -name virtual -period 1
+
+# apply input/output delays with the virtual clock to get
+# I/O interface uncertainties
+set_input_delay -clock virtual -add_delay 0 [all_inputs]
+set_output_delay -clock virtual -add_delay 0 [all_outputs]
+		
+# call derive_clock_uncertainty. results will be calculated 
+# at the next update_timing_netlist call
+derive_clock_uncertainty
+
+update_timing_netlist
+
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</derive_clock_uncertainty>
+
+<remove_clock>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: remove_clock [-h | -help] [-long_help] [-all] [<clock_list>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -all: Removes all clocks from the design
+        <clock_list>: Clock(s) to be removed
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc_ext 1.0
+
+------------
+Description:
+------------
+
+Removes the specified clock(s) from the design.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Create a clock and then remove it.
+create_clock -period 10 -name CLK [get_ports clk]
+remove_clock CLK
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</remove_clock>
+
+<get_registers>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_registers [-h | -help] [-long_help] [-no_duplicates] [-nocase] [-nowarn] [<filter>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -no_duplicates: Do not match duplicated register names
+        -nocase: Specifies the matching of node names to be case-insensitive
+        -nowarn: Do not issue warnings messages about unmatched patterns
+        <filter>: Valid destinations (string patterns are matched using Tcl string matching)
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc_ext 1.0
+
+------------
+Description:
+------------
+
+Returns a collection of registers in the design.
+
+The default matching scheme returns not only registers whose names
+match the specified filter, but also returns registers duplicated from
+these registers (cells automatically generated from these registers by
+the Quartus II software). Use the -no_duplicates option to exclude
+duplicated registers.
+
+The filter for the collection is a Tcl list of wildcards, and must
+follow standard Tcl or TimeQuest-extension substitution rules.  See
+help for the use_timequest_style_escaping command for details.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open chiptrip
+create_timing_netlist
+
+set regs [get_registers *reg*]
+foreach_in_collection reg $regs {
+    puts [get_object_info -name $reg]
+}
+
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_registers>
+
+<get_keepers>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_keepers [-h | -help] [-long_help] [-no_duplicates] [-nocase] [-nowarn] [<filter>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -no_duplicates: Do not match duplicated keeper names
+        -nocase: Specifies the matching of node names to be case-insensitive
+        -nowarn: Do not issue warnings messages about unmatched patterns
+        <filter>: Valid destinations (string patterns are matched using Tcl string matching)
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc_ext 1.0
+
+------------
+Description:
+------------
+
+Returns a collection of non-combinational or "keeper" nodes in the
+design.
+
+The default matching scheme returns not only non-combinational nodes
+whose names match the specified filter, but also non-combinational
+nodes duplicated from these keepers (refers to cells are automatically
+generated by Quartus from these keepers).  Use the -no_duplicates
+option to exclude duplicated keepers.
+
+The filter for the collection is a Tcl list of wildcards, and must
+follow standard Tcl or TimeQuest-extension substitution rules. See
+help for the use_timequest_style_escaping command for details.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open chiptrip
+create_timimg_netlist
+
+set kprs [get_keepers *reg*]
+foreach_in_collection kpr $kprs {
+    puts [get_object_info -name $kpr]
+}
+
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_keepers>
+
+<get_nodes>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_nodes [-h | -help] [-long_help] [-no_duplicates] [-nocase] [-nowarn] [<filter>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -no_duplicates: Do not match duplicated node names
+        -nocase: Specifies the matching of node names to be case-insensitive
+        -nowarn: Do not issue warnings messages about unmatched patterns
+        <filter>: Valid destinations (string patterns are matched using Tcl string matching)
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc_ext 1.0
+
+------------
+Description:
+------------
+
+Returns a collection of nodes in the design.
+
+The default matching scheme returns not only nodes whose names match
+the specified filter, but also nodes duplicated from these nodes
+(refers to cells are automatically generated by Quartus from these
+nodes). Use the -no_duplicates option to not include duplicated nodes.
+
+The filter for the collection is a Tcl list of wildcards, and must
+follow standard Tcl or TimeQuest-extension substitution rules.  See
+help for the use_timequest_style_escaping command for details.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open chiptrip
+create_timimg_netlist
+
+set nodes [get_nodes *name*]
+foreach_in_collection node $nodes {
+    puts [get_object_info -name $node]
+}
+
+delete_timing_netlist
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_nodes>
+
+<set_annotated_delay>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: set_annotated_delay [-h | -help] [-long_help] [-cell] [-ff] [-fr] [-from <names>] [-max] [-min] [-net] [-operating_conditions <operating_conditions>] [-rf] [-rr] [-to <names>] <delay>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -cell: Specifies that cell delay must be set
+        -ff: Specifies that FF delay must be set
+        -fr: Specifies that FR delay must be set
+        -from <names>: Valid source pins or ports (string patterns are matched using Tcl string matching)
+        -max: Specifies that only max delay should be set
+        -min: Specifies that only min delay should be set
+        -net: Specifies that net delay must be set
+        -operating_conditions <operating_conditions>: Operating conditions Tcl object
+        -rf: Specifies that RF delay must be set
+        -rr: Specifies that RR delay must be set
+        -to <names>: Valid destination pins or ports (string patterns are matched using Tcl string matching)
+        <delay>: The delay value in default time units
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc_ext 1.0
+
+------------
+Description:
+------------
+
+        Annotates the cell delay between two or more pins/nodes on a cell, or
+the interconnect delay between two or more pins on the same net, in
+the current design. Multiple transition edges (rr, fr, rf, ff) can be
+specified. If no transition is specified, then the given delay is
+assigned to all four values. If either -from or -to (or both) values
+are left unspecified, the missing value or values are substituted by
+an "*" character. Options -max and -min allow users to specify max or
+only min delay. If neither -max or -min is specified, both delays are
+set.
+
+The values for -from and -to are either collections or a Tcl list of
+wildcards used to create collections of appropriate types.  The values
+used must follow standard Tcl or TimeQuest-extension substitution
+rules. See help for the use_timequest_style_escaping command for
+details.
+
+Delay annotation is deferred until the next time
+        update_timing_netlist is called. To remove annotated delays, use 
+remove_annotated_delay command.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+set_annotated_delay -cell 100 -from A|B|C|datain -to A|B|C|combout -rr -ff
+set_annotated_delay -net 100 -to A|carryin
+update_timing_netlist
+	
+# To clear all net delays
+set_annotated_delay -net 0
+update_timing_netlist
+
+# To remove all annotated delay assignments
+remove_annotated_delay -all
+update_timing_netlist		
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Value does not match any valid operating conditions. Available operating conditions are: <string>
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</set_annotated_delay>
+
+<remove_annotated_delay>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: remove_annotated_delay [-h | -help] [-long_help] -all
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -all: Specifies removal of all annotated delays
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc_ext 1.0
+
+------------
+Description:
+------------
+
+Removes annotated delays from the design. 
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# annotate delay
+set_annotated_delay -net -from [get_pins clk] 0.1
+update_timing_netlist
+
+# remove all annotated delays
+remove_annotated_delay -all
+update_timing_netlist
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</remove_annotated_delay>
+
+<set_net_delay>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: set_net_delay [-h | -help] [-long_help] -from <names> [-max] [-min] [-to <names>] <delay>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -from <names>: Valid source pins, ports, registers or nets(string patterns are matched using Tcl string matching)
+        -max: Specifies maximum delay
+        -min: Specifies minimum delay
+        -to <names>: Valid destination pins, ports, registers or nets (string patterns are matched using Tcl string matching)
+        <delay>: Required delay
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc_ext 1.0
+
+------------
+Description:
+------------
+
+        Use the set_net_delay command to query the net delays and perform
+minimum or maximum timing analysis across nets. The -from and 
+-to options can be string patterns or pin, port, register, or net
+collections. When pin or net collection is used, the collection should
+include output pins or nets.
+
+If the -to option is unused or if the -to filter is an "*" character,
+all the output pins and registers on timing netlist became valid
+destination points.
+
+When you use the -min option, slack is calculated by looking at the
+minimum delay on the edge. If you use -max option, slack is calculated
+with the maximum edge delay. 
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+project_open my_project
+create_timing_netlist
+read_sdc
+update_timing_netlist
+
+# add min delay constraint
+set_net_delay -min 0.160 -from [get_pins inst9|combout] -to [get_pins *|dataf]
+
+# add max delay constraint		
+set_net_delay -max 0.500 -from inst8|combout
+
+# this is same as the previous call
+set_net_delay -max 0.500 -from inst8|combout -to *
+
+update_timing_netlist
+
+report_net_delay -panel "Net Delay"		
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</set_net_delay>
+
+<set_max_skew>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: set_max_skew [-h | -help] [-long_help] [-exclude <Tcl list>] [-from <names>] [-include <Tcl list>] [-to <names>] <skew>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -exclude <Tcl list>: A Tcl list of parameters to exclude during skew analysis. This list can include 1 or more of the following: utsu, uth, utco, from_clock, to_clock, clock_uncertainty, input_delay, output_delay
+        -from <names>: Valid sources (string patterns are matched using Tcl string matching)
+        -include <Tcl list>: Tcl list of parameters to include during skew analysis. This list can include 1 or more of the following: utsu, uth, utco, from_clock, to_clock, clock_uncertainty, input_delay, output_delay
+        -to <names>: Valid destinations (string patterns are matched using Tcl string matching)
+        <skew>: Required skew
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc_ext 1.0
+
+------------
+Description:
+------------
+
+Use the set_max_skew constraint to perform maximum allowable skew
+analysis between sets of registers or ports. In order to constrain
+skew across multiple paths, all such paths must be defined within a
+single set_max_skew constraint. set_max_skew timing constraint is 
+not affected by set_max_delay, set_min_delay and set_multicycle_path 
+but it does obey set_false_path and set_clock_groups.
+
+Legal values for the -from and -to options are collections of clocks,
+registers, ports, pins, nets, cells or partitions in a design. 
+
+Applying maximum skew constraints between clocks applies the
+constraint from all register or ports driven by the clock specified
+with the -from option to all registers or ports driven by the clock
+specified with the -to option.
+
+If pin names or collections are used, the -from value must be a 
+clock pin and the -to value must be any non-clock input pin to a 
+register. Assignments from clock pins or to and from cells apply 
+to all registers contained in the cell or driven by the clock pin. 
+Similarly, -to and -from partition specifications apply to all 
+registers in the specified partition.
+
+Use the -include and -exclude options to include or exclude one or
+more of the following: register micro parameters (utsu, uth, utco),
+clock arrival times (from_clock, to_clock), clock uncertainty 
+(clock_uncertainty) and input and output delays (input_delay, 
+output_delay). By default, max skew analysis includes data arrival
+times, clock arrival times and clock uncertainty. When -include is 
+used, those in the inclusion list will be added to the default analysis.
+Similarly, when -exclude is used, those in the exclusion list will
+be excluded from the default analysis. When both the -include and 
+-exclude options specify the same parameter, that parameter will 
+be excluded.
+
+When this constraint is used, results of max skew analysis are
+displayed in the Report Max Skew (report_max_skew) report from the
+TimeQuest Timing Analyzer. Since skew is defined between two or more
+paths, no results are displayed if the -from/-from_clock and
+-to/-to_clock filters satisfy less than two paths.
+
+The Fitter does not include set_max_skew constraints in design
+optimization. Use placement, routing, or other timing constraints to
+drive the fitter to meet any set_max_skew constraints.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Constrain the skew on an input port to all registers it feeds
+set_max_skew -from [get_ports din] 0.200
+
+# Constrain the skew on output bus dout[*]
+set_max_skew -to [get_ports dout\[*\]] 0.200
+
+# Create a max skew constraint that includes only data path arrival
+set_max_skew -from [get_keepers inst1|*] -to [get_keepers inst2|*] 0.200 \
+-exclude { from_clock to_clock clock_uncertainty }
+
+# Create a max skew constraint that includes input and output delays
+# as well as the default data arrivals, clock arrivals and clock uncertainty
+set_max_skew -from [get_keepers inst1|*] -to [get_keepers inst2|*] 0.200 \
+-include { input_delay output_delay }
+
+# Report the results of max skew assignments
+report_max_skew -panel_name "Report Max Skew" -npaths 10 -detail path_only		
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Timing netlist does not exist. Use "create_timing_netlist" to create a timing netlist.
+TCL_ERROR	1   	ERROR: "<string>" is not a valid argument for option "<string>". Available arguments are: <string>
+TCL_ERROR	1   	ERROR: Following options are missing required arguments: <string>
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</set_max_skew>
+
+<get_fanouts>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_fanouts [-h | -help] [-long_help] [-inverting_paths] [-no_logic] [-non_inverting_paths] [-through <names>] <filter>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -inverting_paths: Only follow inverting combinational paths
+        -no_logic: Do not follow combinational paths
+        -non_inverting_paths: Only follow non-inverting combinational paths
+        -through <names>: Valid through nodes (string patterns are matched using Tcl string matching)
+        <filter>: Valid starting nodes (string patterns are matched using Tcl string matching or collection)
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc_ext 1.0
+
+------------
+Description:
+------------
+
+Returns a collection of fanout nodes starting from the <filter> in the
+design. When the -no_logic option is used, get_fanouts ignores the
+paths that pass through combinational logic elements other than
+buffers and inverters.
+
+When the -non_inverting_paths option is used in conjunction with the
+-no_logic option, get_fanouts does not follow any paths that include
+an odd number of inverters. Similarly, when the -inverting_paths
+option is used in conjunction with the -no_logic option, get_fanouts
+does not follow any paths that include an even number of
+inverters. Both the -non_inverting_paths and -inverting_paths options
+require the -no_logic option and are mutually exclusive.
+
+When the -through option is used, only the fanouts that can be reached
+by going through those nodes are returned.
+
+The filter for the collection is a Tcl list of wildcards, and must
+follow standard Tcl or TimeQuest-extension substitution rules.  See
+the help for use_timequest_style_escaping for details.		
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+set fanouts [get_fanouts $item]
+foreach_in_collection fanout_keeper $fanouts {
+	lappend fanout_keeper_list [get_node_info $fanout_keeper -name]
+}
+
+set fanouts_no_logic [get_fanouts $item -no_logic]
+foreach_in_collection fanout_keeper $fanouts_no_logic {
+	lappend fanout_keeper_list_no_logic [get_node_info $fanout_keeper -name]
+}
+
+# Using through option to find the fanout registers whose enable input is 
+# connected to the signal while ignoring the inverting paths.
+get_fanouts inst1 -no_logic -non_inverting_paths -through [get_pins -hierarchical *|ena]
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_fanouts>
+
+<get_fanins>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_fanins [-h | -help] [-long_help] [-asynch] [-clock] [-inverting_paths] [-no_logic] [-non_inverting_paths] [-synch] [-through <names>] <filter>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -asynch: Traverse through asynch edges
+        -clock: Traverse through clock edges
+        -inverting_paths: Only follow inverting combinational paths
+        -no_logic: Do not follow combinational paths
+        -non_inverting_paths: Only follow non-inverting combinational paths
+        -synch: Traverse through synch edges
+        -through <names>: Valid through nodes (string patterns are matched using Tcl string matching)
+        <filter>: Valid starting nodes (string patterns are matched using Tcl string matching or collection)
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc_ext 1.0
+
+------------
+Description:
+------------
+
+Returns a collection of fanin nodes starting from the <filter> in the
+design. When you supply the -no_logic option, get_fanins ignores the
+paths that pass through combinational logic elements other than
+buffers and inverters.
+
+When you use the -synch, -asynch or -clock options, get_fanins
+traverses the netlist through corresponding edges. More than one 
+of these options can be specified. If you do not specify any of 
+these three options, the command does not ignore any paths.
+
+When the -non_inverting_paths option is used, no_logic does not follow
+any paths that includes odd number of inverters. Similarly, when the
+-inverting_paths option is used, no_logic does not follow any paths
+that includes even number of inverters. Both the -non_inverting_paths
+and -inverting_paths options require the -no_logic option and are
+mutually exclusive.
+
+When the -through option is used, only the fanins that can be reached 
+by going through those nodes are returned.
+
+The filter for the collection is a Tcl list of wildcards, and must
+follow standard Tcl or TimeQuest-extension substitution rules.  See
+the help for the use_timequest_style_escaping command for details.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+set fanins [get_fanins $item -synch -clock]
+foreach_in_collection fanin_keeper $fanins {
+	lappend fanin_keeper_list [get_node_info $fanin_keeper -name]
+}
+
+set fanins_no_logic [get_fanins $item -no_logic -asynch]
+foreach_in_collection fanin_keeper $fanins_no_logic {
+	lappend fanin_keeper_list_no_logic [get_node_info $fanin_keeper -name]
+}
+
+#-through example
+get_fanins inst18 -through inst11
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_fanins>
+
+<get_partitions>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_partitions [-h | -help] [-long_help] [-cell] [-hierarchical] [-nocase] [<filter>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -cell: Returns a cell collection inside the partitions matching the <filter>
+        -hierarchical: Specifies if hierarchical searching method should be used
+        -nocase: Specifies the matching of node names to be case-insensitive
+        <filter>: Valid partitions (string patterns are matched using Tcl string matching)
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc_ext 1.0
+
+------------
+Description:
+------------
+
+Returns a collection of partitions matching the filter by default. All
+partition names in the collection match the specified pattern.
+Wildcards can be used to select multiple partitions at once.
+ 
+The -cell option creates and returns the collection of cells found
+inside the partitions matching the <filter> instead of returning a
+partition collection.
+ 
+There are three Tcl string matching schemes available with this
+command: default, -hierarchical, and -no_case.
+
+When using the default matching scheme, pipe characters separate one
+hierarchy level from the next. They are treated as special characters
+and are taken into account when string matching with wildcards is
+performed. The default matching scheme does not force the search to
+proceed recursively down the hierarchy.
+  
+When using the hierarchical matching scheme, pipe characters are
+treated as special characters and are taken into account when string
+matching with wildcards is performed. This matching scheme forces the
+search to proceed recursively down the hierarchy.
+ 
+The -nocase matching scheme uses case-insensitive matching behavior.
+
+The filter for the collection is a Tcl list of wildcards, and must
+follow standard Tcl or TimeQuest-extension substitution rules.  See
+the help for use_timequest_style_escaping for details.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+#Get the partitions matching the filter
+get_partitions *
+
+#Get the collection of cells inside partitions matching the filter
+get_partitions * -cell
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_partitions>
+
+<get_assignment_groups>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_assignment_groups [-h | -help] [-long_help] [-keepers] [-ports] [-registers] <name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -keepers: Returns a keeper collection from the assignment group matching the <name>
+        -ports: Returns a port collection from the assignment group matching the <name>
+        -registers: Returns a register collection from the assignment group matching the <name>
+        <name>: Assignment group name
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::sdc_ext 1.0
+
+------------
+Description:
+------------
+
+Returns a collection of <keepers>|<registers>|<ports> for the
+assignment group that matches <name>. This command can be used to
+retrieve the assignment group created and saved in the Quartus II
+Settings File.
+
+The options -keepers, -registers and -ports are mutually exclusive. If
+no option is specified, the keeper collection is returned by default.
+
+The filter for the collection is a Tcl list of wildcards, and must
+follow standard Tcl or TimeQuest-extension substitution rules.  See
+help for the use_timequest_style_escaping command for details.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+get_assignment_groups my_assignments -registers
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_assignment_groups>
+
+<<<</1.0>>>>

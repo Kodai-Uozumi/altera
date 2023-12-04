@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<generate_set>
+
+    <!-- This "subroutine" uses the SW_COMPONENT_XPATH and STF_NAME
+         variables to output the appropriate text (for generated_all.mk) -->    
+
+    <!-- TODO - this code is duplicated in system.h.gtf -->
+    <set_variable variable="XPATH_INDEX" to="1"/>
+    <set_variable variable="MACRO_LIST" to=""/>
+    <loop>
+        <if condition='not( xpath_valid( %STF_NAME%, "%SW_COMPONENT_XPATH%/make_macros/macro[position()=%XPATH_INDEX%]" ) )'>
+            <break/>
+        </if>
+
+        <set_variable variable="NAME"
+                      to='xpath( %STF_NAME%, "normalize-space(%SW_COMPONENT_XPATH%/make_macros/macro[position()=%XPATH_INDEX%]/@name)" )'/>
+        <set_variable variable="VALUE"
+                      to='xpath( %STF_NAME%, "normalize-space(%SW_COMPONENT_XPATH%/make_macros/macro[position()=%XPATH_INDEX%]/@value)" )'/>
+        <set_variable variable="QUOTE"
+                      to='xpath( %STF_NAME%, "normalize-space(%SW_COMPONENT_XPATH%/make_macros/macro[position()=%XPATH_INDEX%]/@quote)" )'/>
+
+        <set_variable variable="MACRO_LIST" to='list_add( %MACRO_LIST%, (%NAME%,%VALUE%,%QUOTE%) )'/>
+
+        <set_variable variable="XPATH_INDEX" to="add( 1, %XPATH_INDEX% )"/>
+    </loop>
+
+    <if condition="gt( list_size( %MACRO_LIST% ), 0 )">
+        <set_variable variable="SW_COMPONENT_NAME"
+                      to='xpath( %STF_NAME%, "normalize-space(%SW_COMPONENT_XPATH%/@name)" )'/>
+        <text>
+
+#
+# %SW_COMPONENT_NAME% macros
+#
+
+        </text>
+
+        <!-- TODO - this <for_each> is duplicated in system.h.gtf -->
+        <for_each variable="MACRO" list="%MACRO_LIST%">
+            <set_variable variable="MACRO_NAME" to="uppercase( list_get( %MACRO%, 0 ) )"/>
+            <set_variable variable="MACRO_VALUE" to='regex_replace_all( \\, /, list_get( %MACRO%, 1 ) )'/>
+            <set_variable variable="MACRO_QUOTE" to="list_get( %MACRO%, 2 )"/>
+            <if condition="eq( yes, %MACRO_QUOTE% )"> <!-- default to "no" -->
+                <set_variable variable="MACRO_VALUE" to="quote_c_style( %MACRO_VALUE% )"/>
+            </if>
+            <text>
+%MACRO_NAME% = %MACRO_VALUE%
+            </text>
+        </for_each>
+        <!-- end the last line above -->
+        <text>
+        </text>
+    </if>
+
+</generate_set>

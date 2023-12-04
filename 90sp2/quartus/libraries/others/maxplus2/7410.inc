@@ -1,0 +1,1 @@
+FUNCTION 7410 (2, 3, 4) RETURNS (1);

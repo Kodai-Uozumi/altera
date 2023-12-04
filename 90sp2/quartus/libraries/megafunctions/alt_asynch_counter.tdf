@@ -1,0 +1,1414 @@
+----------------------------------------------------------------------------------------------------
+-- ALT_ASYNCH_COUNTER Parameterized Megafunction
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+-- This function implements the asynchronous side of the LPM_COUNTER module.
+-- This function is meant to only be called from ALT_SYNCH_COUNTER, which in
+-- turn should only be called by LPM_COUNTER.  The design forces counter chains
+-- and labwide signals through the WYSIWYG primitives
+--
+--	Copyright (C) 1988-1999 Altera Corporation
+--	Any megafunction design, and related net list (encrypted or decrypted),
+--	support information, device programming or simulation file, and any other
+--	associated documentation or information provided by Altera or a partner
+--	under Altera's Megafunction Partnership Program may be used only to
+--	program PLD devices (but not masked PLD devices) from Altera.  Any other
+--	use of such megafunction design, net list, support information, device
+--	programming or simulation file, or any other related documentation or
+--	information is prohibited for any other purpose, including, but not
+--	limited to modification, reverse engineering, de-compiling, or use with
+--	any other silicon devices, unless such use is explicitly licensed under
+--	a separate agreement with Altera or a megafunction partner.  Title to
+--	the intellectual property, including patents, copyrights, trademarks,
+--	trade secrets, or maskworks, embodied in any such megafunction design,
+--	net list, support information, device programming or simulation file, or
+--	any other related documentation or information provided by Altera or a
+--	megafunction partner, remains with Altera, the megafunction partner, or
+--	their respective licensors.  No other licenses, including any licenses
+--	needed under any third party's intellectual property, are provided herein.
+----------------------------------------------------------------------------------------------------
+-- declare the lcell's
+INCLUDE "apex20ke_lcell";
+INCLUDE "apex20k_lcell";
+INCLUDE "mercury_lcell";
+INCLUDE "flex6k_lcell";
+
+-- lpm's which there is a dependancy on
+INCLUDE "lpm_decode";
+INCLUDE "lpm_constant";
+INCLUDE "lpm_compare";
+
+-- need global parameter information
+INCLUDE "aglobal90";
+
+PARAMETERS
+(
+	LPM_WIDTH,									-- # of bits in counter
+	LPM_DIRECTION			=	"DEFAULT",		-- Can be "UP", "DOWN", or "DEFAULT" --> controls whether
+												-- this is an up or down counter
+	LPM_MODULUS				=	0,				-- Value for specifying a modulus counter
+	LPM_SVALUE				=	0,				-- Value to be loaded by sset parameter
+	LPM_AVALUE				=	0,				-- Value to be loaded vy aset parameter
+	CARRY_CHAIN				=	"IGNORE",		-- GLOBAL PARAMETER --> For Altera internal use only
+	CASCADE_CHAIN_LENGTH,						-- GLOBAL PARAMETER	--> For Altera internal use only
+	CARRY_CHAIN_LENGTH,							-- GLOBAL PARAMETER --> For Altera internal use only
+	DEVICE_FAMILY								-- GLOBAL PARAMETER --> For Altera internal use only
+);
+
+%**********%
+%* MACROS *%
+%**********%
+
+-- is a divisible by b?
+DEFINE DIVISIBLE_BY(a, b) = FLOOR( a MOD b) == 0;
+
+-- is this a trivial modulus (i.e. we can ignore it)
+DEFINE NON_TRIVIAL_MODULUS() = (USED(LPM_MODULUS) & (LPM_MODULUS != 0) & (LPM_MODULUS < (2^LPM_WIDTH)));
+
+-- the AVALUE the user entered is trivial and may be safely ignored
+DEFINE TRIVIAL_AVALUE() = !USED(LPM_AVALUE);
+
+-- the svalue the user entered is trivial and may be safely ignored
+DEFINE TRIVIAL_SVALUE() = !USED(LPM_SVALUE);
+
+-- need to add an extra cell to load the LSB with the cin
+DEFINE NEED_LOW_LOADER() = (USED(cnt_en) & USED(cin)) # (USED(cin) & NON_TRIVIAL_MODULUS()) # (SIMPLE_ENA_EMU() & USED(cin));
+
+-- is the counter the user specified capable of ever counting up?
+DEFINE CAPABLE_OF_UP() = USED(updown) # LPM_DIRECTION == "UP" # !USED(LPM_DIRECTION) # LPM_DIRECTION == "DEFAULT";
+
+-- is the counter the user specified capable of ever counting down?
+DEFINE CAPABLE_OF_DOWN() = USED(updown) # LPM_DIRECTION == "DOWN";
+
+-- is there a need for an extra cell to handle the cout?
+DEFINE NEED_HIGH_COUT() = (USED(cout) & NON_TRIVIAL_MODULUS() & CAPABLE_OF_UP())
+						  # (NON_TRIVIAL_MODULUS() & CAPABLE_OF_DOWN());
+
+-- number of cells on the chain that are before the counter cells
+DEFINE PRE_COUNT() = (NEED_LOW_LOADER() # (USED(cnt_en) & USED(updown))) ? 1 : 0;
+
+-- there are more stages after the x-th
+DEFINE NEED_MORE_STAGES(x) = x + 1 < LPM_WIDTH + POST_COUNT();
+
+-- do we need to break the chain here to meet the user specified carry chain limit
+DEFINE BREAK_CHAIN_HERE(x) = (x != 0) & ((PRE_COUNT() + x) MOD CARRY_CHAIN_LENGTH) == 0 & NEED_MORE_STAGES(x);
+
+-- nubmer of cells on the chain that are after the counter cells
+DEFINE POST_COUNT() = NEED_HIGH_COUT() ? 1 : 0;
+
+-- counter is forced to count up
+DEFINE DOING_UP_COUNT() = LPM_DIRECTION == "UP" # LPM_DIRECTION == "DEFAULT";
+
+-- counter is locked at counting down
+DEFINE DOING_DOWN_COUNT() = LPM_DIRECTION == "DOWN";
+
+-- there will be no user-specified loading done in this counter
+DEFINE IGNORE_LOAD() = (!USED(data) # (!USED(aload) & !USED(!sload))) & !NEED_MODULUS_MUX();
+
+-- we need a mux to load the modulus on a down count
+-- so that on a count to 0 we may jump to the modulus
+DEFINE NEED_MODULUS_MUX() = CAPABLE_OF_DOWN() & NON_TRIVIAL_MODULUS();
+
+-- will the aclr register port be used on any of the counter cells?
+DEFINE NEED_ACLR() = USED(aclr);
+
+-- will the sclr port of the lcell be used on any of the counter cells?
+DEFINE NEED_SCLR() = USED(sclr) # (CAPABLE_OF_UP() & NON_TRIVIAL_MODULUS());
+
+-- do we need an equality check for an up count and a non-trivial modulus
+DEFINE NEED_EQUALITY_CHECK() = CAPABLE_OF_UP() & NON_TRIVIAL_MODULUS();
+
+DEFINE NEED_MUX_ENA_EMU() = ((FAMILY_FLEX6000() == 1) & USED(clk_en)); -- & USED(cout));
+
+DEFINE SIMPLE_ENA_EMU() = 1 == 0; --!NEED_MUX_ENA_EMU() & FAMILY_FLEX6000() == 1 & USED(clk_en);
+
+DEFINE CNT_EN_THROUGH_CHAIN() = !USED(cout);
+DEFINE CNT_EN_THROUGH_LOAD() = USED(cnt_en);
+
+%*******************************************************%
+--------------------------------------------------------
+-- LUT MASKS --> complete hand-wire of the counter chain
+---------------------------------------------------------
+%*******************************************************%
+-- BEGIN MASK DECLARATIONS
+	%*****%
+	% LOW %
+	%*****%
+	-- case of no cin and no updown control
+	CONSTANT LOW_ENABLE_UP_MASK							=  "5A82";
+	CONSTANT LOW_ENABLE_UP_MODE							=  "QFBK_COUNTER";
+	CONSTANT LOW_ENABLE_DOWN_MASK						=	"5A28";
+	CONSTANT LOW_ENABLE_DOWN_MODE						=	"QFBK_COUNTER";
+
+	-- case of no cin and no cnt_enable
+	CONSTANT LOW_UPDOWN_MASK							=	"0F96";
+	CONSTANT LOW_UPDOWN_MODE							=	"QFBK_COUNTER";
+
+	-- case of updown & cin (with or without cnt enable port)
+	CONSTANT LOW_CIN_MASK								=	"5AC0";
+	CONSTANT LOW_CIN_MODE								=	"COUNTER";
+
+	%********************%
+	%* LOW CARRY FEEDER *%
+	%********************%
+	-- this will load the counter appropriately based on the value of the
+	-- count enable input
+	DEFINE LOW_LOADER_MASK()							=	CNT_EN_THROUGH_CHAIN() ? "C0C0" : "C0F0";
+	CONSTANT LOW_LOADER_MODE							=	"ARITHMETIC";
+
+	%*****************%
+	%* CHAIN BREAKER *%
+	%*****************%
+	-- this cell is necessary in order to break the carry chain at the lengths specified by the
+	-- user in the compiler options for carry chains.  This must be followed closely in order to
+	-- enhance the fittability of the circuit
+	CONSTANT CHAIN_BREAKER_MASK							=	"F000";
+	CONSTANT CHAIN_BREAKER_MODE							=	"ARITHMETIC";
+
+	%******************************%
+	%* INTERMEDIATE CHAIN STARTER *%
+	%******************************%
+	-- this cell will start up a new chain after a previous one has been broken
+	-- for no updown control we use one of these ->
+	CONSTANT INTERMEDIATE_UP_MASK						=	"5A82";
+	CONSTANT INTERMEDIATE_UP_MODE						=	"QFBK_COUNTER";
+	CONSTANT INTERMEDIATE_DOWN_MASK						=	"5A28";
+	CONSTANT INTERMEDIATE_DOWN_MODE						=	"QFBK_COUNTER";
+
+	-- if there's an updown control we use this ->
+	CONSTANT INTERMEDIATE_UPDOWN_MASK					=	"5A88";
+	CONSTANT INTERMEDIATE_UPDOWN_MODE					=	"QFBK_COUNTER";
+
+	%**********************%
+	%* MAIN COUNTER CELLS *%
+	%**********************%
+	-- these cells do the bulk of the work in the counter
+	CONSTANT WORKER_UP_MASK								=	"5A90";
+	CONSTANT WORKER_UP_MODE								=	"COUNTER";
+	CONSTANT WORKER_DOWN_MASK							=	"5A60";
+	CONSTANT WORKER_DOWN_MODE							=	"COUNTER";
+
+	-- this is a very ugly and slow case, luckily the chains manage to just barely survive
+	-- this is the slowest and largest possible case for the counter so it is highly recommended
+	-- to avoid asynchronous cases with an updown... or any asynchronous cases except for aclr, for that matter
+	CONSTANT WORKER_UPDOWN_MASK							=	"5AC0";
+	CONSTANT WORKER_UPDOWN_MODE							=	"COUNTER";
+
+	%*************%
+	%* COUT CELL *%
+	%*************%
+	-- a happy cell that sits on top of the counter and does some adjusting
+	-- of the cout to allow for fast non-binary counters
+	CONSTANT COUT_CELL_MASK								=	"F8F8";
+	CONSTANT COUT_CELL_MODE								=	"ARITHMETIC";
+
+	%*********************%
+	%* Mercury low cells *%
+	%*********************%
+	CONSTANT MERCURY_LOW_NO_CIN_UP_MASK					=	"5599";
+	CONSTANT MERCURY_LOW_NO_CIN_DOWN_MASK				=	"5566";
+	CONSTANT MERCURY_LOW_UPDOWN_NO_CIN_MASK				=	"55CC";
+
+-- END OF MASK DECLARATIONS
+
+DEFINE MERCURY_LOW_CELL_MASK() =
+	(NEED_LOW_LOADER() # USED(cin)) ?
+		(USED(updown) ?
+			WORKER_UPDOWN_MASK :
+			LPM_DIRECTION != "DOWN" ?
+				WORKER_UP_MASK :
+				WORKER_DOWN_MASK) :
+	(USED(updown) ?
+		MERCURY_LOW_UPDOWN_NO_CIN_MASK :
+		LPM_DIRECTION != "DOWN" ?
+			MERCURY_LOW_NO_CIN_UP_MASK :
+			MERCURY_LOW_NO_CIN_DOWN_MASK);
+
+DEFINE MERCURY_CELL_MASK(i) =
+	i == 0 ?
+		MERCURY_LOW_CELL_MASK():
+		USED(updown) ?
+			WORKER_UPDOWN_MASK :
+			LPM_DIRECTION == "DOWN" ?
+				WORKER_DOWN_MASK :
+				WORKER_UP_MASK;
+
+CONSTANT MERCURY_CELL_MODE = "ARITHMETIC";
+
+SUBDESIGN alt_asynch_counter (
+	data[LPM_WIDTH - 1..0]	 	: INPUT = GND;
+	clock						: INPUT;
+	clk_en						: INPUT = VCC;
+	cnt_en						: INPUT = VCC;
+	updown						: INPUT = VCC;
+	cin							: INPUT;		-- no default value
+
+	-- synchronous input control signals
+	sload						: INPUT = GND;
+	sclr						: INPUT = GND;
+	sset						: INPUT = GND;
+	sconst						: INPUT = GND;
+
+	-- asynchronous input control signals
+	aload						: INPUT = GND;
+	aset						: INPUT = GND;
+	aconst						: INPUT = GND;
+	aclr						: INPUT = GND;
+
+	-- outputs
+	q[LPM_WIDTH - 1..0] 		: OUTPUT;
+	cout						: OUTPUT;
+)
+
+VARIABLE
+	local_cin							:	NODE;
+	-- declare the carries
+	my_carries[LPM_WIDTH - 1..0]		:	NODE;
+
+	aclr_actual						    :	NODE;
+	hit_modulus							:	NODE;
+	local_cout							:	NODE;
+	time_to_clear						:	NODE;
+
+	-- multiplexer paths for hazard cover circuitry
+	pre_hazard[LPM_WIDTH - 1..0]		:	NODE;	-- hazard cover must be enforced with a hard cell
+
+	-- constants
+	a_val[LPM_WIDTH - 1..0]				:	NODE;
+	s_val[LPM_WIDTH - 1..0]				:	NODE;
+	IF NEED_EQUALITY_CHECK() # (CAPABLE_OF_DOWN() & NON_TRIVIAL_MODULUS()) GENERATE
+		mod_val[LPM_WIDTH - 1..0]		:	NODE;
+	END GENERATE;
+
+	-- not-gate-pushback circuitry
+	latch_signal[LPM_WIDTH - 1..0]		:	NODE;
+
+	pre_latch_signal[LPM_WIDTH - 1..0]	:	NODE;
+
+	effective_clrn[LPM_WIDTH - 1..0]	:	NODE;
+	effective_prn[LPM_WIDTH - 1..0]		:	NODE;
+
+	a_data[LPM_WIDTH - 1..0]			:	NODE;
+
+	-- inputs and outputs to the cell
+	registered_out[LPM_WIDTH - 1..0]	:	NODE;
+	cell_inputs[LPM_WIDTH - 1..0]		:	NODE;
+	d_in[LPM_WIDTH - 1..0]				:	NODE;
+
+	-- control signals
+	sload_actual						:	NODE;
+	updown_actual						:	NODE;
+	pre_sload							:	NODE;
+	sclr_actual							:	NODE;
+	cnt_en_ena_emu						:	NODE;
+
+	-- declare the low loader if it is necessary
+	IF NEED_LOW_LOADER() GENERATE
+		IF FAMILY_FLEX6000() == 1 GENERATE
+			low_feeder	:	flex6k_lcell WITH	(
+													OPERATION_MODE	=	LOW_LOADER_MODE,
+													LUT_MASK		=	LOW_LOADER_MASK()
+												);
+		ELSE GENERATE
+		IF FAMILY_APEX20K() == 1 GENERATE
+			low_feeder	:	apex20k_lcell WITH	(
+													OPERATION_MODE	=	LOW_LOADER_MODE,
+													LUT_MASK		=	LOW_LOADER_MASK()
+												);
+		ELSE GENERATE IF FAMILY_APEX20KE() == 1  # FAMILY_APEXII() GENERATE
+			low_feeder	:	apex20ke_lcell WITH (
+													OPERATION_MODE	=	LOW_LOADER_MODE,
+													LUT_MASK		=	LOW_LOADER_MASK()
+												);
+		ELSE GENERATE
+			low_feeder	:	mercury_lcell WITH	(
+													OPERATION_MODE	=	LOW_LOADER_MODE,
+													LUT_MASK		=	LOW_LOADER_MASK()
+												);
+		END GENERATE; END GENERATE;END GENERATE;
+	END GENERATE;
+
+	-- the cout cell if it is necessary
+	IF NEED_HIGH_COUT() GENERATE
+		IF FAMILY_FLEX6000() == 1 GENERATE
+			cout_cell	:	flex6k_lcell WITH	(
+													OPERATION_MODE	=	COUT_CELL_MODE,
+													LUT_MASK		=	COUT_CELL_MASK
+												);
+		ELSE GENERATE
+		IF FAMILY_APEX20K() == 1 GENERATE
+			cout_cell	:	apex20k_lcell WITH	(
+													OPERATION_MODE	=	COUT_CELL_MODE,
+													LUT_MASK		=	COUT_CELL_MASK
+												);
+		ELSE GENERATE IF FAMILY_APEX20KE() == 1 # FAMILY_APEXII() == 1 GENERATE
+			cout_cell	:	apex20ke_lcell WITH	(
+													OPERATION_MODE	=	COUT_CELL_MODE,
+													LUT_MASK		=	COUT_CELL_MASK
+												);
+		ELSE GENERATE
+			cout_cell	:	mercury_lcell WITH	(
+													OPERATION_MODE	=	COUT_CELL_MODE,
+													LUT_MASK		=	COUT_CELL_MASK
+												);
+		END GENERATE; END GENERATE; END GENERATE;
+	END GENERATE;
+
+	-- declare the lsb of the counter
+	IF FAMILY_MERCURY() == 0 GENERATE
+		IF !USED(cin) GENERATE
+			IF !USED(updown) GENERATE
+				IF LPM_DIRECTION == "DOWN" GENERATE
+					IF FAMILY_FLEX6000() == 1 GENERATE
+						lsb		:	flex6k_lcell WITH	(
+															OPERATION_MODE	=	LOW_ENABLE_DOWN_MODE,
+															LUT_MASK		=	LOW_ENABLE_DOWN_MASK
+														);
+					ELSE GENERATE
+					IF FAMILY_APEX20K() == 1 GENERATE
+						lsb		:	apex20k_lcell WITH	(
+															OPERATION_MODE	=	LOW_ENABLE_DOWN_MODE,
+															LUT_MASK		=	LOW_ENABLE_DOWN_MASK
+														);
+					ELSE GENERATE
+						lsb		:	apex20ke_lcell WITH (
+															OPERATION_MODE	=	LOW_ENABLE_DOWN_MODE,
+															LUT_MASK		=	LOW_ENABLE_DOWN_MASK
+														);
+					END GENERATE; END GENERATE;-- end of family huntdown
+				ELSE GENERATE	-- assume for now that LPM_DIRECTION == UP # LPM_DIRECTION == "UNUSED"
+					IF FAMILY_FLEX6000() == 1 GENERATE
+						lsb		:	flex6k_lcell WITH	(
+															OPERATION_MODE	=	LOW_ENABLE_UP_MODE,
+															LUT_MASK		=	LOW_ENABLE_UP_MASK
+														);
+					ELSE GENERATE
+					IF FAMILY_APEX20K() == 1 GENERATE
+						lsb		:	apex20k_lcell WITH	(
+															OPERATION_MODE	=	LOW_ENABLE_UP_MODE,
+															LUT_MASK		=	LOW_ENABLE_UP_MASK
+														);
+					ELSE GENERATE
+						lsb		:	apex20ke_lcell WITH	(
+															OPERATION_MODE	=	LOW_ENABLE_UP_MODE,
+															LUT_MASK		=	LOW_ENABLE_UP_MASK
+														);
+					END GENERATE; END GENERATE;-- end of family huntdown
+				END GENERATE;
+			ELSE GENERATE -- USED(updown)
+				IF !USED(cnt_en) & !SIMPLE_ENA_EMU() GENERATE
+					-- don't use this unless we do not need cnt_en line at all.
+					IF FAMILY_FLEX6000() == 1 GENERATE
+						lsb		:	flex6k_lcell WITH	(
+															OPERATION_MODE	=	LOW_UPDOWN_MODE,
+															LUT_MASK		=	LOW_UPDOWN_MASK
+														);
+					ELSE GENERATE
+					IF FAMILY_APEX20K() == 1 GENERATE
+						lsb		:	apex20k_lcell WITH	(
+															OPERATION_MODE	=	LOW_UPDOWN_MODE,
+															LUT_MASK		=	LOW_UPDOWN_MASK
+														);
+					ELSE GENERATE
+						lsb		:	apex20ke_lcell WITH	(
+															OPERATION_MODE	=	LOW_UPDOWN_MODE,
+															LUT_MASK		=	LOW_UPDOWN_MASK
+														);
+					END GENERATE; END GENERATE;-- end of family huntdown
+				ELSE GENERATE
+					IF FAMILY_FLEX6000() == 1 GENERATE
+						lsb		:	flex6k_lcell WITH	(
+															OPERATION_MODE	=	LOW_CIN_MODE,
+															LUT_MASK		=	LOW_CIN_MASK
+														);
+					ELSE GENERATE
+					IF FAMILY_APEX20K() == 1 GENERATE
+						lsb		:	apex20k_lcell WITH	(
+															OPERATION_MODE	=	LOW_CIN_MODE,
+															LUT_MASK		=	LOW_CIN_MASK
+														);
+					ELSE GENERATE
+						lsb		:	apex20ke_lcell WITH	(
+															OPERATION_MODE	=	LOW_CIN_MODE,
+															LUT_MASK		=	LOW_CIN_MASK
+														);
+					END GENERATE; END GENERATE;
+				END GENERATE;
+			END GENERATE;
+		ELSE GENERATE -- USED(cin)
+			IF USED(updown) GENERATE
+				IF FAMILY_FLEX6000() == 1 GENERATE
+					lsb		:	flex6k_lcell WITH	(
+														OPERATION_MODE	=	LOW_CIN_MODE,
+														LUT_MASK		=	LOW_CIN_MASK
+													);
+				ELSE GENERATE
+				IF FAMILY_APEX20K() == 1 GENERATE
+					lsb		:	apex20k_lcell WITH	(
+														OPERATION_MODE	=	LOW_CIN_MODE,
+														LUT_MASK		=	LOW_CIN_MASK
+													);
+				ELSE GENERATE
+					lsb		:	apex20ke_lcell WITH (
+														OPERATION_MODE	=	LOW_CIN_MODE,
+														LUT_MASK		=	LOW_CIN_MASK
+													);
+				END GENERATE; END GENERATE;-- end of the family huntdown
+			ELSE GENERATE
+				IF DOING_DOWN_COUNT() GENERATE
+					IF FAMILY_FLEX6000() == 1 GENERATE
+						lsb	:	flex6k_lcell WITH	(
+														OPERATION_MODE = WORKER_DOWN_MODE,
+														LUT_MASK	   = WORKER_DOWN_MASK
+													);
+					ELSE GENERATE
+					IF FAMILY_APEX20K() == 1 GENERATE
+						lsb	:	apex20k_lcell WITH	(
+														OPERATION_MODE = WORKER_DOWN_MODE,
+														LUT_MASK	   = WORKER_DOWN_MASK
+													);
+					ELSE GENERATE
+						lsb :	apex20ke_lcell WITH (
+														OPERATION_MODE = WORKER_DOWN_MODE,
+														LUT_MASK	   = WORKER_DOWN_MASK
+													);
+					END GENERATE; END GENERATE;
+				ELSE GENERATE
+					IF FAMILY_FLEX6000() == 1 GENERATE
+						lsb :	flex6k_lcell WITH	(
+														OPERATION_MODE = WORKER_UP_MODE,
+														LUT_MASK	   = WORKER_UP_MASK
+													);
+					ELSE GENERATE
+					IF FAMILY_APEX20K() == 1 GENERATE
+						lsb :	apex20k_lcell WITH	(
+														OPERATION_MODE = WORKER_UP_MODE,
+														LUT_MASK	   = WORKER_UP_MASK
+													);
+					ELSE GENERATE
+						lsb :	apex20ke_lcell WITH	(
+														OPERATION_MODE = WORKER_UP_MODE,
+														LUT_MASK	   = WORKER_UP_MASK
+													);
+					END GENERATE; END GENERATE;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE; -- finally the end of the declaration of the lsb
+	ELSE GENERATE	-- this is Mercury asynchronous cases
+		counter_cell[LPM_WIDTH - 1..0] : 	FOR i IN LPM_WIDTH - 1 TO 0 GENERATE
+												mercury_lcell	WITH	(
+																			OPERATION_MODE 	= "ARITHMETIC",
+																			LUT_MASK		= MERCURY_CELL_MASK(i)
+																		)
+											END GENERATE;
+	END GENERATE;
+BEGIN
+	ASSERT REPORT "Counter will power-up to an undefined state.  An asynchronous signal must be asserted before the counter will be at a known state."
+	SEVERITY WARNING;
+%**************************************%
+%*	Beginning of the code block		  *%
+%**************************************%
+	IF NEED_LOW_LOADER() GENERATE
+		local_cin = low_feeder.combout;
+	ELSE GENERATE
+		local_cin = VCC;	-- always enabled
+	END GENERATE;
+
+	-- generating the constants for AVALUE, SVALUE
+	IF !TRIVIAL_AVALUE() GENERATE
+		a_val[] = lpm_constant ()	WITH	(
+												LPM_CVALUE	=	LPM_AVALUE,
+												LPM_WIDTH	=	LPM_WIDTH
+											)
+									RETURNS
+											(
+												.result[]
+											);
+	ELSE GENERATE
+		a_val[] = VCC;
+	END GENERATE;
+
+	-- LPM_SVALUE
+	IF !TRIVIAL_SVALUE() GENERATE
+		s_val[] = lpm_constant ()	WITH	(
+												LPM_CVALUE	=	LPM_SVALUE,
+												LPM_WIDTH	=	LPM_WIDTH
+											)
+									RETURNS
+											(
+												.result[]
+											);
+	ELSE GENERATE
+		s_val[] = VCC;
+	END GENERATE;
+
+	-- the modulus
+	IF NEED_EQUALITY_CHECK() # (NON_TRIVIAL_MODULUS() & CAPABLE_OF_DOWN()) GENERATE
+		mod_val[] = lpm_constant () WITH	(
+												LPM_CVALUE	=	LPM_MODULUS - 1,
+												LPM_WIDTH	=	LPM_WIDTH
+											)
+									RETURNS
+											(
+												.result[]
+											);
+	END GENERATE;
+
+	-- set up the cout
+	IF NEED_HIGH_COUT() GENERATE
+		-- hook up the inputs to the cout cell
+		cout_cell.dataa = updown_actual;
+		IF CNT_EN_THROUGH_CHAIN() GENERATE
+			cout_cell.datab = hit_modulus & local_cin & cnt_en;
+		ELSE GENERATE
+			cout_cell.datab = hit_modulus & local_cin;
+		END GENERATE;
+		cout_cell.cin = my_carries[LPM_WIDTH - 1];
+		cout = cout_cell.cout;
+
+		local_cout = cout_cell.combout;
+	ELSE GENERATE
+		cout = my_carries[LPM_WIDTH - 1];
+
+		-- simply to avoid a warning
+		local_cout = GND;
+	END GENERATE;
+
+	IF NEED_EQUALITY_CHECK() GENERATE
+		hit_modulus =  lpm_compare	(
+										.dataa[]	=	q[],
+										.datab[]	=	mod_val[]
+									)
+									WITH
+									(
+										ONE_INPUT_IS_CONSTANT = "YES",
+										LPM_WIDTH = LPM_WIDTH
+									)
+									RETURNS
+									(
+										.aeb
+									);
+
+		time_to_clear = updown_actual & hit_modulus;
+	ELSE GENERATE
+		time_to_clear = GND;
+		hit_modulus = GND;
+	END GENERATE;
+
+
+	%****************************%
+	%* Dedicated Load Circuitry *%
+	%****************************%
+
+	IF USED(clk_en) & FAMILY_FLEX6000() == 1 GENERATE
+		sclr_actual = sclr & clk_en;
+	ELSE GENERATE
+		sclr_actual = sclr;
+	END GENERATE;
+
+	-- this looks nastier than it really is... most of this will be synthesized
+	-- away
+	IF !CNT_EN_THROUGH_LOAD() GENERATE
+		IF !(CAPABLE_OF_DOWN() & NON_TRIVIAL_MODULUS()) GENERATE
+			d_in[] = !sclr_actual &  !(!sset & !sconst & !sload & updown_actual & time_to_clear) &
+					 (((sset # sconst) & s_val[]) # ((sset !# sconst) & sload & data[]));
+		ELSE GENERATE
+			-- need to add in an extra term for the wraparound on a down count with a modulo
+			-- counter
+			d_in[]	= !sclr_actual & !(!sset & !sconst & !sload & updown_actual & time_to_clear) &
+					  (((sset # sconst) & s_val[]) # ((sset !# sconst) & !sload & !updown_actual & mod_val[])
+					  # ((sset !# sconst) & sload & data[]));
+		END GENERATE;
+	ELSE GENERATE
+		IF !(CAPABLE_OF_DOWN() & NON_TRIVIAL_MODULUS()) GENERATE
+			d_in[] = !sclr_actual &  !(!sset & !sconst & !sload & cnt_en & updown_actual & time_to_clear) &
+					 (((sset # sconst) & s_val[]) # ((sset !# sconst) & sload & data[]) # (!sset & !sconst & !sload & !cnt_en & q[]));
+		ELSE GENERATE
+			-- need to add in an extra term for the wraparound on a down count with a modulo
+			-- counter
+			d_in[]	= !sclr_actual & !(!sset & !sconst & !sload & updown_actual & time_to_clear & cnt_en) &
+					  (((sset # sconst) & s_val[]) # ((sset !# sconst) & !sload & !updown_actual & mod_val[] & cnt_en)
+					  # ((sset !# sconst) & sload & data[]) # (!sset & !sconst & !sload & !cnt_en & q[]));
+		END GENERATE;
+	END GENERATE;
+
+	a_data[] = ((aset # aconst) & a_val[]) # ((aset !# aconst) & data[]);
+
+	aclr_actual = aclr # aset # aconst # aload;
+
+	effective_clrn[] = !(aclr # (!a_data[] & (aload # aset # aconst)));
+	effective_prn[]  = !((aload # aset # aconst) & a_data[]);
+
+	pre_latch_signal[] = effective_prn[] & latch_signal[];
+
+	latch_signal[] = !effective_clrn[] # pre_latch_signal[];
+	-- set up the latch for the not-gate-pushback
+
+	-- set up the cell inputs
+	IF NEED_MUX_ENA_EMU() GENERATE
+		cell_inputs[] = (clk_en & (!latch_signal[] $ d_in[])) # (!clk_en & registered_out[]);
+	ELSE GENERATE
+		cell_inputs[] = !latch_signal[] $ d_in[];
+	END GENERATE;
+
+	IF !CNT_EN_THROUGH_LOAD() GENERATE
+		IF NON_TRIVIAL_MODULUS() & CAPABLE_OF_DOWN() GENERATE
+			pre_sload =
+						(sclr_actual # sload # sconst # sset # (time_to_clear & cnt_en & local_cin) #
+						(cnt_en & local_cin & local_cout & !updown_actual));
+		ELSE GENERATE
+			pre_sload =
+						(sclr_actual # sload # sconst # sset # (local_cin & cnt_en & time_to_clear));
+		END GENERATE;
+	ELSE GENERATE
+		IF NON_TRIVIAL_MODULUS() & CAPABLE_OF_DOWN() GENERATE
+			pre_sload =
+						(sclr_actual # sload # sconst # sset # (time_to_clear & cnt_en & local_cin) #
+						(cnt_en & local_cin & local_cout & !updown_actual) # !cnt_en);
+		ELSE GENERATE
+			pre_sload =
+						(sclr_actual # sload # sconst # sset # (local_cin & cnt_en & time_to_clear) # !cnt_en);
+		END GENERATE;
+	END GENERATE;
+
+	IF NEED_MUX_ENA_EMU() GENERATE
+		sload_actual = !clk_en # pre_sload; -- lock it to sloading mode when clk_en is disabled.
+	ELSE GENERATE
+		IF USED(clk_en) & FAMILY_FLEX6000() == 1 GENERATE
+			sload_actual = clk_en & pre_sload;
+		ELSE GENERATE
+			sload_actual = pre_sload;
+		END GENERATE;
+	END GENERATE;
+
+	IF CNT_EN_THROUGH_CHAIN() GENERATE
+		IF SIMPLE_ENA_EMU() GENERATE
+			cnt_en_ena_emu = clk_en & cnt_en;
+		ELSE GENERATE
+			cnt_en_ena_emu = cnt_en;
+		END GENERATE;
+	ELSE GENERATE
+		cnt_en_ena_emu = VCC;
+	END GENERATE;
+
+	-- the updown control
+	IF LPM_DIRECTION == "DOWN" GENERATE
+		updown_actual = GND;
+	ELSE GENERATE
+		IF USED(updown) GENERATE
+			updown_actual = updown;
+		ELSE GENERATE
+			updown_actual = VCC;
+		END GENERATE;
+	END GENERATE;
+
+	-- Finally we may begin to construct the basic counter cells
+	FOR i IN 0 TO LPM_WIDTH - 1 GENERATE
+		IF FAMILY_MERCURY() == 0 GENERATE
+		IF i == 0 GENERATE
+			IF FAMILY_FLEX6000() != 1 GENERATE
+				lsb.ena = clk_en;
+			END GENERATE;
+			IF NEED_LOW_LOADER() GENERATE
+				-- set up the carry feeder
+				low_feeder.cin = cin;
+				low_feeder.datab = cnt_en_ena_emu;
+
+				-- hook up the cell
+				my_carries[0] = lsb.cout;
+				registered_out[0] = lsb.regout;
+				IF USED(updown) GENERATE
+					lsb.clk = clock;
+					lsb.dataa = registered_out[0];
+					lsb.datab = (updown_actual & (latch_signal[0] !$ registered_out[0]))
+								# (!updown_actual & (latch_signal[0] $ registered_out[0]));
+					lsb.datac = cell_inputs[0];
+					lsb.aclr = aclr_actual;
+					lsb.sload = sload_actual;
+					lsb.cin = low_feeder.cout;
+				ELSE GENERATE
+					lsb.clk = clock;
+					lsb.dataa = registered_out[0];
+					lsb.datab = latch_signal[0];
+					lsb.datac = cell_inputs[0];
+					lsb.aclr = aclr_actual;
+					lsb.sload = sload_actual;
+					lsb.cin = low_feeder.cout;
+				END GENERATE;
+			ELSE GENERATE -- dont need a low loader so can do something relatively fast
+				IF !USED(cin) GENERATE
+					lsb.clk = clock;
+					lsb.datac = cell_inputs[0];
+					lsb.aclr = aclr_actual;
+					lsb.sload = sload_actual;
+					registered_out[0] = lsb.regout;
+					my_carries[0] = lsb.cout;
+
+					IF !USED(updown) GENERATE
+						-- set up the cell inputs
+						lsb.dataa = cnt_en_ena_emu;
+						lsb.datab = latch_signal[0];
+					ELSE GENERATE -- using neither control or using the updown
+						IF !USED(cnt_en) & !SIMPLE_ENA_EMU() GENERATE
+							lsb.dataa = latch_signal[0];
+							lsb.datab = updown_actual;
+						ELSE GENERATE
+							lsb.dataa = registered_out[0];
+							lsb.datab = (updown_actual & (latch_signal[0] !$ registered_out[0]))
+										# (!updown_actual & (latch_signal[0] $ registered_out[0]));
+
+							IF FAMILY_FLEX6000() == 1 GENERATE
+								lsb.cin	=	flex6k_lcell (
+																.datab	=	cnt_en_ena_emu
+															)
+															WITH
+															(
+																OPERATION_MODE	=	"ARITHMETIC",
+																LUT_MASK		=	"CCCC"
+															)
+															RETURNS
+															(
+																.cout
+															);
+							ELSE GENERATE
+							IF FAMILY_APEX20K() == 1 GENERATE
+								lsb.cin	=	apex20k_lcell	(
+																.datab	=	cnt_en_ena_emu
+															)
+															WITH
+															(
+																OPERATION_MODE	=	"ARITHMETIC",
+																LUT_MASK		=	"CCCC"
+															)
+															RETURNS
+															(
+																.cout
+															);
+							ELSE GENERATE
+								lsb.cin =	apex20ke_lcell	(
+																.datab	=	cnt_en_ena_emu
+															)
+															WITH
+															(
+																OPERATION_MODE	=	"ARITHMETIC",
+																LUT_MASK		=	"CCCC"
+															)
+															RETURNS
+															(
+																.cout
+															);
+							END GENERATE; END GENERATE;
+						END GENERATE;
+					END GENERATE;
+				ELSE GENERATE -- lots of nasty little cases to detect
+						lsb.clk = clock;
+						lsb.datac = cell_inputs[0];
+						lsb.aclr = aclr_actual;
+						lsb.sload = sload_actual;
+						registered_out[0] = lsb.regout;
+						my_carries[0] = lsb.cout;
+						lsb.cin = cin;
+					IF USED(updown) GENERATE
+						lsb.dataa = registered_out[0];
+						lsb.datab = (updown_actual & (latch_signal[0] !$ registered_out[0])) #
+									(!updown_actual & (latch_signal[0] $ registered_out[0]));
+					ELSE GENERATE
+						lsb.dataa = registered_out[0];
+						lsb.datab = latch_signal[0];
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+		ELSE GENERATE -- i != 0
+			IF !BREAK_CHAIN_HERE(i) GENERATE
+				IF USED(updown) GENERATE
+					IF FAMILY_FLEX6000() == 1 GENERATE
+						(registered_out[i], my_carries[i]) = flex6k_lcell (
+																				.clk = clock,
+																				.dataa = registered_out[i],
+																				.datab = (updown_actual & (registered_out[i] !$ latch_signal[i]))
+																						  # (!updown_actual & (registered_out[i] $ latch_signal[i])),
+																				.datac = cell_inputs[i],
+																				.aclr = aclr_actual,
+																				.sload = sload_actual,
+																				.cin = my_carries[i - 1]
+																			)
+																			WITH
+																			(
+																				OPERATION_MODE	=	WORKER_UPDOWN_MODE,
+																				LUT_MASK		=	WORKER_UPDOWN_MASK
+																			)
+																			RETURNS
+																			(
+																				.regout,
+																				.cout
+																			);
+					ELSE GENERATE
+					IF FAMILY_APEX20K() == 1 GENERATE
+						(registered_out[i], my_carries[i]) = apex20k_lcell	(
+																				.clk = clock,
+																				.dataa = registered_out[i],
+																				.datab = (updown_actual & (registered_out[i] !$ latch_signal[i]))
+																						  # (!updown_actual & (registered_out[i] $ latch_signal[i])),
+																				.datac = cell_inputs[i],
+																				.aclr = aclr_actual,
+																				.sload = sload_actual,
+																				.ena = clk_en,
+																				.cin = my_carries[i - 1]
+																			)
+																			WITH
+																			(
+																				OPERATION_MODE	=	WORKER_UPDOWN_MODE,
+																				LUT_MASK		=	WORKER_UPDOWN_MASK
+																			)
+																			RETURNS
+																			(
+																				.regout,
+																				.cout
+																			);
+					ELSE GENERATE	-- using an APEX20KE device
+						(registered_out[i], my_carries[i]) = apex20ke_lcell(
+																				.clk = clock,
+																				.dataa = registered_out[i],
+																				.datab = (updown_actual & (registered_out[i] !$ latch_signal[i]))
+																						  # (!updown_actual & (registered_out[i] $ latch_signal[i])),
+																				.datac = cell_inputs[i],
+																				.aclr = aclr_actual,
+																				.sload = sload_actual,
+																				.ena = clk_en,
+																				.cin = my_carries[i - 1]
+																			)
+																			WITH
+																			(
+																				OPERATION_MODE	=	WORKER_UPDOWN_MODE,
+																				LUT_MASK		=	WORKER_UPDOWN_MASK
+																			)
+																			RETURNS
+																			(
+																				.regout,
+																				.cout
+																			);
+					END GENERATE; END GENERATE;
+				ELSE GENERATE	-- dont need updown so can do something a lot faster
+					IF LPM_DIRECTION == "DOWN" GENERATE
+						IF FAMILY_FLEX6000() == 1 GENERATE
+							(registered_out[i], my_carries[i]) = flex6k_lcell (
+																					.clk = clock,
+																					.dataa = registered_out[i],
+																					.datab = latch_signal[i],
+																					.datac = cell_inputs[i],
+																					.aclr = aclr_actual,
+																					.sload = sload_actual,
+																					.cin = my_carries[i - 1]
+																				)
+																				WITH
+																				(
+																					OPERATION_MODE 	= WORKER_DOWN_MODE,
+																					LUT_MASK 		= WORKER_DOWN_MASK
+																				)
+																				RETURNS
+																				(
+																					.regout,
+																					.cout
+																				);
+						ELSE GENERATE
+						IF FAMILY_APEX20K() == 1 GENERATE
+							(registered_out[i], my_carries[i]) = apex20k_lcell	(
+																					.clk = clock,
+																					.dataa = registered_out[i],
+																					.datab = latch_signal[i],
+																					.datac = cell_inputs[i],
+																					.aclr = aclr_actual,
+																					.sload = sload_actual,
+																					.ena = clk_en,
+																					.cin = my_carries[i - 1]
+																				)
+																				WITH
+																				(
+																					OPERATION_MODE 	= WORKER_DOWN_MODE,
+																					LUT_MASK 		= WORKER_DOWN_MASK
+																				)
+																				RETURNS
+																				(
+																					.regout,
+																					.cout
+																				);
+						ELSE GENERATE	-- make one for the 20KE
+							(registered_out[i], my_carries[i]) = apex20ke_lcell	(
+																					.clk = clock,
+																					.dataa = registered_out[i],
+																					.datab = latch_signal[i],
+																					.datac = cell_inputs[i],
+																					.aclr = aclr_actual,
+																					.sload = sload_actual,
+																					.ena = clk_en,
+																					.cin = my_carries[i - 1]
+																				)
+																				WITH
+																				(
+																					OPERATION_MODE 	= WORKER_DOWN_MODE,
+																					LUT_MASK 		= WORKER_DOWN_MASK
+																				)
+																				RETURNS
+																				(
+																					.regout,
+																					.cout
+																				);
+						END GENERATE; END GENERATE;
+					ELSE GENERATE -- we are caught in an up mode
+						IF FAMILY_FLEX6000() == 1 GENERATE
+							(registered_out[i], my_carries[i]) = flex6k_lcell (
+																					.clk = clock,
+																					.dataa = registered_out[i],
+																					.datab = latch_signal[i],
+																					.datac = cell_inputs[i],
+																					.aclr = aclr_actual,
+																					.sload = sload_actual,
+																					.cin = my_carries[i - 1]
+																				)
+																				WITH
+																				(
+																					OPERATION_MODE 	= WORKER_UP_MODE,
+																					LUT_MASK 		= WORKER_UP_MASK
+																				)
+																				RETURNS
+																				(
+																					.regout,
+																					.cout
+																				);
+						ELSE GENERATE
+						IF FAMILY_APEX20K() == 1 GENERATE
+							(registered_out[i], my_carries[i]) = apex20k_lcell	(
+																					.clk = clock,
+																					.dataa = registered_out[i],
+																					.datab = latch_signal[i],
+																					.datac = cell_inputs[i],
+																					.aclr = aclr_actual,
+																					.sload = sload_actual,
+																					.ena = clk_en,
+																					.cin = my_carries[i - 1]
+																				)
+																				WITH
+																				(
+																					OPERATION_MODE 	= WORKER_UP_MODE,
+																					LUT_MASK 		= WORKER_UP_MASK
+																				)
+																				RETURNS
+																				(
+																					.regout,
+																					.cout
+																				);
+						ELSE GENERATE	-- make one for the 20KE
+							(registered_out[i], my_carries[i]) = apex20ke_lcell	(
+																					.clk = clock,
+																					.dataa = registered_out[i],
+																					.datab = latch_signal[i],
+																					.datac = cell_inputs[i],
+																					.aclr = aclr_actual,
+																					.sload = sload_actual,
+																					.ena = clk_en,
+																					.cin = my_carries[i - 1]
+																				)
+																			WITH
+																			(
+																				OPERATION_MODE 	= WORKER_UP_MODE,
+																				LUT_MASK 		= WORKER_UP_MASK
+																			)
+																			RETURNS
+																			(
+																				.regout,
+																				.cout
+																			);
+						END GENERATE; END GENERATE;
+					END GENERATE;
+				END GENERATE; -- end of the cases where we dont need cell doubling
+			ELSE GENERATE -- there is a break at this loacation, so need to handle it appropriately
+				IF USED(updown) GENERATE		-- updown is used so have to use the nasty version of the cicuit
+					-- time for the usual device family branch
+					IF FAMILY_FLEX6000() == 1 GENERATE
+						(registered_out[i], my_carries[i]) = flex6k_lcell (
+																				.clk = clock,
+																				.dataa = flex6k_lcell (
+																											.cin = my_carries[i - 1]
+																										)
+																										WITH
+																										(
+																											OPERATION_MODE = CHAIN_BREAKER_MODE,
+																											LUT_MASK = CHAIN_BREAKER_MASK
+																										)
+																										RETURNS
+																										(
+																											.combout
+																										),
+																				.datab = (updown & (registered_out[i] !$ latch_signal[i]))
+																						 # (!updown & (registered_out[i] $ latch_signal[i])),
+																				.datac = cell_inputs[i],
+																				.aclr = aclr_actual,
+																				.sload = sload_actual
+																			)
+																			WITH
+																			(
+																				OPERATION_MODE	=	INTERMEDIATE_UPDOWN_MODE,
+																				LUT_MASK		=	INTERMEDIATE_UPDOWN_MASK
+																			)
+																			RETURNS
+																			(
+																				.regout,
+																				.cout
+																			);
+					ELSE GENERATE
+					IF FAMILY_APEX20K() == 1 GENERATE
+						(registered_out[i], my_carries[i]) = apex20k_lcell	(
+																				.clk = clock,
+																				.dataa = apex20k_lcell	(
+																											.cin = my_carries[i - 1]
+																										)
+																										WITH
+																										(
+																											OPERATION_MODE = CHAIN_BREAKER_MODE,
+																											LUT_MASK = CHAIN_BREAKER_MASK
+																										)
+																										RETURNS
+																										(
+																											.combout
+																										),
+																				.datab = (updown & (registered_out[i] !$ latch_signal[i]))
+																						 # (!updown & (registered_out[i] $ latch_signal[i])),
+																				.datac = cell_inputs[i],
+																				.aclr = aclr_actual,
+																				.sload = sload_actual,
+																				.ena = clk_en
+																			)
+																			WITH
+																			(
+																				OPERATION_MODE	=	INTERMEDIATE_UPDOWN_MODE,
+																				LUT_MASK		=	INTERMEDIATE_UPDOWN_MASK
+																			)
+																			RETURNS
+																			(
+																				.regout,
+																				.cout
+																			);
+					ELSE GENERATE
+						(registered_out[i], my_carries[i]) = apex20ke_lcell	(
+																				.clk = clock,
+																				.dataa = apex20ke_lcell	(
+																											.cin = my_carries[i - 1]
+																										)
+																										WITH
+																										(
+																											OPERATION_MODE = CHAIN_BREAKER_MODE,
+																											LUT_MASK = CHAIN_BREAKER_MASK
+																										)
+																										RETURNS
+																										(
+																											.combout
+																										),
+																				.datab = (updown & (registered_out[i] !$ latch_signal[i]))
+																						 # (!updown & (registered_out[i] $ latch_signal[i])),
+																				.datac = cell_inputs[i],
+																				.aclr = aclr_actual,
+																				.sload = sload_actual,
+																				.ena = clk_en
+																			)
+																			WITH
+																			(
+																				OPERATION_MODE	=	INTERMEDIATE_UPDOWN_MODE,
+																				LUT_MASK		=	INTERMEDIATE_UPDOWN_MASK
+																			)
+																			RETURNS
+																			(
+																				.regout,
+																				.cout
+																			);
+					END GENERATE; END GENERATE;
+				-- updown is not used so we are in a fixed direction and can take advantage of this fact
+				ELSE GENERATE
+					IF LPM_DIRECTION == "DOWN" GENERATE
+						IF FAMILY_FLEX6000() == 1 GENERATE
+							(registered_out[i], my_carries[i]) = flex6k_lcell(
+																					.clk = clock,
+																					.dataa = flex6k_lcell(
+																												.cin = my_carries[i - 1]
+																											)
+																											WITH
+																											(
+																												OPERATION_MODE 	= CHAIN_BREAKER_MODE,
+																												LUT_MASK		= CHAIN_BREAKER_MASK
+																											)
+																											RETURNS
+																											(
+																												.combout
+																											),
+																					.datab = latch_signal[i],
+																					.datac = cell_inputs[i],
+																					.aclr = aclr_actual,
+																					.sload = sload_actual
+																				)
+																				WITH
+																				(
+																					OPERATION_MODE		= INTERMEDIATE_DOWN_MODE,
+																					LUT_MASK			= INTERMEDIATE_DOWN_MASK
+																				)
+																				RETURNS
+																				(
+																					.regout,
+																					.cout
+																				);
+						ELSE GENERATE
+						IF FAMILY_APEX20K() == 1 GENERATE
+							(registered_out[i], my_carries[i]) = apex20k_lcell	(
+																					.clk = clock,
+																					.dataa = apex20k_lcell	(
+																												.cin = my_carries[i - 1]
+																											)
+																											WITH
+																											(
+																												OPERATION_MODE 	= CHAIN_BREAKER_MODE,
+																												LUT_MASK		= CHAIN_BREAKER_MASK
+																											)
+																											RETURNS
+																											(
+																												.combout
+																											),
+																					.datab = latch_signal[i],
+																					.datac = cell_inputs[i],
+																					.aclr = aclr_actual,
+																					.sload = sload_actual,
+																					.ena = clk_en
+																				)
+																				WITH
+																				(
+																					OPERATION_MODE		= INTERMEDIATE_DOWN_MODE,
+																					LUT_MASK			= INTERMEDIATE_DOWN_MASK
+																				)
+																				RETURNS
+																				(
+																					.regout,
+																					.cout
+																				);
+						ELSE GENERATE
+							(registered_out[i], my_carries[i]) = apex20ke_lcell	(
+																					.clk = clock,
+																					.dataa = apex20ke_lcell	(
+																												.cin = my_carries[i - 1]
+																											)
+																											WITH
+																											(
+																												OPERATION_MODE 	= CHAIN_BREAKER_MODE,
+																												LUT_MASK		= CHAIN_BREAKER_MASK
+																											)
+																											RETURNS
+																											(
+																												.combout
+																											),
+																					.datab = latch_signal[i],
+																					.datac = cell_inputs[i],
+																					.aclr = aclr_actual,
+																					.sload = sload_actual,
+																					.ena = clk_en
+																				)
+																				WITH
+																				(
+																					OPERATION_MODE		= INTERMEDIATE_DOWN_MODE,
+																					LUT_MASK			= INTERMEDIATE_DOWN_MASK
+																				)
+																				RETURNS
+																				(
+																					.regout,
+																					.cout
+																				);
+						END GENERATE; END GENERATE;
+					ELSE GENERATE
+						IF FAMILY_FLEX6000() == 1 GENERATE
+							(registered_out[i], my_carries[i]) = flex6k_lcell(
+																					.clk = clock,
+																					.dataa = flex6k_lcell(
+																												.cin = my_carries[i - 1]
+																											)
+																											WITH
+																											(
+																												OPERATION_MODE	=	CHAIN_BREAKER_MODE,
+																												LUT_MASK		=	CHAIN_BREAKER_MASK
+																											)
+																											RETURNS
+																											(
+																												.combout
+																											),
+																					.datab = latch_signal[i],
+																					.datac = cell_inputs[i],
+																					.aclr = aclr_actual,
+																					.sload = sload_actual
+																				)
+																				WITH
+																				(
+																					OPERATION_MODE		= INTERMEDIATE_UP_MODE,
+																					LUT_MASK			= INTERMEDIATE_UP_MASK
+																				)
+																				RETURNS
+																				(
+																					.regout,
+																					.cout
+																				);
+						ELSE GENERATE
+						IF FAMILY_APEX20K() == 1 GENERATE
+							(registered_out[i], my_carries[i]) = apex20k_lcell	(
+																					.clk = clock,
+																					.dataa = apex20k_lcell	(
+																												.cin = my_carries[i - 1]
+																											)
+																											WITH
+																											(
+																												OPERATION_MODE	=	CHAIN_BREAKER_MODE,
+																												LUT_MASK		=	CHAIN_BREAKER_MASK
+																											)
+																											RETURNS
+																											(
+																												.combout
+																											),
+																					.datab = latch_signal[i],
+																					.datac = cell_inputs[i],
+																					.aclr = aclr_actual,
+																					.sload = sload_actual,
+																					.ena = clk_en
+																				)
+																				WITH
+																				(
+																					OPERATION_MODE		= INTERMEDIATE_UP_MODE,
+																					LUT_MASK			= INTERMEDIATE_UP_MASK
+																				)
+																				RETURNS
+																				(
+																					.regout,
+																					.cout
+																				);
+						ELSE GENERATE
+							(registered_out[i], my_carries[i]) = apex20ke_lcell	(
+																					.clk = clock,
+																					.dataa = apex20ke_lcell	(
+																												.cin = my_carries[i - 1]
+																											)
+																											WITH
+																											(
+																												OPERATION_MODE	= CHAIN_BREAKER_MODE,
+																												LUT_MASK		= CHAIN_BREAKER_MASK
+																											)
+																											RETURNS
+																											(
+																												.combout
+																											),
+																					.datab = latch_signal[i],
+																					.datac = cell_inputs[i],
+																					.aclr = aclr_actual,
+																					.sload = sload_actual,
+																					.ena = clk_en
+																				)
+																				WITH
+																				(
+																					OPERATION_MODE		= INTERMEDIATE_UP_MODE,
+																					LUT_MASK			= INTERMEDIATE_UP_MASK
+																				)
+																				RETURNS
+																				(
+																					.regout,
+																					.cout
+																				);
+						END GENERATE; END GENERATE;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+		END GENERATE;
+		ELSE GENERATE	-- this is Mercury
+			IF NEED_LOW_LOADER() & (i == 0) GENERATE
+				low_feeder.datab = cnt_en_ena_emu;
+				low_feeder.cin = cin;
+			END GENERATE;
+			-- common connections
+			counter_cell[i].clk = clock;
+			counter_cell[i].datac = cell_inputs[i];
+			counter_cell[i].aclr = aclr_actual;
+			counter_cell[i].sload = sload_actual;
+			counter_cell[i].dataa = registered_out[i];
+			my_carries[i] = counter_cell[i].cout;
+			registered_out[i] = counter_cell[i].regout;
+
+			IF USED(clk_en) GENERATE
+				counter_cell[i].ena = clk_en;
+			END GENERATE;
+
+			IF (i != 0) & BREAK_CHAIN_HERE(i) GENERATE
+				-- reroute the carry
+				counter_cell[i].cin	= mercury_lcell	(
+														.datab =	mercury_lcell	(
+																						.cin = my_carries[i - 1]
+																					)
+																					WITH
+																					(
+																						OPERATION_MODE 	= "ARITHMETIC",
+																						LUT_MASK		= "F0F0"
+																					)
+																					RETURNS
+																					(
+																						.combout
+																					)
+													)
+													WITH
+													(
+														OPERATION_MODE	=	"ARITHMETIC",
+														LUT_MASK		=	"00CC"
+													)
+													RETURNS
+													(
+														.cout
+													);
+			ELSE GENERATE
+				-- cases with cin
+				IF (i != 0) GENERATE
+					counter_cell[i].cin = my_carries[i - 1];
+				ELSE GENERATE -- i == 0 & (NEED_LOW_LOADER # !USED(cin))
+					IF NEED_LOW_LOADER() GENERATE -- i == 0 & NEED_LOW_LOADER()
+						counter_cell[i].cin = low_feeder.cout;
+					ELSE GENERATE
+						IF USED(cin) GENERATE
+							counter_cell[i].cin = cin;
+						END GENERATE;
+					END GENERATE;
+				END GENERATE;
+			END GENERATE;
+			-- need to swallow an extra cell
+			IF USED(updown) GENERATE
+				counter_cell[i].datab = (updown_actual !$ (registered_out[i] !$ latch_signal[i]));
+			ELSE GENERATE
+				counter_cell[i].datab = latch_signal[i];
+			END GENERATE;
+		END GENERATE; -- MERCURY cases
+	END GENERATE;
+
+	-- now normalize the outputs
+	-- this is a hard cell to prevent the hazard cover from being synthesized away
+	pre_hazard[] = registered_out[];		-- this is q[] w/o hazard coverage
+
+	-- final hazard cover to the output to prevent glitching on output
+	q[] = (pre_hazard[] & latch_signal[] & effective_clrn[]) # (!latch_signal[] & !pre_hazard[] & effective_clrn[])
+		  # (!aclr & !effective_prn[]);
+	IF !USED(cout) GENERATE
+		cout = GND;
+	END GENERATE;
+	IF !USED(q) GENERATE
+		q[] = GND;
+	END GENERATE;
+END;

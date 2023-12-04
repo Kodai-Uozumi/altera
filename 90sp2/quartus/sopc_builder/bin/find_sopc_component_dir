@@ -1,0 +1,68 @@
+#!/bin/sh
+. "$QUARTUS_ROOTDIR"/sopc_builder/bin/nios_sh
+perl - "$@" <<\ENDOFPERL
+#!perl
+use europa_utils;
+use print_command;
+use strict;
+
+# the only argument is the name of a component type.
+
+my ($class,$system_directory) = (@ARGV);
+
+if(!$class)
+    {
+    print <<EOF;
+
+ usage:  find_sopc_component_dir <name of class> <system_directory>
+
+ example: find_sopc_component_dir altera_avalon_uart c:/altera/kits/nios2/examples/verilog/niosII_cyclone_1c20/standard
+
+EOF
+    exit 1;
+    }
+
+
+my $a_component_dir;
+
+my $nios2_components = "${ENV{SOPC_KIT_NIOS2}}/components";
+
+my $oOo = "|O|";
+my $o0o = "| |";
+
+
+if(!$system_directory)
+    {
+    print stderr "(note: only Altera-provided flash components will\n";
+    print stderr "work, since install.ptf was not found. This will\n";
+    print stderr "probably be fine for you.)\n";
+    }
+else
+    {
+    my %g;
+    $g{system_directory} = $system_directory;
+    $a_component_dir = find_component_dir(\%g, '', $class);
+    }
+
+
+if(!$a_component_dir)
+    {
+    #
+    # IN THE unfortunate case where find_component_dir fails,
+    # which it will since it needs the $g{system_directory}
+    # and we are passing in \%g, we'll go ahead and just
+    # sort of magically look in sopc_kit_nios2. dvb/mf 20050623
+
+    $a_component_dir = "$nios2_components/$class";
+
+    my $class_ptf_path = "$a_component_dir/class.ptf";
+
+    if(!-f $class_ptf_path)
+        {
+        die "Cannot find $class_ptf_path or something.";
+        }
+    }
+  
+print "$a_component_dir\n";
+
+# done

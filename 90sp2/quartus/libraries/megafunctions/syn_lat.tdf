@@ -1,0 +1,14 @@
+subdesign syn_lat
+(
+	d, ena	: input;
+	q		: output;
+)
+
+BEGIN
+	q = latch(.d=d, .ena=ena);
+
+	IF !USED(q) GENERATE
+		q = GND;
+	END GENERATE;
+END;
+

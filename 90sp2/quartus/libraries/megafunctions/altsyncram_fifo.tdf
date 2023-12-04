@@ -1,0 +1,550 @@
+-----------------------------------------------------------------------------
+-- ALTSYNCRAM_FIFO
+--
+--  Copyright 1991-2009 Corporation  
+--  Your use of Altera Corporation's design tools, logic functions  
+--  and other software and tools, and its AMPP partner logic  
+--  functions, and any output files from any of the foregoing  
+--  (including device programming or simulation files), and any  
+--  associated documentation or information are expressly subject  
+--  to the terms and conditions of the Altera Program License  
+--  Subscription Agreement, Altera MegaCore Function License  
+--  Agreement, or other applicable license agreement, including,  
+--  without limitation, that your use is for the sole purpose of  
+--  programming logic devices manufactured by Altera and sold by  
+--  Altera or its authorized distributors.  Please refer to the  
+--  applicable agreement for further details. 
+--  
+--  9.0 Build 235  03/01/2009   
+--
+-- Version 1.0
+-----------------------------------------------------------------------------
+
+INCLUDE "lpm_counter";
+INCLUDE "lpm_add_sub";
+INCLUDE "altsyncram";
+INCLUDE "a_gray2bin";
+INCLUDE "a_graycounter";
+INCLUDE "lpm_compare";
+INCLUDE "lpm_constant";
+INCLUDE "scfifo";
+INCLUDE "aglobal90";
+
+CONSTANT STRING_ON = "ON";
+CONSTANT STRING_OFF = "OFF";
+CONSTANT SUBTRACT_MODE = "SUB";
+CONSTANT DUAL_PORT_MODE = "DUAL_PORT";
+
+PARAMETERS
+(
+	LPM_WIDTH,
+	LPM_NUMWORDS,
+	LPM_SHOWAHEAD = STRING_OFF,
+	UNDERFLOW_CHECKING = STRING_ON,
+	OVERFLOW_CHECKING = STRING_ON,
+	USE_EAB = STRING_ON,
+	DELAY_RDUSEDW = 1,
+	DELAY_WRUSEDW = 1,
+	RDSYNC_DELAYPIPE = 3,
+	WRSYNC_DELAYPIPE = 3,
+	DEVICE_FAMILY
+);
+
+-- How many address bits in the fifo counter
+CONSTANT WIDTHAD = CEIL(LOG2(LPM_NUMWORDS));
+CONSTANT WRFULL_COMP = LPM_NUMWORDS > 3 ? LPM_NUMWORDS - 3 : 0;
+CONSTANT RDFULL_COMP = LPM_NUMWORDS > 3 ? LPM_NUMWORDS - 3 : 0;
+-- This is the extra slack on the output because of the ram registering
+CONSTANT RAM_SLACK = 2;
+CONSTANT OUTPUT_CHANNEL_SLACK = 2;
+CONSTANT WRITE_SIDE_GRAY_DELAY = 1;
+CONSTANT READ_SIDE_GRAY_DELAY = 1;
+CONSTANT RDUSEDW_DELAYPIPE = 1;
+CONSTANT WRUSEDW_DELAYPIPE = 1;
+CONSTANT REAL_NUMWORDS = 2^WIDTHAD;
+
+SUBDESIGN altsyncram_fifo
+(
+	-- The data input to the fifo
+	data[LPM_WIDTH - 1..0]				:	INPUT;
+
+	-- The clocking signals
+	wrclk								:	INPUT;
+	rdclk								:	INPUT;
+	aclr								:	INPUT = GND;
+
+	-- fifo control signals
+	wrreq								:	INPUT;
+	rdreq								:	INPUT;
+
+	-- output flags
+	wrempty								:	OUTPUT;
+	wrfull								:	OUTPUT;
+	wrusedw[WIDTHAD - 1..0]				:	OUTPUT;
+
+	rdempty								:	OUTPUT;
+	rdfull								:	OUTPUT;
+	rdusedw[WIDTHAD - 1..0]				:	OUTPUT;
+
+	-- The main data output
+	q[LPM_WIDTH - 1..0]					:	OUTPUT;
+)
+VARIABLE
+	------------------
+	-- Fifo Storage --
+	------------------
+	-- This is the memory for the fifo
+	fifo_ram : altsyncram WITH	(	
+									INTENDED_DEVICE_FAMILY = "Stratix",
+									OPERATION_MODE = "DUAL_PORT",
+									WIDTH_A = LPM_WIDTH,
+									WIDTHAD_A = WIDTHAD,
+									NUMWORDS_A = REAL_NUMWORDS,
+									WIDTH_B = LPM_WIDTH,
+									WIDTHAD_B = WIDTHAD,
+									NUMWORDS_B = REAL_NUMWORDS,
+									LPM_TYPE = "altsyncram",
+									WIDTH_BYTEENA_A = 1,
+									OUTDATA_REG_B = "CLOCK1",
+									INDATA_ACLR_A = "NONE",
+									WRCONTROL_ACLR_A = "NONE",
+									ADDRESS_ACLR_A = "NONE",
+									ADDRESS_REG_B = "CLOCK1",
+									ADDRESS_ACLR_B = "NONE",
+									OUTDATA_ACLR_B = "NONE",
+									RAM_BLOCK_TYPE = "AUTO"
+								);
+	
+	---------------------------
+	-- some useful constants --
+	---------------------------
+	constant_wrfull : lpm_constant WITH	(
+											LPM_WIDTH = WIDTHAD,
+											LPM_CVALUE = WRFULL_COMP
+										);
+	constant_rdfull : lpm_constant WITH	(
+											LPM_WIDTH = WIDTHAD,
+											LPM_CVALUE = RDFULL_COMP
+										);
+	--------------------------
+	-- Write side variables --
+	--------------------------
+	-- This is the write side gray code counter
+	wrptr_g : a_graycounter WITH ( WIDTH = WIDTHAD );
+	-- Need to delay the write side for an extra cycle since the fifo might
+	-- have a fast read clock, and also the data is not valid until the next
+	-- rising write clock edge
+	delayed_wrptr_g[WIDTHAD - 1..0] : DFF;
+
+	-- This is the circuitry for the gray code conversion
+	write_side_gray_converter : a_gray2bin WITH ( WIDTH = WIDTHAD );
+	read_count_after_gray_conversion[WIDTHAD - 1..0] : NODE;
+	-- A possible delay on the gray code conversion
+	delayed_read_counter_after_gray_conversion[WIDTHAD - 1..0] : NODE;
+	IF WRITE_SIDE_GRAY_DELAY > 0 GENERATE
+		write_gray_delay[WRITE_SIDE_GRAY_DELAY - 1..0][WIDTHAD - 1..0] : DFF;
+	END GENERATE;
+
+	-- This is the circuitry for passing the write counter over to the read side
+	write_count_to_read_side[WIDTHAD - 1..0] : NODE;
+	read_count_for_write_side[WIDTHAD - 1..0] : NODE;
+	IF WRSYNC_DELAYPIPE > 0 GENERATE
+		write_synchronization_registers[WRSYNC_DELAYPIPE - 1..0][WIDTHAD - 1..0] : DFF;
+	END GENERATE;
+	-- This tells if this is a valid write cycle
+	valid_wrreq : NODE;
+	-- binary counter for the write side for fast wrusedw
+	wrptr_b : lpm_counter WITH ( LPM_WIDTH = WIDTHAD);
+	-- Subtractor for calculating the wrusedw[] output
+	wrusedw_subtractor : lpm_add_sub WITH	(
+												LPM_WIDTH = WIDTHAD, 
+												LPM_DIRECTION = SUBTRACT_MODE
+											);
+	-- For adding some delay for the flags
+	wrusedw_delaypipe_out[WIDTHAD - 1..0] : NODE;
+	IF WRUSEDW_DELAYPIPE > 0 GENERATE
+		wrusedw_delaypipe_out_reg[WRUSEDW_DELAYPIPE - 1..0][WIDTHAD - 1..0] : DFF;
+	END GENERATE;
+
+	-- For adding extra, user-requested delay
+	IF DELAY_WRUSEDW > 0 GENERATE
+		wrusedw_delay_registers[DELAY_WRUSEDW - 1..0][WIDTHAD - 1..0] : DFF;
+	END GENERATE;
+
+	-- For computing the full flag
+	wrfull_delay : DFF;
+	wrfull_comparison : lpm_compare WITH	(
+												LPM_WIDTH = WIDTHAD,
+												ONE_INPUT_IS_CONSTANT = "YES"
+											);
+	-- For computing the empty flag
+	wrempty_delay : DFF;
+	lwrreq : DFF;
+	wrempty_comparison : lpm_compare WITH	(
+												LPM_WIDTH = WIDTHAD,
+												ONE_INPUT_IS_CONSTANT = "YES"
+											);
+
+	-------------------------
+	-- Read side variables --
+	-------------------------
+	-- This is a master control signal that says the pipeline must stall
+	stall_pipeline : NODE;
+	-- This handles underflow checking
+	valid_rreq : NODE;
+
+	-- These are the read side gray code counters
+	rdptr_g : a_graycounter WITH (WIDTH = WIDTHAD );
+	read_counter_for_write : a_graycounter WITH (WIDTH = WIDTHAD);
+
+	-- binary counter
+	rdptr_b : lpm_counter WITH	(
+									LPM_WIDTH = WIDTHAD
+								);
+	-- circuitry for synchronizing the write count to the read clock
+	read_count_to_write_side[WIDTHAD - 1..0] : NODE;
+	IF RDSYNC_DELAYPIPE > 0 GENERATE
+		read_synchronization_registers[RDSYNC_DELAYPIPE - 1..0][WIDTHAD - 1..0] : DFF;
+	END GENERATE;
+	write_count_for_read_side[WIDTHAD - 1..0] : NODE;
+
+	-- circuitry for performing the gray code conversion
+	read_side_gray_converter : a_gray2bin WITH ( WIDTH = WIDTHAD );
+	write_count_after_gray_conversion[WIDTHAD - 1..0] : NODE;
+	delayed_write_counter_after_gray_conversion[WIDTHAD - 1..0] : NODE;
+	IF READ_SIDE_GRAY_DELAY > 0 GENERATE
+		read_gray_delay[READ_SIDE_GRAY_DELAY - 1..0][WIDTHAD - 1..0] : DFF;
+	END GENERATE;
+
+	-- For computing the rdusedw
+	rdusedw_subtractor : lpm_add_sub WITH	(	LPM_WIDTH = WIDTHAD,
+												LPM_DIRECTION = SUBTRACT_MODE
+											);
+	
+	-- For dleaying the subtractor output to the flag calculation
+	rdusedw_delaypipe_out[WIDTHAD - 1..0] : NODE;
+	IF WRUSEDW_DELAYPIPE > 0 GENERATE
+		rdusedw_delaypipe_out_reg[WRUSEDW_DELAYPIPE - 1..0][WIDTHAD - 1..0] : DFF;
+	END GENERATE;
+
+	IF DELAY_RDUSEDW > 0 GENERATE
+		rdusedw_delay_registers[DELAY_RDUSEDW - 1..0][WIDTHAD - 1..0] : DFF;
+	END GENERATE;
+
+	-- Comparer for the rdfull flag
+	rdfull_delay : DFF;
+	rdfull_compare : lpm_compare WITH	(	LPM_WIDTH = WIDTHAD,
+											ONE_INPUT_IS_CONSTANT = "YES"
+										);
+	
+	-- This is output data fifo
+	output_channel : scfifo WITH	(
+										LPM_WIDTH = LPM_WIDTH,
+										LPM_NUMWORDS = OUTPUT_CHANNEL_SLACK + 1,
+										LPM_SHOWAHEAD = LPM_SHOWAHEAD,
+										OVERFLOW_CHECKING = STRING_ON,
+										UNDERFLOW_CHECKING = 	UNDERFLOW_CHECKING,
+										USE_EAB = "OFF"
+									);
+	
+	-- This is the control circuitry for the output channel
+	fifo_wreq_out : NODE;
+	IF OUTPUT_CHANNEL_SLACK > 0 GENERATE
+		fifo_wreq_pipe[OUTPUT_CHANNEL_SLACK - 1..0] : DFFE;
+	END GENERATE;
+	ramread_address[WIDTHAD - 1..0] : NODE;
+	address_comparer : lpm_compare WITH	(
+											LPM_WIDTH = WIDTHAD
+										);
+BEGIN
+	------------------------------
+	-- The write side circuitry --
+	------------------------------
+	-- Is this a valid write cycle?
+	IF OVERFLOW_CHECKING == STRING_ON GENERATE
+		valid_wrreq = !wrfull & wrreq;
+	ELSE GENERATE
+		valid_wrreq = wrreq;
+	END GENERATE;
+
+	-- Set up the counters
+	wrptr_g.clock = wrclk;
+	wrptr_g.cnt_en = valid_wrreq;
+	wrptr_g.aclr = aclr;
+	wrptr_b.clock = wrclk;
+	wrptr_b.cnt_en = valid_wrreq;
+	wrptr_b.aclr = aclr;
+
+	-- Pass on the write count to the read side
+	delayed_wrptr_g[].d = wrptr_g.q[];
+	delayed_wrptr_g[].clk = wrclk;
+	delayed_wrptr_g[].clrn = !aclr;
+	write_count_to_read_side[] = delayed_wrptr_g[].q;
+	
+	-- Set up the synchronization of the read count to the write count
+	IF WRSYNC_DELAYPIPE > 0 GENERATE
+		write_synchronization_registers[][].clk = wrclk;
+		write_synchronization_registers[][].clrn = !aclr;
+
+		write_synchronization_registers[0][].d = read_count_to_write_side[];
+		read_count_for_write_side[] = write_synchronization_registers[WRSYNC_DELAYPIPE - 1][].q;
+
+		IF WRSYNC_DELAYPIPE > 1 GENERATE
+			FOR i IN WRSYNC_DELAYPIPE - 1 TO 1 GENERATE
+				write_synchronization_registers[i][].d = write_synchronization_registers[i - 1][].q;
+			END GENERATE;
+		END GENERATE;
+	ELSE GENERATE
+		read_count_for_write_side[] = read_count_to_write_side[];
+	END GENERATE;
+
+	-- Hook up to the ram
+	fifo_ram.clock0 = wrclk;
+	fifo_ram.data_a[] = data[];
+	fifo_ram.wren_a = valid_wrreq;
+	fifo_ram.address_a[] = wrptr_g.q[];
+
+	-- pass the read pointer through the gray code conversion
+	write_side_gray_converter.gray[] = read_count_for_write_side[];
+	read_count_after_gray_conversion[] = write_side_gray_converter.bin[];
+	IF WRITE_SIDE_GRAY_DELAY == 0 GENERATE
+		delayed_read_counter_after_gray_conversion[] = read_count_after_gray_conversion[];
+	ELSE GENERATE
+		delayed_read_counter_after_gray_conversion[] = write_gray_delay[WRITE_SIDE_GRAY_DELAY - 1][].q;
+
+		-- set up the delay pipeline
+		write_gray_delay[][].clk = wrclk;
+		write_gray_delay[][].clrn = !aclr;
+		write_gray_delay[0][].d = read_count_after_gray_conversion[];
+		IF WRITE_SIDE_GRAY_DELAY > 1 GENERATE
+			FOR i IN WRITE_SIDE_GRAY_DELAY - 1 TO 1 GENERATE
+				write_gray_delay[i][].d = write_gray_delay[i - 1][].q;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+
+	-- Now compute the wrusedw flag
+	-- First perform the subtraction of the write words with the read words
+	wrusedw_subtractor.dataa[] = wrptr_b.q[];
+	wrusedw_subtractor.datab[] = delayed_read_counter_after_gray_conversion[];
+
+	-- Add a possible delay to the subtractor result before touching the flags
+	IF WRUSEDW_DELAYPIPE == 0 GENERATE
+		wrusedw_delaypipe_out[] = wrusedw_subtractor.result[];
+	ELSE GENERATE
+		wrusedw_delaypipe_out_reg[][].clk = wrclk;
+		wrusedw_delaypipe_out_reg[][].clrn = !aclr;
+		wrusedw_delaypipe_out[] = wrusedw_delaypipe_out_reg[WRUSEDW_DELAYPIPE - 1][].q;
+		wrusedw_delaypipe_out_reg[0][].d = wrusedw_subtractor.result[];
+		IF WRUSEDW_DELAYPIPE > 1 GENERATE
+			FOR i IN WRUSEDW_DELAYPIPE - 1 TO 1 GENERATE
+				wrusedw_delaypipe_out_reg[i][].d = wrusedw_delaypipe_out_reg[i - 1][].q;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+
+	IF DELAY_WRUSEDW == 0 GENERATE
+		wrusedw[] = wrusedw_subtractor.result[];
+	ELSE GENERATE
+		wrusedw_delay_registers[][].clk = wrclk;
+		wrusedw_delay_registers[][].clrn = !aclr;
+		wrusedw_delay_registers[0][].d = wrusedw_subtractor.result[];
+		wrusedw[] = wrusedw_delay_registers[DELAY_WRUSEDW - 1][].q;
+		IF DELAY_WRUSEDW > 1 GENERATE
+			FOR i IN DELAY_WRUSEDW - 1 TO 1 GENERATE
+				wrusedw_delay_registers[i][].d = wrusedw_delay_registers[i - 1][].q;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+
+	-- For computing the wrempty flag
+	wrempty_comparison.dataa[] = wrusedw_delaypipe_out[];
+	wrempty_comparison.datab[] = GND;
+	wrempty_delay.d = !(!wrreq & !lwrreq.q & wrempty_comparison.aeb);
+	wrempty_delay.clk = wrclk;
+	wrempty_delay.clrn = !aclr;
+	lwrreq.d = wrreq;
+	lwrreq.clk = wrclk;
+	lwrreq.clrn = !aclr;
+	-- Having a valid wrreq on the previous cycle buys an extra non-empty cycle
+	wrempty = !wrempty_delay.q;
+
+	-- For computing the full flag
+	wrfull_comparison.dataa[] = wrusedw_delaypipe_out[];
+	wrfull_comparison.datab[] = constant_wrfull.result[];
+	wrfull_delay.d = wrfull_comparison.ageb;
+	wrfull_delay.clk = wrclk;
+	wrfull_delay.clrn = !aclr;
+	wrfull = wrfull_delay.q;
+
+	---------------
+	-- Read Side --
+	---------------
+	IF UNDERFLOW_CHECKING == STRING_ON GENERATE
+		valid_rreq = rdreq & !rdempty;
+	ELSE GENERATE
+		valid_rreq = rdreq;
+	END GENERATE;
+
+	-- Set up the read side counters
+	rdptr_g.clock = rdclk;
+	rdptr_g.clk_en = !stall_pipeline & !address_comparer.aeb;
+	rdptr_g.aclr = aclr;
+	read_counter_for_write.clock = rdclk;
+	read_counter_for_write.clk_en = valid_rreq;
+	read_counter_for_write.aclr = aclr;
+
+	-- This is the read side binary counter
+	rdptr_b.clock = rdclk;
+	rdptr_b.cnt_en = valid_rreq;
+	rdptr_b.aclr = aclr;
+
+	-- Pass the read count over to the write side
+	read_count_to_write_side[] = read_counter_for_write.q[];
+
+	-- Synchronize the write count over to the read clock
+	IF RDSYNC_DELAYPIPE == 0 GENERATE
+		write_count_for_read_side[] = write_count_to_read_side[];
+	ELSE GENERATE
+		read_synchronization_registers[][].clk = rdclk;
+		read_synchronization_registers[][].clrn = !aclr;
+
+		read_synchronization_registers[0][].d = write_count_to_read_side[];
+		write_count_for_read_side[] = read_synchronization_registers[RDSYNC_DELAYPIPE - 1][].q;
+
+		IF RDSYNC_DELAYPIPE > 1 GENERATE
+			FOR i IN RDSYNC_DELAYPIPE - 1 TO 1 GENERATE
+				read_synchronization_registers[i][].d = read_synchronization_registers[i - 1][].q;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+
+	-- Now that the write count has been synchronized, can pass it through a gray code conversion
+	read_side_gray_converter.gray[] = write_count_for_read_side[];
+	write_count_after_gray_conversion[] = read_side_gray_converter.bin[];
+
+	-- Add in any required delay to speed up the fmax
+	IF READ_SIDE_GRAY_DELAY == 0 GENERATE
+		delayed_write_counter_after_gray_conversion[] = write_count_after_gray_conversion[];
+	ELSE GENERATE
+		read_gray_delay[][].clk = rdclk;
+		read_gray_delay[][].clrn = !aclr;
+		read_gray_delay[0][].d = write_count_after_gray_conversion[];
+		delayed_write_counter_after_gray_conversion[] = read_gray_delay[READ_SIDE_GRAY_DELAY - 1][].q;
+		IF READ_SIDE_GRAY_DELAY > 1 GENERATE
+			FOR i IN READ_SIDE_GRAY_DELAY - 1 TO 1 GENERATE
+				read_gray_delay[i][].d = read_gray_delay[i - 1][].q;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+
+	-- pass out the rdusedw port
+	rdusedw_subtractor.dataa[] = delayed_write_counter_after_gray_conversion[];
+	rdusedw_subtractor.datab[] = rdptr_b.q[];
+
+	-- Add in some possible delays for the flag calculation
+	IF RDUSEDW_DELAYPIPE == 0 GENERATE
+		rdusedw_delaypipe_out[] = rdusedw_subtractor.result[];
+	ELSE GENERATE
+		rdusedw_delaypipe_out_reg[][].clk = rdclk;
+		rdusedw_delaypipe_out_reg[][].clrn = !aclr;
+		rdusedw_delaypipe_out[] = rdusedw_delaypipe_out_reg[RDUSEDW_DELAYPIPE - 1][].q;
+		rdusedw_delaypipe_out_reg[0][].d = rdusedw_subtractor.result[];
+		
+		IF RDUSEDW_DELAYPIPE > 1 GENERATE
+			FOR i IN RDUSEDW_DELAYPIPE - 1 TO 1 GENERATE
+				rdusedw_delaypipe_out_reg[i][].d = rdusedw_delaypipe_out_reg[i - 1][].q;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+
+	IF DELAY_RDUSEDW == 0 GENERATE
+		rdusedw[] = rdusedw_subtractor.result[];
+	ELSE GENERATE
+		rdusedw_delay_registers[][].clk = rdclk;
+		rdusedw_delay_registers[][].clrn = !aclr;
+		rdusedw_delay_registers[0][].d = rdusedw_subtractor.result[];
+		rdusedw[] = rdusedw_delay_registers[DELAY_RDUSEDW - 1][].q;
+		IF DELAY_RDUSEDW > 1 GENERATE
+			FOR i IN DELAY_RDUSEDW - 1 TO 1 GENERATE
+				rdusedw_delay_registers[i][].d = rdusedw_delay_registers[i - 1][].q;
+			END GENERATE;
+		END GENERATE;
+	END GENERATE;
+
+	-- set up the empty flag
+	rdempty = output_channel.empty;
+
+	-- set up the full flag
+	rdfull_delay.clk = rdclk;
+	rdfull_delay.clrn = !aclr;
+	rdfull_delay.d = rdfull_compare.ageb;
+	rdfull_compare.dataa[] = rdusedw_delaypipe_out[];
+	rdfull_compare.datab[] = constant_rdfull.result[];
+	rdfull = rdfull_delay.q;
+
+	---------------------------------------------
+	-- This is the data path for the read side --
+	---------------------------------------------
+	-- connect up the output channel
+	output_channel.clock = rdclk;
+	output_channel.aclr = aclr;
+	output_channel.data[] = fifo_ram.q_b[];
+	q[] = output_channel.q[];
+	output_channel.rdreq = rdreq;
+	output_channel.wrreq = fifo_wreq_out;
+
+
+	-- If we detect that the write address does not equal to the read address
+	-- Then we know that a write has completed and it is safe to look ahead,
+	-- read the data and stor it on the output channel
+
+	-- This is the address comparer
+	address_comparer.dataa[] = rdptr_g.q[];
+	address_comparer.datab[] = write_count_for_read_side[];
+
+	-- Compute the address for the ram
+	ramread_address[] = rdptr_g.q[];
+	fifo_ram.address_b[] = ramread_address[];
+	fifo_ram.clock1 = rdclk;
+	fifo_ram.clocken1 = !stall_pipeline;
+	-- This is to match the slack on the write control with the slack on the
+	-- data channel
+	IF OUTPUT_CHANNEL_SLACK == 0 GENERATE
+		fifo_wreq_out = !address_comparer.aeb & !stall_pipeline;
+	ELSE GENERATE
+		fifo_wreq_pipe[].clk = rdclk;
+		fifo_wreq_pipe[].clrn = !aclr;
+		fifo_wreq_out = fifo_wreq_pipe[OUTPUT_CHANNEL_SLACK - 1].q;
+		IF OUTPUT_CHANNEL_SLACK == 1 GENERATE
+			fifo_wreq_pipe[].d = !address_comparer.aeb # stall_pipeline;
+			stall_pipeline = fifo_wreq_pipe[0].q & output_channel.full;
+		ELSE GENERATE
+			ASSERT OUTPUT_CHANNEL_SLACK == 2 REPORT "OUTPUT_CHANNEL_SLACK(%) greater than 2 is not supported" OUTPUT_CHANNEL_SLACK SEVERITY ERROR;
+			fifo_wreq_pipe[0].d = (stall_pipeline & fifo_wreq_pipe[0].q) # (!stall_pipeline & !address_comparer.aeb);
+			fifo_wreq_pipe[1].d = (fifo_wreq_pipe[0].q & !stall_pipeline) # (fifo_wreq_pipe[1].q & stall_pipeline);
+			stall_pipeline = output_channel.full & fifo_wreq_pipe[1].q;
+		END GENERATE;
+	END GENERATE;
+	IF !USED(rdusedw) GENERATE
+		rdusedw[] = GND;
+	END GENERATE;
+	IF !USED(wrempty) GENERATE
+		wrempty = GND;
+	END GENERATE;
+	IF !USED(rdempty) GENERATE
+		rdempty = GND;
+	END GENERATE;
+	IF !USED(wrfull) GENERATE
+		wrfull = GND;
+	END GENERATE;
+	IF !USED(rdfull) GENERATE
+		rdfull = GND;
+	END GENERATE;
+	IF !USED(wrusedw) GENERATE
+		wrusedw[] = GND;
+	END GENERATE;
+	IF !USED(q) GENERATE
+		q[] = GND;
+	END GENERATE;
+END;

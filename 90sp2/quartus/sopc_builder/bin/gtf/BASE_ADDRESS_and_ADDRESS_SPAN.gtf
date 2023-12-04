@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<generate_set>
+
+    <!-- this "subroutine" requires %MODULE_SLAVE% to be exported,
+         and "returns" %BASE_ADDRESS% & %ADDRESS_SPAN%                           -->
+
+    <set_variable variable="BASE_ADDRESS" ptf_path="SYSTEM/MODULE %MODULE_SLAVE%/SYSTEM_BUILDER_INFO/Base_Address"/>
+    <if condition='eq( %BASE_ADDRESS%, "" )'>
+        <set_variable variable="BASE_ADDRESS" to="N/A"/>
+    </if>
+
+    <set_variable variable="ADDRESS_SPAN" ptf_path="SYSTEM/MODULE %MODULE_SLAVE%/SYSTEM_BUILDER_INFO/Address_Span"/>
+    <if condition="not( %ADDRESS_SPAN% )">
+        <!-- we have to calculate the address span the hard way -->
+        <set_variable variable="ADDRESS_ALLIGNMENT"
+                      ptf_path="SYSTEM/MODULE %MODULE_SLAVE%/SYSTEM_BUILDER_INFO/Address_Alignment"/>
+        <switch>
+            <if condition="eq( %ADDRESS_ALLIGNMENT%, dynamic )">
+                <set_variable variable="WORD_SIZE_PER_ADDRESS"
+                              ptf_path="SYSTEM/MODULE %MODULE_SLAVE%/SYSTEM_BUILDER_INFO/Data_Width"/>
+                <break/>
+            </if>
+            <if condition="eq( %ADDRESS_ALLIGNMENT%, halfword )">
+                <set_variable variable="WORD_SIZE_PER_ADDRESS" to="16"/>
+                <break/>
+            </if>
+            <if condition="eq( %ADDRESS_ALLIGNMENT%, byte )">
+                <set_variable variable="WORD_SIZE_PER_ADDRESS" to="8"/>
+                <break/>
+            </if>
+            <!-- default: ADDRESS_ALLIGNMENT may still be "word", "native" or something else -->
+            <set_variable variable="WORD_SIZE_PER_ADDRESS" to="32"/>
+        </switch>
+        <set_variable variable="ADDRESS_WIDTH" ptf_path="SYSTEM/MODULE %MODULE_SLAVE%/SYSTEM_BUILDER_INFO/Address_Width"/>
+        <set_variable variable="NUM_ADDRESSES" to="shift_left( 1, %ADDRESS_WIDTH% )"/>
+        <set_variable variable="BYTES_PER_ADDRESS" to="div( %WORD_SIZE_PER_ADDRESS%, 8 )"/>
+        <set_variable variable="ADDRESS_SPAN" to="mul( %NUM_ADDRESSES%, %BYTES_PER_ADDRESS% )"/>
+    </if>
+
+</generate_set>

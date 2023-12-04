@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<generate_set>
+
+    <!-- This "subroutine" uses the COMPONENT_DIR_LIST and COMPONENTS_MACRO_NAME
+         variables to output the appropriate text (for generated_all.mk) -->    
+
+    <set_variable variable="COMPONENT_DIR_LIST_SIZE"
+                  to="list_size( %COMPONENT_DIR_LIST% )"/>
+    <set_variable variable="COMPONENT_DIR_LIST_INDEX" to="0"/>
+    <loop>
+        <if condition="eq( %COMPONENT_DIR_LIST_INDEX%, %COMPONENT_DIR_LIST_SIZE% )">
+            <break/>
+        </if>
+        <set_variable variable="COMPONENT_DIR"
+                      to="list_get( %COMPONENT_DIR_LIST%, %COMPONENT_DIR_LIST_INDEX% )"/>
+        <switch>
+
+    <!-- Remove spaces in the path if they exist -->
+    <if condition='regex(".*[ ].*", %COMPONENT_DIR% )'>
+        <set_variable variable="COMPONENT_DIR"
+                      to="$(call remove_spaces_in_path,%COMPONENT_DIR%)" />
+    </if>
+
+            <if condition="eq( 0, %COMPONENT_DIR_LIST_INDEX% )">
+                <text>
+
+%COMPONENTS_MACRO_NAME% %COMPONENT_DIR% </text>
+                <break/>
+            </if>
+
+            <text>
+                             %COMPONENT_DIR% </text>
+        </switch>
+        <set_variable variable="COMPONENT_DIR_LIST_INDEX"
+                      to="add( 1, %COMPONENT_DIR_LIST_INDEX% )"/>
+        <if condition="ne( %COMPONENT_DIR_LIST_INDEX%, %COMPONENT_DIR_LIST_SIZE% )">
+            <text>
+ \
+            </text>
+        </if>
+    </loop>
+
+    <text>
+
+    </text> <!-- end the last line above -->
+
+</generate_set>

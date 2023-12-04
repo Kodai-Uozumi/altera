@@ -1,0 +1,72 @@
+------------------------------------------------------------------
+-- altclkctrl parameterized megafunction
+-- Generated with 'clearbox' loader - do not edit
+------------------------------------------------------------------
+
+
+-- Copyright (C) 1991-2009 Altera Corporation
+--  Your use of Altera Corporation's design tools, logic functions 
+--  and other software and tools, and its AMPP partner logic 
+--  functions, and any output files from any of the foregoing 
+--  (including device programming or simulation files), and any 
+--  associated documentation or information are expressly subject 
+--  to the terms and conditions of the Altera Program License 
+--  Subscription Agreement, Altera MegaCore Function License 
+--  Agreement, or other applicable license agreement, including, 
+--  without limitation, that your use is for the sole purpose of 
+--  programming logic devices manufactured by Altera and sold by 
+--  Altera or its authorized distributors.  Please refer to the 
+--  applicable agreement for further details.
+
+--  Version 9.0 Build 235 06/17/2009
+
+OPTIONS NAME_SUBSTITUTION = ON;
+
+OPTIONS TREAT_DEFAULT_VALUE_AS_UNUSED = ON;
+
+PARAMETERS
+(
+	CLOCK_TYPE = "AUTO",
+	ENA_REGISTER_MODE = "falling edge",
+	IMPLEMENT_IN_LES = "OFF",
+	NUMBER_OF_CLOCKS = 4,
+	USE_GLITCH_FREE_SWITCH_OVER_IMPLEMENTATION = "OFF",
+	WIDTH_CLKSELECT = 2,
+	CBXI_PARAMETER = "NOTHING"
+);
+FUNCTION @CBXI_PARAMETER (clkselect[WIDTH_CLKSELECT-1..0], ena, inclk[NUMBER_OF_CLOCKS-1..0])
+RETURNS (outclk);
+
+
+SUBDESIGN altclkctrl
+(
+	clkselect[WIDTH_CLKSELECT-1..0]		:	INPUT = GND;
+	ena		:	INPUT = VCC;
+	inclk[NUMBER_OF_CLOCKS-1..0]		:	INPUT = GND;
+	outclk		:	OUTPUT;
+)
+VARIABLE
+	IF CBXI_PARAMETER != "NOTHING" GENERATE
+		auto_generated : @CBXI_PARAMETER WITH ( CBXI_PARAMETER = "NOTHING" );
+	END GENERATE;
+BEGIN
+	ASSERT (CBXI_PARAMETER != "NOTHING")
+	REPORT "Valid clear box generator not found or Errors encountered during clear box generation"
+	SEVERITY ERROR;
+	IF (CBXI_PARAMETER != "NOTHING") GENERATE
+		IF USED(clkselect) GENERATE
+			auto_generated.clkselect[] = clkselect[];
+		END GENERATE;
+		IF USED(ena) GENERATE
+			auto_generated.ena = ena;
+		END GENERATE;
+		IF USED(inclk) GENERATE
+			auto_generated.inclk[] = inclk[];
+		END GENERATE;
+		IF USED(outclk) GENERATE
+			outclk = auto_generated.outclk;
+		ELSE GENERATE
+			outclk = GND;
+		END GENERATE;
+	END GENERATE;
+END;

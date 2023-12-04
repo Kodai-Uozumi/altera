@@ -1,0 +1,112 @@
+#
+# sopc_wizard.ptf
+#
+# Default UI sections for wizards and dialogs.
+#
+#
+WIZARD_UI
+{
+	#
+	# The 'messages' group defines how the user-visible
+	# info, warning, and error messages appear.  To change
+	# the default appearance, add a like-named section to
+	# your WIZARD_UI section with different settings.
+	#
+	GROUP messages
+	{
+		LIST
+		{
+			rows=3;
+			glue=0;
+			background="lightGray";
+		}
+	}
+
+	#
+	# The 'nav' group is the default set of navigation
+	# buttons for wizards.  These can be overriden in
+	# your wizard if desired.
+	#
+	GROUP nav
+	{
+		layout="horizontal";
+		spacing=8;
+		BUTTON cancel { title="Cancel";  key="C"; action="wizard_cancel"; }
+		BUTTON prev   { title="<  Prev"; key="P"; action="wizard_prev";   }
+		BUTTON next   { title="Next  >"; key="N"; action="wizard_next";   }
+		BUTTON finish { title="Finish";  key="F"; action="wizard_finish"; }
+	}
+
+	#
+	# The 'dialog' group holds the standard OK/Cancel
+	# buttons for dialogs.
+	#
+	GROUP dialog
+	{
+		layout="horizontal";
+		spacing=8;
+		BUTTON cancel { title="Cancel";  key="C"; action="dialog_cancel"; }
+		BUTTON ok     { title="OK";      key="O"; action="dialog_ok"; default="1";     }
+	}
+
+    #
+    # This is the wrapper for software components
+    #
+	GROUP software
+	{
+		PAGE
+		{
+			title="<untitled>";
+			scroll=1;
+			# the software component Edit_Program UI goes here.
+		}
+	}
+
+    #
+    # This is the wrapper for bind programs (follow-on pages)
+    #
+	GROUP bind
+	{
+		PAGE
+		{
+			title="<untitled>";	# name of module goes here
+			scroll=1;
+			# the Bind_Program UI goes here.
+		}
+	}
+
+    WIZARD_UI url_dialog
+    {
+        title = "Copy URL for Browser";
+        align = "center";
+        spacing = "5";
+        type = "dialog";
+        EDIT
+        {
+            columns = "64";
+            editable = "0";
+            justify = "center";
+            DATA { $$tmp_url = "$"; }
+        }
+
+        GROUP dialog
+        {
+#            BUTTON ok     { title="OK"; key="O"; action="dialog_ok"; }
+        }
+        GROUP messages
+        {
+        }
+    }
+
+    #
+    # This is the default data context for wizards
+    # who don't specify one.
+    #   WSA - shorthand for WIZARD_SCRIPT_ARGUMENTS
+    #   SBI - the SYSTEM_BUILDER_INFO section of the first slave
+    #
+    CONTEXT
+    {
+        WSA="WIZARD_SCRIPT_ARGUMENTS";
+        SBI="SLAVE/SYSTEM_BUILDER_INFO";
+    }
+}

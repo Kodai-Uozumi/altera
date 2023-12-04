@@ -1,0 +1,1580 @@
+//              Copyright 2006-2007 Mentor Graphics Corporation
+//                           All Rights Reserved.
+//
+//              THIS WORK CONTAINS TRADE SECRET AND PROPRIETARY
+//            INFORMATION WHICH IS THE PROPERTY OF MENTOR GRAPHICS
+//           CORPORATION OR ITS LICENSORS AND IS SUBJECT TO LICENSE
+//                                  TERMS.
+//
+//                   Questa Verification Library (QVL)
+//
+
+/*****************************************************************************
+*
+* PURPOSE      This file is part of 0-In CheckerWare.
+*              It describes the SPI-4 Phase 2 Receive Interface monitor.
+*
+* DESCRIPTION  This monitor checks the Receive Interface of SPI-4 Phase 2
+*              protocol.
+*
+* REFERENCES   System Packet Interface Level 4 (SPI-4) Phase 2: OC-192 System 
+*              Interface for Physical and Link Layer Devices.
+*              Implementation Agreement: OIF-SPI4-02.0, January 2001.
+*
+* INPUTS       rdclk - Receive data clock, both edges are active. 
+*              rsclk - FIFO status clock.  Positive edge is active if LVTTL I/O
+*                        mode is selected, and both edges are active if
+*                        LVDS IO mode is selected.
+*              areset - Asynchronous reset, active high.
+*              reset - Synchronous reset, active high.
+*              rdat - Receive data.
+*              rctl - Control signal.  The value is '1' for payload 
+*                     control and '0' for payload (Data burst).
+*              rstat - FIFO status.
+*
+* PARAMETERS   Constraints_Mode - Enable to convert a checker into a constraint
+*                                 during 0in-Search.  The legal values are 0 
+*                                 and 1. Default value is 0.
+*              LINK_SIDE_P  - To know if the monitor is instantiated on the Link
+*			    side or PHY side.  The value should be 1 if the
+*			    monitor is instantiated on Link side.  The value
+*			    should be 0 if the monitor is instantiated on PHY
+*			    side.  The default value is 1.
+*              PORTS_COUNT_P - No. of ports to be tracked.
+*              ENABLE_FIFO_STATUS_IF_P - To enable/disable the FIFO status I/F.
+*                                      Possible values are 1 & 0.
+*                                      If the value is 1, enable the
+*                                                         FIFO status I/F.
+*                                      If the value is 0, disable the
+*                                                         FIFO status I/F.
+*              LVDS_IO_P - To select the clocking of FIFO status.
+*                        Possible values are 1 & 0. 
+*                        If it is 1, active edges are positive & negative edges.
+*                        If it is 0, active edge is positive edge only. 
+*              FIFO_VALID_SYNC_OR_TRAINING_DELAY_P - No. of clock edges delay
+*      	         after which Training sequence or Framing pattern will be 
+*                transmitted on the FIFO interface. 
+*                  Training sequence will be transmitted, if the LVDS_IO mode
+*                  is enabled.
+*                  Framing pattern will be transmitted, if the LVTTL_IO mode
+*                  is enabled.
+*              CONTROL_WORD_EXTENSION_ENABLE_P - To enable or disable the 
+*                  Payload control word extension feature. 
+*              BANDWIDTH_REPROVISIONING_ENABLE_P - To enable or disable the 
+*                  Hit-less bandwidth reprovisioning feature.
+*              NARROW_BAND_INTERFACE_ENABLE_P - To enable or disable the Narrow 
+*                band interface feature.The monitor can be used to track single
+*                OC-48 channel interface, if this feature is enabled.
+*
+* USAGE        The monitor should be instantiated inside the target design as
+*              shown below:
+*
+*                 +----------+               +---------------+
+*                 |          |<-- rdclk   ---| +-----------+ |
+*                 |          |<-- rdat    ---| |spi4_2     | |
+*                 |  Link    |<-- rctl    ---| |_rx_monitor| |
+*                 |  Layer   |               | +-----------+ |
+*                 |          |               |  PHY Layer    |
+*                 |          |               |               |   
+*                 |          |--- rsclk   -->|               |   
+*                 |          |--- rstat   -->|               |   
+*                 |          |               |               |   
+*                 +----------+               +---------------+
+*
+*                                (OR)
+*
+*                 +---------------+               +----------+
+*                 | +-----------+ |               |          |   
+*                 | |spi4_2     | |<-- rdclk   ---|          |   
+*                 | |_rx_monitor| |<-- rdat    ---|  PHY     |   
+*                 | +-----------+ |<-- rctl    ---|  Layer   |
+*                 | Link Layer    |               |          |   
+*                 |               |               |          |   
+*                 |               |--- rsclk   -->|          |   
+*                 |               |--- rstat   -->|          |   
+*                 |               |               |          |   
+*                 +---------------+               +----------+
+* 
+* Last Modified Date: 13th Jan 2004 
+*
+*****************************************************************************/
+`include "std_qvl_defines.h"
+
+`qvlmodule qvl_spi4_2_rx_monitor (rdclk, 
+			        rsclk,
+                                areset,
+                                reset,
+				rdat, 
+				rctl, 
+				rstat,
+				port_addresses,
+			 	max_burst_1_x,
+				max_burst_2_x,
+				data_max_t_x,
+				calendar_len_x,
+				calendar_m_x,
+				calendar_sequence_x,
+				l_max_x,
+				data_training_sequences_cnt_x,
+				fifo_max_t_x,
+				max_packet_len_x,
+				min_packet_len_x,
+                                max_burst_1_y,   
+                                max_burst_2_y,
+                                data_max_t_y,
+                                calendar_len_y,
+                                calendar_m_y, 
+                                calendar_sequence_y,
+                                l_max_y,
+                                data_training_sequences_cnt_y,
+                                fifo_max_t_y,  
+                                max_packet_len_y,
+                                min_packet_len_y,
+
+                                // Ports to configure the monitor
+
+                                ports_count,
+                                lvds_io,
+                                fifo_valid_sync_or_training_delay,
+                                control_word_extension_enable,
+                                bandwidth_reprovisioning_enable,
+                                enable_fifo_status_if
+                                );
+
+  parameter Constraints_Mode = 0; // 0in constraint
+                            // Used to make a checker behave as a constraint
+                            // or a search-goal during 0in-Search.
+  wire [31:0] pw_Constraints_Mode = Constraints_Mode;
+  parameter LINK_SIDE_P = 1; 
+	      //To know if the monitor is instantiated on the link side or phy
+	      //side.
+  wire [31:0] pw_LINK_SIDE = LINK_SIDE_P;
+
+  parameter PORTS_COUNT_P = 1; //No. of ports to be tracked.
+  wire [31:0] pw_PORTS_COUNT = PORTS_COUNT_P;
+
+  parameter ENABLE_FIFO_STATUS_IF_P = 1; //To enable/disable the FIFO status I/F.
+  wire [31:0] pw_ENABLE_FIFO_STATUS_IF = ENABLE_FIFO_STATUS_IF_P;
+
+  parameter LVDS_IO_P = 0; //To select the clocking of FIFO status pattern.
+			 //If this parameter value is 1, then clocking will 
+			 //happen on both edges of rsclk.
+  wire [31:0] pw_LVDS_IO = LVDS_IO_P;
+
+  parameter FIFO_VALID_SYNC_OR_TRAINING_DELAY_P = 0;
+	      //After reset, No. of clocks, after which SYNC pattern will be 
+	      //transmitted on FIFO interface, if LVDS_IO mode is enabled, 
+	      //and Training pattern will be transmitted on FIFO interface, 
+	      //if LVTTL_IO mode is enabled.
+  wire [31:0] pw_FIFO_VALID_SYNC_OR_TRAINING_DELAY = 
+		 FIFO_VALID_SYNC_OR_TRAINING_DELAY_P;
+
+  parameter MAX_CALENDAR_LEN_P = 256;
+              //Maximum calendar length. This used to program the width of
+	      //the calendar_sequence signal.
+  wire [31:0] pw_MAX_CALENDAR_LEN = MAX_CALENDAR_LEN_P;
+
+  parameter CONTROL_WORD_EXTENSION_ENABLE_P = 0;
+	      //To enable/disable the Payload control word extension feature.
+  wire [31:0] pw_CONTROL_WORD_EXTENSION_ENABLE =
+			     CONTROL_WORD_EXTENSION_ENABLE_P;
+
+  parameter BANDWIDTH_REPROVISIONING_ENABLE_P = 0; 
+	      //To enable/disable 'Hit less bandwidth reprovisioning' feature. 
+  wire [31:0] pw_BANDWIDTH_REPROVISIONING_ENABLE =
+		     BANDWIDTH_REPROVISIONING_ENABLE_P;
+
+  parameter NARROW_BAND_INTERFACE_ENABLE_P = 0; 
+	      //To enable/disable Narrow band interface to support OC-48
+	      //interface.
+  wire [31:0] pw_NARROW_BAND_INTERFACE_ENABLE = 
+			 NARROW_BAND_INTERFACE_ENABLE_P;
+
+  // Parameter USE_PORTS_TO_CONFIGURE indicates that ports of the monitor
+  // are used to configure the monitor instead of parameters. By default,
+  // parameters are used to configure the monitor. When set, values on the
+  // ports are used to configure the monitor.
+
+  parameter USE_PORTS_TO_CONFIGURE_P = 0;
+  wire [31:0] pw_USE_PORTS_TO_CONFIGURE = USE_PORTS_TO_CONFIGURE_P; 
+
+  // Internal Constants.
+
+  parameter ZI_PORT_ADDR_WIDTH = 32;
+  parameter ZI_DATA_TRAINING_SEQUENCE_LEN = 21; 
+	      //Total no. of words of a training sequence on data path I/F 
+              //that includes one idle pattern, total no. of training control 
+              //and total no. of training data.  The no. of training control 
+              //and the no. of training data are assumed to be equal.
+
+  parameter ZI_FIFO_TRAINING_SEQUENCE_LEN = 20;
+              //Total no. of words of a training sequence on FIFO I/F that 
+              //includes total no. of 2'b00 words and total no. of 2'b11 words.
+              //The no. of 2'b00 words and no. of 2'b11 words are assumed to be
+              //equal.
+
+  parameter ZI_SOP_DISTANCE = 8;
+              //Minimum distance between two successive start of packets.  
+              //One distance count means half a clock cycle of rdclk.
+
+  parameter ZI_CAL_LEN_CAL_M_PRODUCT = 16; 
+	      //Product of CALENDAR_LEN & CALENDAR_M should be greater than 
+	      //this value if LVDS_IO mode is selected.
+
+  parameter ZI_LINK_LAYER_CONSTRAINT = (Constraints_Mode && LINK_SIDE_P);
+ 
+  // Any check qualified with ZI_LINK_LAYER_CONSTRAINT will be turned into
+  // constraints if the monitor is instantiated on the LINK side of the 
+  // SPI4.2 interface.
+ 
+  parameter ZI_PHY_LAYER_CONSTRAINT = (Constraints_Mode && !LINK_SIDE_P);
+
+  // Any check qualified with ZI_PHY_LAYER_CONSTRAINT will be turned into 
+  // constraints if the monitor is instantiated on the PHY side of the  
+  // SPI4.2 interface.
+ 
+  //State constants for Data interface state machine.
+  
+  parameter ZI_IDLE_CONTROL = 0;
+  parameter ZI_PAYLOAD_CONTROL = 1;
+  parameter ZI_DATA_BURST = 2;
+  parameter ZI_TRAINING_DATA = 3;
+  parameter ZI_TRAINING_CONTROL = 4;
+
+  //State constants for FIFO status state machine.
+  parameter ZI_DISABLE = 0;
+  parameter ZI_SYNC = 1;
+  parameter ZI_FIFO_STATUS_PARITY = 2;
+  parameter ZI_FIFO_ERROR = 3;
+  parameter ZI_ALL_FIFO_STATUS = 4;
+  parameter ZI_LAST_STATUS_STATE = 5;
+  parameter ZI_TRAINING_WORD_0 = 6;
+  parameter ZI_TRAINING_WORD_1 = 7;  
+  parameter ZI_CALENDAR_SELECTION_WORD = 8;
+  parameter ZI_UNKNOWN_STATE = 9;
+
+  //Constants used for tracking port status.
+  parameter ZI_PORT_INACTIVE = 0;
+  parameter ZI_PORT_ACTIVE = 1;
+  parameter ZI_APPLN_ERROR = 2;
+  parameter ZI_PORT_PAUSED = 3;
+
+  //Constants used for tracking FIFO status.
+  parameter ZI_STARVING = 0;
+  parameter ZI_HUNGRY = 1;  
+  parameter ZI_SATISFIED = 2;
+
+  parameter ZI_EFF_DATA_WIDTH = 16; //Width of the effective data bus width 
+				    //used throughout the monitor.
+  parameter ZI_RDAT_WIDTH = (NARROW_BAND_INTERFACE_ENABLE_P === 1'b1)? 4:16; 
+				    //Width of rdat signal.
+
+  //Port signals declaration.
+
+  input rdclk; //Receive data clock.
+  input rsclk; //FIFO status clock.
+  input areset; //Asynchronous reset.
+  input reset; //Synchronous reset.
+  input [ZI_RDAT_WIDTH-1:0] rdat; //Receive data.  
+  input rctl; //To select CONTROL/PAYLOAD.
+  input [1:0] rstat; //FIFO status.
+  input [(ZI_PORT_ADDR_WIDTH*PORTS_COUNT_P)-1:0] port_addresses;
+
+  //Parameter inputs. Default set of parameters. If 'Hit-less bandwidth 
+  //reprovisioning' is enabled, default set of paramteres or the next set
+  //of parameters (listed below) will be selected depending on the Calendar 
+  //selection word sent on the FIFO interface.
+   
+  input [31:0] max_burst_1_x;
+  input [31:0] max_burst_2_x;
+  input [31:0] data_max_t_x;
+  input [31:0] calendar_len_x;
+  input [31:0] calendar_m_x;
+  input [(MAX_CALENDAR_LEN_P*ZI_PORT_ADDR_WIDTH)-1:0] calendar_sequence_x;
+  input [31:0] l_max_x;
+  input [31:0] data_training_sequences_cnt_x;
+  input [31:0] fifo_max_t_x;
+  input [31:0] max_packet_len_x;
+  input [31:0] min_packet_len_x;
+
+  //Shadow parameters. 
+
+  input [31:0] max_burst_1_y;
+  input [31:0] max_burst_2_y; 
+  input [31:0] data_max_t_y;
+  input [31:0] calendar_len_y;   
+  input [31:0] calendar_m_y; 
+  input [(MAX_CALENDAR_LEN_P*ZI_PORT_ADDR_WIDTH)-1:0] calendar_sequence_y;
+  input [31:0] l_max_y;  
+  input [31:0] data_training_sequences_cnt_y;
+  input [31:0] fifo_max_t_y;
+  input [31:0] max_packet_len_y; 
+  input [31:0] min_packet_len_y; 
+
+  // Parameters that can be used as ports
+
+  input [31:0] ports_count;
+  input lvds_io;
+  input control_word_extension_enable;
+  input bandwidth_reprovisioning_enable;
+  input [31:0] fifo_valid_sync_or_training_delay;
+  input enable_fifo_status_if;
+
+  //Parameters are assigned to wires.
+
+  wire enable_fifo_status_if_latch;
+  wire lvds_io_latch;
+  wire control_word_extension_enable_latch;
+  wire bandwidth_reprovisioning_enable_latch;
+
+  wire enable_fifo_status_if_wire = (USE_PORTS_TO_CONFIGURE_P) ?
+                                    enable_fifo_status_if_latch :
+                                    ENABLE_FIFO_STATUS_IF_P;
+
+  wire lvds_io_wire = (USE_PORTS_TO_CONFIGURE_P) ? lvds_io_latch : LVDS_IO_P;
+
+  wire control_word_extension = (USE_PORTS_TO_CONFIGURE_P) ?
+                         control_word_extension_enable_latch :
+                         CONTROL_WORD_EXTENSION_ENABLE_P;
+
+  wire narrow_band_interface = NARROW_BAND_INTERFACE_ENABLE_P;
+
+  wire bandwidth_reprovisioning = (USE_PORTS_TO_CONFIGURE_P) ?
+                         bandwidth_reprovisioning_enable_latch :
+                         BANDWIDTH_REPROVISIONING_ENABLE_P;
+
+  wire [31:0] fifo_valid_sync_or_training_delay_real =
+                (USE_PORTS_TO_CONFIGURE_P) ?
+                 fifo_valid_sync_or_training_delay :
+                 FIFO_VALID_SYNC_OR_TRAINING_DELAY_P;
+
+  wire [31:0] ports_count_var = (USE_PORTS_TO_CONFIGURE_P) ? ports_count :
+                                 PORTS_COUNT_P;
+
+  wire [1:0] calendar_selection_word; //Mux select signal to select the 
+                                      //functional parameters.
+
+  //Functional parameters selection based on the calendar_selection_word value.
+  //This is part of Bandwidth reprovisioning feature. If Bandwidth
+  //reprovisioning is disabled, default set of parameters will be selected.
+
+  wire [31:0] calendar_len = (calendar_selection_word[0] === 1'b1)?
+                              calendar_len_x:calendar_len_y;
+  wire [31:0] calendar_m = (calendar_selection_word[0] === 1'b1)?
+                            calendar_m_x:calendar_m_y;
+  wire [31:0] max_burst_2 = (calendar_selection_word[0] === 1'b1)?
+                             max_burst_2_x:max_burst_2_y;
+  wire [31:0] max_burst_1 = (calendar_selection_word[0] === 1'b1)?
+                             max_burst_1_x:max_burst_1_y;
+  wire [31:0] data_max_t = (calendar_selection_word[0] === 1'b1)?
+                            data_max_t_x:data_max_t_y;
+  wire [31:0] data_training_sequences_cnt =
+                (calendar_selection_word[0] === 1'b1)?
+                data_training_sequences_cnt_x:data_training_sequences_cnt_y;
+  wire [31:0] l_max = (calendar_selection_word[0] === 1'b1)? l_max_x:l_max_y;
+  wire [31:0] fifo_max_t = (calendar_selection_word[0] === 1'b1)?
+                            fifo_max_t_x:fifo_max_t_y;
+  wire [31:0] min_packet_len = (calendar_selection_word[0] === 1'b1)?
+                                min_packet_len_x:min_packet_len_y;
+  wire [31:0] max_packet_len = (calendar_selection_word[0] === 1'b1)?
+                                 max_packet_len_x:max_packet_len_y;
+  // For De-bugging Purpose
+
+  reg [8*8:1] present_state_data_string, next_state_data_string;
+  reg [5*8:1] port_status_string;
+  reg [5*8:1] fifo_status_rsclk_string, next_state_fifo_string;
+  reg [5*8:1] fifo_status_rdclk_string, present_state_fifo_string;
+  reg invalid_training_data;
+  reg invalid_burst_end;
+
+  wire [31:0] data_max_t_cnt;
+         //Used to verify if there was a TRAINING PATTERN for DATA_MAX_T no. of
+         //cycles.
+
+  wire [31:0] data_training_sequence_len = ZI_DATA_TRAINING_SEQUENCE_LEN;
+  wire [31:0] fifo_training_sequence_len = ZI_FIFO_TRAINING_SEQUENCE_LEN;
+  wire data_training_sequence_violation;  
+         //Goes high if there were no training pattern for DATA_MAX_T
+         //no. of clock edges.
+
+  wire [3:0] sop_cnt; // Distance between successive SOPs.
+  wire [31:0] word_cnt;
+         //Total no. of data words transmitted on both positive & negative
+         //edges of rdclk.
+
+  wire burst_end;
+  wire [31:0] word_cnt_satisfied; 
+          //Counts the total no. of words transmitted after the FIFO status
+          //becomes SATISFIED.
+
+  wire [7:0] l_max_cnt; //Maximum response time.
+  wire [31:0] word_cnt_starving;
+          //Counts the total no. of words transmitted after the FIFO status
+          //becomes STARVING.
+
+  wire [31:0] word_cnt_hungry; 
+          //Counts the total no. of words transmitted after the FIFO status
+          //becomes HUNGRY.
+
+  wire [3:0] dip4_parity_received;
+
+  wire dip2_parity_failed;
+
+  wire parity_failed;
+ 
+  wire [7:0] calendar_m_cnt; 
+
+  wire fifo_status_enable;
+         //Data counter load signal that get set as and when the
+	 //FIFO status update happens.
+
+ integer i,j; //Used for DIP4 parity computation.
+
+  reg [ZI_PORT_ADDR_WIDTH-1:0] port_address_memory [0:PORTS_COUNT_P-1];
+	//Register to store the effective port adddresses that is extracted
+	//from the calendar_sequence.
+
+  //State variables used for Data interface state machine.
+
+  reg [3:0] next_state_data; 
+  reg [3:0] r_present_state_data_posedge; //Updated on posedge of rdclk.
+  reg [3:0] r_present_state_data_negedge; //Updated on negedge of rdclk. 
+
+  //State variables used for FIFO status state machine.
+
+  reg [3:0] next_state_fifo;
+  reg [3:0] r_present_state_fifo_posedge; //Updated on posedge of rsclk.
+  reg [3:0] r_present_state_fifo_negedge; //Updated on negedge of rsclk.
+
+  //Variables used to store port status.
+
+  reg [1:0] r_port_status_posedge [0:PORTS_COUNT_P-1]; 
+				   //Updated on posedge of rsclk.
+  reg [1:0] r_port_status_negedge [0:PORTS_COUNT_P-1]; 
+				   //Updated on negedge of rsclk.
+  reg [1:0] port_status_looked_ahead; 
+	     //Port status fetched from the memory using the current 
+	     //address available in the rdat bus. 
+
+  //Internal registers and counters declaration.
+
+  reg [15:0] training_cnt_posedge; 
+				 //Used for counting training sequence.
+				 //Updated on posedge of rdclk.
+
+  reg [15:0] training_cnt_negedge; 
+				 //Used for counting training sequence.
+                                 //Updated on negedge of rdclk.
+
+    //The sum of the above two counts will be the total no. of
+    //training data/training control words transmitted.
+
+  reg [3:0] sop_cnt_posedge, sop_cnt_negedge; 
+
+    //Used to count the distance between two successive start of packets. Sum
+    //of the above counts will be the distance between two successive SOPs. 
+
+  reg [31:0] word_cnt_posedge [0:PORTS_COUNT_P-1]; 
+               //Data word counter updated on the posedge of rdclk.
+
+  reg [31:0] word_cnt_negedge [0:PORTS_COUNT_P-1]; 
+               //Data word counter updated on the negedge of rdclk.
+
+    //The sum of the above two counts will be the total no. of words
+    //transmitted in the current transaction.
+
+  reg [31:0] data_max_t_cnt_posedge, data_max_t_cnt_negedge; 
+			    //Used to verify if there were atleast one TRAINING
+			    //PATTERN for DATA_MAX_T no. of cycles.
+
+  reg [1:0] r_fifo_status_rdclk_posedge [0:PORTS_COUNT_P-1];
+  reg [1:0] r_fifo_status_rdclk_negedge [0:PORTS_COUNT_P-1];
+	                    //FIFO status registers clocked by rdclk.
+
+  reg [7:0] l_max_cnt_posedge [0:PORTS_COUNT_P-1];
+  reg [7:0] l_max_cnt_negedge [0:PORTS_COUNT_P-1];
+	                    //Counters to count maximum response time.
+
+  reg r_ld_l_max_cnt_posedge, r_ld_l_max_cnt_negedge;
+                            //Counter load signals.
+
+  reg [ZI_EFF_DATA_WIDTH-1:0] r_data_parity_posedge, r_data_parity_negedge; 
+	//Computed data parity registered at the posedge & negedge of rdclk
+	//respectively.
+
+  reg [ZI_EFF_DATA_WIDTH-1:0] data_parity; //Computed data parity.  
+  reg [3:0] dip4_parity_computed;
+	//Computed 4 bits parity to be compared with parity that is transmitted
+	//(rdat[3:0]).
+
+  reg r_rdclk_toggle; //Sync. signal to generate r_rdclk_posedge_toggle &
+		      //r_rdclk_negedge_toggle from the rdclk.
+
+  reg r_rdclk_posedge_toggle, r_rdclk_negedge_toggle;
+		      //rdclk/2 signals that are 180 degrees out of phase to
+		      //each other.
+
+  reg [ZI_EFF_DATA_WIDTH-1:0] r_data_posedge, r_data_negedge; //Registered data.
+
+  reg [ZI_PORT_ADDR_WIDTH-1:0] r_port_address_posedge, r_port_address_negedge;
+         //Registers to latch port address. When extended payload controls are
+	 //supported, these registers register the extended addresses 
+	 //and reformat into actual address. 
+
+  reg [ZI_PORT_ADDR_WIDTH-1:0] r_latched_port_address_posedge, 
+                               r_latched_port_address_negedge;
+
+  reg [15:0] latched_port_address_2_memory_ptr;
+	       //Adddress of the memories that are meant for tracking
+	       //the ports status, data transfer amount, etc..
+	       //The address is derived from latched_port_address.
+
+  reg [15:0] prev_latched_port_address_2_memory_ptr_posedge,
+	     prev_latched_port_address_2_memory_ptr_negedge;
+	       //Adddress of the memories that are meant for tracking
+               //the ports status, data transfer amount, etc..
+               //The address is derived from prev_latched_port_address.
+
+  reg [15:0] registered_port_no_of_current_fifo_status_2_memory_ptr_posedge,
+             registered_port_no_of_current_fifo_status_2_memory_ptr_negedge;
+               //Adddress of the memories that are meant for tracking
+               //the ports status, data transfer amount, etc.. 
+               //The address is derived from 
+               //registered_port_no_of_current_fifo_status.    
+
+  wire [15:0] registered_port_no_of_current_fifo_status_2_memory_ptr;
+
+  reg [15:0] r_registered_port_no_of_current_fifo_status_2_memory_ptr_posedge,
+             r_registered_port_no_of_current_fifo_status_2_memory_ptr_negedge;
+ 
+               //Adddress of the memories that are meant for tracking  
+               //the ports status, data transfer amount, etc..  
+               //The address is derived from 
+               //r_registered_port_no_of_current_fifo_status.
+
+  wire [15:0] r_registered_port_no_of_current_fifo_status_2_memory_ptr;
+
+  reg [15:0] port_no_of_current_fifo_status_2_memory_ptr;
+               //Adddress of the memories that are meant for tracking  
+               //the ports status, data transfer amount, etc..  
+               //The address is derived from 
+               //port_no_of_current_fifo_status_2_memory_ptr.
+
+  reg [1:0] ext_payload_cnt_posedge, ext_payload_cnt_negedge;
+              //Counters to count the no. of extended payload control words.
+
+  reg r_payload_control_posedge, r_payload_control_negedge;
+	//Signals that latch the payload control occurrence and carry it to
+	//the immediate posedge/negedge.
+
+  reg no_sop_when_port_inactive_posedge,no_sop_when_port_inactive_negedge;
+	//Signals to latch the no SOP info. when Paylaod control is issued
+	//to a port that is in inactive state. 
+
+  reg [PORTS_COUNT_P-1:0] sop_preceded_posedge, sop_preceded_negedge;
+        //Signals to track if every EOP is preceded with a SOP.
+        //Set to high as when a Payload control with SOP is issued and
+        //reset when a Payload control or Idle control word is issued with 
+        //EOP.
+
+  reg sop_clear_posedge, sop_clear_negedge;
+  reg latched_rctl_posedge, latched_rctl_negedge;  
+				      //Registerd rctl signals. 
+  reg rctl_first_high_posedge, rctl_first_high_negedge;
+            //Signals to indicate if rctl detected high first on posedge or
+            //negedge of rdclk.
+  reg [PORTS_COUNT_P-1:0] r_port_pause_posedge, r_port_pause_negedge; 
+	//Used to track if the current transaction is part of an incompleted
+	//packet that was paused before or a new packet.
+
+  //Load signals for counters.
+  reg ld_training_cnt, r_ld_training_cnt_posedge, r_ld_training_cnt_negedge;
+  reg ld_word_cnt, r_ld_word_cnt_posedge, r_ld_word_cnt_negedge;
+  reg r_ld_sop_cnt_posedge, r_ld_sop_cnt_negedge;
+  reg r_ld_data_max_t_cnt_posedge, r_ld_data_max_t_cnt_negedge;
+  reg valid_training_pattern; //Signal that flags valid training pattern.
+  reg [15:0] valid_training_pattern_cnt_posedge, 
+             valid_training_pattern_cnt_negedge; 
+              //Counter to count the no. of training sequences occurred 
+              //for DATA_MAX_T no. of rdclk clock edges.
+
+  reg [31:0] word_cnt_hungry_posedge [0:PORTS_COUNT_P-1]; 
+  reg [31:0] word_cnt_hungry_negedge [0:PORTS_COUNT_P-1];
+	 //Counters that count the no. of words that are transmitted after the
+	 //FIFO status becomes HUNGRY.  The counter is loaded with 0 once the
+	 //FIFO status changes.
+
+  reg [31:0] word_cnt_starving_posedge [0:PORTS_COUNT_P-1];
+  reg [31:0] word_cnt_starving_negedge [0:PORTS_COUNT_P-1];
+	 //Counters that count the no. of words that are transmitted after the
+	 //FIFO status becomes STARVING.  The counter is loaded with 0 once the
+	 //FIFO status changes.
+
+  reg [31:0] word_cnt_satisfied_posedge [0:PORTS_COUNT_P-1];
+  reg [31:0] word_cnt_satisfied_negedge [0:PORTS_COUNT_P-1]; 
+	 //Counters that count the no. of word that are transmitted after the
+	 //FIFO_status_rdclk becomes SATISFIED.
+
+  reg [1:0] r_fifo_status_rsclk_posedge [0:PORTS_COUNT_P-1];
+  reg [1:0] r_fifo_status_rsclk_negedge [0:PORTS_COUNT_P-1]; 
+                                 //Registered FIFO status.
+
+  reg [ZI_PORT_ADDR_WIDTH-1:0] 
+        r_registered_port_no_of_current_fifo_status_posedge,
+        r_registered_port_no_of_current_fifo_status_negedge,
+        rr_registered_port_no_of_current_fifo_status_posedge,
+        rr_registered_port_no_of_current_fifo_status_negedge;
+         //Registered port address signals that corresponds to the most
+         //recently received FIFO status.
+
+  reg r_rsclk_toggle; //Sync. signal to generate r_rsclk_posedge_toggle &
+		      //r_rsclk_negedge_toggle from the rsclk.
+
+  reg r_rsclk_posedge_toggle, r_rsclk_negedge_toggle;
+                      //rsclk/2 signals that are 180 degrees out of phase
+		      //to each other.
+
+  reg r_ld_fifo_status_distance_posedge, r_ld_fifo_status_distance_negedge;
+         //Load signals to load the fifo_status_distance_cnt which is used 
+         //to track the multiple fifo_status info. within a sequence.
+
+  reg latched_status_update_posedge, latched_status_update_negedge;
+         //Signals to latch the first FIFO status update after reset.
+
+  reg r_fifo_status_update_toggle_posedge, r_fifo_status_update_toggle_negedge; 
+  reg rr_fifo_status_update_toggle_posedge, 
+      rr_fifo_status_update_toggle_negedge; 
+        //Signals to register the FIFO status update.  
+
+  reg r_fifo_status_enable_posedge, r_fifo_status_enable_negedge;
+	//Registered Data counter load signals that get set as and when the 
+	//FIFO status update happens.   
+
+  reg [1:0] calendar_selection_word_posedge, calendar_selection_word_negedge;
+	 //Signals to latch the parameter selection data when bandwidth 
+	 //reprovisioning feature is enabled.
+
+  reg parameter_checks_active;
+	//Enable signal for parameter checks.
+
+  reg latched_sop_posedge, latched_sop_negedge;
+        //Signals to latch SOP information. This used to generate
+        //ld_word_cnt signal when PAYLOAD EXTENSION feature is enabled.
+
+  reg [ZI_PORT_ADDR_WIDTH-1:0] status_ports [MAX_CALENDAR_LEN_P-1:0];
+
+  reg [(MAX_CALENDAR_LEN_P*ZI_PORT_ADDR_WIDTH)-1:0] int_cal_seq;
+
+  //Signals to flag fire condition.
+  
+  reg no_training_sequence_after_reset_data;
+  reg invalid_extended_pld_ctrl_termination;
+  reg invalid_state_transition_pld_2_idle;
+  reg invalid_state_transition_pld_2_trnctl;
+  reg invalid_state_transition_trnctl_2_idle;
+  reg invalid_state_transition_trnctl_2_pld;  
+  reg invalid_state_transition_idle_2_data; 
+  reg invalid_state_transition_data_2_trnctl;
+  reg invalid_state_retention_payload_control;
+  reg invalid_state_retention_training;
+  reg fast_training_sequence_transition;
+
+  //Narrow band interface register signals.
+
+  reg [ZI_EFF_DATA_WIDTH-1:0] narrow_framed_rdat_posedge,
+                              narrow_framed_rdat_negedge;
+                          //Registers to capture nibble-by-nibble data if
+                          //Narrow band interface is enabled.
+
+  reg [1:0] narrow_framing_cnt_posedge, narrow_framing_cnt_negedge;
+            //Counters to count the nibbles of data if Narrow band
+            //interface is enabled.
+`protected
+
+    MTI!#D2mTsu!V*,\U[[O+5\+m3^$Q$'*!5+~,F^;aE7Z]i=?lG7m7UYHel];}Ve~YCpHs,jsk<O[
+    ~-Q@AT7~oV\ow#u=Eu\Z_HEU7zYY*~~r}}JTT3,2_+?'keJo1{>]a+'fn7X$'UTQ=?UOu=?{#s\i
+    ZYxUv@[DDO5{2$}k-'Gl}@JK@p<r>n3@[%GTu2uY+GPTR*BLKRCs?<<'>7v+V51<o-=Q9!z@{w$?
+    K.lApH|lzro|Wjw2-a5IzeW-D~J#]!Qz'i[Z*3{Vo+*ic=KH~K[RG7A<pjDzA^V}*:mTe?z,~Xm1
+    +='7DYkE4UoZ![2W>k,KmX[O[eB2\|>txs7aK$vo}=uJ~N$*RQS8-wu3![KOjWp\+H[7rwzj+={I
+    J>G29*RxV#5ox<','jCrn0#XRxzA~1I#\37uZ{B~{-C+~I6$Tw;Ip_*vYiJ!vr}B}>R-<*FnRoH_
+    '#=TaQu:TEYBXjU{[5js-}ZH5Xl}as+HkUe=2s!kmoe<C>ZaIDApuOW]C=_TM,OxsKAQ}UR7wl]T
+    IexwuW[kY!AQjZ51uZ]CrMnR+edfo/<7oG,pW?]}m16Xopkrnj{]B<=9r}]E:NTV\#~^s>n*C~xp
+    5DZXH;=R$z\x*R$wa??1B$I_{Bp,J,Y1B-VGjwq'Q+@2D7KR7-_]DAB:naD}E?a?jB\*A12'W1l2
+    QrA7MAIj}]\~{7@]ZBs+]#awp+{D}7CiBe*{!pu~[EA\~=3m{:re_2u'iRYB^J3DD*AN>sa<(I>,
+    ,Y[@HixYvOD#vo-X*'IIW+5o!]!mGUrp>MeYm^z?!CI~uV{lr=*-0*~=@|E+aQ;jv?YoAY#[z,;{
+    =-XVu'8"W<J*{.';lD&~<5^;aX~#s5mtHEs7BRAa+XzZx#Y^B-B$dU&z4<ozGOwwuW>r<i]Xxw*i
+    z%KUrn<'#miV#s?{x?]\Xa@[*i*3=]vWQxBno;zT]+eVB{CKY?KrK2RoZV/uVzDwnapEJmx3s]xj
+    ]*#H_s@Y$'-:WIUs-V*[[emsSAj$3G3J$8}Y\2^a7}|w}\f#r-W}>2n~YJnr*7x#\$X[}m*R<Z$o
+    WV}za'OBuDEv+\sH=xlk+xz?'{X\*o}']B$_#>Crs#D^Eo*\B3-aa2J{T[^U6^T@m*zVVmNEx>Hp
+    K1${__jE7Wn<xD;}Yi@TX*T]Rv[ywR1_7Ip2^;Xm$[]}BH_@'J~YxKAxj/KIx\Ga,?Vw1BzD,w9T
+    $jZGBI+oa-$njHC~7+~]@3[-_a~]CK'Q?wR?HD-!w-zIX{O:Oi<Dz]kJd?jo]s<@E4ou\QOjok>s
+    ]uQ[BzGpv]B{QxvJA[5*@[vg$};^Q<V?+ok?]a}B{DzVv3K]YXOCu1}2pzu-#xW~*RG_YnYpAE[m
+    k',zRIgZ1r3;al*oVj[;omD7m{w]@nJx<^@e2VkB_Awk+'rgN2w]<s;=l7l$rF%A[z<+lKBx~;Z7
+    #*2?_A$x\Can{}]!<>5B_Al+CGk_;>5'j!3[T@+B[vQ=!J\[Io=-j?~s-1z)Wo7i|~=$[YVKztve
+    mx~X*UGH;o>Ii@i]AZmR<CO><ln}sskwnO/kR=$F~^#=PBVXV=W,K5]AQ=1^nHOiIT}@Ks3[O$xj
+    }\Aseu1Y\*]1YQok3z@eE*j11lViTQ}rO$7=e[vip,=[TG#vrOz[]BT>\^Ii55Ko$ru]@N47emZ0
+    *,VRIsIU0|H^J=hTs$n$H7C>IO>bNW-skJ,v=_E?@#$!BEZnulmZ1rv;r\$v]]z!~+Exj{zJU7E>
+    I?aT_lzK#7J5J&1{>3@&2}o7_TBsQC=uFY3+=X<vG#[<}j'@u'17@pOC1#pkGlUnr!oT7v?wJv#C
+    1%b[pOTBH-?r[z!E+Ii>Bf4[1Qv9QWR>jZV]wD<a)wNonT@7O#,ps#ekj;!-5}$05kR2rB'?25sk
+    4sWA@eZoH'{QU,+U]<[D=1(j'A=DY[Y,EpE<'[XanARfI^?=\'X'>[U\#a@G~V{XlW}aXRWDIHVV
+    7>=37KG#I?,[lxAGge-VH'GR_psiK7rZ!jWpe?I'xOEBuij,e$Km;Y~roC_2_bs~,;DA\XYklvpY
+    o~_W={7I_z@<3oo_+Yrue1x8DGaX7zsW5vW7UCe'BmmaGi>@CHoQQk*DEn'O<-I,iXl?AzKaI^wB
+    WVZ#x!<[pO\;{Y~]+,e[7ae\<xa#?w>uA1]VkT55>H,32B7;_aR=3[C{>l[{DB*@]5,H>Qz[eW*V
+    ~+{T~AsnpzUG^xD=KUX7Z,E\$B@^77DGBuYJCo<o#wn+#^3jYCw*UO^UInRr4!oE2Rk~o}.<j'Ow
+    T1'~xYYnqHaw*NEnU$p+7RQHsm7>Ap/9o_[kC,?Be>rVPSA$V<LiU2?n<m^^T$l5ae}zA-Y&!vEu
+    G/+'\'pD?kC0G61YQBo1BEOsoa5f<7xUrj<xZrIApu*X}#+J?o52#{V#d>5x_>o>Vur2Z&&~'3j,
+    '^Xk^W*]1{DzWaV4H<VQ&Dzr=]$=V0_=jH;x5o*&E#sv1He<oEp@5J$szE#1VQk~4vH>\C[D#V;D
+    DsC\wV<X$e+@@E@Yp2*Qwj7gOO5Bl-RE?R]-C<;\j'a!J}wvW}l1@Ts}xi^B9]QWxDvr,H*?E?Aa
+    *5B3#LUe_Cr,-1*v^u[~]5U<1Xrsv<6Ip[?OwORS-75T;}V[A,;D\7<_p[zWRl]RwwZeOX;1yUXY
+    W7?eR{^H1wrQE-AQs^.l1eJOkmkCJZHRK3Eg]s[{!B!}zo?so4YeeiJa2{i}u$Q'[wHE{[eK,{U=
+    G5EIH7#7T{9U-O#6I}>$\UZ^du5U>n[eHj+*,+Y2eOn7>G~C[o@GpgnaYHD=~5W_Vn+^$=!aeRO[
+    [~@]G^;'elH>X{Vv3@~OV};w7sJ[{=D#e[IuGk{vkJm=\5$GWWJVx#^xzw?1C^^JTGxj=I^JjxAq
+    ]rrD<taG2[YQJYo?$jTrH>j2JC52a}On;mv?!U;*7[<a-[1AvOU[#3$!5UzTYG<O71Q~3#Zv;3]A
+    vT@r}XTz*@T}KB12;^UC3},WwU{D13ExRx|^JW>UBnQtYJEWGz{D~sDEYA!r-Q_?+<mB7s,@$7AJ
+    IZH3BVXX=KO5\}ZWdUEO5Tl!Yl\2T~{Ip,*15VzV\;z!5oaO>iw7i:^iwVY?Y2oe2wK_;1Yw5+fa
+    =rOEIRai]#}IzD>vBT@js_EZjl\&E\Ue]Jx]quI?>>wl-,5vT+EiKAajo+sj;$Ba5_XB#svpv$*o
+    })QE,<u-[!xB5w!'e1Be^$G#Toi^7$*?==;1DBZ+IW_wTkv\i1QsWAe-H_WI$Jj{Er@>1z_5u+}O
+    wW@[Jp^iTC*]jJr\>rJe<xwCX1<AvUpzlijGvBLFx;ro<*2zi><VpX~l\{IjQonn-s<^?DD2\KC*
+    A*WupJG+Rs*G;]JU8IRYlrwj;]^H?4~XQ;4Bl~\Ojaso]Zrs;Jx/jlX=Z1\71{^#\xG-V3<sjXK?
+    c^^#e\5pZ^Fa1JC$?<Gie*TJxUo{+j!~-T'J^@I]jIH<HtcnX2lZ]?Z'5rr2QIX7'sow_s?o'C+v
+    vmZGRa@\!]-!O>nmjk>}YAA'kmDOI@\QC@]Kar[o\2@?r2]+HUH<GH=IXoumY{1{Qe=Xl\xzPxwm
+    !UaG79K51_P|K+*JoR5T>1$7H=YCC!KA/Jw]JwCj7oq:$,'TJV3!eZ]u0W]]Y1^CWU++X[1,2Dx{
+    -[u@{5X5e3U>}w$\,-IBV^}Io>UQ{P]]UD#\llezz+p\$>f-Am!yo$BC.aN!l@*}!l5;a,vU<-[3
+    EC-',1xljjI;Xa#SkA3}7'@T8$ZKO*rzw_EDr>VWs/C$}i[<Ow1wJ1*s]v!$CriI?wq+Q\BkHoUv
+    am/~Evxx'!1=,A\SJo>,r+,K{U[->}'uI};z$a|lB+\jezij1O[lnX}zJl7VXm_j;YZ7ZlkQwu@Y
+    =z?a+2]|1E<{I{7_,I~V{A_##x~;'3<lTAATOkopm\>nYn7X7G_K2(Q,V]lKHaa\m}$AJs-x^ss<
+    I~Xe>1;G}kFMuC-aso[NzpiTO32<zo']*,KW'GC]E(Q[K{}^5}kVVGwQ~xCUwVVH2QmGW>~.w1Cv
+    T^la]iA\g-V1{mo=?.Q3{TnH]^Dml}C]raCY_m'^uR25m_X'T}G3A*]#Re>15#w^oBY{>[H1E[a^
+    $e/v*oJ#E@>sX3**mV]k__J5?Zm$QjA^>IuW-{v>QJK'+w7R{JZ7A*,L+]!J<OmC=E?~Bezj!+Q~
+    t5mY+lO>!!$V^';}Q>^AosaC7X}=e,Cis,R7EI>aDVjJH\Q?5j5A5^iT-X*nCr#lBYArXr'JU,,D
+    D,-[Wgz#'J~Y\AFROav}zO_8jOCB?OJpXn}QlE^?WEyN,\xGv+a$$jO!*WRJ'aX>~srUpXo[O@<?
+    pBT_W=w]dD*\s6,Q#ExIJ+*?^Un5}<;enr3^;O{ADD3_U'*AaBXR7u@I#Zz[$klOm-'fD3*!O+,o
+    ?HQmin,!z#3~1_Ioq=aw7y\[}o<EnvcI-Y*-zpki5_l@]jA52-'@=?w]ZK~H]R-GE>TE5Oi!zJ'H
+    H}7VVeR*p7KI\#reC1CzVx?7AVv_Um[zo?=@R^I]#R^3EQo(zt{[aj^H}5\u,*]&IsA-m'7Dkx@w
+    k}YW,\QmTtJHs;nU$uz_e?5}Aw'CVvE2[r#>1vAjk!ZajXV-mj.gr;olA=ew0j?@wHX{^x_p,i]+
+    s=#*KD\^@m[RsYOE*oiKsD}sI&>]UB[dx[$Ei}iROQ'$A7e!YnQ7VlrQRx@KX5j@[ZoGe]{UksDv
+    sKDO^OU}{ers*X$jYx#}QQE>#=UH5JT\Dku'InY+\KEo<A[3s7wXOJZn@(CBA[-UrZQ}<]9B;xlw
+    e>C7u^_LX$}<1_r~~=A_=_Zux',Rv{ZrBXVoCDaU?7K<[ZJR]iua-BIABZ+X'WYzTo3kv3+?=ZQB
+    rOH<pjJr?aIW4GiQlCV=u's7VVv@TbQ*s~]Lhzs_3OD?5xVoAz{!jaw$~$+nUGQG}IDI'LD2YUpk
+    JJ],{+{BNWDI}>_l~IKaaW1eInj}o0Gi*\'B,${TKCi7;'m=[#(K-no-5\wo-,K\[i$m-\$U+A\2
+    Q$7_1?xG1w_e?Q$1#;}v\3DO1ma?=Za;5J1k_Xo,'o5(p\*^Zl1Q1D2QV@I2^I2pxTWp{zoAXo*]
+    ,vvBu[O5UU1-UX^!Ex$~{-VEl~V5VOQ@#[OiV;s]^!RX<$]5Yi3-'WHn2sA1qUEB<,1zzV*Y;f,A
+    j=H>viJD?Y5'x$$?<G*z[irQ\R"I-EE@sTZCX>s7mme{z3lxrAAhnww}1<7Qs]na,pD\Tro,R5GX
+    VO=-nli\fXwT7K*,v7KJr*xD56oO!*VFsU\O%$Zv<Gr3s={^D5kYH5l@{\,p?BaH<Ie;lUV@{nV*
+    =@OKKnV{zIur^;p'rKBBHzJDIY]HOY<Ap1;A@vE<ecNAzOs~}a3Y$w_;UE'-}MGWZE_F*=<'GR!n
+    OarrrHUQs_3w_!aQKs~IZ<H+.Zr?lzs5nI-!@*O\m{XJ[xz,_,[Uk-_BQh?&'W;U3'sE#]C_Unri
+    +=1sRnrz;Rzm7\7IVUp-LG*>,vOp{^x}x^=X@s3mrVs@XtpoI[U-!2-o+*#a!m9OaoR$ZHE^As*B
+    Vvs?1KTk}>nsrjZu,@'<apRvAlw7T[X;57wo<*rO^Z@AloI!UV'C,Z*~TX'Y!I!l>=*~w<~UIX'?
+    s<oe5a@EV!EDm+oaU'5\5axoxYu_7$X=BQ^nSJY~=sO?Y+w$u#OA+?TT2Yn7r>\wn>p}3ECKmA*]
+    W;Cv,Q?EC@]YeO}wJR'u{Rd5~lE;RuUpW*@77}m2AD}7s]?,{C[=ZEWYQ{np1ACoeT\TT>TYjAZB
+    5@Bj]Hp?RlBU*#J2X^2=_X=!ED[HDGYu[Xw<XxW?|\67azC\O[Ou[T5V'?JueJz;DCZb'Y2?XXx]
+    sx'jQ'#mYXwsbZjV*?_T5G^^wH1-5CBu[1p--=;UQJno1MzTlx>AOmQ#ep*YVRzkXr>75$UD<vZU
+    ~;-}-QzB<?}3@ko]Q1*<{wVOTTur^J!z5{CUjxZj**;oHzIl7Ue#TRnasz1={DwzoaE<{^pWm#1u
+    A+oBQ3'B>_E^XCeHD-m[@H~IVz!w3+}5'7p],>/q(u^RxjrKZ+Tla+v+xZl,_/CGQJ$}X;QQ;}sn
+    H]rlp\TrwvE~<DOCjQ'lI!dIB+1rrw1$eU2ntJxIHj,H3?UCogfGY,UGjGC{Q+pI;pY<hoQkl?w_
+    IDpY!ZO7^E^Z''uG2'lo!$EE,3XDKL{Q-rQx\T=3eQOG-]>'7@,+'+<r=*Z$rAV3GzrwTYZo~C(_
+    ~@]kGxnjnIGw^rnbeiZre^=JVZ>5=*\'eRw2*YW!(tZUK{iR-ZJaY]vm\pi*{s''k?AB<IZ+W!DJ
+    J+qZE]=I;Di37#!z~C]z@Xw04$3~[5VTW^~jO\s?zy_lK}:60j\>#0%An>pQ'RlX+Yw\\#CIJKk[
+    l-Dm$_svRkQkU+@j*UOGevlZ+XQ1W\lx+wQTrB3kxH,E(BX5~<nrj-n^uHBj;D@*m]{U7Vkpo!5;
+    u\++sJ\KU<vkA9,@];9aw_Dj@@n55;Bs-Y}i1i=0TOZlvX@'vkv5i<WDp;rA+jQUlp}mz\e#$OC[
+    v]HJHH},[<!R&]K'{9g[=V5*TYQx^v@ToK'@zBG$-5XmA-G:M'@,7C2e=Ix~D~-QOAv'aqmO~5=C
+    k@=+@X:P.\U<nJG{@W\'_D#xKo]=z^\VTR%v?T,OOo'QXp<fu+^we<AK5zNImzW$;uC2^]>pCGE[
+    -mr^aUozWnxJa=!{BAKRA^zR;l^63vJ=7'=s^On2C]-eGTE![jHGGk*n{X1TxZRm,z;ZiE_G?pCu
+    -$sTQT;zp+]w+xF<Bro3'~*#]RsMDrQv.o?oml]w$?t'Ep77'kawY]TwG^,~1aR_!e1Ow!?j=<$r
+    C#$\nWl2ol@<]r]xEZUZYUJI@j#DR'?y8'Q;!^*#mY7#T~rvlKa{As=in=Ysl~Ha<lw5w;OKom[7
+    z$3a?i=a*ssiK{s*]W1B}TwQ]f"Im_HI$w!7!!2k'i<;oIYitH{3!y~Q\H{}T!K[xY?IavQY!}Kw
+    T_r@>uz'G!3jiwuQf$Ywrmj3*;EB+'nC#kE+}+B<Oi*Y].X5a<Gu2HvlX3_Bm5M!\]Y;nB#]}12^
+    XY<O-~}'ImWR1waz]=m?7jm'5Bl7+Kz'\l-#YxjXO[or3@ZrApaC+E#R_,^G$C-+XOGZQu<^+l<y
+    T>vw=X~{l#CZY2C,HAs7jnU;EWsCLIZamV+r$D3l^]KK5ExxT[$@Y#{@{$\Rl\xEoV}1'7~}sQ@^
+    CI*nG"zv@YJru{H]/e!T!DWjU?^#$h5H2]rj'}A*'k#Ck-;{mz3AC<Tw$E,KXz,nWjl=2~Q;3kA=
+    xrz}-X$mnB'l^^b-B]JY=smv'p1$-Ev9+pk@OFiG]W-IpnF:Rj@eVZ~uV2TJVvG+YV[BOTV#!Es7
+    #X\xn-QG,5ruJl<]xV@,q_kDiuNUHV+f773'DU@BxvQkjir<oC;;aosxz+@_iw^5rV7Dr,Y$/mIj
+    p]oX=Xe<;9E7s20_2p!EXn+IwE*({B3'jo-X$V\XExmu]REjTaDpv~G}@wQB$BA?V7j;OrpX$RmG
+    SZ=>'ZojEDEl!<X$]73z<xKae=7+'Bzk!Z,j[^Aee{OmV{X15o{+T]nwm[o<JHYE;p0^i;~vG[e9
+    NcmYZ+*u]^~&=1owJxO{A7o~9Z^[O*lHe/9BC[#/+<x\r;K3\mA]$Y<'GBXXGaxkGuw]GX\C7OHG
+    Oz3QrOe'XR=ew=>$@>[e0[Cwm'iZ*^V2r2[W{!AxU6c$*$wy]=u^{}jj2Ipko_1G}ijAJCzaUI<W
+    NHSP}j=U|OU{U,_Tu5iK7rHl#z\CREU3uWhC!',Om2v:7{-_e{EGlWQ?\?~[{D#J}\Io_<8?A!>q
+    ''nkR+>;]xA#j7}<Kppl\UW~Q=ZA52Alb1-pTW=,<ZU~-3sKGh.a<o!U$#\?5YTHlY1#-!oKY2CE
+    p=!?aJ]A<'aOw7z:C^HYmABW[H-vVC}oTCH@?O*#|IEwEXpe}X<vI-lOZj}WrVWD1j!IaE+5Zv^I
+    e*XTsuw5=.v+@3jJ>\7*E{@[Zv+<R^{CaZYT-H/4{,WEzKxQ>=sjGgUXBsO$#\*s7D"2r,}TG^rs
+    $YWZIl@<$:EWQ#Qp[5v\i]6@Xe};l3^\EYXJ$;77T]k}WVKO4>5ar\Em^,>'{kOkOTe#TJtYH]<@
+    D5G%1=W>U'jE'Q'mpK_Cv{HlD[rwRXQ2GQa!w5-WUBkeZa]YD~jn{sQJ]3GvB=_w7~rj{pBBmwms
+    wRUK\V'pW9%lC\}Hn7j1Xe;GEvO,Cl$V]V*Br#Kvwli9mX'5}X!'7JIiz#8_{AzG^G!N*;}?OZ3u
+    v:xTOKO,5~Q--7A+EvsRuuY{JW^D$ZUQJkL#>!mZ\V,2*Z[*!COMQjaBo7n_yXDkRa'+Kd\oQ^n^
+    H3[%]'I2;IwCwwe@pR?r<O;TGm2@7ZussjTIjOYuTz={}jme#*i{KaAon1}v\Kwa;$#r7mUWl3m'
+    y*m72rQDzhanrr-w+X>*;u^U(vKn3<V*#C$;-HA5i:jZu*>5r+~GX'B#pC=mn;z!+kYx#'X[i@Tj
+    K!bIH;n1WW*SmG*\Y~{]EH;s|5e^>v=}ny<UIE"1'K+uBC^YKs$OJ+EH=XTuloEa>Zn{_H}GTKRG
+    g*,,_(XO#OrDZ,jOwnA5n;*5kZe^VW@G1zhU>^r^5ZU(L#}?7KYpw=zJwzmReK5TlD#z@CwJ]+Ux
+    5R^,CpIUlEHBA[n,*aBQ\$;2Hioj}Gk+o5Ae3zf<p>zp"k13oZ'?JG#~$YxI;37-^p?Aa&W^Zx\r
+    HJOC{IsM>Ul<V'[5[,<5'WZ[PAQ#T$B5o,7Bz;>]Q}pwHHle'pH^3lmCorWZ$Pm=AKkrAXko*@$'
+    Zuf7@jQ-7*]BMj$X7|K_H!,s\1*TH;pXna=k[=o@K'o@Uwl=7[[XXUEw^{pK{{3l;R7_H'Y*=D{r
+    =n|$?Z>[jBzsCOXjk23E^^u#SaYDZRC#[EiA,aoBKm-K_|g\C#{AX7kE>*1Tj\lrT,KYkU'kH@uC
+    D]^x@Z~@n3}HpV?sA$^mpA3GipQBiTmG%Eh?oViu^@uzlR\rJAWTBs,W_?l]2VeHTm<r7#a^\"A}
+    Qogd[vX1_EIiwR#!\ICV|/O}JG@<{JWUQTe#;1swe+;U~avj*vij?Y:BGs,&=~wv!AHv[s<I]]An
+    QnOBv]mRQv!3@T3@XvCXO2nVjXU$ljjeLGk_YQRvRyK_A,7}-U5OjE@X!3]V7a7J-ukD]DRB@$HA
+    W~YB,i[;Jk7{XT,<B#Qv>U7Yp+YE*_xB\{K[upza+}+z5;xY5DN,U2?FTB>Z,snkis-uvK\o\;~'
+    XU]B}E-X+}3-Cv7V'CGU(in[<]K{ZTCE$B5~O^l*a.@C<HEYQ^W7E#4x5siveG''U[7[*G^lT-Z;
+    E{u's<B2T^]\#_RVul\Wj<s[}E#-svi>IMpS.[!<YllTloa]+n-u]pTZ~cVD{B{Tn}UlTlG@-kl=
+    z5Rk,>{E#\V_oWr'=ke*7J+p;\GY*aa$wvCss5xX2~I*;kE^e-{$T{xJoX;VQZQ\i1Dm7j>,O>$>
+    w$k7QWoGs',&b3z[>;o<lAV_=E*TQ*=ouGEQ21u~70~eI^rO3-D]^YH1T,][mvQHWlHe7z=~9B#}
+    TT>]ZO7{e3G]ac=nzaC+D*a{E{I-1=kw{v*kHxEIlX++1HTn~D}_I\'?_vK5~3$Ol=p22VhI7oo,
+    =OU5xXZC2-'Lr-DAo1]o$~aD2<BlQ3Am5Ww-n*_i,r}z-UEjZ]'kz.>Uo'~<>B^$a'!][>B1Io[X
+    e}g=Qkpx5jE7RE=$^Jk>s*aTI,'eOE]=AzC1@Rpl5ie]EXVlJpAGE*p5CT+RKozI[*Xx1^{5f%OK
+    K'H7n<3jWK7AusieKOiUa@@BH]YVx$dC*BpOX3_]>C!od2<He>Up*VZXp>Q[_KCnndUYVjTp;1vE
+    <^|9QA]BH}!!/xowVv>+1sa<u)lx'v'xjp1_[CDxjAW*E]_l-#wl-vo\;+_mYjKa{3[@+]U*JQ[^
+    -a\1]u=r;'~Os*>5Y'E,W5rE}5+rv~\UnVB>+~RE^lq<$;'YR]DT*sxIl2V\jZ}ae!T]Oz$BRmJn
+    {]i9>zmaq#Io!i<_#F1+@Aa7]AG*zsDROY!U*H~_>?nDp!$E;DXn]$w,j$}k=~TO\!R@B>}k~Tn=
+    $?[_[~[}TCBpQs1QA-?*KYzYOZ^2-\1R_u',@In[Yj\KEI~RJR^lZ7YsD@jm;l<OWQvxR]m'IaGp
+    EYBDRCY3JIls{W^xw]U$n~?zRHA+[Qw>}eo2Co]_KX$m@\qJ+->lpm->a[Q6?TB<LsaUwM'C{Xo}
+    _J~-1~7eIzQ$>=s?WTzu;R^^H59CDma-$+zv?[A~e+\p?@Amen2Cpn3v'rx~o2=p7-'X*j_.5EvX
+    ^q(l<O1$D<'JX<7s]75vuKw5X>77KY]XIvG_vR#vkA2>RwG*?eve~lZTsrYmv~zu7?v={\A=QG}g
+    2<pUWnoEGIjsj^iQ{+a}I{l1GQkukjmn_k+kHp=xmHJll)RZna$wnW2O^u?7=l=2@@^ZBY)@G3-{
+    hn<{@Q{@sHQ2<K+azQknvk65'}!s$~JR2T~euH{bCE?x]$N&Z]\oklBa}V~IVT\{$swTlA;Em{VI
+    Up[v{}Qu\!u\UG*;ojr'+x'roTaKX\rCXHpV3'$s.D_^~erZ*7TB#s{->?rIYbb-'KVPQC'VaEvr
+    KpXTOHmUzRTjj}xVo$-xR\x~~*z_j^JWlw>$KOpjr1!x[?*?G1ne*O}IC(4=7YlQ5r[YiYmz3ujY
+    q,*u~r1r3<xu3Ew2^bvC7v?AzE0O+2H<'Rxoi,~@n^~iGTl$jBs2Do1!XBBu-^>$,!Q"D!>nsXB#
+    r*l*?}'vjnol)|rQ_m+{Bsd<[!pHXH^=G}rFGo,[M[OI<1$T\n{BZ8^TK~FKRYC<C3[I*5[^xsp*
+    plIYo^_-(_5oX$J*'3B2*QXY1x#Q7^^?E_p+?Io5'$v$@OVKjri\Ap$KCp,G!\b[!Cw,mG*QH@'$
+    ArjZo?VT1k\>5<G$,T?Om_<^[~5_\#sDTGA}D2_h*p,s*;=XPx!<'%}~U;[a>Z8dmV{j[<$<5EO7
+    _o='maYHlz=iDw>orG<Wf/>VO_E2\71jRzM[;w-kriJ@zz\I}pQIHE*,[\~k+_E1ZY-NpI,nsTTT
+    Bm2Gs\CjxIXmMW1jj^n\#r<vjK5vRVQ7?>VQ]O'n-;pX3O~lpSsO^2:@x>;^,uRess[cQ]x$_^x=
+    BZUZZ^-QH[Q2*wQ="'2evV@X?-^V-~\kBbEAEJ}EC!>v[GDxzjJ<~RlGU[JRrDOGHv9zGI^;jZo?
+    U$?-zJ=HUv\QY7rsz!$De#]<>uAqrRQR@7ZXopKI2RB1xvV,s\BVTV$mGOHz,mG<5aQDvBG3>jYi
+    ,BRK]R'*}2FY-IxHwW+7QnDY\mOS5X'"izW!5Z],<wxC;nTRQT!Za<Q!2pJZRR@Xp@_j@+7#5v@]
+    =K<'h['zVQa^vU*=]^\i{0vnr<{Q<Us-5J;}^msI5}$_qp@!D>+*'_=2aax{wR,eW+jGoxB\UVpJ
+    lKOAuDAIO@v}D%0x$\^"VOI>yDX{:,XYT:hD}?5$WRGPIHAe!7=;i<~!6a9vT;Z:gqF]1}XuhvGs
+    *P[2ulO,\Vs^^WBY5_sG~_vu1pU1vK#,{DJI~,FwRC1A=\R%}K;eY}KV&+HW?]$oiB]A'zuwvI[A
+    #]Q,BS};}Qv:U$$=RVY7K5\?XH>7pxRC[He*[T{#iDjrs!ZCN7_*<G=7vsu>m7AQ=RiuZ<[W{/l!
+    3JwO1Vr7ws8I]TWEU'+i{u~Y#Xzxs?OknWUSA{257*+n=sGz>$]}DUG,sR=\1iXu3[@Xcd|pI2#B
+    K}7!eEW7\W#GHw}751{o;j$1^j'D_x^jB$151<+H+s?jVls[!*^TssA#RIwV[{V03YxrE}UX?_?r
+    $k3~jnWIEO>-sYuxDv1E![\Z7GJ2#[;-o3x,~vGYqmAE^sI<@k>;xi>EoD7u$<EKOQAC~|KC$CIW
+    ~\Wl=D{A1,@5?'wHEx_9q3zsK<>=A\<T>~\D,3>3RvT1\iG~52=<H&<s5lAU;v{^\svCX[_B!~\R
+    aAWT7A{UDE,RO@_;_7Q:vZ{!K+$_1X+xO}i@4U<RzGzO3uGE^7+W-VYKX4J=3$DG\I3UQz@=Bpk{
+    >Gb-{_Dr2Is]<OAjYv'B$z]h!zR$e^KuQ_,E*'{@7G!k@'?skUrO_En+wC$W=ee32vV*p{RUC,W_
+    ivWzAIk;*JE~O72@O7JA*]?Jlin_;jZ-=E2nzmv}-AIG>YBzy+T>~XQ2E[H>eM&D+Qu!jXEFY>>]
+    xm$ng_~@RrR\U1?3puOpBX|x<5mYmORsKen4TB{]EkjJ~lGlepO+=KB\XO73FrD=D=7Iz!EZ>]Ez
+    ]]jlHE]K1W\;sD31*[+skDw~2?_U,VCOKzi5'ms{}KEep<lJZwx]a7,#^'j]aexHW=7okC-<]\Q>
+    v@no+5R1'E7Kj[Ivn~Yok=rUVQ=emTO}z:Ou3Ee2WJzE+^v3]i]z*i2}^}5pXYY\2ZD;-@}e]els
+    #]=zYx3a@n*Q;slD^,5nWol1lA\K!O$GQ^Dn!r"vE1->jeG$@]o-H=+UXBZRi!lj*\WED7@On+Z_
+    G_\~*_2pPezA3rIWO>=VvxITH)}#GAg@}_-kjIe3CHv:>nzv}~mm.2j[JCrD~rV,p!}5wq[vewR_
+    lW'GGro]xv1,as,s{\T>TC9Q57;\],a6+s~AIO!'D=j?Bv}p+Up,G-2xzo*kYan^vD{1z2]T$}<l
+    <OI$BE>G'jeO?^]~XXYCsJs-s7QkAx@a{zelv^VaPK-vxViURCYD3#|MZQr,K1$X^Gy,AABmY,v^
+    3a7lu^+?$W'3nJG+HD[E[?Hxas'+7!B3^*XnrZ'=Z,'Dw~IAXR@'k>#;rp^A1QOHI77s_75JXe+e
+    2vI5TQ,a,I{E;~~-Xl!es13lsl[oJRC5[XjJvr\72x<aHzx#x'BZwD1ans*QGUY#G*_72r?MtaAv
+    >7Uw,nap]?XpGIYB$AEI+2Q!;VxoToEJlYY{?V}ozCUHlAOOEm{@K--m$E#rB5Dpw$UA3;$nro@Z
+    WR?]DM<e35j'CR25]xCs;JWeDmI5EU<_wXp2m<w5j'xoG+\kz>7j2-<>*GraJ;n,a~s;ExoHU5B[
+    B>Qe@XXAE^3zGZD]\E1'wn6WG<T!<Js$=I2B}[3?w{AD<IB'5_!7i-RZoJAIm[uu5>2BYRm|}+ew
+    XVpXRo72xkZzwo*AJTxIJOTTUEIkIO+5nl7jP\K}~OWC-*Vp$VU3xG7X>/eD]B\x>B0vr23<RA!\
+    #$@m5=~*=a[1YT#'*}voDZ*OTEWy~e!AQa<7DW{un<rnkTIW!1j_Ir7>+6!z5R|JI']^3Os)t(2]
+    7rb3pBBRas73_\ZV@Wu]+z5O21@z~]K{l-J;[IeA[Eef(|gJh_E'vwn,!^@~UQX'rd35e#]CJ+^z
+    T_'m!jeGllx#mv8no@5k=MxKYj7msH6=3OAkIop[#;xDm^uu[iQEY}TvOVv"lx[OSQ}+;_?G5Ci2
+    *~Qv$:*T<YaBa]m=AB28D]5ur9lYWZ5oC^Q@Dv'm}^avAAo=uZEwVOCe}Kyp?_$p#n1]3s]3OO?@
+    1}KsRp;W]]7j7TGw5s3$@}[2I->^{>lvx?IC=kja+mmwXAv!HH5n}DUanW$fR+l}o>$WZ5$!7ke<
+    (jJD5OH_X2\5TmHewD@!moX^^Z+wkTsI$EUmnyoz{@A{ZU!Y2Q{vkjxK_>Ww=]R]m_[5e2],++?V
+    ]~DWT~^+HY.T$Vv_YDne@sl]lGQ5jE{9{7p52z'KN}++<\z}-nX<5W[iG-\[,expU^W=ZYCXVnHz
+    xlKRWD}>sy]2oRe,eUC*kv"Bp7,V$m#5G7mVpu]J{un[Z>-8OQmR(CvIE,v?;XGBp${1xJGUC?=B
+    p1\O>oW$WSnsAsw^!2G3CAznnruCXWR?Z1e[UT\Bx$C1H]NZ']a9><OR]+x-{V3jkIKuw<J<z?xp
+    =@HwxnRrR7{!O?&OnPB[ZKys$lCeeo{$UCv{DT@*ooXC_sH-e\u[r[QI1EupHWp?<s,x}[#WT-Ur
+    >Hm}AwH7X;\s-l<mTn2p<YoG:'Az\9v~GU([lX!E;zuWveA^~JUCWE{.}aC~+=J'1T$\*IKe:<1~
+    xhCwY*,jVos]=OzxR?$YKHip_A-C-Y_~!wtA7@OBmB!_[B5>]pTOm=m?V<@+BH=oX=Ks!aarA-mX
+    tg'{Ue}E,Q_<2T#R[$ZeH*ow~edvw$'[uOQ~e=a1al,,5xUu_[IR}=u>Gz=d?a>YG^u*O'*od:Jo
+    l'gDG,}xJz#\KnF3CW{pW'nXv73Yp*3{xnVoTW<ZXA~&'K3ViqVT1jsO->#wXv}Qo;VC7>Jl{UUj
+    <,M=A}r;Oj!ZB>w$vowV@*i'm$~I$\{i$i3\O2{e,={3RJs{EpsQl{KT}2HzAp7i+@aokBR?52~}
+    BT<u}b@jew>-[V~Dxuk7kjI?B^m7jHEaC+~e^V*V>vUTX-=lJX*VX~}a+v3^D3vOAGB'<G]7v^.(
+    HsRsmn=a,ew1Y__$GG@k57YUW{U@~AB,}iGwhr'*^e7{T6'>Bp}A,eg,i@#^2_#XBws~*BzaG3j'
+    YBJx5[>31'_i=BRB#GA@[RUoXHm^uj2=]5uuQ<Y?}I}WBDiWG~QNv,1}1-n3rOH^,l]>Q~V[xeZX
+    $xj2!Q^nOjl?Oou$st'TQRH{Yv}ixOt]Q77"BD?5^a'O:?}G_e$E=jCAm,D\7-OX~1i!OQU;VYGU
+    rF"qziWYVWppgsECJ$Gv!w5'QV_^=73p<xzH!wpj$*Y?-GWCvA*!J$mZ-!DUn>n_l{+^QTe+GOUa
+    p3n__'$^sX'v7s*]#~B~E'z->2$uX![oX&w'~x,!ls8Q\rIl=eZj?}7,BQAv<w{J{CQw<75vDB\'
+    s\_+*3p,;QkHjoQL4vjR!O,'~m,\J}_Y5Gz\!@v7?GGwX?=#Ge@_[*-lV/_s{nFD+sowxn]@wR#o
+    '=?jKWIJ}2si5,kns]C-z{DZ>1wsI*Eom}X/~>^,~,V@n'[uoz]^N[xu\Ww'3'A>j^{+'}<1BCI3
+    U8JwJ~O'k}<E>j#\kpEpzsPIalaD2=XKa+lE]]pGY2*E#ET#>QWN>>>kJDACX]vv}{Tz$@eOcIO*
+    vMT<roerIZNv7QRDZWR$KTmovw2Y,{#DHvYx=]2KE}wRT1H>$*Cs^Cej?Hn3spp7xD1[@aH{A^=V
+    {RjOGH,kRlT3B#]s1+AQi[{l~Mxj57I3<YGIliI#_5k<o!+'E+EVT;snqok\{%!l$jDAvvVX^WBI
+    <;AH}BYO1DtAzlrT.p#3}sJsv-5uZs\J[,@<GokE*Xl$A?X<{3TY}Ur*mpKA1r\?s#YemI=CwUYi
+    z$^,Genw's#vr[U*_-pDG)C/l7_a@'T]I^TYXp{C|Gl$}yCco?azmAHC@DIQ2XE</c'21\7_2KEv
+    @,?'$<o,D'Q!Yop3lQzW{k$p,^#RCaURvX+zu\\7U@-^K@d#\[,n7Tw~1OZ.5B<A_mx?[k}s#{XX
+    Qe>lKY{A\GK7mv*W^w~uJeavzwnAWxQDlxKaG'^r@_wIBu-l3[QEIUX$&;\v![1j$QR~1DCD[XUu
+    ox_=@.@BuAMYn\=UjCw0K}<C_xK-@eRVUInDx$T,M-j[p^=KX+Y_1CpO>NK=Q3xK++=BXC?aKzju
+    53O_1;#EVAKa[lu-Ix7WXv1al^Cxaav;aD]pB$^R=D<l$}^!eR,K[R2^<>V*OpZ=x-$mwI87^vU@
+    }{mlKx31KI3>'[H'k[=UhYYKR5{@*er+pY?G=)_wI=jiBRzwzlsZm-wxT~X{^r8]3R_{Q!uyRxU=
+    2{@-WXzrgou5{3nA;w]'xv[*T]Xls$i@2Vxu3jeoDf=ra_o}2vEI}CS5![$]}I',m.Ss'G*o_o}=
+    p\D+e$]>vW<#\5QVI;CH}@x+le@5n_YEC<v$Wm}Y1*KOlkBL#\]Wj-_x|l[D}KH3z'OuxQu8_YrQ
+    g+}u!Bs=#DZJ$>$'pT<x5s]1V-]2XCI1<aao=n**n2>jsQ@eYQHjTnx#@mDnr-,XZ%~,#~|GlWRa
+    $[nipV[YKYs=m+[4sne?ZD;jH^YClU^C[n;]H\Qv=3*I*?xzr;1{BZx\E#XrX*;J>-V'1YT$u]1l
+    AB]j1\z{9_IT,2o5D9wQBCE}T'CrDsvs,A-A*^xAr@kSk-5UoXWZ>=U#Cd[K>VpK=}$u-Cj!nV4x
+    ,!#WXRnCO<pl}-RC7=zFIVWB[>WYIwA3AXDH<1lEjp^xI5-H$sjwsm+,K{s5Az*$L2DIz=YU3$kl
+    ur271Gn2RrK\GJ=1!Ca_52l!Uw]npMpk7+\k!lj7?J_,G,;]mYb6kT;oBr[[wG]'pr7=Y~{BlV5r
+    N2T@XY-OGEX_>=JCOJC=^S=E^]~OI3oU5@IeenI(;C+1~E<vS&p^]G}!Ir(GrsCF_G3V{r=uVjZH
+    xor1'vTaCa!<Qi{!==+>Q87?Aje}1}T5*{5\z#<_Hl8izT;]2TVzmusUCj@iBZ\ou!J{,Y}YkoXu
+    e!G1e<+XTW731\?}TrBdes2mT-~IYKe2aHK3+'\;=BOmR5B7!D;[=;GkW\?IGE2'r$x}X^GezlJU
+    oU3-']1*DFF2]D32nQ<xv^7ACum1kEv|*GRR7O-a?[JAEvJx$$wOb3H^+>[QU?rz>};G>u,=oGpY
+    vp2RWeU^_xK;UyY+z~TTJ]E3=iZGYVM@IO>$5RYv5Y2>$+$*G*XHpm>7^vI7uTuwT$7\Cx5S1B;~
+    SvwV$;nIG'_>pkB1UIW,#-RJ<z$vrf3DW!SY'[;7i<_k$l}'x7m?+;@rXx[C$<XHQ^7,ECw+^BlA
+    Upriv~!z}O~2VH>yDl[<\sseLm^?D3o\WoK'-1R{KU\T,^AQ]B'3~)e]n}1Tl[yzZ22\*e@y^e]u
+    VK*$wA<{GJrCCEX2/Zj-*OrnY1l~=OmO!iCpC_u;xbo;&pIw'kAmTt<*_#I^mn~lYnIv2\*2RRf1
+    2BujmG^wsI-eZCH-TZ]FJ-W}7YW[\xOV]a,lrI@n5<^rz#w;Q$!InOH5bu*R#*v$nH]IQCD,zaw*
+    x!X;C,Yr>=~Cow7[v=i}!x>$YSyd?IBOWEW_?*s5k=<alW<#H}rHZ{lK?rrX'<us<=3T+U;xmYIl
+    3a~=?lQDK7;QaC+sH_HnXOAAw'{pYm<]v^zA\3=#}nZ3ov{J5RsvSpRaa'K>TO%j}a<PlC}e<HQC
+    E;vlzJZl9$^;*f)eC\i,,D?aEs$9sVml*@[WRHo;<N.B<mo2}?RIy\2ju>jG~EUIB+I-!\C]2==e
+    ,Hsxv>>_'@aE!YnX?V+2D!zorzxT2]xk*#+veXevGjTe2IHK-K>!G@Y;,@UDm[#${vBKUD>\eEIl
+    u-&v-A{Gl1DR~-{!s^#V^_C6*E-@u'2v}',$1Ta+e><DjWlEiO>@B;sOWTo}_Bv1,DA-A{{DG]?V
+    p@1J_~Ze;5O>H]=<3[Bi!1?3wn{>(p7RY>E[K1AJZ<XDw]Z}W'CzaE5\rnRn}sEV1[DZsNC3}_]O
+    =r3<E2v!>'IRYGvsiJ;RP=;@OWEIJG><KUxX=ssrp1nvvfZrw1HB5I,su$*lCvjzE[<OO@?Hj{'1
+    EC^r[2NI?}x&?^33+pQ2Tnp$#BHKkB\\sz<G^BT#=n=p;+7!3AIzIux+Q5,;I#lUjalYn\-C@1We
+    QKeZDsYXfX$*]$~;]|pCz'%]iWI~Q{TQm}WX'2HG2WvJr<V*$rH#DVl%*E7sW<Go>Q{5aEAXJwDI
+    '7;xUB=iXw$HUw]^277B2ow_$;9k{CkLWl-j;{RlVE=a*~Qw$$52=*kBy3Y5lI<za]rrrYAAj4o,
+    >1(uvBsQ;p#W-@ZHx2m,;RIJTBRBa3r3[B2KQ5!|G7AIeVI['Q1G5Q>>+IpQi'EJ{Rr{7$H]n.^_
+    T{]]@sIAn]5>21fC@37F#$|DU]lpr^Rp~,pcSI>6YBUKz=n=KEaUS|PqCTeQ8_CBXQexJ*#5!|NB
+    *C')jWQi<z!YOrr?d$x<]'}![DjXOI]#eIk!m,;l!HY-^EZ^\e)jB\XGgzJ'$IC>IA'=#';CiQl?
+    \A<]7exswVG\3J+KeJ'j@C5[^jCR3G2,u*5[\uDVKw75aHQDvHH7OZoEso5_Tv$]K8[}$=awp^R\
+    \zUUu#z5],{-LklB7=TmOg$<<_oZBQn]JsC{OxITr3!'wv;7Q;x#=Ik**Q2x$rA[77T'pOi'<Ql*
+    JOVsJ5?aJEIkBpi-[I^Om?W,75Iz?_w51iem,<EC}v[!$WZHJBB@Z'Nv=UopHG}Kw[}jwjX<7Q2T
+    AvW3[rm+*GsoKR'KA+]D=_@c,~~@Zp>XrzUsp*_pjo,m;H^_xG=>:@^Kuz}D,GX1k\J3B]T},o5K
+    suji[_HVm!'5e@zGKv+p?1WG^u7Q*2*YuOW,;z=<Ke'w,]vs#zf7?_I@E-jq{wBIADjBBnpe5[Cp
+    _5R?~==_3IX{_w_TLDKR$GarJD]$RZOozwvK~Y^HTv[me@Sj_!]\xX5reu-K,uBoT+!^s<V*kJu\
+    +}T,I']]o{ajj+YAT=$]I'$^<{{p3Io#a5Ty;^o1r$xKIOWl}#5't1''>opjWDOwp+<~DXDOx1=Z
+    YroUm,5]GZ5Jw^x2v9:,o-<)p1$!Z+w{OB>JY!WwBWTEmrUkpHvR\73{;pAx_2~I,3+OKR]sz1W'
+    ~r'\T^5[{G-BE,V1H<u])xx+wBwe_/2oExMl#>C>j,znl--7m],5AG-{^QRGos!C}UYjsj\-oQ$p
+    C*Rwoao~r+*lY<mj5_^1ij_P%\o;r,5ODJ^+AE+VzC7{pm$mB]?mWo;'iEIo[P:!n_Y^3{2fu'+]
+    8A1>7I?j-1TEx~R<TEusa'@vzQK+C~CJY^s^~mVWv**1-a$][5K_Z=xEpBT}<prJKeTJ5}r_o-EO
+    ;7vQJ~A!B#*I[zl,>[H\?U_ps[GVH9(maGD9H-V}pT-3rCHv,_l}J&dbHD]a2jRpU\pHYe1l']Ev
+    11[ne~^]p_O{Mp~>'wV5ZljzWK5kno*+';l#s$Zj{>zT<UsYGT,YI.o\nHUQDR1@}}"pJJ3.bOtN
+    '2Io;=XB7Dk!^~jH!e5^TGG]#vm'}j\I,R5XxM2Q]~d7valYH@[4j-$U}>E-2V\nP~OHY>n_$6^_
+    ]p[Y@oRpTZQQA>E\h!TQXpZ@_X+JQc\}';;rAT:raj{Tr{u+I7Z^J1?lxRa$--w|[>>nQ27z!B^j
+    &XeAaf5#eW5xa~zX<Y=x~+OZ,5i1eHUeB#yW*nEjZ-7;_W-><YI{sWAQXKa0uQ?E]mT32e;Vk-V<
+    pZ{YV>XKOZ_?{v,WU>D?k^2WAwK2Ce{a2GB-pQ~Kse5j$-_A*_o?)!1{[]5iU]BGOe[-QQKvV5$E
+    Zkp[B1KIDx{YQ75#@1p7rJOT+.1#oU$k!o>AE=l$kzv@rmHsUQT61b'Tfx;l{i<v+nn<B]L['#Zd
+    _aKn-'Oo~eA2uHpr2C!HezB-'=}7,W~xyv7C[K}?oH|I1=\le<\#Gl'kliEDz<@o*2+p!QzOBH{Q
+    \YpE[1xkjJofE#_@<=_-E2s{tYQkrc+^-^2>I^QpnIj<Qx@heZV{3o!-2HT[mET<5ZX?*5'KZ$T$
+    w[?7'ix1EwBD@GevYawrp>B;nAm}0v(.p_T-~DQ{OzU}H-R!~^^Iq[RT')N^zT2#,j2rB7DIxwA6
+    hv[+[@+DEnjzeT*ZRYIlBG!rQr'<oo_}~rTRr~TK^3^wgT=>@7'sK75,oRwEoBJ2]rw*5sA-ujZZ
+    2vwxWo=u^\KxH*Azs{X7wO+Ca5^;nz,~>,5rVbVzeHswIGcb5Da@\nX;(\72pl,,k*mvTrKlvkpX
+    UOu^RT^m5E,u<TlIu\H2a?'KZOTRlm1ze0$-\^1#RO1nz?L3T-j-l}<7#$i=@2H=XA7anT*#VZ2X
+    G~!E'?jnHx51V_m+UXW>E$INxx]BIszXtO3$!;]I'QpJ$n<7vBw-XT=D5zD1D^]JJ2jOXC<w^VVE
+    JxrE#|G+wQ7|)^ej'JHCpp>U;T{nT4AVK5A*XDD]uuxGa<{.zwDOI3walTA>vvCW,ln'kv^H&O-u
+    =.av*ltXVVI,ZH2H\+WpEBI*H3ae~n@BO{!*2Je#'D_uD\HGx@E[1lzmYQxHOnUT-s\hk1oaIZDp
+    rs#=#*akuRxnC5ErTB?_FUElu@pu~Q9)K,5nc\5Qwers}%^O1TXnHKRQv@51I}52^U[>D\{V*WR_
+    AmDi\o=?OA;-{XAjieO{V_\aCY|QG*??G>Rek2EgcIz{B1Zpua+D~9Iva59Co[Br!l=;}_>K,mOm
+    *KZ;7wmVzW&[x*1UX}1iU1k_m71zJO^/]eAjG;3Z(,?wK,;oT!'DplaZv"]F?5@p#RvK'z+QJa*I
+    ?[{E2$u;(.R#2*T5>K#x#kQQ}GQW'Gz1;$bJoY]BZB+;T!l9@sKK~'V27x!GgV]xUpwKs[uUuj\@
+    7eo?HuDv{ns$;p2TrPa5An[T$}zR\ZZ\[>/-XXAy$Z>3=D=eZj'axsx<V=<kmlz{^wPO]sDB,>Iu
+    $-zmHZR1i$k=}r]Ix*2urlkO?Q}-[_#%CmEeJX-'^!\IIJ{lae-O#o\A;<Eau>,7Dw_{71~>;p{{
+    z11;m5]#ek,#1ARImY\nJ]*rcGZD2Vm!YeD@w^I7^V0reA?LJXn^lV;ZxBWvITu-fn>@QVp+nI8t
+    KY@'D\{,v~o\IT[a#I~GB*VHYB,l5laj$<sxr<aIH<5{Fr,^vXl_pwsCQS<{XA1v\jTApUzw}C_,
+    GCwwl$O<u}pg_rj<CwEz+Dnk-Qa<vH>^r<w+<Rl3wxlzAXB@oxQ-CZr!*nX,YO5<>jDuJT\iY3Ou
+    w^KV@*lA][@=OH-E}J\x,]m}e#*3DR]W?G]_p^>o{wZ[M-+7i!N[f]Dk]Bea#crpV?JG^K$?OIp/
+    }~xwsI+k'vl26?h,\zB3'l-AomCU[apL7KAI=.xRnU1FvU7^9B,Y_\R\=vBxiQ>[-T_U'pWmI;V]
+    pGNQ[X;w}$u9,@KWs#zJo<Y$ia>?+1[jK7r=a}+>\},w}C1JulVpoAA>,mG<B7Z7sl1lyVo=3*jV
+    ^\3<;Dp]7XU+CYRnAoJD~=zY~Up1k#}<U,O7=-zQO<e~e+72!,pT2R3IB$}#A|,^!?\@WT4Bm]GY
+    Wu;Gl$#[]BH577OFY-p-V#T[m[XGq~B<aEBX~^*suWGH2{GY$o>=zp_lx1D#EmeCQv~+EG+['C]+
+    KCN),A;XQHz>JU>$]ICellvpa+,{nRo,-T~}xv={L[>DjGwYzRB<~,>r#,kK-K+2j(7XAOB'aHmj
+    \~GkB+onXp@I^@p;_z2U_siBi@}+;}v\},VYnWr,YZR,!CE1ZUIK1;;=!{h*x^+Z{3xTz>pPA-!u
+    ^?Hz",_TzmQ^<jG#'3G^CG_Bz6t|#e1KI*1mnasHqxoyJG$E3xJeS3O?zrTG{EAjz@7>oI7-ero<
+    vR#2~vIxH]*o'^CGulO\\o)-[j~k<^$As2eSoDK<bx}sO<Vo!)*!1''m^[9^Q5Q7W+*}@*}ozsx,
+    1eWr-vRcH*EG}$A}urnJ+j<;@E=BNst;U!>O>!w6'q\OA_u$YkzJu{(I]Hz^O]C:]Qjs**QzDsJA
+    ,R]!%l\{*s]1p-nK#'3z=OHl21rHX'2WOVhT]HvriH3rU7$hA[k?w^7!HaaTlwzER!eD_.riVWx>
+    x;VT5r=OR;p*o}Kns{'}YG-sOi;C}erX>+o*>[)$C$u\~UW73DDj0sZ*X$?{*W-Ak~}AHy'_l{r<
+    {n$j+'+puZgdJ>ERR'A^wYwOj$+,1o_3@{Hu_)Z}'VBUX^[Yx?8]-^am<{T7wxX:Q\Y=*X_z^J-W
+    n,a\Ip^pBs]p-Y'uD4eQ}!EJw=Z^BKY1Ew=ap^Zvjjk=VsrEUQ>QTv*C-^]~7@iz><R6|cp,<I1]
+    a7@Bz!E-e?I2Q;$1o~DVz#[Ck]X*&8II{'u\opdLgFHT2;I_{7O5D;8#[ArA]A<=J5<~a'vle2=}
+    Q?BS+UDi]u!Z7ZHeBYRy\ER5_vuaM~nC}1L63}*'7tsQBaHR}-AB[m=]HsIC-k|j2Bm{$*=cjVp5
+    $Uf6jxAXl-UOe;j\1TosVu[-*[o]lW~*~]X^arR7'wn[)oTp#ie{!}?us%B_DI^|RO7<|7d;z5jI
+    AJnC_CAk+$YAp1#=A,nww7zapuvWnJ7I1Uw#>UHFczOIZ!o{RY[=<o>TJzo-RlGI3z{Yus*na'1{
+    1^?$u~=Bk9=JE3N,z?<MF=eD\/En\RNms>,vK<Kejmev==X#pD?Kw>$^YZ=yj<ITlk=WB<Us-E;~
+    dzrQ}-U-A{p3;kA[X-tx_IQYv_Ev2~a;DEEU>x^C<r?EBDJnpv3WO}D?DOm6~RA[DB=\&J>s+?v7
+    ~w7n>ioZe\G@=a1,lp'vxdKA_+E}*TzxE-E-TKE\!7TrTr>wlo^]\sl?Rzz?>;{QRe**#>a_ssJV
+    Hv72BAY21'$$>]xJz\bBB}QD?D}li}I{Q}uI+rR,uK+5u_nEU[xrYDnV~,k_=p,g0L5Q>IC=3nxs
+    Y,caH-W9F.VR_x2YoX\d\!Yw*}RX3l+s},BH,kV>HD>#Do@k!{=z*J>j=-~k+OE}Vz!I[#aEf45'
+    wW(u5C2iGli+w1$o!!pl{KOnRRJ[!R>3=TC{7oD6r}v_{|*]@?G@+X3<z_F^<elrxU\RJ\{Da'~i
+    r~KTGunrRnJ_Awo=JEJuoVl^xJk!]\>\>HIatRz;Ts=^?zoamZ\_E]5Da!pH]@B[p^}==/\{*3Jz
+    w7O;zWKUw$YY2UqrR>Z{U*>n5a{5K3THB<r<+W~tueiTdu-7i}vuQNInxijJ!+7o2}".}dl1Vr;j
+    KG=&-'A^=z!']!OECE{BE?=;q7j3#luHrU\,Y\sI]He~_$<pW>'{,V/Z]7+iOQ?t0IKV7QpmxZnm
+    @z@YQOr;ZNCYGV:B;7m~w['-w3$HB-BU*I5Y\v@@GzI^=>H/iOsihur\*vAKEm7o[C[!?HB~_lns
+    ja51YO}YO;oD}5+URunvOFgRD'O^uY\p}viKYI1:XQimH5BDTa}vn=a,>_C!jC^nCar{*k6aL"T>
+    v5v{~Cx5+KC/=]}+=Ss*m+ul-eY!<JHvG>EUZ+arl'IR~}X6UzRD*Er5\Z,@=Z><T\r+Fte@-,li
+    nIp{vxR]$saQImYq^aUxp2sBrZV\KIEjg@V^*BlD@NEJGN=#7^e<rr_>QJzvx'oT;o'9$RJQ1Jv3
+    iIYv7B4|aO<Q*AzY}ImkMD{vCl3sm4g[E<~42v$}H+v*7J{BrD7OY,>B,U1I7|VVK^e;j?C_A*~7
+    Gp{5?GmAoA$-]nj3V^Oa$B]Xvr7?o\*;DsuYziTVTG4{wJH}K'I-l}'3Tx;Q]sxiAI!X5*uT+aj,
+    P7IZWyXH[}|Z=*as*EYzCia92A~kg+pxZ-\{2b+5<^[ovat5@{;1}?znsWjF1Lx[+n;+1@O3U52C
+    QRrle*,1_o!jvQ}kRXCc^#j7o3{5QKI7hLZ{W$Q]zr_HKor@!O\lwsx*;2J1R<V<T\GuJ}_E'KpK
+    <@o=1Zp^k-^*UoZ_+k!\HW(O$;zt^R<\7]W'=?s5l~m7=kX1$QE^*7IQr5!uz$7jCwaEJ[{pQ}l<
+    '(1RA7_k;Q$*,pT\jEnS*;1Duo\\X1,JoR+XRYC_QnJl1,m-BsrVKnreW^@T1PW_x-ujlrs'lQas
+    VA{jZGIY^I2G?s#oOs7p#?a1J]ee-GQE+J)uej-Urx]Q+Emq|euv^BR-eX[CuTT;UuUZCBY\weC~
+    kQ7VHGv3@!+l!xlljK=BWf<eEV*DEZ~VW?,DpD.fTx$ZWavr}G'rQHsnu_1]Wns35^'wx+$jwE1C
+    _C@^g+U'VEG#{TRwov;X<1lC!]?l3#>ww<*#YQDXrHv5suxH3kpB?1>~jB)x_n*KC#jIQ_rjr>ze
+    ==lN.o1BOup~37ox2e>ZO;$j*Avlp=Z53Rj5HU$J{CHU~s$7e}-C@wC1-Q<[!KsXe7]\OT$lD=;,
+    URE7VjwIl=rZI$QXDBz~7Wwl@H<la'';j<[_!57}{=Ls+X]^s1{HBl>["BJmBM=Iv!lBB2vWAGoY
+    ,ZORCoo0Qa\j5WO,JE[<xBlHEa{#oRx7I@newT=-q$s=Id;[keVpjEp\*-pD=a.px$CTXmrvlAr_
+    Di>D3$GEoHxS3+'WDn=ApIw3^B#ok5^]nHoO)?-2+x]<ol#[I%RPv#a2{$]zDwaODpH+@G>@&:\E
+    XC_;Eure#TpADIMu]wWx1'#zUv7x7U[A=pI=rsG0YB37\IAKX=X$zG@'2[\[[g2_e-giroUm'[*W
+    1'u=rp1|s,}[*mJw[\C3&RT3C#]Xu1VzX~_x~<w~;Y5RCz7VA7A$Zpz+zZDkO\A*iBG~CkBE{H\'
+    BY'Z[[T7Z[o+35u{?|UVi_.(>]-^3zm>I5DkDCRnfBi'^IwwR]wu_eEmps*R_}\#k}KB<N?H7I3'
+    =@4;*B[^]IEA]l1~<[<x>1J'e'XRJ[\J7k#kp_kwx@o'fsC7}zpw]_r-;B[a*[1jDH$vIC}=Kk1v
+    Jh[RHp#jaJgHR+e_2p?(XRl'[+>ns5Ys1$T{B[1[>=vOkCTGDDY7z5J3*lr#IjnAL5/-+a3a5,=4
+    {<[eor_Ork-BE~;Y[(es?pL7p^JNhzO}s\@<p*Q?UnAe^@}~uJ*Gi;{OQDRV>IuQ3vE{BVV9%5rp
+    e'Ip^xs_iX<5DP^D_ap1,X_[D_psIT!^z;UQr5SQAe27w2lY+~73>DGAUE}eK{Az}xa?*ya7k5uY
+    [oEz]IxwOvl5==?+JYWIDO2V[Cz[;s]zEx:E@ED[}aps;mkqL>e-=E_iQ5ms?luTe$r{lW<O;:UH
+    E[jXsXp}AA5ow3gRL{A*}C+,wHYDiz}<C^,1rcJ<akH>TW>OQ[g#{v[rYlI+H+sFok>{,;B^<}X#
+    IX}#eAD5QGK5RLjk!-}?p,H5,?~DR$h}z?D'HlkNVa,7B{YmY[/D_o{Cua+1i1}j>]n\/e*-E}1m
+    'D;BkV2]YPov2ps#7Xj],sz#A!n1Wu?BoGsJJeraBG<_7H>>nn'pjOsGZE\;^;Ogsr~7__#*C8nh
+    7^U!wj-oRDmVTo#QJ[?,@jQW4u_35GEH~gW=~j->J+'XG+piw*B7OxBJDJHj*js,<~Y$v]ksl5]o
+    X=!*{oo@]$zXQpWz*+$>rWeoR1N%l{z<wTo$@}-as}ku#O17mT~=e[Jzo!I>E_Ia*5OGl?~_OBU=
+    /_l_nrxZ~mep!(GVuD5uJ!}AZpUR[E2HTvdL\EUK6Y7rlX$Dp&)e]E#u&mpmx$Z@sC^2@'eTx;HD
+    ]u7]Y'}$CTp=K,{w>W9ilQv?R#v_ralrHw-Ts,B{R$H$QU\Uo-*PUa52N},xlYC!<nEEXi}nWuHv
+    +,'Uv1YQ*rACA[13^3+o@<CYj4sr}<Wve<>l~D-5r@DWOZKs-lti'iZ!=-<$<A#^2J1HTK<|G*E5
+    #DB=5*$xABVK=7X1V+<}.#Yx^=Va}jW!'~7VnMmE~3AX3@laQOVg0oBxp#>zOJoVmYAl'zw13d-o
+    u\\K]#u>H7uwJETeoD!,WlvOvnGrGX}@p;VY-EB'{@xoa!z57!f&-DY*3Yv@tx_lT+<poux>@jZV
+    2=^zC5V]{*UA*_7\=o_>OC7K@n-7iW'D~,Zz@+<Y~Yj<3k5=lYiuTq,upYrRu'IG#j/|s=Jr[KC2
+    6pjYmren=UsJaAAU~%{{Q<'?EnBk7>=>-Tl8pC,aq7G#QS7<QU]j1pD>{J1^>$VJE]EeCmR?w]=v
+    <W<j[G}/Hv\E$C@Q5ApoB[K^I$]7_,kv[D_}3^;r*#5,1T2?F^VWjjO-T\ZpXr@HKyIHRv}*~Y}j
+    3}X[GVR7~?-TV<Bx<mWCW>Tv$l#{rD@GI$i*,QEQVxCu*K!T1$?$_a{zHoQD2;B_YT+OaOs2,-gE
+    uQXe,j3@7zz_^#@@&4'B+1t{w}#iOOax{o[]vE#Gj?st3Oz-V=TQX'73HAu1k,]j\rjz+RA-;R#^
+    Xj*?,FWER0^R_+B77W#DEXZURXZAOT1WYsHlIGswzBpm5lE>K=<Aar[=;2rCHe}{=RKV@2'Okz}x
+    !?klr1(5DCBH=;Zj'qBQB_ur#KmO?WrE-$=A=X7W'Jos$e<^O>]=}$5*Q#p#5'^kuI1waaQ]nDmw
+    ,l=<HO@DJ}TVA]sXw14>TC@C72nCk}~TUUn1UB5{_O=WwD20Q]@ng7}@[7ZG727CZpYi?|goU\IW
+    QIr/AXQOz;9dP"CIXHQeKA)DAA[#Oa{}D$HO_"4ZUzul#'}DWJ<^px@'TK#GEK}7xpR*s--~>-nx
+    }CkJ'!<>\2RGrv{uvw'+Dv^EC-\M;A_R47j*=HaD^p@@#.CleEX1w'A{]Z]w.wA>Cz;mZY]Q3jl\
+    x}XVzx@eE2x[<Bi3GyD;T<$i1EIiaYI*n5<l<eG7p~~OBE>lDGyw+vK#XA[$@+-SXn,wZE=Orp!a
+    wvJo_t3VjZ[[!=_^?^p<QKGH3OV{5=TABVgL(Swss3$l=0A-@#wrU[pH2p!w=nlsV5(J{w-?zXD'
+    e;ER_]*A>r_KzZOFeaw}#+n_euAx3]]jY,K{v>zI&~okrAp=a+wCU-]]i''Yp?*l<V~Oam7*IT*i
+    CKln^n_;-g:AA0"IpU{A$pU;^_\-l5B%5=\sAz^!s']'[B+U7s-'xnE*xp@}a+5~q*-UkjW+js~3
+    2*IQk=jm_+1\a<n]Y$\+5MX[Tj#n--Jzuu_^R\lHBGsKmB!plEexe~@*vD<Q-]1zwJ^'V+]25}r>
+    CZBOvjz++{=XZw7}!x}IBUjWxkj<Em'w^W#o}l+TQ'OE@K>7kvrBU#\D{xgIHCD~B$=}'DaAw\Yg
+    KVrOAzT]EwwIj+'^#Iznz@5HsWYWQVGvoHQ^rKe,u7<kD0OT{D!H27QJA3pEu;KopJis2Q*xO^$p
+    XGZ_j\1IQ-3onX*Xzux3C{0uxVH/{lkO-a,w$IK-nRv{o$UeIG]<$'jD@AT3WA{\5O!JUY-X#'];
+    Y}]~zvH@LJl>512;Zv-!#.Wn~auxxz]_m,r='W[DE3]Kp$-<+-XaV]KQOZ;1meZ7^$'s+prk_wO$
+    DoH{H^-_*Y3lB$$[O*%~nj-};RTq2[EY[<;'Z[z}U7WDpKYRe]Zn_RQm./r]^;>RUO~r~@u[+@%Z
+    UpY^A~TQQ];Ks!7==G>V%]:$IU{>-+a_*5Wk\ZVK<=K\,owD3}QdIv}WmC[Uz*#*$~nW^n]Zou=C
+    sQuC$x^WO]G;(l+We$H!~wX1',xB!Jxz!F'A\$P^mIs?,V{7sB2j7siuA*Ov,5VT\D7@o>YAX17B
+    UB~@[ZOI,'21o?^ABI<''^!^^!j\_Y!QwHOnYO\apJ@eW,<mD<BnnA@Y^i3;,Keev;wvIY\NmXwT
+    iCvCi*[jIx]Bqa1#]MOl-_*a@Dlu{[R>]$Axw]\GTT[2au+Al$7^jZdqLuAY*}pmpmru;x+EY_~O
+    uQB_<}Zl-}U,\h#RDv$[U5RR+;,]+T{>H<G^o;TVT3T[U@*l7lJ5U>^EpKaO~^sC[2Czj'!1z!B_
+    [$}[;'o,X!5nnp1J,n^X*O%sXG;C27Jz+ewl!I@!IZkABjut@^,p,^+H*H*HrT[v@eWZ&jJ;}3{m
+    's2v1@U,\!o^{oiBm{jQ?I,EAW*;u^V{pp,@]JGupE;'7Z+>{<,R5+7Hel3T!L1r7GZEo7O2Aw4H
+    pj}G5To]u72\mx,p2\1uX<uo5;}kYYG>Hpw1xi$='*j~sn~om}jx1E1:p<{l*}AQ7_pK5ouAw]U2
+    ;-]a^*6]XBIw[l2F#_??'U[-VYwHup2G:URE{e,<eTs[DXoETAOJeA,Cs3UKm_~]Z8Gl7R@$axEA
+    O}$*V}}CkT2BS%jV2~z?U{=JH1_iG\I@Tp$+w}WT^E*Erslm<a?_A7]QC1OWA*?ra[ZIl^euY#W*
+    JR,$-*i[?Ea_3@n1m+5,*#T'TZGz!12lT#O~Tj'}7[<7${O~@l*{57*m5ku<JWR5B<@{3sb(Z>7X
+    LR{l7xtt,E*XW1{_OA$~I,x1^=Q+7',T=+VW:5DsC5TG-#zK^)[GJEzvprz@T^fE15rs>$uaoK]G
+    X~SQE@IVlIGs}#-7rVY+$DTleox!em!5j_C,kYCcWxO~[ZTm1}?+<xwYvDu^xrJAY>C\cwsI1zs*
+    WC7DkEr@55HD@<$_K~]Kw]I;C1$v-a]oA+-w{pa=KrmUv\mWUljD-BDUwk=~Z}0^$opQX;aEe3v3
+    'j]x'u^G5eGHA5VZ*?#[__U]V[Z$m^';Ie]R\@J}@ZX7*+pe#Kpbxa+WTr=zT+u*CEn'RR$;k*52
+    ?->u}$>QR[!]U7J-OZB{R<x-^VsX'l@>WB\xwsjHpYGzRR}BKpH1O]<XEKl]l<+D5@raEVZ^!w,~
+    OXTzu[k~>_1ZmjH^Gpw+#an,(CkUWJH}7wj-kQu@n9\^pjU{.'oW\+<K1;UrvSDuz\xa,aIh,U35
+    e>vwk<[zw,B7_#3kb1}m\kCD]-e]o*2G~B<1n[G^jx=ir\~avf5#T}i'TzdzZ+1x@pIr3!>@B]-:
+    _[$T=2*{AC1uWsZDrHwIi*#$xEXm1mWW8j]?oo]#e^U]\}**ooZ-~zRw^(aGsu7\2H$>*_\pojPr
+    a<'=pwI]mzTwzwG/J5QrEJOa;n2#rIv>?-]EE!oelA=n[T]j'!IzE}Z3{rE<lOX,s*jIG[k5eJ3E
+    2lajL5'3;BaGzAO!}7p3KKo~$[>m\\iB]}R^apyRnY$B}5nm{zW^wvZ2I,n'ri;Q21{HTm^v=-^~
+    X6\l5vEpp'!'#mR}U7%x=;KOT^E'{}lz75,*Aua^h^_J\z$u!,Il_HX~W=a$5+^=Ud{Qlv,Uo\l@
+    J;z^'CzxlX;A;5OGXGj+nTZ]_@\1K;uj+Rw$_{B$QR1k_rf;>TsxgY<5GYw7J*L*1iZ~CJJvYs2*
+    ]_>mzC\z-DH_'ZHoGE[sJ@<VBK!69R;Z<X\T#uo[]HUoe9sJD{;B_+zX[a9o\1DKI[nlWnHnIJ~;
+    9xO+skC?\noB~QD^n]xAJx~rV=+$<p?T]s_~}-IsjX_Oa'u3rh$7?@IW+C+r?;waw{DRV5!BjWVx
+    AnRQW2EY#'E@jJ_\-X[i}_axZ'Ro2UAj^[M$v$J)YC1+s#X{@OI#,x,,Li>Ge5HBn\3~\p>VvI#]
+    Y8Z^#j'fX1osp7\G;w5~B5*E,Jn>Z5C+HY+'GUz$I#!T3eVD^oOWY,oxv-WHO'@~]V+He,=5'jYU
+    ~<T5eI=#-xr3V\D5w-@jD=i\)5}'QGVamc1ozRp~spxHoa1i@@J,27oJ_,Xq?oe<*\Ws]kMl5xAp
+    1Hz8&VWCBr1QT@D'nI]As1s}=i^TkXv+uB;2HC{WK2DE;4$--H;oa>8k'[uJa'5PZsjRKz5Ja^#!
+    eKr\]T_;&<}Vx'RIj1e?@-'BJ=K=2QBeu)Xn][^Z}?CG*Bz=_[d_<p]p,\Y5{UJYnGe_?l~OJ-$[
+    }Y>]r-@D*,H\ewE#aPDQDo,Q{-]CRR\ABkZ^D}'@V[-vOWV!IrxeWGHOx,iI;T=zi?EG>RVU1$zB
+    rs{sB$[T+BrQo@@+a]l,,{1w'J_v#<QVk5-G-]e^1'i15p^Q^Kj3r5>B#2j?;}o\\x~v#DJ^['^~
+    Bv'WEr{Ba*^o{;z=R!!lav^JwsB17#\D_-YsIGl;TC2$A!Gs,'#C#n{5]_+GHkkUel?on@o>>-)%
+    j*x1K]P+B2Y!GOs]>52@n{\v*CYarY#z'!m},Z=G&MQrIYhll2:>+HU~'CmmjG7XxuV@}_2n_3K[
+    [E=*#=>:"u*+Z,ZB*[QVmt%qY*a3xH}__QDTv]YDB_HEC/+7*~RvQk]3ombKv33GUoA]B>V\n^OH
+    ,eKDWOep\kKfSJl^TPDC,Qlwa^~oI#~vaTrKC>Bs-+VXx!Avs,A1qJj'x@,]]CY<3jTsC#V[jr-D
+    x4Gi[j)-v[z\C57u*+A)EBk~Z,KI7;,{H>_Bzj{DCA[r_Aji1sum1ReU1+e7f7@Y15K{zMe,@$'?
+    D]m-7#Ejk<e*HxUR3IJl$+{[^uG!s}7[AJalIO5T@[qCY{u~*7Q~a![Ge;p1QK,'XUDl,u}_V;1u
+    _GRv+E=watRnK[OJJZYQz#)$-T<z3+YKvoWj<+r&$^'uE7_xmHlA[E'Ep>;u-VeB!p?ZOQ+\$\-*
+    >YZT>=X!7Rne_IvRxA*eEBlCIQQKIlG*<HZA;}=~-+1ZA8:eIC-YAK!e!o-u]WOx'{UwO\O,u7$A
+    peZYBQBJR'>CzX+[^'\^;TZx.~z$HV,_2_1Jrys\BO]H;7vp-R7jU!w7z~,,BO!pAIuIe2'rv2&)
+    .JDU[^_A!xpGRjX{kpAJI\*eW[JJ3m$l__Te+Ck3}k5{Ee]#?nl^uOJTlcIuv'']\?GGlEozZ7:V
+    $BZ\KK}wwo}9rY\=,Z;{\_D3H,i3IK-,(j{1'G7~HO;uj[nV$w<vr*,H[Y,z;u=W@5A$ZJBi!Wp@
+    ;Lr{G}.Gm'W{[A{\?TQ$e1l[}!#mV3DIHp>r+3J1ZE$@w1E?nUR$iUue?xk6W_e-<ae[v2wDU=;-
+    nEa{r?<C]R*s$jnVTD~ATj!{>h3=QO^/?,uQk<B7>vB7x1M{x2^x+xDs'1}|jl*Wc|9Rnj$Q6^K}
+    I,>waaUG1J+Y][uIX47X5K2I~TEml~WUsURj+X[ew=tj7Yi5mn$>YTelu_QXoeX-1oO\~~!rf'sU
+    o$@@*%G"iU*YBOu#\_,Hs_JWz}ouR1!s^K-51<XnJv3-z]1r,xG\;S0p1{p2YwxrA3G]/xiXYEk+
+    Jr+Z!z,Q>:>5\UIzwn[XXO([Z*}BCYXG>~-[w^B$7UJ:Y=2}$>-V}~\s,'H>wr,Upuwz[}$=5WG_
+    ,rG1**i~iY}K3}r!CmQ*7ZRsRJ<~8kojJmx,\Ox^-],Q1i+m'ITW'/<,Kpv;Eem7zCxe{+IB=#wA
+    -Qks{B:XX){x=ZqY}JmR;e-Y}\jDu']/x~@AoG'!x\,z,j\?a,>spHw[;'[RksrwlR-zR]DpW$<u
+    aaGK^"UR+ZG<H;E>IIaCCrYJABp,u,klzI:Wa]Xv}wkoZ{Zp3A$<{QrWonvE}B@W5sRG12{rk}~~
+    oKG!Ci1jC!Evr!OawU#*Z*l1K~\-'awEr\[s]oOi<GZYTam<_>[pGk>Ve}wlGQ-p35$~UOpx?5T_
+    _OZ#XoT3}RpA1k?v'*}e7uImvJx]lBw{(aoI*E!QTD*Z<KD2K3+w~KI*v8A5V;Kp!lFGujV*!u7S
+    Vl[O=TB_oWu?\uYOb#v+os?xYx\H?uY3].lue'l?3C;p-lJX,XIKQ=lAr<c*D5^znDI^l>3HlJU@
+    'keAzUvUBnx+QAo+1m\P21O7TU,{vs22RZG3ta>{eav]Z\T)[R>_!o-kE#-jv7[_hK7A,~-5,KSc
+    HvHu}BYenCz=BQ_nf_eR[ar>et+OK_#x733_ODVZv[svB3V$7V9A.Boe>ipWU-$@^h2YTl$e{#lO
+    e<Xw+[-[G>rZ]YTnB2X1QmF>'5TrV;U3>rpc{$_EkAO7]~HkqrQQ$3OW!]$[;djRQQZGI,R}T]oI
+    {a6SrvBpT^w#n7D?=zzV[eBCO*ZYa>]>~C+Q}2ow_OiT]o[lE_G3XpG^Px1+<OQzJ;sE=(o7'-^x
+    5{Y-Y@[3WlkYIR'>T?WAmW}vB'^1um6CJ$+^_+?7iB=k1$j3e~#]<<pVETlElZne1w?xww,.,Ywa
+    B3Zn}!YYBRV>}R5'k^2xr{}ZxQs>2^V}Za{1D$!pJvZYl<poupzsL]$JBQYCEmTIY?s>*1J>@U]5
+    Yl8Y*&3'1],b\TErqz[zA<-V7#C,C\I3@Q[Iogl~Z'kln{CBk}WTsu>w~+1U+?RYTl]3,!_1RO*l
+    EY[7HE<_Kvpw@Y$7urjp=mUnQm#G~^r,V@r$2>V]2z'!s1![E?NYY\<t>O<pTznx5?2C>+>keO;Y
+    ,Ro*w$rIjZ!ABaBx_'7Q?]@3]Wz!5@Bj{GVa}${pF$OiE(Lo-E{#E,2Ll-uQjYUYWR]kmBkTRGio
+    $pf=GU<,IHEIBAGAs7za+H'zirpA_U?WX!k$G~J*1JD!XOIan,v@\E1#zU{LzZnJY\]^B_'Ip}Cr
+    L\UW^y'+<GJn+]5A5^4k$~O*Q<>x\^]XC'*6F!{m]zG\wCZzDzxm<-XeXTsj^}uwECD'#=1WOOQU
+    ;!B!wrzAnOeIjY!r,3_Ts|&aR,!Zz2'<$XJir{7_x$BXTu#R-w;EDmjJTmalunQaw'\uX7DC'p[}
+    #EG:v<uB#[X#u^2R_X7XQnBwGsC$JGmD_;mW[~C\&DmC]2l_$e[A;'z-<PBe]3Q-E@^l[>X}}[.B
+    N$2DjmVoI=^Q3$!U{v;l1EZWQWB@Q+^rD{$<x!np5QJj},Tjvr#+${^Teti8-_~Cvi]\oIW]'Az*
+    UaW*B,pR&O\ZE=2o;;YnV#Yo\1k23|B'?BjHseBH!;MSg;xjED3EoG^pky|KO5T{D-EZH!=1iWnV
+    [p+K]UwZYKIrZY_'+$v\j{*xu_-eau#!ns7CBE~gZq<Q?!T1E1S#x:HDE;5V~k^riuZsJT&j,a7?
+    ,KOqO;pnc}VK}5p1=j#-xp3]EKoVY9}]+o3+FovpeW7<3W77!hn]?*l>Q;W-JJr7p^7s}3rp^OOu
+    $mY?->$3ulx}*z$vv=\Uw^ozUIKz>X@]lk]mD7C{I_5o2vWD@G,=oVxzuJrAY?_xjVC;Z15v1_>s
+    @$'=kAOYon[GxiZ,@e,l>UO?~z3}sakHvlBR{B([i0,+nrG~@7=ZC>B/Sm=J}Xp3}RoE+EHsE{C^
+    lkT*@Z_eW/XRU?xRRl~{}eWrECr7rE!rK@PwrA,Te{'GxO2\j2\j__[WG>2wQT$12ACnX!!s,1+u
+    ^^u=#Rn351kT+<<vaWE^2C*aOO\n=7-Qv@z@zZ,==rnXnIQ2I=[:e>ZBeTpJBjle5!{vr}wu!7$Y
+    $k7H+nH{%HwJp7E=j.]E;!DH@['GEB=+=UDi-~5@A'E!Tm>E_a3\GC2H[RrwBw#Uu~jYH=.>Y!}@
+    I'VDWIl&G~C\5R[TdG=-'B~QI\^vitQZ1V5YHKB^W'5lV#dB1QZ{O;WooAr_Y\l<O7G{71*[3s=k
+    {jCw-C#RI_^5J;m<O2pn=#XC}K]~O"k*kW_!11JE\*-aZ<7$Xl1>~<'Ol71Oz\aDW-ZxlTZl?Tm$
+    }{KwjT5?Y=@}J?I~=[w,IZK5CK#vi3;AmJY2>7L~H*Yw<Or^-w^pI+@E5p}Ijl'v$=>lBm*,nX=7
+    eQUNiGK#gTB1;iY\Kjxwpi{<s}=v^DUG^e^rQ4a,?O;lTX#{>u'[o>ae'aTC^']\V7w\3Rr=E'e1
+    !IkEl!zWT<EuTv;,[I?{VJZ5e{|)b1SM]our2[u3pVR13C}\2}zB?\iayV5;7HlBa9>'>-nVrnjQ
+    l<OOiBZTY],*mWR<mZ{_@I>'z!W1^\A1A[Z<Ea}~YQ_k*7'$R;eeva>rWT$l,+$z=Xaj3zZY~IXR
+    #7|{\U;HUzm!AA,kE1ae}+A,~C;?jT@lZ!m3,A<%O2Y2C{3B7Czl_B{5AE#alVprPGW$72E+<<ln
+    XZ_!?,?C3pcl3Ou'hgXEQ2}WvR{QABh>]Ei++7u)Rx6pnXGcE?aZVB<}2D]H#Q}'_}ArC+$BB_B$
+    LI:e=n[nCT#sADr#7sz]o[+c\p!*BZj58q7T{IJVzpao_Dm*lD0$jBu<ECe]-l?p>j@]-~^iEIuk
+    as,!jw-+$#w]A~]^>v@w=CTs^*'K<xaA^{znDlpxVC]%+n]?-O^lGlpsY<XQJvx]z@W,e3w]_C{o
+    >jKDs,=3>noG>AeA/;CAneTvx0u-Rib#senOwvxfNI$A?i7pl(,-=$Y^wQK^Un]a1vp5_VVnl{C<
+    j*zX$BQHG-z{KWoY{{AlGs]OlJ$\al2UDU$C{uOEOY|2a7E@sxa=*KYz}\2vOK}D+3wXa$[[lJ#^
+    rQunrV1ue?R)l<+se+HX]\j<pOJ!*{$=!A>lhza3'*_'_)IvQ72Y'A&YpH]lHlVvUD]k^e?=y5!~
+    QH<$#~TDmCpD7$_G=W,eKrWZ;DIOT$j[[7jGCBIi77*nuoAQB}vXozQ2Q~Am2G0n=}n7OkOm$p?]
+    -nkaOG@GwH'7n{,5r5I@t>-*Y8}~nnf3[#Zpr#3\^5T7=s5]Ue\'JOO;wepyR-^p[7J'*?TBNI5m
+    ze+pZ{[V*5OoUxQKJ;C;<^H'i1<XUi]kevOBT_J5##*~Gb"koaZjY\>pUjk>]DR^zl'fo\>o[uKE
+    <}!Wk5e<z#@Df^i*O-ek$}=j3|bKs|{BB5^EjAApY7IOokl$>W~j{Y1*!*wlv<$*vD^'[rsDIwuH
+    A,m\E!7l]^ZH17Bu$1EWaIka3D!p[>BmKU5jkDAs~+I[zGTI^Y2rpo^=wEQV;QxCAp[,V'V@K<+{
+    2O\<>[YH;]1CWu*(aTpw7woU72vve]ZU5wo[CR5=lH=RA1@s0V'n'[$#VCXl{,YGH>\)psVwKo]B
+    iaYa[R\{5,iTDjBYNkX;viT<TXR&][OWR-Vw{}Ii{OpGwUzWDiv_A^Ev3{~+.uTVJm^PxJ1p~TRH
+    [w,3aIGeGvr-\A-JN{e7AUI};,C>O<_QXeA_i~]@^71^Dm=W@c<[B_G+]w!R+K'\$KZ}+UNeXw@T
+    ol@^<H?uRA}o2\wOAl*V1!VUTa32]j*Za1Tw*m<emAD;7s}R3JHoZrQKD>s*8/q*I<uw{EKu}Cal
+    ?1pp1xB}o=aZ'#\HEBu;zB,CII$,&a$i{t3wrER#eoBj;v==!YhkTwlKQ2-BvXk%gP2p];_wH-MC
+    sJ!up+^jKwl7ovB,aRAFL{_+@Fk<2?-Gs5ZI^noEnEWU]wu5,owBJRv~x];o\7O3][vEv_1xmEyT
+    ^r$TxVD#IWAZBYGJe'mBmrABx?mkh>E[u~w<Xp+pEnpr3whql,YAom}2m^_Y'}sl*!{ORw;],OxW
+    al^{}+,OJ=73r[>IG.XQ#[G7D#8Vz_a@rZ241,2;[sav=MR<xpPfCkJujlu?wY]5XxYGbZ']JBh)
+    IG'Z}3'R]*z5s"1Y7vHn7}:rJ]K7w7ou}I@[MzW733[VEIn\=[?alC-XRC}w]?>z}QX$C&v**'^Y
+    aR?v{vmpvaG3AWmE,E~j+3v5ea(pk~JRPlzXlFeU!AS!DQVTC<;J>!}GwGXH=j7=T'BZH^@+nG!v
+    w;>KC!<&w=D,s1r;e7n!]Cr}!{zzQ'V+,s]WR'\=oY{=:E^x3$ww;v<+7]1^xj3EE|YJHv{x5<!7
+    l<JeRlKAxI9EGjHEalema7oIw,!}IO!4p\<,yzKQD5l,[vOw2RVX-iTo~l!D,llKp(P[vX}7sBZw
+    =>wKrQ;Q#!Z>O3k5;@vs}aRWeEHXY\pOUH>mHaGp$$v=v2Z_sA5}3VeYKK{kh\5v_:u\=nycA}3w
+    RJ!a\Zve-p_]i$2v{RuBmTp*sVm{Y]wQ]X{[1'wu1YHB{T!aYK<u;6VCG~2Q$1lDp2G;+lf@aO?Y
+    wC>_OBDl5#'eODlSlm1n>[3sk<R-Y1#op$7!2$TmNa>Rr6D<Km*^x[$!_;e5>Iwr?A7sG$U5m1l-
+    O3;nxxjunpj@,[*k2JrpJQ>[]YmTWWloJn1#s7Gz;!BIe={oTxdw[G@pl'HBDXZn^Vs@a}rwa[Of
+    G#Dw$U@kCU~KLo3D~[2jm*OZuI>E,TD2}O^YIiR-{YaWAH{C1;jIloi1Y@AsG~-rn=;^3THl2)su
+    V3mrIRx!mu4+aQ@rUZ3E--!XjxwQ@5}wI+QK11XE!'#I4'V'J]7la;[]Hz_C2Te>Iop=eSp<lpV}
+    Rz@_pQ'wr]B6}}{w5eX#g{>[UO7'pTDl3UaD^mX+ZXaaHP3sD}F~w@?J<Ou=5^7El->'V,7u^2+P
+    [-7QD]}ThOSI@U?exH5$B\;=eB7AVpk<wUGIiMEG{ZjaAa$FxuDw=!E+%pG<>w+@?C^<uXU~H]nG
+    1OmDsH'@ru(8o2o>N;z!xr@C~=;2-qCKET#hi]\Re1#GzjZ55orulr[JA>]J31-mf'v},'1<!aD?
+    R}UTO%QT*ZCjGE+wIa7N<$_u3*$IjR_JEjO@i-][W[]Z61Gerh7Rpk#[Z3bpK*HaY\,mBToPGG,$
+    "n}3I]W$[{BZOHXRaC_VTaH]oHU3AApmRKYv~n$\1:~s$w[;7Its~Z>#=3RG*2##w^-)1I2WiaZm
+    *<3m|[KXvWQ2#oVaK>spw_IVp,1kp7?jV7AwC<Iux7uDi>E!2{ACa#<sTrv^-*kB,GZZ~gR^(Cn^
+    =L%[-puj\+r~1[uB#15(U}i<A>DRx'G[pI>-\=eDl"|(e{^k;B{RX{Y[xQ$kDl^7;Uo7V$V}+V;_
+    k}@+6vlJ3PeXJ7n7Wm3[YQ|KQu^:3p\iTp2<5Z,\OjjE[CvJ_@An_1I!Ko?]H}+wUes,ojDn6oE@
+    sp'l'3eeKe\r1u=<BR2AY-TWjajwYA{J@TGQIOn;H--]?P_puj?QaO~D_\}D'JSa'H7o+XECAQY<
+    +V\?}[$$;ulHwAuQSrV1sBX2=^\?#1i_\[rII<<;avG=Aw7x3stC}'J{B[R}mls/I$+_rOOk7@=+
+    !7!WS&2=EE{XZ!0GZ+e0RCWmJa2W25'[\{7\x,rG?U+A}UIU@G1CDZ;~oHH#=3OB;,>rVp<_s!lo
+    2$n1B_+VnQWGGHZkxG?I;QswV{=H]ule3-DYBVs1;v>l$o+x}~KA\r'}e_w}=iDkls?U*<,'G[7;
+    }},u9BavCsQovi$=pW{XJ_oxZo3^@O_BmaYiC'x7B,v3Omws;DexeQCDIe3IO<Dkx@r;<EGw-&w$
+    <5p3UuRH;E$V@3VvGzkoox$<1OCE\]Bo5{,V2D-x!s3V<3v{{}~sEI1Ri@#aTT^UZBl_nA_,7HQO
+    n{$I]{*VHsl'ipiw\v*3*'Uri2In]D1RTV^_;<l<Y}R*;ErRkkOKV_zY\$O2p~uOmzroepD?RT$\
+    o]jo7'oXu>~In3'R=~(QYp#?I_QnT'YEn<]OIeo_Bsk=aI1qITXx}DakeIOX=k>pCj3a=WwDK_!R
+    OZD]RA!3*1>!fB+D~G?~^Ep'3?nU,Ax~5[,7rzBkA[v*+js[i2s{+*\Wv}Q,{s']IFj+Ii,WIsQl
+    r_Q<BQalnj>Xs}9l17^5_BOxaA3@7axs=33Vp2}V>r}Eo=r*},wvVeeQOXkx'K3ss^K@7Z'OzVxo
+    s^D!l{GZew]w}>TNByw+u]$'!=U+\JL<AH@xBKuuHueE~uWj73;4Ds@K1JOlXx3jr{Tas=R?oRuX
+    BA\=uo;-|\YX>vOm?5H\+=z]k2]]2_Ou[<^o1#=-I,1op5TsmIQEv|v*QaDf!,Z$,zi_4D{73v*'
+    m__zsjZpjoE$>{YCZ{a\=p>1w[2WsK[D!\zzC1a_O)NWen;3YEQyEwY,xv*xCA2n)pEa#1vDXpYX
+    E,oEj[2GsuXoZ\pJjJ}OHT+p<RmHxZ_$2W[@H>X^[e,x]#ww}{oBUmpDO'wJpC[a5b*K]53n';m'
+    _XvHY}<'K=o(1;KG7iIYYA^A<{XJAORHTV=-+jmI6@w[K!siUH>V,;-o_xe-\\W\=mIW>7e=--<a
+    n/IEA>ZD]5,9vE[i1\]]?HRAK$@vapa58OK;_+jk-(zDi<|KzmJ<RTabl$m[E;3?s}3~?E}i4nwH
+    R\'2!o}VOADu^TB_n_GzaB}}w3+7v}@>E^JY~j;*j-\#jrz\JsoGi#HVrnCi$!>YjI+EIsjB$GsA
+    1liGC<_?USsV,KujepbYr5ig~L~-wW_I\;j*}^*=aQ.]^?$eerKTYDoJEx>nn}5Z<@J\!RGRCTmW
+    \UXaH<kCIW2qiAz-M=[Vv-p'2o?ElnVI>>-z$sEIjvi+Ye2D;}#<Kr1[Y5EKV@=nw{'@riau>_HY
+    >IeCk-IRDW5@Uo[VC:Cn]@Zz$a<<xJ+D@W$1JkrzakG-ea4<'5Hl?7TuU\lI#5IrGR20#UVE<'O\
+    QrHv0Zn,_$e5G^@7AJ,livC?sW=I!CY\{Havn0~Y;UeT@z!p+OK>s<G^#BLoK{x[{sm7'}B+lB!2
+    nJm./*?!O1~{5Yvj7x+}K~\RE*nB1,#]{}sk\I{o-OkaVklO]35#*G3Ea#T@[D'j<xK7vW}]D@z^
+    TVHEmor,Vv1'RxmVG_npVs~zkpAQWG*E,0*|pmYUnVz!s#TZ'];xUr[+T[TQBA_k\iO+lp=uW}+O
+    Mk[@5#^*He^@?QZ=W!Ol+jJ1AvRZssvBv_p;v>>KGX^=55Zp#+5~UAap+xJC[Dm,]T7lVz<Y21-+
+    ,?^m'za1ex3@K,CA]!\~kDa]G^WYXDUI>JoB+%,I=Zu{VBYz3wR0_!rmc3_QB'j@l,O+<QJU_*k7
+    W<Hr^fFJQ;Kvrv[&Qn_?@HuY^WXTwwQ1}GjU'p-Y{r7IE}e=[vAwH_^Z[!JlwnDG\5Bi'WQCY5I'
+    TrrBlYRJv+REOJYZ=R7{W[HD#EZ]IEp~uVV]{$mW_m*T}#-za={u{zi!0w=r#jHw@me+a|v?!R1^
+    HI96YDoBWv~n!D[>us7x<x@K15,l+U+Y5a,,oDGR2$Cu081WA-CYXDl_(UI+Ws!v,w$ooY-ZO}{X
+    xz}o}vjCXNe,m2GRAJL{H5DQkO'^~O!D*R@a<_[yK5UA8k]u^Iowl\u=,HT2;kID3D=uar<\O^O#
+    H^OK=sB{;\irO~z>Xs;z'i'KVO\7!F}1jI*]!jI5#E8#,B$1vW{ujU3[{xv-5O;1u<\v!G<k_V13
+    H-#6[AjaawaR!D>T?s#=O@zWB$3,_@I^,;{#;>Vwp-E1x2$,Dx{ue{~B2jQ^'ejH%ZE{O#RzK;E-
+    =G^{BX]lmlvVEZr3V-HT3Yk<1*I#xo-;jwTTCC=nw';KK@1U]@\p!~]KWlW+AM1eW$w|#,wTATrJ
+    _onGR{@uj*lk}j]}Tj3vn$@jV\X5Bk>#YsOO^!zBV~YUlRRR=~x=}AA<$V+1($xJYZNq#EU?Z5@R
+    ~5H$S1TTQppOuBenuj7?C[1E*!oA$*^Ero3p\si+?ZB'A+nxuI*{2,DGVjOzvvsJ]?]<u,v{[-X!
+    >71OW>Xe>?GWlJ,B,}BCEkn}Y3nX1$rCRWEHW9u{r\XU23?z5zk[TD%lppI*>m$(me=1Vn1*<rer
+    rwKj]@x>e1p}wrC!laCE{YAmJ^j'T>XxE2DewI^zGO!U%.s7<z|[SCA>wt@Dzz$V+7C1$Ou\jZIr
+    zaCX2;z+=R3SAxY{K-+[o,+Q!{jux>Cxr@]U1rJUr^J3s<B*92}V~A$}j51vUk$U]iR<@1vaRiHJ
+    RuziZ?Y~sIG+e1]~e]<UHB=BZ^7w@D5lkj,]kHT@xroeYDY+$!5]a7kQRp*Y\*wuDU|&Vi;]nHDx
+    K=^-j\2*\R{XeHb8Gx}[SA<XAdyKlsT_l,nC2m=eTe1ivC]a{m+vAvV+O_v#]u@[1Xj]3eA$sJ$A
+    jen;U1kp'X^IHW1@rCzA7GK_~UksX7_7$C@GE@Yn^mmQEAlu_R{C?]}VOAu=B,Wlx=>FCO+{^sD7
+    0KEH}IT<2UwaT\mr~W>WA,rW;I]1em]WIlKXW-5-m}$uEm'j^7X;z3GJeB+V]lEv$JOnkC_e_,z}
+    B#x]3ejxo82Q,G3oV@f+<<2es\3krAxr1[3#sI~rTlUU=7i]K5epwVz\QlA][uul@rvMe_*T'3v+
+    ,J!e0%37[uQ2oH;zy/izNiN"[JT[mXp="1#]ienuAQmQ>DwQa\QRTc1e@X~T*@nUZ$$o,!m]r<-H
+    @I}#z}t3H{Yxw-T1\K;@n=n$OsYHe!lwsu#xzmK7_$x,[pklA'[i'W,v?ju\CT-YB0zB^7aXnZQ;
+    mv'rjp*"RinCr#Bp?Dxu_R_RH]#}3au!=*]rmoe1p;uIeEHAIinB[j3}'px$$k^BkUKv1=Ow;7t(
+    _;xDH7#B.klw^s-5?K<xy+j,pCjT],Q<[LcDFxi[*i1*{tIAmzxD-@YE]-lmDEEpp#GYlO+O#[BV
+    n,H$ET_eOXx@*;v;BapCvG6NQ-J~u\[o9w(o-\pGm;2*@o{ZUJ{wsa{)7@\xu}QBoA*KnNB_[+k>
+    B<i=zoj$3ZFX{n>p0VA;K?Beu[pp@^-Z[raXD?U[]%~RprT'A=-Y]E!OzYxVw2]+x=r'nC7tn711
+    +z{D;=\=UU1sXIlU-{orb5XE!iwY\1e*;W[2HQ,<Xve!Ig7pWE5'pO#o3!J,KD?I@5w=+[c@sV$P
+    ]TBs%:,5a7?YBXxb>D?pzGa!e_X,aU^!NEE;E'rlklvlx)O<>zZXT#\jWYk+A}Xa*;[!CH#VY;Cr
+    7,wT}i^aJ72RBmu\Ek[+!opQ@*BJWnV:2^kuc_-3H]UDkyp~U2j7i]__Tx"=QJKX>[u*zrwp7Bpu
+    rQQjHJWeB]*w&mC>uIA5?AEY15=uu#\,maC!DgKwYRs>H!T[+TX7=jmXo!2RuTWR?^\!w>57R;{B
+    X!v1C2(;Opp$p$VGkna]YZ{wGnUs\_a(d?pjK!_DXD-[zvo}CzR{Q=[Hp<CI$i1H#iH[iUQ~]N0v
+    #QpOpx3I>[?\~=}6~\Qw*JH@V7lZ-euG-G7sw]7iKB'~7tR]OT_}I$[kZu#r+-*r;pE5~_(j<E*^
+    U3al'ZkC+>3=v*n[iAQNUl,__A,'5\aHXBR-BPNGrDD,66saG7[D7jVA3l<Y1]{Viv,y<TG!YHAw
+    7H\p3]ve^Kumsz_pRw7klUVX@nx{]iHYr1@^IEIVU_K1@UWB\C_Wsb47{$Jrm11A=eGD'3UeI}~l
+    2~7"l2,}]WjiT7IUDoYD@YOkmOmAM~(mUIQex=,]p[^lQ=2Nm9Rno^FV,Zo*KCv10zjJZpu$7l>X
+    {'Wo_4~]p<@\OT=5K,,\}-==IB_~AC]!xI1}]J@XVpEo7QUI?2GEWVG[rnD3BxB3\R,~;^m-RiJ1
+    DYbgRa3GR#IwUBY^:inHU{]tKl,_7*wn}z{a=>{+s@2Z[#*1H^Boor7V^eOrl#O~rCKl_wGGuEj;
+    s'5{(9<_2}$xI^reZ~$R;H^vuu}cm,Q7BRgx\GmKC[uz'AGTYTBX1X<a5#vnBY#Q>~OIQopiT=r(
+    W[\x:\imK7-~3mD~}9pJn-TQGZD*Q$G+~{*+Va7eIr,{DkZoRu0W$zaQ{J+3Ij#w+vo__kDRew@Y
+    Y][r}poeCoB#}kBgK>T#P'Bu'rZ;n=u[<G$;O!hp?Ya9W'?ve[p\uz[n}Yvl1Eo}a7pC_AD^92GB
+    7Ao7}VQ\'zvi>\p{kv#$^1<-3w-\<r]r-4rwEAhYVZOL>wRC(O-5?{w,-BUJOsUwH^}*aAv^}I+E
+    '[K+V3j#TYkTntsUO*pn-5^w_1;reZ'PDi^Xmw,<v+!\Ox~=Z{R!-vO*H8UDT[la<u^R}>;7Z}zu
+    'j2_H}vgg<^u2v_m!,'T*Q?'}tR=I+uHTa\jZ@{n=vj,+?mXo!S}a=+ar?!'[;5CY_!IHsCYRX#I
+    x3]BY1eQ*{,HwDrpJ@rT{KROeZWck}1}i{o~3Y*'8pG}WQpzZK>o;IlQX>I+v;_+D*@,]TR[*CUL
+    zxi>+vlG}+<7ND~CzUV@<eeu_]XU*e*ao"&97Tm*=Z}{wpKzoZlOjZ]v"C}Y\\>z}mz'CN~U;D>w
+    XBC;;IF]5Q2?q}AUK(Eum~5z1JnDZ]R]@v2+$lO_-<|HAY'a-}*Ym*{Jez]EHElkzvvaQ[CsJlXJ
+    [k$o5D!3}nCDC#O;,'U~+'iq+s+5Q,-+2RYl'[i=4xGa_rRkTpk+K+]?;\Qr{e{,@wrTp*D\+zI2
+    e1UXwvCYmnj_iO3ol*:DB$<[j3#b@^olE\]r6sA{3nUDw@e-uOIuuS~DRVk>[G7KXB$k~viTBBj>
+    -Zw_{o]a;nf#]@X\#;vQYX\UBi_{p-kFG^Yllk>oV[}pS;R{,Q~awl,Gv~r[CIZ{{,-EC1ZaW5QX
+    ?EG#\5@@Hj3\i^_rn#Hs!OTp~Wr]2=EEWGDe'1>1x+*3o}]pD|v"W[{!^>'o<RT-]{wTnx#~|VT{
+    u!^Ks!6;_$!GeYBu<;!lg>}Twy2p>#?e1G1Y2a#_G@kI{zhCE\nI+{^^{{K>xm\#_pT(onw?^DoJ
+    #zOb8%Cw}+)'mQ[~'$A\^uaW]=K^<v#KTS?+G>1jj'?,352<;u6Z9'!_VYwAv;zZIX}{JGkeaAsj
+    C}ECRk{;K~Hu+=Xa!E~}a]QJ_I]{W7]U]HzVeB5D7[c1u!wknRQ-ABoxXj<HnAZpVvw@1?<D]O2\
+    ;@wN.UanW?5Z]kanpOYx;5<X]pe-#=aW+RDv=e<KkmUxn}\DwZr$$,B-1@O_*!^a\g2Evi)I;Eu5
+    ?+ose{wI[O#!e2ndi$<x_i!]ODn7f2XTu.,\$'BT[i7UED|[?QUrC2mijm}wz@I|-Y#Ki\IR,R?C
+    IEx^:dH-[Zl'YCGp@$t5-JHvDBuJ|3Y3$w=)p-}1T7mWQnG_^b&?QvG~]rJzYrlwr]xV1w-XwHm0
+    wE?{M$2Hj:ZUVml-7B|IOE#*[CE*OKlD7+U_j{U3[~Hs#<BL*{u[BOT;G5JRf#UOHqezl'}2\3B7
+    D5v3l^)!X51k}ZI7-3XsR-Hj^wWz,@>R?T{xKDi,a*m'@aGB_QRy9]{\'<j~kOR-X$TG@eH]+>pW
+    m@Ve~<<T#/<e!~N*XxkkYeR<'JQGoo<s*}AS&*A_#512!D~v~mx*\mC[s^=z#B@IE^+->Y\W[n{w
+    D>5zAkTp+*x*RW}w[>1wRQm+u+Evs<$a^IrOEG3VZ$_o*z$ouq$!,X,Tm#[H~erx~BXnVW[w>RIp
+    ,;NGz>o*L_Sc5h}\5{DT@GB'zH?+WXVETwW=sZ!G_CVoBa&'ETjwV2I*}x![V[p']kpD@3uEC@XV
+    e;Zz|Tr==,O$7{\lw_KVJpkV5{HI[X{53Fo-;I}pUv504qEn3wxkQQrxTKWa77kX*K<lE_n7_!mG
+    T7Z'QGJeD1!TnUne^k41{A~_$IYOHpr!lH[}zC;$B{n,G3#Y}J7\]xCn,aHU\pH=~AYrJWmTDOo'
+    >;\{Bm?Rr+DIin7!CQ*j,~oaUl{3lU$$_mkEJQUex5]Zo1BlT<[Trn3k+K{3Xe*se@,uD~o^!Dn$
+    B<>,l)2N*Z$^^3vBXH2a-El@71AV*,a3fwt!]nop,XR5uX--_nzKpxB=~HnwQ!r_erTp!uI/|,R\
+    s;IRIanq38?>QJ,AGs>[1p7'pXBWvw3V5J^2[+%Vel'1J,kXr^CekjDx^m3XYOvYZ_a$=YxB#A!E
+    AR3]#T3uj^eC]az+1ojGU,v+jzBoz!u!avIpklpTlRCHwan;HDp35kkzACvJpY7L%iGsJrrYlpKR
+    TlG1wzQx7I2RaCmI7jz&7Ii=]WDo7mV1#nwrB\=^U,Koz5=pTH!-5ZsA/!,7vqkDYkv~+C!V+e"f
+    v[XK)It4ex#X-xj7(X[v<7C-1^hojv>]YGUe#$]2*7^;OInnBTa*'}ajpu2C,ww[pXz:~<^53[v_
+    yQa<{q)UATn81XIV$*5^*e]x{T;uooEX<vZX,#e#k7kvKDG#yGE^5={x6Di1_kO-xzOWOb<EreBw
+    ],YKzkV@1_[s?}}2Er,>7@5s$vO_wwZUpWrD?zv'>5=2$o(Z=uxmA,n}+lRzwv}\AVi~V{Y11p$w
+    =>XQGGr7\uj5EjOsE\@]]xx!Ta-~=[U#*J!';+$K,O*jH]u9VD\n#X}XIjQ$B3*#IYO'*E}Hsao1
+    Q';{\QQ1$]37:Tl'oR=$]+Cs>fnoB@>o?m,27><xCC2n$pRT,lXE>kv#As5o7}z=->=Q~@CAj,eG
+    VY\E^^RX]T)frj?}nC2uYZ3!$X3?jAnRtEz~7-pYB7D~k=Y=s<a$J[Z7'sX^7Rl?w*Q+V,#}=;7U
+    ],*}<a1!#,oz'~}\B7R-+WUI3DG[ao;}iT'?A![B$ZXIZO;^=CH[3M}U@<.K{r~eQ{7o[A!M3*Z_
+    SB1ap3'xW^#uOG<o<G+vzoB!2qQ1mKV['GE!=\[7zDsGT-.T[>U3s~HDQC#3Y?[,\v@S~H5v#]D#
+    O'#n=~*{p-m$Ro\vPHH1CRz$C+[<rcpm]_~EGO'AT!AIEo^>Q7I*Amj*n{*3e*}HeV$f#VT!7"rE
+    <,,[zU$]B1T[r=|X,Dp<\xGnxUp9WYQs,qDxI#}R+7(J>[Wj<@pX_,3=iQ],3wjro$3ZY+;6~['$
+    :_#^E7HIGl?[5zj{<VI_Z$o;BL4]4xm1}MxW=5C#jWY>QoveC_kpZmY1{G$ekv1~\HXOHr1Ri,>{
+    5$*zpKH{aR>rsoUG#}}K7{Qp5TC1$n^>OER}R1p{n3kAV@2vr1Q*jO>5o-nVnr,[vjO$p-q:^CIB
+    p(;v}2~jRaKaelQ1v5*C[,[=@YaE,5TUen$7<U:lv,<zZOlbC1ovEK2Qr5's$K\Vjz5?u<[QLoo3
+    ,aT\'yo1-:iYZ[X}@ET{B~QO_\J<}V,-spZ-^i'VU$^5sTJx?35'k]Xrs!#U['7$*,_\i][el$Ru
+    oK{{\=JQO2;=*TBsIotDkWDY((_Ula:@+a'xpwek=AAmR_TwVK{}!V@<R<'\{l<?[W*%v-RjkAXJ
+    =U\K(B#Bxzt>T7C|u+1[AskAWD?u\{R'[G=noS[uBl$?xw}#Ua%o-Hza*KGgCeWp~VU]lQ[>\vx?
+    y>r;]^~\+^*o!Y_u$u\*<Gw';RfK>x<zBX[w+A~*ZGQlk=*eBO\k'l2xCB[x+u}t>vKAno#UaQ*#
+    AVJ$Q}<,=U;_zDVTiUn$ssYxJB{3gvs?a]}=#3ox='B?@#]p'^-U$o;zAQvE,O;D=-]kB5k5\=!=
+    rzwz7>$Y28]p+poKx5^:AY<-e-@eV;msu1R}KDI@O>uz\vA1u_[+rw~$0H*Z-[!5B|C#Tu2<2z}]
+    2Di5p_iBTHl+'uGs?lJ7xw*<,m5J[ps~^vc6CiGee?uY-*r*-I5bp#QWDWDuCJT*R^-3z{*]5?j,
+    rr#C3EVJ-]~V>Uone['nsYlAQ7,oqx\v_g]OR2)XrxAeao-CjzDx#]G}-\n>5a3;ErZrJr@e#H\d
+    B*-T}JC=B\CUBmw^J7530>VH^g91!WB;om2(<Yx^N*;1'~YJWEW=JV!E~+aYQ1DB_sO['as]{*s+
+    [}p,kBBo<1Ox{#XXE~=I;r}[_O_a#n[D#gCJwl^<Yu1pwv*B,z$#32Dj1[}?vX}3x?M5E2{=l$-o
+    Xx*JRi@-xAK5mjT-}k^5xm+r#s<;+'k&yC1A;\~oHCUV{:wl*]vA3w<C1J-D#3b1pH?^,Bz2p+Tx
+    mXWcnXUEk^@\^H;Qx+sn]+JTf4lhe*H;>_Al8=Ao!x$<@iVJRf)1_e\,xEsxRY<KInv[QHZ@H3jA
+    >IiGasH[=CkOXD$mU<+ivZ+%~\zo:fX$DZ{[pQDxnm,CE;sVQ$BA5B~^VvjV]po5=A_eADe2o-#'
+    ]in'ZaI>2sK{Kz,UsBz[AVO^Im,$#uH\VkD!{w~Q\39*1#I%|2\mRp<[5=B<>u+[eZ.!Q-s\{V,x
+    HRl-X_<\R@wRvr~faolvkID{GPk_W}#]-w{]IXEsoR+v_x)CYk>=*VsmvzE55xQee^x9PB$-11nR
+    pLK\}vmEVr[GeU$5CVvE<T3Cm#lR#{rUrn^j5pwIvEUx>=Ao{u^7eBP]m\iHEi#7OBs<CXT^1Awk
+    >K,VeYWs>@$zu<[!Cx1lek;C113?YAp,kE_Y@J=s@l[_~nenTvGI{pCkH='ps$GiTa<^mn!o@Xp5
+    DHm!7='?a$R[zX@;zZ@jZ\^$[>@^G{+};;,pY_a?}!@CmU-RenAYna'mXeO]ovGsE$ECXxuy^e?>
+    zkr3{+$$.DksU%;h7OKIxQ3}]rED*rzB@[3\@v5?yJDaU_{E}5<\D)uD;*DkX'k\?puI;jDr}7<D
+    a@~A17#IXGDvR'xGlH~\K$Fzw!BfrPIv@w{+E!^]^O\i7u,]{1s[<J;r]J$EBj@RtC2w5eo!@|Yl
+    $\mwHVB722K*K#;Rporu-C39G{Hmnr_$D>[}Q-oYhQ~1Hdp['1xO$}w*;}-C}r^B]>-{*AoTU{,O
+    lVCRVjnRD;Dw\l<<5\_7jo0Ev2AE]GVf[e?o;*=O^vu}9}3A*ALjrjCke~E$_xY5j<}Y_~e2UX7C
+    #gK9>-=R<T@Cx@Z3-qaw=XrU!,~z_~^KXrt]I7@E~^>$@!CJ<mH,T!*lYleax{<pIOKXCkV55#k,
+    ?-C'izIXRU2mVWVWHDU=rsBnv$VzX*C1AE>t?{!wDp+K5#-OG!~K]uAaz?XrX+p_/f7Uo1wBvn[]
+    +-pj~EBxiVDR!pH5uz3vH[[iEo*vY^j3$+l@*$A{nUH^GVZ+T-T^ewl\DGquXeoeXO2#^T1I2!#<
+    O33C~XjGux3-CuC5iY~BZXD>[<C<Cz-giXujBoe7$\v!kE2xu,CBjX2B[=QCvRo<;&R{j=xCC_lw
+    HU=*m^YE]<}T]OO=,!=#Y+15G=2Qv#PeZO[v3aw!aa1/g'WsDv\?ej!Kpqo-R]v.P-*Y*T7{7pB+
+    JE?ZJqECR>IGvv?$AaWjHD_!sA^;+$zuH~llsu[)CTa=i=our+Q*H[v;:^2<=wDn'*O{rz_{rpmV
+    slZu]Q?1iBuY?'kV;'A@v[B[-U+{D=k*Ai-~1?[]Er_I+Er\AU}prj_QT28le{3JXsTWUj-$si}{
+    ewVmo$^!5lvg<UK7BX<=&dGl?!wa>YgBh7uRQi-s>Uv@7lW]3Lj?$vx/w{E]Q~;kXx@Q>s>}ROTK
+    KsonOU<RpvE=OWUJG;{3#[#2<HzuV[r-z_QO*soTOU,>Q3ZA<B=A,3A'A1JWv?$DWAWr++ViQ?nC
+    IDxe#vWA1WEmRirpT{D3BjH,F?[U3[vE*K73@2o_>A[n-iB+Vw>CH,+}G-^X=$;J^u>D^@XAK}lA
+    >]z<$,Q_['}7@kD}353=UD7X1KCXk-1@5+woTRiVT=J*34!p-$9Q$l-BWx]>a3O,c,2\uVIjWYYi
+    B.7,Q>[2R=GY'_@=[lG-B_3CG,V'Yom1~Q]poT+j^Awx@G"kYk_jsaWT]mR,xC5}#7;|[V{5JA'T
+    2RUD<jQBSyN>_x[_^A>LQ3DmqGQ7*CN+*CY*?'<!+jw]UrzE#{\)l,KTx<I<}OmJqT}+;ievsuT>
+    {q9oAY$\=5BGnKl*vi3r5npGBJ]mnri'vQ*=vYr_@7UliQUxT3;nXOs~o\G[_~{x;o-$zx5pjO}s
+    n=\Y_^Vlow}"VbLJ}pAUo@5v?BH*$=k1KQuCR]u|$r3D{r7{OCQn;wr_'Hmm}^G_Z,HHAOJoI;nW
+    -YY;e8kSrz@E];A@$U!^.9~='Wfe{1OQj*ir^k?YY{V?zUH'Y3<:!pIe?=Rl3{J}5UsJq*?!7kvK
+    rkRkYpTl5|[lk2nSYK2[gmoxp|IX3wM_OQ1<p?_s~^#$u5TeUAsaG]2[=]vXDw{]1=Y@I{Ho>nsf
+    e2JB3jCsnR??'{JkZC<^arn2-AmKha=@ZM=I37Y<_}R;+-KXEWVOuk?'B+Tw_s5~7-Rena|XEe+;
+    _?]{+UG1A}$@jjVR5evrT>pz\>,<eHv4UY3,Y--w{-=iY}u^ilB#,WUn$>O7?j+ppn5K]5-[RU+r
+    7;;e7wQE!]2^}ipC|Xw[iLN^I^?EOlrj3E'rQ$3Q]\V7A,\X<m#aCCH_Y>_'1V+4'xV+BkA-?RI=
+    j'*},X~}Ba=3N5X-=-rj^RHrGWr?1Ux@nu,B=^WXl-z!Y)<=XQ#'T-W7UYM,5iUZC;WGal$+v?[[
+    kKpJ5]2I;,zLOCrpzGoEQWrxHlAx{CG:S<}v}QeDuTGow,IY}K$'-8_3TVnE7z&pWA_lm3Cf?a^<
+    Y*W^<^[VB#Xkuwn3[iC'iVp5XrC}l}[O'jH>Cr\3j;'l8o]={ZY2*ca7HZN4X}w}OnsrD7B2U9Zo
+    !^k$oIGB2Zs{]WlB??^5?+ix_#;_j-A}2j7U7,'2U$!1_@EJ]v'*njvkO-a{aUT=]?B^@Joj*om1
+    jz!{E{WORQJ+}R}vVmRsV*zliWOI{TX*KEMhzsB2;pR,o7n+O+a$W'-3ax+B@'s@14OEs21~nHJ*
+    Wns5HQLWUZ7,}zxxeqlmA;_@$#axrr~BR3pZow]H~Ius^TrVXRp7r?eHbXO}m>$[X-BJl\#zwlBH
+    >9i$s$pkjKLA*V-B1}3d#}{\Aj[*xno<$+@[BK1~ks?@C2anRD_K^$T2U}QvrYY@SRw[mG]*Q:u1
+    T1*zi~D5D;G2!#{]m2]W]E5~7E)ZVeGAYXGlr*OCET]>YTBd8Cu3Vao>5eoemuGJsjDj'Ci1*|m*
+    B*ZBVr{li?kTm^OXx,Gj{DHxVA};R{3DQ1+YC7W[oV+YuY?_?ER__B@YQaiRkj<CB,~72r#TsGHE
+    \]Gx@e_EJ#7rk]0N_EWe^e?v~AosZor2_rp~qzWr]Y~C_X$]-RI1}$ujiIKpJtf$^>*X,r^?XuXG
+    WxH7]DklrDBQlo<O=u7?X]I-,A30"^w>I1*}mt?B5>1&5,oV5-Zl{'^1}_Uw]nrmj{'a\Ua2UjXa
+    wvTC'nO>V?X-JR*,B33;lDojh{G-^F';+7DzVe-,!~5zeW)ET'HV-lTQp{R![jr-7Qz(V,-s:~CU
+    {@noE\x^R2wz<E+CaImE-*>>;oT+YppaRr#'5ssHQl5*T_GrAwn*;7aYV!AZ~vIu^Anzi-r@pop?
+    C2v1u#>D;@o[}lAK<La}JOwDl!e8]7^#V6_sZuE1*jBOC5A[eIq:ewm,KDGJlz^x,JDavYQ+zeI#
+    _=-jiQwo5P_m\vkzXvv[svECj2^l[?Z+BTQ}_ov6r]3-EYl\(najs]<_mx;{=AR*r7Q1Bw=D?u>O
+    eTn@<OOK1_}<Y2jY=XlWv-';eBX5sIA_=[kKAT-$oZr!\/xeEGJAnU6h?.GODRiTZT_oJ!Ha2nK{
+    D2-ppa3=w<Z1-Bazev~V}#l>eB,#11{BB7-vB2YGAQ=ZYUt\Q~31x$}HE_\[y/}-Za={wz',}au+
+    \vlHQrqzEnV]l#rzN3jKG}Q$JlTp#z!~!1>BXBTJmk-j2YDYj8Tw2J's{Z.l-=$]-1nq%Rj+^-js
+    jD{I]Ru_?b4eIY5GB\p'vE~_?Y{?I_uT<]p{amueee'+=17Op~_R_T?Y73nOrYQhl#32D*?B=v1O
+    J]BC'*_>_|=]@]V73sK]VZhs5xk|Yp^+6\#aI$z#W@Y=V&G\IJu-;uIXoiQe~5?=V?}pEmj7$WIH
+    3KJN_-u'AETuzXV!V$HZBnz*OHE{S:iBCWWjne-q5Vm^}RUCH-TaF{,,W5jjuPpDA$>O}V3,bXO*
+    mAVj-a7(k-O2$I<~O5Qz^;!^7<1x''O@}?j5;XGHRW^#R<X{GJ*rm'BGIUmXE_<J{RUr-_1a_i<D
+    _r-V-lzYHI?;E&wXuj.m[[T^R]RLDeaeCKK#P#,-eu<=pua!>Cxw!_77+,+-'H$<pX*a[kX]#uz!
+    rg#GZJKCn^2wUU7,XTe]'WV\i=RZIauj\u1O7aRunIzT2s*wUH=A{}s\pI;XOvIV<*I*$}e<o<7#
+    [Dwo5wn>E'"@Bn?LzzxDCl>?(WxnOB2VT-Hw]iQw#@+XD*um?L*_sO~X<EwRzT@]V;\^#;76_7_w
+    #wxBEI],OH~Kfy+I}~mOAWvE;^B7~KqqC{w=&;o-UIna!B,7'mzna[pF^iA*1,=~oZ7ZLxo[~5@a
+    xRUVmAzao<'^Qx@CXW{pT;5xDCiVk3Y2$['{<+X2Hk^Hnl@;ulH2e_V<xzRTl5R'2FGj1wUCnl>e
+    p;M\;,BrVnG=QkCEDE-rlv@Q7Oa[AJ$%d?E*B~UH{7DnX$EW@D5V]B?,#<I?^RsQvpQa<kjY'[j'
+    CR3BXv,,>@QAG-zkelos;K,vw<={wHri}355ZTl@Uu*+#7xxiQEYYAeI*bsUo,o@x=!7jeIY[Uk'
+    sRH-x@w<=n]jp#IuIU~,l}V2s!V=s*DV@H0;*~VXo5YcY5xl'7,n/5pYxiX~R"_#-jCKao+UBIKY
+    IY|$~uu3s_DUBVVMBQo'737kV*aH!Hraaz''CLC#XWlIz\sJ7*r^osOXY>D{VB=kJr*@U,i>1i1;
+    _lr\D^BTY=#^#$edD>sQT<Ezt]ko3u[ZAEEiX+v;Q<Brs$a7j]EN$3U]s{+eYpAGour-?RHCB_pU
+    ^{Zenzr\'$,{ClQwPHamK[#H!~DQZVK]CI7oRWan_B+Co$n^KQNk\H?Wrx$7RZ5sB$C]rU-Ts=-B
+    sv$roxpO\Bu1i*;}h\!js^+C,YY]XzVQ<Up^O:Aa~^nA+[CiZ1gleDm\=QKW^3,u}Xj{pOu*ZWu@
+    -rn>XG\lUW{e<WJmXRW{U}Y=G#ljqM)W5oV~r;TTe^=GCI7XDWp$xZU\}2oi[AojY[ex3A=q+o#,
+    a[R3sZR'(KB*GX,Y<ZjI_bArW$Vn;W1XAjoB#D3oIQ'@~{Q{m{z\kp'_}TPCr5C@z!<*TDRzJa_\
+    Z,?wss~ewW7]KB\M$KUlNn,'wo]OQnHjI}V]$=+YK#Q!2BjBpTn,ore>5>G!2;zCI5CjRT7o^K&I
+    r#W1_D\(<<X^VTVI*Xaoz@$GHrv{dj+J]%*$2@iHoz\JWUB{lCY;WJmU1J5Y^W<OD#D;IGjCrDs^
+    2mG>mHeBYJxD7[WATz[,kn+XA3B$oj21so!>>z2n*aYH>o+7Bj*;$>1_iGI1fS+Xj!87oo^#Xow\
+    sjJnjrlcz1o}9vI!}0*faAn^l#zYXR=se]^W.]{OE3sUr.Ann;IUzB_#Dl&;<-_H5='UO=m@+wB5
+    R+s$GXBQYG5GK2aXTV1,,B!e}~pR!>1'!V7,/Y'[xjo$Z7Wz3F;jxX'W*!Inlr_Cn!s$jl3QjQH_
+    Upp;j#NU5Y,aQxKj*usoZCXYG-TY>CaU=H=r3Wm@=]{Cwxrp'3\K{v^-XDYveQr[{o=Mu.+$spr[
+    $WH[xA$GU=uw'^zYU+V_KAgUw|1:,K\Yd6I131uHX[r;^im-5JT*v;O~^o-\+T*GmQQUI^VR7ZY-
+    vA6YHIB8\U-j]oX$mQYCBC+5[+w_+GiBoB'r&KwZV#\C~\?~~T>Y1[*_o8$IQTM+}2xYlo@rmpEA
+    75CJRUu![*IaQ*7oeaD,-EIYj!;\;j+r[=7'mulZsvUj?[RoGU]wYzaZlwWE?U2TYxO~RD'K,l5{
+    sJR>Ez}DZ7Zo@{,x]1^C<YYU\p5Z6{<\!<Ul*v-@G_o{1^lIZje!viO2n,'2}=u!wC-=5J.nCE3#
+    I-!<U^m1z?-|CK=2iU-GjViwos+-y52{Hd_iGGYk;~^?$-K$-KsQ*1kHxrCGv+BvjkM*vCC4sVoI
+    @ew3K<DKyHwvzlOpUI1#OoTI3]Kr_Y@@C#zs]2-v;=uWlhz7lkO+Cp!QQ]l+V$G-Bsl'3=fR}@2!
+    V{GiA$2WXw'l<WAlIUG*#~p)7>B7UUr-zz7Hu=k-#Ei<B,1U_ks1'Ca2]EHUqExn@#$wEGUR5oH_
+    _$u^$5Q1>K+,DKxKAs<x=N+,+C1u<}]xGBq+rQ-1>'TB!7W#}HWGJKY-Y\Qo[Ap~ljGT^E+EO2{E
+    o<kx<D!]eW_,S$+uj<sso2+T<VUlE+sH_eNDX}2eG~B31!5k'_*Ywnn-xBwAV2mCmX'}#KT_U,>W
+    <zsATwkrKIo2zY{.,$pvN^9ji+G-BV=eU@nvDKnU,'W_@BI=^zR$;r@_0J]>_<$*{1=oi7mG_x7s
+    u{zJuk{r-3<,rAw*BXsUQ<'E^-RQXjsezQwK*^?zpGKaEM1Ou,in*O'o3_u,@XY2XH.vQ1RE,UB<
+    HXH;plDlEp+IHW^Gusripr{G*1ArAOK|XCBr''j*op55iV~T_]usK_#Rr3ZQ_zu5cewmavOuRlX[
+    r1l5_ka>,+Y+swC2]lzr<[<\>PNrWrT&$;~^}ZH?J^3@z$}[rkr3aRok_\D@S4F2^{D;nZ=wp2Z{
+    Ql}#IZm,^#zK*u2[av@iHB_IuziO#*REwj3Y3DZlT2jbnAprkI$D-OX7IRo>eH1-C}*il1Q?=XDY
+    Xss}+-m~.ozHK?x+]nwVO)sWO2_o}H#=Uz,#KCVXR,](jl-~O;r55[~;2rw{A>BX6=u7BPHY>o>h
+    ?$xKCjRB*-13,;v^_V=2XDn3#_2$.}=ove'_xxRJ<D=?wK=-oHvwI}A!<zs+a_;OC\OzJ]\250~H
+    ~U2vIGuT+-d[vxCE~3wDW~jQpI|!Ue,lZss)[p-51aA]S5vBYp8[YUJzwHx1PtEjpp:.zKnB,r13
+    ajA[pj#'EvV,J\UHAVSPKw$G\sB2jo*K^_;Jwj~Z{+xVEC=',sO*5sx>2E8mV}?JA5}_eJTkBjxf
+    KQ{}#$Xz3rRsA>W<Z]>XIXukv'QYHeju~ve-v@JQ\m'DvDKE?7CRCAa'HXQE]>l?1+RVn*Xlj-V>
+    4<G_*YrIxrx+x,_vRLTDKA5-T#i]I7ua-JXA<W~}3kU]A]QYkZ)zxQ~ws[;^,<+7]nl}?Z!Xr=vr
+    ZG*,pH#z-'u{]#'$eE[r1RK+1Q^GRl_,BAmTvI@DEmX\_viGoKD9+_e'7o1Hf4eRpshB-pUSzkRV
+    K+Y$RpH+sV]sZw=ixODA;_}$&fO+Ixwxxx:r'{Z$Vur<z^ie[p?gp*VKo_#kaV0,{I}KejaT<RXw
+    1~%vj$aD_QV|IwBiV*7j8s-CG<o}O<lp^,'^X?1jK5>}kA\W+K>_*mDaCpvVmYAKT4QTG^Ze};*V
+    +TN=3-V]pxs}~w>\KlZ?zAzY~,pmlH$ABIY5U$U6\7?X8\?]m,JRaA$O#z}z?x:,#''=w@~\YJpm
+    le$y,o'';<*jC+*3@5E^kr[z=BR'$Ue_7{+eN-rvp.{aln~*7'2{ol_Ow!4^*[DdRzl[DIE^XO}v
+    ^Yj]V_+<w1anNNx$^v5ko[#Y2Gej@UUjvQ~}V+GoO,:f>1+aiVJaL*$Tm_@GTEWaZ}#Q+*U=#@+H
+    Q3.<^U^',opRQ\lIopRBZuU=\;aHBu--BwJDVW@k_3Yu,Ws{z}lUHRs_YoCC3KuBT$aZYG*_<1Zp
+    _Z*!wB!ZCD2n++mno@vEmQuwUx]lm_xwA[Y?z>AwOo~z@HxRYRTC^=CvDY]Dw1oF[]aeVr\?[3Q,
+    C<*{WzV5K_=pB1~rDaE5G2@R\Cz_O;RZ+Q73@$=;}iWBj-A]O!r]_BxZGz;Bz~]+$Al$XoAZl^wZ
+    N<*jlJ*\+K}KAyv31Wm5ieiG[T!e$Qf3Y]{OJlQ1,;?yfBrVr'+_HGxn1BHIAzJHeIWEZ>vRmtYv
+    VB$*DK2>1J3*DADvi\+X3kD@vBY?K~vI<EWzHOwlx+R'Tj*uWIz*]*xAQXJOsj'EQE2ss]O_D^Ri
+    mQ7;Cov^V_X-ZT_aXul71OQ5!IeuCW}ToX'YrsH[m-R1kw\uak'6VzWXb7k-$J]>n=>GVEH$n7[D
+    m3,o?vYC>?X}E<x*eI'x~B27'K7-?p$}+{oZ@4'N_<+aeJO}ZUA2vY3nC;vBYA2;-z=7DwoDRBlW
+    ^{~[kE],3TH]uA!^v+u^'5*EERwU_ZUmvp1[}V#nQ$,~w7OW$u1lWUjTEIl;sR=aiU>B~51$J^iC
+    k>7_ksDvE@l5#5'QYBE5{eQ2\eK]<wZEu7kj^Aar_HTuKrGCS"sRH*URDV]CTn7aTZ,1Z-uCz[i(
+    Mr=$xVkE#a&jv#v1\*~$G[R\\7@lk$s+_G}V#QE-o^<A^H'e$*3eBV@<xwTh_2e7U*Q_>VA#Rj^Y
+    _JvH!+Ax:\oD3epDZJ7Xj&Mvl$>d*$$joG#Z1}--'<^R_{>uEz7u5TQ#s=9oE3T'=@2~5zYo#7E;
+    vQEzGzxow]2[Z~_*Eo_G]nK1@)uVI@?,aA_,'j!z<>!'UJwjKx[OzkY,>uZ,Qe4g?*IT#pHmz}kW
+    _*=?kAl^#s]Vk\HeAI]IWnnR7;5pEQs{K-e-WnooARGp1Xn,gK7R<m1lT9sxAV(%-_aV,XhZ1URQ
+    {W'B<!InX$*mlu_iG!'^U,7E<x}YGkRwC,OQC=WO"*?A@#v^<bQImDCmvO\Q5WBK@^GK[KqXoH2C
+    !!xcTo\a;Y5i5Q+D5CiI-R!!DO#_,E*vHBXDO,;Or#I3|k]r1KCGI7;^;iB2Y[eBuD?T5'Q!Yh13
+    xXeT5eeosQVkxCDlWH+>+3>I{IAQ=Xz7k}=l3nCv]=rVYX6uDmjx2\vMzoRrt{ep$fW-2~Rj+zm1
+    vBkomrHt=iV+m<Hvxr@$s;WK4qlO=rwUH#o,v]nz+^JYRw3}C7#Gexm_3m2e1VQ@ACFGiZnwlz-'
+    3H'm7=\*IK+iGx-D~*;WCU7Y~Q1;[n7jlH74aoJpC<K@M\H-Q2-_oMR1'vx~]A-^mX'5pV\!J?7_
+    -@|5$jI>[C3~[BRV~ome#RoBDOpiRe3k^CW>v$3z=XC8;v^vJxzEEj,5T^$;sxH?rsAnnorm1>l\
+    ]k^_*K<ROTW_1r'QVY]YZVGZD*-xzWU$5aQ=f+}salK;OO,aWlKjUsQ]GKHljHlm<IR_zT$OJQia
+    D[G5;7_ikw$KD[}+}Vl!BXj?Vap-v3HcmoJ[HAl+C?-Ce\w{C!po\H=s*Ve-=u{IEuvAG,jGIJIu
+    uz3'GaWO*lG5=Q@XxBkrQo]<$AjI~TO@\;I@IC<*t>e#,pie[fY<wV'po?#_RkH*$z'uTkOn7-O1
+    X7]H;1xB$>#H\eAp=\iTrVx@5?7+wD>jHmG{}}^{vim*nmDzpx_5ORpkvIR+[xzn'!<$$[KY,lRD
+    G+\7YoCXaHS^Yvj3H+-/<zGis,,5O*7!@5aX>rum&x_E+v3esd_*=5bTa-Iha_zE7CYerE}zVD=?
+    \yC}IK(s1$lpir[^up$^-AVOnK\Vo,v\vT_Ev*j17VK3l_Ck>wvZG^n/u>wQksAHKzzYu1_1'z*<
+    HERm~=O1QBo18<HO'G;Y~\SEDHm==Io1pv7~e!IjDG;=1XoArnV?<TpE?AZ0;=Gr4^2vzx$VR_<1
+    *bEosk3AlWij#]j*@!ek=\Tsv_^soa]G{jtg5Q@3y7zE'*mGJlD=ilCaolYCs'Tj!z[?8~1-UhQ>
+    V#1o?$kQ=vR>nXMTI!#rC=#j{I'3<prleQDJBXT9f>1=mk'JUT5#U1UD[x?3nREE2dAR;;NH}BY-
+    X{]Hn2+*flm,,mD*~O/qDBQ2[CrV*vQGrX2@:%>Dir~Cm;2r?[CXWI,u<;4,3pAnE<=<njZYpzo>
+    Ee>R]n}-55;2+arIn1YuY#]\_@~}Gk>Yalz_>x2lY>^fTj+zUr3x,cj~uC5++^u<WJ?aeHJ,[kwX
+    \OwTIkx[k;ze^7i{W~4^Z<rKneivKjR5}13jn_C]Z@QE@R{Y$[a3QRvG@rW,*k]wC,Gk[E5lhymr
+    2xEOu?AUex~rD_u=z'V?Qi_npX7z[=kTXj2UXOxE#W2}p$a7,=>ERD0s-SmzICR<GJ=ZDupX[_Ev
+    KG2x*l.[>Z-B$#J=@R^z*;E=aZBi=@$*G;^#B=U_ji3v2UD#A*<f#*_75{;}'^#EO{V\\I5$pvTC
+    I{7v1'Yr!Exp"f?rAIl]#[7V5\7;]BDkzwna1OX7{H'rmRE2{+C31DCTZ[A1i?jEZ2!^pkYZns^U
+    ElDl{mD?@aV+aGh@1DxIizeG'Xe_Bj@o3~aGm@$}<12x[<OEmv$W*?sC1m(U]Z{5-D[];=C#,*-,
+    ^32*x5@,J=]QEQDvQJxO#T[*x[+],-$OxJ3G}[pYapmBa1?#'+<5Y^iQkJo=+mD&C~RID~]E}Z+;
+    I{-BGCm=D!xaO@;z~xe7C!upp3,a'75RoL]zH#,>}x}5}5O}CCJsv,!}?pr~~uEAO=]+ul!alT,-
+    g7@5]k'{nViKZ'Aw5Q^#^CvH*ICY,}n]22*}^Ee1pjZr3?UICo>ezn$i,2_oi|eA![,TZ;Keo<z,
+    TmI<!^R;aA*pQ7cCdYmmoV+^l(7F1p5IVYRsnvBYxB#~Ys_;IIK_8,^U7s3*zYC<sTB7T#'KD\OQ
+    '1W\AF*HVZ~,R}sQ~!E>DQkUn,#opY,^A_i$;pHCsiZ\[{O3rz7Oov@G_*^]V#@G#QCxBV3+JvBl
+    ^E&O]B#k}Q2I^!wuQC]{}#IuQi!wA37orZXBz[1H=Ap:I>+@]zQz2jTG.}K*a~63U~#vW5s-v#kJ
+    w$n01@G'\aU#;^3kn-a}l'>BOTr5I@QuyxEm$I*{DI#O55a@{-$_wCEw;UYI5}{3EC~QkZR]kAC{
+    +!XA{-<CeY|GnJXqEz=G#COKaTIsosi1DKjQxK_p,RQV<=7JWYVT}@*UGXQ@n,m$VHQ>FlX>j'2A
+    DHr}3A,>@~xT?HB^xOw^xsZuBVU[{o3VQW[]R5#3ToaYRTII~V1$^~*s+OmQ\nHT'@,{~mjiuo]a
+    aj+\Of$\wJP[pwYIA{lrGQ-rZ1Ic,<I;7BYCR*n2@szu{Q2HQrI\kR\wY-;JQoAA*A;le<Two]O<
+    0F\E_'LkzjUTxzQ5]u@o+KKQOTkVH+_#E5X:Y#jR'_^>mjnYXr^jW]!J^,YrP3IC{OC~^xnov>a;
+    _B^!on,-=Il<=<>l+U\D*G7+Xe?l{^m*Ir\i!Z+Q-7#;uE]~G7$;W2|DJ_A7Z'1olkjFApk/@jX;
+    3p-7VC-C7pHmd~S=mA?B~2Tm*;1W[{Jz[_mU&7iJrir_}r<nQ5gHnr<Yu\1=#V-h2C#JBTvs7p^B
+    *\*ThIAnRghVPFr*UCkCz31]\lz=!1V$-5cTxBB3xnDG~<RI?!1H*##C@QwP7$~mfi=j-+'lr,]3
+    =v_-+#{RQox5,9o<-!n+\^T+wsTEA<_[\iDOr>,&I;<k][v~x}!#aXJ]_r-=~AXe:;{$<wnDTY@C
+    iRYiJIm3s|[7eWEvevYX^k$3n?)AX;m]!@sY{JR*iOO8ja5RT$['I*pA}+oQa_IvwxiRwe[k]z3}
+    vX*+@Vm$k$A=>h5k-+KIm#y?rQj@aDor2VYVQZ\_l'C^$sWon[AT>Q1Nu<DlY1+{?_k,]_2u^V<x
+    \A=j&3ozG)'K>kjul+,T[GEWB\XxE7ZRC3Mk]AOl^llH5ka5Y;53&cmUjrYsQxn$=iHV-sN557<.
+    E8:'wvz<+*G^J^]D{zOm]uW%UG~,O'z{2e=_OV*oJ]*'?hdC\GDG$KV$G>r<8-_mnQ<z1kluUCN{
+    EYu,kTI@vl-!wK1C@B]5DVI*7Bv)bwRlY]>A2y*;D}1@={okmrfpn{D$lZuYYo}OsI\Qa\}25nEZ
+    77Z!,}+jpuIY?*UV3!w<_kU^T2vUaYQMrOJ3Y-V2\?>pzxuuJAKe[J~_xm}?[5*{<\V!vIjYR!DJ
+    xGoa*TKRj5%0*}vBFqom+nVEp-(^+B2i^=-=v,>rb@[@Epoq2e#1aTaLHjwe71'GkT=sL&"!N4mB
+    7~#UoG\zA$QiI-sB7'~pVHAsQOQnX{zIxD:-5-~UI!A1<Z1}$WzD#r$wR,<!>-Y*;=$d[!XI-<V1
+    G11s@OzV8'OGxC1jEV!I^n[W3_#}5Xo1a$?2B^R;]''k~*p=sm'Bk_IHmR<Y^;UxJ,J-AO^Kp=V_
+    l[#3DK<C<93(qWUY?C!}=o,[lIC-z^GQkl=]T3+X!O!lxow+?]DC2BKH7G*WeG5[$J^QJ^T--M4o
+    C;UY+2OmCo=TU1U_A!pewQK\THuIaja{'ZHuOKj52z[Ox$$>^?7{]3V2D5Xea7,D6!>O@,XBAIro
+    2G'1o@oGU<j{\gG[*HYD-=;UBpRwr$p*{RH[,Qv>5HWQ1;A},nwQ-H&^,,'~BY7jRI1-(!AHHD>X
+    >VG=WsAz36C3H\=v>x$j*?m5T_Vi2'Gl]#&\2{~/}_ICI=w~$jloV7[mGa^~I[=D1I#DO$V3$uQO
+    Be]\1W5KB_XW!<'OjMaD+pps'XI\J$[UAkpnr>e-p@lxj7<{*;H_]'orau',JrUrR7QN'J$WOmrw
+    assCG3R=W__U~R7-{E'?qBDi\QG_lNB3pXvKswserAw}@C!\Ca?aYpHDwHG_a!izx!nBr-B_An'?
+    jR;5vIpm<,9D{,B<,I#>r[Y[^E['OVn&I@B[QiQG+Q}Xnn@KErVAlkK@Pj*Ru=DZ{+v=aUDpegli
+    H'#5(7kGZ(OCm+i]mu!-1uZv}YI3A'xr!1i>_mmCmGIQjiQCQ[xKYH^T;a@D,~E!Wls2jx#A{aO2
+    e$W['\moRzv,JWJOi_1lw@\3+2vHr<yIwa~ixUH+pKBK*#Ie#QekYzr!TYWK{rkH=JIDzvs3oZxd
+    lGJ+;CUvlWB{Wps~li<r>U,z>G*#W>YswNm,nZ-,!']zwYC*^i.vr_i^+=R!<WnJnrm!,;ejUa*[
+    m<$n{=7'>Wa{XRK-Y}7DAoE@\?WO'377C}s[[BuC<{{YPBowIjmJlKQwlH'*Kpav;jIE=8{B\zA}
+    W\YZ+\Y=Jo;ok>DX7W%{Dv!':(9vY#m}x@~}GBz#<EGNC[B+]+^3eGwuHRVU'o5mw,k7<R7s*JzK
+    <s*KU1i**^{[__uuwwPc731w*rWoZV^p-=NX,a*0hna@W]xeORpyR^[QLvmBk\X*DJ{>~n,ooE;Y
+    -$ol$\~jD"'u3+NUvz+kRu[3r+zC}kG<w17v(DIX$T_;VIj3k@r}XA<uJBu5]$iAYR3sA}zGwU*I
+    D=Vzs={RWu\}+b'e@x\?oo_G#,Q@rD4B;EOeFIj>o]JjW]T=3GQkW*D=OT<]uO31I#5E[5<,_VHY
+    pY\Zz*wuCXHDu1CX;g2B=}j!JnV3w;5WX?YRu$]@<EKaQl5,E*JHDTe^AA,PVXr#@5J#A1T'GPr@
+    Re=-XY0-HZoi5[!,wX7CW[zlNX&l+^x>aE?1'A}\UQDa_$!LIiun^UKHQK<CeTG'l5Tk=KE;$Wx<
+    iom@VB-YjI<+,;lDoeC'gHETU3rpn_C~J)E2VVw{xspHKOg1!Q-B==D'*\p2OvmO@U~woQ[,<-<j
+    DrRV=-Zczo},],pz,Wr2+Xz]+^>IrYQAbr>HjtWHaz-oWOMERHr<_OBzErD1y,D*!RK[-Rzsn[=x
+    'X<1BDz<JBmGK*Q?~Z<+-azZ<!U!,?=Cr$;yxp\rB6E7\[gMX1XWjXw<G'$Za5o=DOTwO]m}f!xi
+    K=_Z\y~Re@}Ks''B<#)s<]3GCp>sCoRi_o37$#p[\{[U=Raf5ZYpnXn<iC_'@<y!Q,#[R^z+^e2z
+    z2]9UC#'t2n[i.WRiWKaZBB<W'aU-EJ7_Zva-KF:}!2#ADAzb8*,R!E'>Ir.7'W\<x+R31>jxyZE
+    }w=u!a/xV1\]B+w^s'WO;x1%"B,IYA'ikok{$YnV#wDkk|JG_#A[;kvBx]'}TRZlHG)*eUYJR@kO
+    OoeKvknYz<$E+}5jYk{#7<nrO2]IUH[Zo@#m$3jOCZu'-@QUxH[p3BBDu$u1[oE;npsUzaAV]>kQ
+    -mEV@p$}3\Hs9dEaW<Oo]}3RT-zVx3YE$nOIrw}lAKV.]\oQe?AOU*+]/^Ues?-$k&=k@1olQ-e1
+    7^AV[~,V[G>5J>pD,=PY$I,rR5'Ur#=eaGeqcRA,,;'QG5wQC|!5',Z1}{?1jw?XCG5U*lJT+]!9
+    fBpk<VieZV=sv]7Gw$Y'rK[1pww~T^iAr={rR^iVxUrQQ0=V\V|pKx\V{;l#\TD=UQ7jjs~=*WR+
+    <=-CmKWx\HB+$[!<T2s)BWOnY^[!>G^Yrk_5jm';nj-[]_-A8^J>GoxwVr*r?%[DE~R'H<S@Ux?)
+    %NEAR@ih#OHjfk}{<n{@a_JKeC'\!Vnsmvw@x[2vT772j-]p'5#1R}iZJGH=1VEB!(7IT$1W_klw
+    1EoM$*{3j+7^t7+AzwG{!}?J2aA=RGR,WkDkGSAoT~2Xwnr|eRB^#Q?^W,~>\zlR1~eX]IV<}C@5
+    g*TV\GwWU7x-IxI--^1x>H7Vl'K;D%=YGYE#mH]C*XBWWaZ1[nH=DZ'3]Qs5T}q^>]uU**3jV4S,
+    VksruW~'@+m?AEa:EEROxxe!Y;}kseK3G+WkRY]u,Yj*JQT{7VX-pXI5]?EX}+^mFi8d1]Un7KOm
+    5+\UG[x~WEv2xK{C;_v\,I,!@{-=/4~=,GI=@w{A~#J[?VD'$kk|An=7zpuI~rI#e^G<Xpoplwe^
+    [}\OSEi}z$@<]kaEKkT$$2T[k<RG2Fl7T-=*'OlamXxBAI5lm;TjV*1(==zUK],wBs*![1nQCx~_
+    Ir+7QVXu*s$o!<AJ13+VB]Z2o['m#5rpe[+aIl<3Xs?r$yI+om3G!lj\r*Ip_iaY?kD}{a_*pp]1
+    *Et_J*JCQvnu7E!r^aB[KWs>*G@>R*X0^1inVU=x7B['VCV;+hQC}7Q~3oFQisXe]***ERz(lamD
+    ,_kuYf{rV\RJ5e(*jDwkGH}w<,E!*@-BAjkw>C5i<]\kG2AGC+Ul3O~){[T?BnRk=z]]\;]ICXmv
+    3N[$^T$JeY;wDTNNSk_nm(1m\J-jGr$<jix_ADR2TB#Hu]MgDsJ\rrA<>I}zlIp^~YO]e*13/Q'C
+    ;>_n1'o*3t~o7#vp<1XBDE]H^Hu,i';pl^Z,Okp2Tx!X]Ue)Z-rleKK'OoD2v!vIj;3_k^UC_Dn2
+    7;o$WU<CFy;*u\%EO~=Bz_?kzUTJRwDD*;TJ]-{'l{a5rWVK+V3AD1pnU[X_;^Y1J}?jwe$$_Ei;
+    RRTWHGXzB]x$u*r1s#]E:+==X4voruIE\QD$U?Er?Wxz=}Y=v,65jXuLN$W1Q5?JY1@DKTo*X,[_
+    TOs-}+Bn{}wXa3rT$o#XYKpGTB?JzXVAl[ixZ'~HY/1HJxA*@=U{~*D;7r7e;*kAxonO#,5iWTlJ
+    l#ma7Z6EC{'vd^E*{1\wU'*BJn_5,IG@p96"YDK_c,XAJDDuzA*ZljEn2*+$;6TrjpJAzU-X1>Pw
+    V2D>z{mxQ{'5D?}Ip_v=5~IZw=v[nHwesv2R[aUBaH\mYizZHaeVm2OW=@I}v*#kT2U8qiRi{fCx
+    *-}7~_s?msoCZ{jTGj3<Z>R[=p\^s}OA3v6Dm^O}-x5;5X@6v{AO-Q~oR$Z;BlK\nj_YW-ou3{pk
+    oK+RICx?'j,e-o+D9g^@}pEGa11i}D1TAx^vsJX>]Z3V[QJDTmQKVpNY,-JZpe=,Y+v$jA@~wpoJ
+    z~TG5I+uXHZkeZ1D|2}K3(wn!u^KOW*<IR{1^\]W=v\?e]vV-=VXuQ.E[v}7R$I[Ujvq@_@pZx*<
+    2*Huj^+oHn,~2,ORYGWGlE5?2zHpc1K~H-UOnoe=D^+U\x<j+V_$Ufr}^MBw^2Aa}2je}n]oX7QJ
+    2ZmwwxDsXA^>]CQiK{8W*@$#_k]puUpYo?U~5xAn7avEU~n^ZOUIGx@1x{Y~-~Y,Ku$Z'Q35mQ2E
+    GaGt*0QHWm>A,AMSoH*jD*+UGl#QwYk3m+j79Yij-r!OjC\oCB*2[pkVs)!VjCJA1}2sW~G#W*_1
+    *p!Q'2{pGkZVj2QHxzoQ\Y#jTu]vOp$nG\^BH$UV;J{>+u/1+$wXhWs{KsrG@a$57\?eK$uTA$<=
+    _F'II\0jE-r^TA?[koV=_YX<<!GCi,a~Cp~om22jxJ?=aW2?5Z}I{>7]}+URJ+u,O$A,p-Y5DU@O
+    -}o<a5evxQ,]B<21+v3V[j-+[+=j@}Xr}2Z!Ha3svs?$OKW^zkQ]?{KI~@[[V3@O+wmE?BA3\eXU
+    OkHEoa\xri~1^<7\lIG}r1i^QEZQK37[_i}a$W+j+ROl^BreT@Bb8^Z~'ODV[Vwo@m^ez'lAu,kO
+    i]V]ZmBK2Kluh,^~e5<zIy5m52D!Qx#GiMe+;rM.6mXms*+{;V?WYIf*=!op?@\3rl_=-TZ2aT,U
+    r??VAUp%(2v*p=XV3pX+UZnwYKUAXue~C~e=K2_XXp25rQQ~Ya[-,@vO@Ek1]EGDWawx'_*@mYwu
+    UJeaA]^w_Z]QB,+RiHp5DfaIHCRvz^]]1*&bQHDOYTIjsjZpMA-e*vOeu%e\D$Z1U+=1}IsHI*$[
+    #lEwG!IiX-#Di!Dw[s)R#s>WG!n@+U33V}svke\Q-xGjH'AYQuZ><xEHXIwYwVZ,Va#]f2xYUk-[
+    xpr;5xY+Zvz*u?O;Bov!-{5Qu}v-xJ}ORp+*G-zpTI,;YOZa(#wv#KYzx$'nO+ro3n=OG\A+;W_+
+    Du]R\Zt0>_k}B{GTpCJE>[l#VYuu^>mwY$pa\-W,#T*1eWn#rJ_\YsBW}dCkHKv]'kw[B~{E~,~'
+    D1lv5iRzK,|~\V_<$m!<Ha}5;a?4U}eZenRI><Y>{w~o\r=ZioOxl=>GFCz#zv3+J#VC>tH[e{]7
+    xe*j3T-IVk~CQG8M$#C**sqYUTV5rw2'mGaXlj1<*X^*Wz[MhI;,HG<Wk5^ri3nHEDz}_-'JUv'u
+    }~O!x=CD>7AVvVX!Qs@pv1*~wx'3xij*DK='r=n\x.+UT<uHO[+={l<=>sXQ<V$TT'cvsw@[oY*e
+    D<<Rq]'??<I-TliBnUp^\we?#QIDQlQ3}4;xi$@e;3i+<!%.G;-[vY$3m\?A!(v]@5Y[-}=XK@q*
+    'p5K^k}C^Bx*ls[z>[,3_J!dkl<UzO'rIW@3Zj\?B09R^!;pBex2$e>Xw=!7keE?'UQ]K{mzY2x,
+    *3HpK+25a<~NQnWj$Qin1mQnVR*eB^V$^eYjT^WepP3-~[uj#5Iwnj?w@x,7kOTz_7xKXjh*$>7U
+    Oj^JxAzmszn7TmI$;,1OkzskwlW=h<z@OI,ZwE_{[Q'H~A|@TBG5Cp+jCuA[#C{]R-\*v*5VlJs\
+    (XD'_"|WDUHZGJ<B=RkC@q=2evql$Y}kA[T<+u{[=o_G?>!'*eBAs,px2vErVV$RumY.k_C{xs#e
+    eAe=s*]R]\aO",z\R_2-[sEW*+'?sRA2>O11Ul*Ta1]}C~5,uB\ijZl_,@7O$xZw557p$z}'rBCX
+    $TQ{Zr>QsK[3\fDW5OBo}]R$]2!\<@Bo!O;'7e=n[=]eKe~vws=[Z_J[[x!7eo><G>2'<!EQmWB?
+    mT.Fkl+l:'!Cu1+}l(A(%Ee~XmeUxczRwH,~{#>]==H*X#['#YvCu[,;Q~Y'DiImv;KV3at{B!5j
+    Xs$EpJJ-\~QBE\pq1sv$R~Y[P~+,Dzn3J(iXrIQDV>IOX;j*Z3]ODIx[;T?O!]#A!m^U}l:72Z-c
+    u.02[@+\Om+3=ZaHX5*A=EOT{\]m1emZDQs.$e\eICV}"0wp-pDkDw,e3E/o=X'#{_aEr5n]sU[v
+    J'i@w@KZ_slT-AIP/G<^-Wx2;JX'j,OJ$_zo2l}Qoyi{[_H,_?'_5W\iAYasmp=i>^@[ziCj?K7n
+    KWZ5ZWVA+jwE;Gs5v?rEx+s{D-9*~-#RLVoGEe,ei5^^H%RoUXoGu$..o?IT{nWxA{a!oOG]]-,p
+    Sur1^.RapG$$jkV,5HsQ;U2(TsV<C]n'Kvws([,[ZQ!<R+e7km5Qv*AA#W5+Z-UZ~GJI]WjTB?IE
+    K7*vwA[=vt=;IT=7R<{_!YJG{T?(YT*2BY$BW,[]JGxaz?*nBDn[[GR&\w-KY?E*#s=Z1I1<IjEu
+    Z^QX,rTlRxr#\@OouEi,%vkvW?o]2G/i^Z$O#5$kB!ZJV5CIs!5B+mWo5Q*}r?EI\YDZoDEoOZer
+    Va{'p2kdO{wl"*?xTq/Sf=xUwySLA^GGMar^Tv55wHL_l=2wCs15^'TRY_r*U]pp->{mwXss-*-J
+    I*2KnWY{YJvYz~31[OC_z;_|4cJ53<A}c9#XR1Zv\}RVr7DKGAJXpX>AD*ci,7!55j#@rkA@}Wuz
+    W^ve@3'h|sz#ju7zjXTZ2TCZI7v-s7,3r=7DE$7W~@p^;PCx^k4.Qx;n&~H~^j]R2vGr_#D'Q\=~
+    sOpu+kRE@^!5=\<@#1%x>W[^,57%+YVZ_x==<HxCuDa?{EAvOvIl/B<;[XH$#-\mnFhzpW;yw*AO
+    2<2DDC3D1!Ko[VHuIj]JVnG[]@G{935U#XoEI*@Kl@TQ'3nR~zOeXD\iAVO'GY]T!\kZkDImjO,@
+    $gCVuxi\]Bg>}a;G#\3?Xn?CR,2UR*TEuC7Hj$vnV]iR5[>~E->Kwz22IG5-Gm$<T,uoj$mHIivW
+    eQOnl@@=D\}I1RGC-DQ;zBCQOTD,J>~<zo@WQ$kJ\a]VmEB$CIi?>~-\,Qk5ZlC7KprDW{l#_iI]
+    XTm{z^7^J;}@_[Hr5,RAXa>R@@$|-Xl;UnpK~TJO@GRkxX>r]woelewo*T17Q^!;5uX~!AeE#<2_
+    k<pTw[+k'+2B3el\!L)V'E~x^vB^>V?R}7Cnzm^R!_[\#AR*}ixvrRxnB1mYK3W*C]oRz}}nr;J^
+    IjEHA,<s_k*MDBka/+AuJI!33P5n];RGDA7V5z\r@zz;'i?Tr#V2AXrD-pj<UxzB@Yv]VGx>,we3
+    *?rs=K'G'ikvE'm'KO5-{~Ul?5!{-+>I=kRh,~T5>v[R#=XA\GTD\+aU45oivE*nnKUX2aYYVeU+
+    _[v>Xs;[zjV\*eE*sIwATrCI?Ej!A,wsZHYw3alRuveX$YCanp*vOTp,ov;wxlvZ':eJC<[~XK#U
+    *K1vkAzl@k}^Z5Ezw'~v?35p>59~<jk2Gi}3[C]O*Yr3o2!ce,HnVU\H~s}k{5Q#]jV'R,kkO>J]
+    kn[X*GKDmrXr*O-DU-3?ps?KA_xrDW*<CO+sz;3[|m=CDRZvsyT+3In*]BOVV'z+A;1z'p~x7W^^
+    oa!a$iG?j=JY-$lRp3QW-kk\z1.2-wp-]e=K}ia=XV;x3IsXOszf\EBRBHI7r?}RYJ!uis#}Qiw=
+    ^];^Z^=R}rlZzvE,M62Gw?1B=xeJ@{]x7?V'u#kzX^1l1-7zQiCOwC[,3-wwr1_,33R~_Am5<Iz,
+    KQ"/5;pv"?osQn-sBz!;5}iB1rK2K{DZn'^~}K>}wr~rz1.AD[l|V'E==K}2wo{@5*T5_2EsmYoH
+    :r@HjkLF'2D!GTuQ~<7,B#w}m<WORlzJ27\w5H-C]~5z[\5-sATD5ewk;>={<5${\W7ocYIHr_oa
+    XxVEBKT@o~s'Yipz+p=lnjJxT31U1?=YY[,5$]iGuc=s3-G'7=}Iv$H-Dj==j,o+2u<r]]L,^~OG
+    'An2R+Bi-3xJwv5^Z;Oas_Y"kYnJGgx!a]W[*^pKWm2'-\H[vRx#uHHe52-DRsp1~ZAHI'-1Vunw
+    x_jU5j[[I,=xm1OrjG-+]Za,#5aBurY]>aQVpXmO$CwX$l}kDDuzj\ks^Zs#'iq2rou=_nIex_eu
+    $YInoU2o~w\j,-EDCe2TC'a,a>YBi{_*r2]'\TQi[wD[7#_6oY*jDj-#@e_jiV_a$3B1TT[zm5k'
+    7^~Ca^r,oOra\WOGI$DY,-{v3C1x[<ziG[D]Ek<vHB^R^z#+d|,sl+?{RuEHRK*X*Zrre?Q1=2@1
+    l@5UaQr=#'Ov#v'o!lZ}2X:ujuGsv~$z'oxKpeQ13,@Vf2IQi_Rwn35=-G}{QF?xB2e^u2#js,pO
+    3r#IG}K>^@YDC~r*xR;',#R*+CoCpW7nzwI<v=]I7wDpmE3<TzrH>O]GTxC,UAvnVlnxQ#Ye[HZp
+    _7Q<silT7]veBU-a!v\PTTz^ov_n3'vm#T~*XCr\C1uHE<]Yg*<aRs]>CR;A*!Y7@<}VA[oRQ><^
+    kx5'Dk-O[6mD1wH=r]Xs?Xko>XQ\'>3DrTB*E~UT*UelGO*pvz%Rpm}jeve:}K~#_?*s4xT}*sI7
+    @Q>rjrvQ?f,jG;VovTU5}GZvDWUr55HOks9.-\E@p\rKgLzn5}/Hvm!~Dk7IYYWvnwk-5nBulpwK
+    5iXmXmV%p3*pbKE5r[5a_]CExoA;'Y^QQ7Q[A1\7XGe[[y[x53Jw<V7i7-A\Jnu>HrJ}*IOvWK!r
+    3UDD{wykpZ~D,[O><=\lW'QY^mWGm<k=~}+A[,+Bi]~euV5^<A>MA17JX7m7]C\m#sIEJ]{1^;XX
+    -__,s#RGVu7sGkQ=\-Cxe=A>*pY's7$@7<5W^7uB<s[2l7mD_O{D?<UX(-$lBU>,l{Ajjo<ok,IX
+    z"-Bn\o'}UQBm2[=Z12-a7}A~oArQ$,xCwxjkG~V}7v?jYV*1V3*iCQ,Tn>l2v{\*<]j'HIu]WYr
+    E[lBxkP0IkZHmTxjvp+2[iHWVJrCkvl@tKUW,eT\<uUGo4V5lH2<R,;n53#nx;eXo\/'GWKo]lU^
+    R>j@*RGu[?l3e#C>{,kCGz]^ueDx}UONT\<H+HveoOO+3DCXY?H1xB$;s1[?rxQUVv7Z$B-}n$Qn
+    I'ZEpXsDip]-A]+I]TRHhVTm={YKeRvs\D_l+vQjsOm5K<V_515aEORQ<dre}ih$[YiIUnvUsHY_
+    5nQ.}<CmoUx[ZU[uP'B;_hwOo}?aEW;,EH=j@\m7AU3C@25]W;U|wU*]k]vw[7CsBB*'*v'Rv}{Z
+    7QX>v5Y@Il5@^_s!%2w~zDRAEXCT;R*]p};'3?,KJ]_rG,RQEHQ$H$]_Q2aQu\P5<^G]'?e'X5{u
+    a@Y&B#m+lX^aoTlIQE+D["^eZn!$C-}G@p,;pDTwApnUsYrRC<{=7{',j.CEW>[,uYB!I+UXW+B2
+    ]uU1+xueR!CK]RDA7+H_KZHz-m}H*adW*sA_V!k=HH$,ZHTC';>'CwG5I_QIZ~plxGU~-'GD+Z+E
+    G+_h$5RlZ^JY'@5pC$>Il[#!Z}GYK-=\>B[V^XxZUCDU!5Um]E'Y3{nVn=j75X<=_eUaz5Ajl^p[
+    2jpi~\<@mxzCfNQJEH?1,J=Cvig\3<_Ga=vqlTHGBkmT*_w$rB@>g<{{1r2eC-^lvC<+lrG@ZnVi
+    Ti}@QokCRWr\A[#1uR1sE{l!U3e1GrsjeCE\H]*OY[JU$GX1uMJCE~'1z'e->AG\GiK'QA]^;pT5
+    E'#Qw31$Imy"r5sXvx=HSuoV;X85aowXRkzi+^\+'K3lj'n~UwAo2aHBRWexrvkFX=$_nV*Z\r-u
+    s{u=)Q3Aa=W*3_}CRG25_B~{r1C<x8EmHvLG_llAwVYL[|kwBn{5o+zDB$*![lKxu+_U+D;[$'>h
+    Qs{1)nz?Z,8#,}_,YQz$pW]jW-A_xmZx34+};~?^#o^{52(dxV[^dEJ]!!}njF.sW]lkU\=JY1^R
+    2R>\?5I}5<XkUZs*s'@}r=,f?n*zoI>-YC*#fk7nukrsHmQEwlB\mXY5!+}iG1I$W:-An2;<Bwmz
+    ,2Gij!\nDmBu3HHR\\RvHuYz={6S]~OnGl[~{7]@>-@EHYBpk}A-BY3r2[YC'!o]]>~VVUd5_YKx
+    VA$ryBXHp_E*><\U5.nG=^aaBak*xUZ1~[F2DC7~o@_\~n?NTBK@),wTwG!7p4\>A7f;-7pG1CpZ
+    -Q\%=]=JBH~GAaDQ-$vY]3!'0v''1LZ{V;t<=BD[*'s^T3I*$JDl~uK~nj<$3\+JlG{WnAxIzBEK
+    x$O"lE]u_?W+v2sU<^ITjWTz/;{$VTT__'=~k&8>QpWupO]C{Ta{BZ'po7G!_E?l,#CTOrWr%A5i
+    \Z-\lZGx!jla}6TU^o?{D}2n53<E?2UpuBMtWrn^u,3u7o>_nw^VRU-<IwoG'!x-UjW3#jl]vKj2
+    {,RVe^@<-$RevXB'A'JIx}*>]Voo6#5wTOuv3HTAo\[#<ZllvU{Au
+`endprotected
+
+  //--------------------------------------------------------------------------
+  // OVL SVA Assertions are included here
+  //--------------------------------------------------------------------------
+
+`include "qvl_spi4_2_rx_monitor_assertions.inc"
+`include "qvl_spi4_2_monitor_cover.inc"
+
+`qvlendmodule // module qvl_spi4_2_rx_monitor
+

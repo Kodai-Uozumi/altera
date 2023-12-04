@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<!-- MODULE_FREQ.gtf - This "subroutine" returns the frequency of the
+                       indicated PTF module.
+
+     Inputs:
+        MODULE       - the name of the PTF module
+
+     Returns:
+        MODULE_FREQ  - the module's frequency
+-->     
+
+<generate_set>
+
+    <set_variable variable="CLOCK_SOURCE"
+                  ptf_path="SYSTEM/MODULE %MODULE%/SYSTEM_BUILDER_INFO/Clock_Source"/>
+
+    <switch>
+        <if condition="not( %CLOCK_SOURCE% )">
+            <!-- default to this assignment for backwards compatibility -->
+            <set_variable variable="MODULE_FREQ"
+                          ptf_path="SYSTEM/WIZARD_SCRIPT_ARGUMENTS/clock_freq"/>
+            <break/>
+        </if>
+
+        <set_variable variable="MODULE_FREQ"
+                      ptf_path="SYSTEM/WIZARD_SCRIPT_ARGUMENTS/CLOCKS/CLOCK %CLOCK_SOURCE%/frequency"/>
+                      
+        <if condition="not( %MODULE_FREQ% )">
+            <!-- default to this assignment for backwards compatibility -->
+            <set_variable variable="MODULE_FREQ"
+                      ptf_path="SYSTEM/WIZARD_SCRIPT_ARGUMENTS/CLOCKS/%CLOCK_SOURCE%"/>
+            <break/>
+        </if>
+
+    </switch>
+
+</generate_set>

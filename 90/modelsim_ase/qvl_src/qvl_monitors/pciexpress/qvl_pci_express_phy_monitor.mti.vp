@@ -1,0 +1,481 @@
+//              Copyright 2006-2007 Mentor Graphics Corporation
+//                           All Rights Reserved.
+//
+//              THIS WORK CONTAINS TRADE SECRET AND PROPRIETARY
+//            INFORMATION WHICH IS THE PROPERTY OF MENTOR GRAPHICS
+//           CORPORATION OR ITS LICENSORS AND IS SUBJECT TO LICENSE
+//                                  TERMS.
+//
+//                   Questa Verification Library (QVL)
+//
+
+/*************************************************************************
+*
+* PURPOSE     This file is part of Questa Verification Library (QVL).
+*
+* DESCRIPTION This monitor checks the PCI Express interface for compliance
+*             with PCI Express Base specification - Physical layer
+*             specifications.
+*
+* REFERENCES  PCI Express Base Specification, Revision 1.0, July 22 2002.
+*             PCI Express Base Specification, Revision 1.0a, April 15,2003.
+*             PCI Express Base Specification, Revision 1.1, March 28, 2005.
+*
+* USAGE       This sub-module is instantiated in the top level PCI Express 
+*             monitor module.
+*
+**************************************************************************/
+
+`ifdef ZiCwDebug
+`define ZiCwDebugDelay1 #1
+`define ZiCwQuietIfNoCwDebug
+`else
+`define ZiCwDebugDelay1
+`define ZiCwQuietIfNoCwDebug -quiet
+`endif //ZiCwDebug
+
+`ifdef QVL_COVER_ON
+  `ifdef QVL_SV_COVERGROUP_OFF
+     // Do nothing
+  `else
+    `define QVL_SV_COVERGROUP
+  `endif
+
+  `ifdef QVL_MW_FINAL_COVER_OFF
+     // Do nothing
+  `else
+     `define QVL_MW_FINAL_COVER
+  `endif
+`endif
+
+`qvlmodule qvl_pci_express_phy_monitor (
+                                  reset,
+                                  areset,
+				  clk,
+				  level_select,
+				  phy_layer_checks_disable,
+
+				  descrambled_data,
+				  d_or_k_code,
+				  valid,
+                                  data_10b_code_violation_n,
+				  link_width,
+				  phy_status,
+				  dll_status,
+  // PCI_EXPRESS_GEN2 code start					
+				  eie_os_detected,        // Electrical Idle Exit Sequence
+  // PCI_EXPRESS_GEN2 code end
+				  skp_os_detected,
+				  fts_os_detected,
+                                  idle_data_detected,
+                                  electrical_idle_detected,
+                                  idle_os_detected,
+
+				  // PIPE 
+
+				  no_check_edb,
+ 
+                                  // Outputs
+                                  xmting_dllp_tlp,
+                                  tlp_xmtd,
+				  tlp_count,
+                                  dllp_xmtd,
+                                  dllp_count,
+                                  nullified_tlp_xmtd,
+				  inc_sdp_stp,
+				  inc_pad,
+				  inc_end,
+				  inc_stp_on_non_zero_lane
+                                 );
+
+  // Parameter declarations
+
+  parameter Constraints_Mode = 0;
+  parameter MAX_LINK_WIDTH = 1;
+  parameter DOUBLE_DATA_RATE = 0;
+  parameter PCI_EXPRESS_DEVICE_TYPE = 0;
+  parameter TX_INTERFACE = 0;
+  parameter INTERFACE_TYPE = 0;
+  wire [31:0] pw_INTERFACE_TYPE = INTERFACE_TYPE;
+
+  // PCI_EXPRESS_GEN2 code start
+  parameter PCI_EXPRESS_GEN2 = 0;
+  wire [31:0] pw_PCI_EXPRESS_GEN2 = PCI_EXPRESS_GEN2;
+  // PCI_EXPRESS_GEN2 code end
+
+  // Input declarations
+
+  input reset; // Global reset
+  input areset; // Global areset
+  input clk; // Transmit clock
+  input level_select; 
+  input phy_layer_checks_disable;
+  input [MAX_LINK_WIDTH * 8 - 1 :0] descrambled_data;
+  input [MAX_LINK_WIDTH - 1:0] d_or_k_code;
+  input [MAX_LINK_WIDTH - 1:0] valid;
+  input [MAX_LINK_WIDTH - 1:0] data_10b_code_violation_n;
+  input [5:0] link_width;
+  input phy_status;
+  input dll_status;
+  // PCI_EXPRESS_GEN2 code start					
+  input	eie_os_detected;
+  // PCI_EXPRESS_GEN2 code end
+  input skp_os_detected;
+  input fts_os_detected;
+  input idle_data_detected;
+  input idle_os_detected;
+  input electrical_idle_detected;
+
+  input no_check_edb;
+
+  // Output declarations for stats 
+ 
+  output xmting_dllp_tlp; 
+  output tlp_xmtd;
+  output [1:0] tlp_count;
+  output dllp_xmtd;
+  output [2:0] dllp_count; 
+  output nullified_tlp_xmtd;
+  output inc_sdp_stp; // Signal to increment the number of symbol times
+		     // STP and SDP occurred.
+  output inc_pad; // Signal to increment the number of symbol times
+		  // PAD symbol followed END/EDB symbol.
+  output inc_end; // Signal to increment the number of symbol times
+		  // where more than one packets ended.
+  output inc_stp_on_non_zero_lane;
+
+  // Parameter declarations for the states
+
+  parameter ZI_PHY_IDLE_STATE = 0;
+  parameter ZI_PHY_SDP_STATE = 1;
+  parameter ZI_PHY_STP_STATE = 2;
+  parameter ZI_PHY_END_STATE = 3;
+  parameter ZI_PHY_PAD_STATE = 4;
+  parameter ZI_PHY_UNKNOWN_STATE = 5;
+
+  // Parameter declarations for special symbols
+
+  parameter ZI_28_4 = 8'h9C; // Byte value for K28.4 code
+  parameter ZI_28_6 = 8'hDC; // Byte value for K28.6 code
+  parameter ZI_28_7 = 8'hFC; // Byte value for K28.7 code
+  parameter ZI_COM = 8'hBC; // K28.5 COM symbol
+  parameter ZI_STP = 8'hFB; // K27.7 STP symbol
+  parameter ZI_SDP = 8'h5C; // K28.2 SDP symbol
+  parameter ZI_END = 8'hFD; // K29.7 END symbol
+  parameter ZI_EDB = 8'hFE; // K30.7 EDB symbol
+  parameter ZI_PAD = 8'hF7; // K23.7 PAD symbol
+  parameter ZI_SKP = 8'h1C; // K28.0 SKP symbol
+  parameter ZI_FTS = 8'h3C; // K28.1 FTS symbol
+  parameter ZI_IDL = 8'h7C; // K28.3 IDL symbol
+
+  // SKP ordered sets interval in symbol times
+
+  parameter ZI_MAX_RX_SKP_OS_INTERVAL = 5664;
+  parameter ZI_MAX_TX_SKP_OS_INTERVAL = 1538;
+
+  // Register declarations
+
+  reg [2:0] present_state_posedge;
+  reg [2:0] present_state_negedge;
+  reg [2:0] next_state;
+
+  // Output register declarations 
+  
+  reg tlp_xmtd; // Indicates that a TLP is transmitted
+  reg dllp_xmtd; // Indicates that a DLLP is transmitted
+  reg nullified_tlp_xmtd; // Indicates that a nullified TLP is transmitted
+ 
+  reg [5*8-1:0] present_state_string;
+  reg [5*8-1:0] next_state_string;
+
+  // Register declarations for error signals
+
+  reg [12:0] byte_count_posedge; // Stores the number of bytes in the packet
+  reg [12:0] byte_count_negedge;
+  reg [12:0] next_byte_count;
+  reg [12:0] temp_byte_count;
+
+  reg [2:0] dllp_count;
+  reg [1:0] tlp_count;
+  reg [2:0] temp_current_state;
+  reg [5:0] stp_count; // Width is 6 bits to count 32
+  reg [5:0] sdp_count; // Width is 6 bits to count 32
+  reg [5:0] end_count; // Width is 6 bits to count 32
+  reg [MAX_LINK_WIDTH *8-1:0] temp_descrambled_data;
+
+  reg [7:0] pci_data;
+  reg pci_10b_code_violation;
+  reg pci_d_or_k_code;
+  reg [12:0] skp_os_interval_count_posedge;
+  reg [12:0] skp_os_interval_count_negedge;
+
+  reg inc_pad; // Signal to increment the number of symbol times
+               // PAD symbol was detected.
+
+  reg r_idle_data_detected_posedge;
+  reg r_idle_data_detected_negedge;
+
+  // Register declarations for strings
+
+  reg end_of_packet_without_start_of_pkt;
+  reg sdp_should_be_followed_by_end_error;
+  reg edb_for_dlp_pkt_error;
+  reg dllp_pkt_size_error;
+  reg fts_in_dllp_tlp;
+  reg idl_in_dllp_tlp;
+  reg skp_in_dllp_tlp;
+  reg pad_in_dllp_tlp;
+  reg com_in_dllp_tlp;
+  reg spl_in_dllp_tlp;
+  // PCI_EXPRESS_GEN2 code start
+  reg eie_in_dllp_tlp; 
+  // PCI_EXPRESS_GEN2 code end
+  reg invalid_code_in_dllp_tlp;
+  reg stp_should_be_followed_by_end_error;
+  reg edb_without_stp_error;
+  reg end_without_stp_or_sdp_error;
+  reg padding_error;
+  reg padding_when_link_width_1_2_4;
+  reg xmting_dllp_tlp; // Asserted whenever a DLLP,TLP packet
+                      // transmission is in progress
+  reg end_of_pkt_error; // Asserted when the packet size is 
+                        // not integral multiple of 4.           
+
+  reg tlp_on_link_when_dll_is_down;
+  reg sdp_stp_on_wrong_lanes;
+  reg [7:0] ttx_eidle_count_posedge;
+  reg [7:0] ttx_eidle_count_negedge;
+  reg eidle_os_flag_posedge;
+  reg eidle_os_flag_negedge;
+  reg r_electrical_idle_detected_posedge;
+  reg r_electrical_idle_detected_negedge;
+
+  // Asserted whenever a new DLP/TLP is started
+
+  reg new_dllp_tlp_on_lane;
+
+  // Add a input which indicates that a ordered set other than
+  // SKP ordered set is started the lanes. This signal will be asserted
+  // when the TS, IDLE, FTS, ordered sets are initiated on the
+  // lanes. This signal is asserted for only one clock.
+
+  reg non_skp_os_on_the_lane; 
+
+  // Wire declarations
+
+  wire [2:0] present_state;
+  wire [12:0] byte_count;
+  wire valid_across_link_width; // Asserted when a valid symbol
+                               // is received across all lanes of
+                               // the configured link.
+
+  wire [31:0] int_valid; // To remove warning
+  wire [12:0] skp_os_interval_count;
+  wire skp_os_not_received;
+  wire skp_os_not_xmtd;
+  wire r_idle_data_detected;
+  wire [7:0] ttx_eidle_count;
+  wire eidle_os_flag;
+  wire r_electrical_idle_detected;
+  wire more_than_one_stp_symbol;
+  wire more_than_one_sdp_symbol;
+
+  // Integer declarations
+
+  integer i,j,k,l;
+
+`protected
+
+    MTI!#k5_!#rBwZwV3:+UB>G;Y>\A_=B=U<=XYi';R[=;Q+%|(>Ua;B?$iE>B?>1@$!$~r,lk-K'm
+    H_'in)vw<n13QYp_waYHmxpr#Ull}<VIBwb;YDi$zuUs^xm]VQBB3G}]m;}3Di}AY/KaKWo63-V}
+    >+\3l@QkenzQ};RTOCGm_}~a,aU>U'#s->7'+sHKeBA[!T}_$@*o^#B["2<CDB^I])z<wV@I1OAw
+    \r"yzl7]v~V$2U\WEX-,ATCnoZBe~D@~#XA_2<_u'Aaz&oX^VuDnO-7d}gmVs5uLBc7rK-=IjWQu
+    n1~NaD>IdQ}!klD-_c#am+:=wE}}Ipo5u)'^B]'TUsYWQ7OQi+,rWp@Is;'}H7'RI}c[A{=~rmnG
+    3uvQCiKV(_=+HD?Jm2'-l\v1$JI='3OA1CB2O5Ri}w{m]/AEkH:p#v\^'_1G'/fa1\o8z-5!D;=T
+    }Z$BNcB'r~g^UH>Ip-z1Ev\owwa%RY@mm[v$zz-#EwQQ\#+5=_R{oK[_vl;DdoviTb!H*Qtf)E@Z
+    zGOxr#E3vE7Q*^G}lk^-zzzn$<^msz#[o+rC$qlDeB#zwOjGkG\1rmd2YD?DaN7U]pG!pD#}YB;E
+    kr]#WQcQOA1^VG=o,-jV]p3*+!Q~x;z}\lC=]$Do\[pD{BQm5TJJR<,h(}XD{'k2V=3x1ja6ul^@
+    FCQ__vzUa'\[mlrz7Gv^a4sAXTun13IH{sf$_i@<GxnKvX[xZ3r7elQ?1,s$BKr2A^'lfzVZu2la
+    w7]Xw{nW~k}p+X,v])8,>,T5uQk:l}\e};QTw5BvjV,i+UUJf=5U}Y#pOwzx=w1Ieb(zW{upD?-}
+    1$\;zBz1$?@2T2JJO+lpZOV<spv\Qm,]_DH+AC!!=A>U7e#ve>D+a5{em'a-1m+Xr[j/ZsOJ3paZ
+    kpW'I#=^/c1r>oToi~s>+DulBE.x3BQZ{7;B+RwB>E'arl=\#m?J=o\sO-~-}{UxpCOYu;]wv-Id
+    9vO_<vklX$;1AXr-!k,C~w'/=U{_TUH-D}~u9Z}#'9ez}\,]j5]BH}apoi,QKp)QOaoFTe}+M[2r
+    X8<a{2RO3snjQ>~Up1x\notE$[?wCjk3+7*w7j*1@Vsr,ein\{1}I<]y1!]@z\x^A.D5>I_r<s1@
+    BE=Vs+8t3}H'lVixJo{>e+HmSEAA{Yvxe1@!*rDp*iaoEX5aWAQ5a5f\e}X}UQV>5e'}RA<EJ]rw
+    ,re?7k<5c1r~xA7
+`endprotected
+  // Wire assignments
+
+  assign present_state = (level_select)? present_state_posedge :
+                                         present_state_negedge;
+
+  assign byte_count = (level_select)? byte_count_posedge :
+                                      byte_count_negedge;
+
+  assign skp_os_interval_count = (level_select) ?
+            skp_os_interval_count_posedge : skp_os_interval_count_negedge;
+
+  assign r_idle_data_detected = (level_select) ?
+            r_idle_data_detected_posedge : r_idle_data_detected_negedge;
+
+  assign ttx_eidle_count = (level_select) ?
+	   ttx_eidle_count_posedge : ttx_eidle_count_negedge;
+
+  assign r_electrical_idle_detected = (level_select) ?
+	   r_electrical_idle_detected_posedge : r_electrical_idle_detected_negedge;
+
+  assign eidle_os_flag = (level_select) ?
+	   eidle_os_flag_posedge : eidle_os_flag_negedge;
+
+  assign int_valid = valid;
+
+  // Receivers shall be tolerant to detect SKP ordered sets separated
+  // from each other by at most 5664 symbol times.
+
+  assign skp_os_not_received =
+               (TX_INTERFACE == 0 && skp_os_detected === 1'b0 &&
+                skp_os_interval_count > ZI_MAX_RX_SKP_OS_INTERVAL);
+
+  // SKP ordered sets should be scheduled for transmission between 1180
+  // and 1538 symbols.
+  // If a packet or ordered sets are already in progress. The scheduled
+  // SKP ordered sets should be transmitted at the next packet or ordered set
+  // boundary.  
+
+  assign skp_os_not_xmtd =
+         (TX_INTERFACE == 1 && (non_skp_os_on_the_lane === 1'b1 ||
+	  new_dllp_tlp_on_lane === 1'b1) && 
+         skp_os_interval_count > ZI_MAX_TX_SKP_OS_INTERVAL);
+
+  assign more_than_one_stp_symbol = (stp_count > 2'b01);
+  assign more_than_one_sdp_symbol = (sdp_count > 2'b01);
+  assign inc_sdp_stp = (stp_count !== 6'b0 && sdp_count !== 6'b0);
+  assign inc_end = (end_count == 2'b10);
+  assign inc_stp_on_non_zero_lane = 
+	   (stp_count !== 6'b0 && descrambled_data[7:0] !== ZI_STP);
+
+  assign valid_across_link_width = 
+             ((link_width === 6'd1 && int_valid[0] === 1'b1) || 
+              (link_width === 6'd2 && int_valid[1:0] === 2'b11) ||   
+              (link_width === 6'd4 && int_valid[3:0] === 4'hF) || 
+              (link_width === 6'd8 && int_valid[7:0] === 8'hFF) || 
+              (link_width === 6'd12 && int_valid[11:0] === 12'hFFF) || 
+              (link_width === 6'd16 && int_valid[15:0] === 16'hFFFF) || 
+              (link_width === 6'd32 && (&int_valid === 1'b1)));
+
+`protected
+
+    MTI!#=?K_?a~<u=[#p@<JzE<IxvpUoXvGmAJ'[f2z\iDkop7~BVIX'!~[;Gr3<ze*p_EG~xaYVrb
+    l?*O2'Jv$xI<o$?3J>\iX-=_}Mp\1sSABVTo$Z{}5l+,j]}T[[[7[<Z~R@_fo>YQaY3^T]JZr#^Y
+    <<*,V|?l}#5+OGtQcAxIQt[Tl@XB,#~'Q7hrO*j_<Crya<~G[M,?+}[Y{EnTGHgu\_uEr!TCs#1l
+    6[W+Ac,=B_p3*WZEXoDl$m,R[zqN<jz7v<'ixX*^T<Avd^Y1ZGVkVr^\U>eDVZ7rk?>$^^@{D^_I
+    onoQ'2{x17B+pa[!;,FpK'v%R}]*$~aU}%Rs@*rVvGerTe6kH{p+-B@aY{W;-J>Q}R5>n7a31Wuk
+    vu{=K[V)'35naRp2VV!BmGs5}uo{!GaKPH.}Eo3UE*l=3G>R\pZv3ujye+Z3u_;7AY5!RA3G!jO$
+    !BioQ+O?6[?hL-Ue{'C!27ip*}TxE^-[<7^BepIzG^z?'p2ViI?Bm|V$le}\_O<o?<UUvi,nTJ|5
+    ;uI>{XRxEY'!RppX-H3[<CK>5I,V8Cop2]UYn_o1]V5<-2EpTH5#7IB-_^3p?[HT>7\xCw+eiV![
+    v2*CJRE*VO+IiIVx#}aX{1_Z}sCp7.rYO~J$~u[0Rx$spxp]w^,=&p^$z1=p=4KX3{{=QQ=1$,rO
+    jw)#98B=3}r>@*i|=YZn]a<ukH]xrkA,C$_'Ean@E<*Ozepl};$aO,[\}s[5IHx^aq*3O>erlVn{
+    [5=5O1p;E}k5<lm$zr_k-}5k,<[Kv;*OJ_GXr<&k'0]w{xz>'$>+IUGuju5uR]b?vJKK-PVK!ne+
+    mO!Y~B{eDiQ5ko-'z['>>D\,{Xx{sriO7^1!ZoNR\jXk}C],+}CUC?#1\2sixKV,^~}H*wp#Y{*x
+    H\>DD#CtpVUoHlKR];oJw\kpq2o@'!I=r1OTT,K2vOa[;7,X1}W,5OzD]Q%m}e521_U^j5V{^e<*
+    seEYWGHa+A76EO$VQ]${2[*!paC=cw]$j@ERwDoe2Hl,*vim1^GjI$G]$D@\@vZHUI#$CHBivp5p
+    #Go$~>^!#j$_?\jX~E_v@''{7$${7Bn>R_jZ}^z[Oj5Ajuj=wc+v;KXYk}3-7xAp;X)~l!CAaVVP
+    vw[O?1]t>G\A.LqEo?CRo!rmT<xoBk^n\iBJ[zACTJ>IOeOA,-7CoAB_s>$F:9{eYOmEA*_j}eav
+    -@R$X<bA}WRm<^[%*?7Bvk>}Oo*iGMx@1;f>s]KFF0I!=[ek~}ZUeVv$nTJ7Rr\VVQx~-eE\Jezo
+    ]^l@,IvJ}DC2}-eC$]D\}@I*T=-7lW9L,~o~?zmzBD?2O_$;u1^H&iURRzQuW,=v*eHERHS;,j$x
+    r3C7'X2}pC+V^A\I]ErQ'lBATYR^kz#ACvzuR#!]mo*2eT>m]B^^EX^si{YDoiT!a>K3{xzGHuCp
+    ;uGErE,}XuO15pZ~w]*RGkxO;_7weXTB'Z$*I[R\@[55W[*B[D3nTe+UAjRMix7l<YBmv2=Cs\Bi
+    _;T~#w7}'=QJOBE{*e,_+YRkXr1n%+7~DrW~#/k5IJXQi^ao*;'_<<$ev!FYoDKUvllz=X?^jOIc
+    zl,16?HWxpxareKHCB+liH<x[>wxVN+CQYY{@W>xX$pU-KVzzi.5RjZO!AB^Mp+rmRZ@z:}=K=O'
+    p@5!]rGu<B"-e?QA=G{o_#waoXU~UQW%K'TE~\\]'vGXa^$$=},J-apYAj]JDH^7EW+$CZGz'3Is
+    ^K\?',saEkVErRR!k[UG[1ri$7AWL6@_!Bs}~{_<p~}_oIBp?x,km'L\i*Yooi+Gp{DCo#;2$A'd
+    jaDr@'+['e<!aIloBaXJaIE-U*Dzo#]1I#xV:MOs@a^zWpGxkVO[==^DVzBT]7ZQo+@[pB^Tp3t.
+    IjawaVnT^!W{m*jpxT]k^L5~YH{$A2Y\HjG>\}xo*kPD1@@pD@o[{U^G1;1V2+uO=D;[?';J$;[^
+    *{UJ,_^E<1z+nYron<~TUTY&Lo}ZvkCme2}w[2=li)>1peO3H[!skV^u}o#'2o}\_HDmIzL!**e:
+    E1W]'B2<XhHBT-z13~j~2oNraKrf#>{Kows~_!\#CO'+DVJ[K+AC]!-R\\nuIsiRHaDZVOe<:wp5
+    ,\e!?kj2UCWm1p[uw^E}<M_YKG]{J^wQ!=8NVTnIrzX,3=>[G{1Ha<=;KYOn9r>7uw>UC0xY=>-s
+    aw0'_$z*w[r,srZ^5-{kOm7jWZB{5#zAw<+emw^X+jC^+C@0Rwz[!1H-*3{~dDEkp<CBp^fQe!-k
+    CQ3;nAZxV_*YHO~*~Vw^@ZE];pj,EzWus]5HjS37A#!GZ]XOY!c}sEBcBCH*$m;TpBJIa{GWKEz@
+    =_5Jp,H7,7RW4C7xQI<{{^vw>O;{'zI[2Bz-s}*[]Na-DmTeA;z>HHOJ-j}~Jv]~<5jj?nH^YE|'
+    2-z[kHJ-E#*-}nYx-UE^HB>~,]^i'*RR-V[vu;1[[Um,m=Ql{VVsJ=?,WB^?GY]v{<EG3GJm$AA+
+    v*iAEsno(,<^X@}W+YYpCu1xa${Q_3<W]zp#']1e1E2[]}H'7T$j^.#EkaDW5Xa>R#-lR,_l@KB=
+    <>Bmx3?'C5;XWV,Xp{6Kn-]\u'oSOu+]xDm-KOx!=GQnvV'o$[7YEpYR3I~sZ*oT#Ho^GrW;w=J-
+    a$CE#]^w{aHB*5+m_?$Yi-+H5vkx5\>'@DoIQmAk,xO>H^^*<1oT[{Y#{X2l?I_2#B?CGQ*2T*;W
+    WYoDw7j[$3=GlmwQP>IsDk{Gi^>@[<R+_rsE+Nm5buBzTjm+xE?RlX$-kCXp]RnJJ&GvmlVu]e12
+    Z>VIaIJU$xH$$B7A+$GQ!G?nji-';[s+U2,+-VV#KZ=pUmUeu_dOQ#GAT+p=\BX7meTj?\Q5Vn}Z
+    1w757o_1>WB{rk+ORU#~17H<1$];T^<RTO/!-e7K7OT{BJk6*~p~H5Qi!Hj3m<W=G~DmT>uHY~3^
+    WRQm?}Z#iD!G{a$<cs~$CLLZ+B,,-eTb>I_DnwJI[K5j+xixz5sIj'O*DUOEluDDHeYBp3]B*1r'
+    Oh{[~uKa}jDX!>+ve~,^JZTw(_<wlxH>{#\zez{BUTX+K^Is*L75uW\9U^~krGG].UvRzWl\Qo$r
+    $b[zEIR^v~+HRDTv_oa<*7}vVBBX${9VnpA%Q!;pv*@m1O#D}\iz+zoe?\'K+--D<x455-k\Wamp
+    mW*C]a28^pl+2jmVZwZ+l!Y?w<[Y<\w-m+-VYDoI~,]75_B+Z'EuKA$$'3!',O+pzEV>wjBVQBX2
+    V\QXB>>>,v[R8^O[wLC'A<6g@$UG^KCn![@_@]Ap<\!{#vu_6mD-eu[w\kG<ny$=7^rpx7l;YVF~
+    {pK?6r?e?,snpCRH5s-AV=V3J--e{wx{T7j3kGE[V~wU3n}{De2Z=Yn;pOk$,teB+1o*vJ2{Dl=#
+    +oIOV=A,_UiXTe#UpIxwR5|PZU<j$^z=\?2[MYU=,ll'G&qUH'$R8W}mQo5_~a-IT%H7*;l@}5[]
+    p$1<,;eoGvO<7KaaHr#Re\?*]Qm,vv'pwl$_IIrU7sv5E}(*[}QT7eA>Xe3D_n3C^lAnYTK9V{3_
+    ~^Im+<W\IjACluojmGRjRA5_E7~Q==~@b{l*aAeU-<pAsrsOvl~[>5!~KdY1>3v5pWu>C3V<Cs=^
+    TV?5a$M<5Gx1urX#V'@luxnlpE[R2B<bb{_Iofo*[H-,eD]*pQ?p5e_Y=Ck^?rr{GX+D]w^2J?'+
+    _#;Vvo}}7e#QCs^H,_^T,<o'uT^Z^aw*}eiB3E-BOrsIX'Lp}Z;~&$XH]9VkeTEeZU}K[}}-+^Ex
+    TXne53=;[DEB1x?awuja$5>si=IxBwG[<XI>ZpwH7!#]>X?]1aA}k'J\p\OE@ROk-E+v!}?*I<^_
+    OnK]vO]x*eBHBv^BZ1?sJG-_C$.DpHA,AABJoTkUD@sa'B[}mY_)D35v$2pZxD;5kpJBO5DeH5C*
+    G%Kln]HCK1wQ;R{GpTdFxC*O1{,i;Bv]s?22,CYn2OT3lDE^sVBE>o+Iz{-~l2'zm_oW,aI=xC3A
+    |R@*ue^D?ivRmkYsBQI+3IWa1}Ko$z3vackTmoAsur^O3CjbvliTizZrAQ[u^Hz;>52O5rBrz+TH
+    o,\{O>eK*7an2GXCCpkw7k@sXoavGVu$xGkJ~1?>]CWV,XTZd*<G;rUD[Es_Wz!W_+<p=Q[l,C}k
+    's7'_pr?=+}=sADXpDB3$#z]kOBootnjAV{BU};[GRw*iTXAzwE\!Cp=53D*~7X$^EnXYvRI@eA]
+    <zCD'wsXYs\psBvH$rr[QG'H;rJ{EB#*ZW[i<^vBm$*O[}CY#KV7V2v7Y=O)]EZedx'EiYW3Qk1^
+    ]rs$~A1=UnoeB_TUT<xIW$lwYCEQ#xApwP+nZVj{3=B5+Bo!aD[B1D'[\A{<I\ttBmv5lEOT^<Es
+    'RlW2aI]Cg1>@]1CuYY$5Do]sX?GBWou@ur/=z**ra+1*YaV2j#?jCa2X'e_lv>mDw7oa=z!5Y*U
+    n$p%|a*AwQ5<W+e{Y\}Tav@Q1gHYk2]=J[],D]pdBr_~sBHDl+\!=zyK__EYzxi_o2x|]@G]*ZVl
+    <*CH_!Ua@EpRDg4\ZR7[37e_5iI55-KH}nvv]m_O<;nB_'X2Il~C\OBIW1#O,k]$iA_CCskK<ee2
+    -j*Dlk[3EzO*~}j,lURG7kx''OQ)I>KvyQwso5--}bEjv!7*l^?nwIYnmTx]J2t]Dr1sf!X7n>{~
+    3aoZD}!p7E_~-dka5Z6Q=w?nR1xZBWk2pQY$ko!]DjW.mjvp#Y7Kat!x$1X+WQP,.E*{\uEjuI]n
+    ]UjXzjT!sG/Y*D^p}xl#G5T'UOE$>$[Vm]OwXU]lG1H\$YWJ}z79iI{+37ekaVk7MGloYrrKGs;x
+    C$5R1RA[5YE@e}QI]m*V,I<Br:[Q5;rI!xA$WA;Xwpo2WD[xBDRAa{=elixB?Dnlu#ilz~qkwuIO
+    J_,rW$Qp_|6DpV##RX'-v]?QXU[Y?f5}{~IvV,iz#l?5l7d)C~$1~*,w'$pZCErx!VTXD;R['3B\
+    :yE;sm]U7[E7v~G;Ur:'?]uT$#uSpr-xb=5u#uVHRG$D*ao*p2HoAZpE,_JOeNru@Ra*eU=\Es1K
+    vG-sJ[QB_n-U1,os<aO$+IY]n!y,ZnW5VD#Ee!DY3=7!sVTs]_uaIo1UC\;,z;{UURIAXBw_Q_Ra
+    _WHVl7u7r!7dRzTY5'JDprR$+>~5l3>Js~px1vQUj=u[p5=r-Tx;=~*Q#p37-z}xP'+[sTae;a5-
+    ]Q2Vm1\j@w5,$D*Gm=jp\CrKr_C#nIZ-{cCRzme==;5=H^Ex+X-*s1D*ozT>\I>>pX9U[]oKCHCk
+    x+]ERD}$zQrEJXm]Z2]I}B+wp*eD--ZJUGC$$zKO!-^V>Xzo!X@E,YJQ\z;I+,!@}w?]_TCDsJUK
+    +\?\AG[z5k]G7~RHae;D-<Hr][n+RzGI=BX@Hr]w5CU2oQAfj^0zQHW;DE=O-ulO_;mpfsSnw@]\
+    ]j@JRYA}DOJ8Cu=A2[#D.wn^u}m_x?RYiQ@vi5+1YU[o1Jp2wsYY-AA[-3Is$NhuXV!]0%]QHs,<
+    ~mx+1I*A<v'-u$Wpj<5zTlQaUne$~]PIi{YQJaQRC,]TVr]J*vKO*A?L}eBU+ATD>9CA57x+o;v1
+    [n6G,5ax~j}JxlI~^G*,EI3OCprU*k}Jlex3Xa3jAe@IBB<wDB?_+!Bjx@2j-e;pzZ{J*RVYZ1Zq
+    zGBux@[WqoUa1'Uoz<OGrCUK[\nso~Ri]*as5YuUnr-25YiQ?pXIDB|\<BUz{'R0DE*K[G<]7V,W
+    &G>A3[kz7Qzs{>Vm!i=^~sH!*.k_'Kj,+xhXTK5eVQsSmnlQ*H\,5VRTOsOl2R3V[Al?lw3K_X<-
+    YGp_-CRaE=n_L{+TxCpW~WBxB!=Qx-+@Jw+B<RkOoQ3Y'Z[TYwE>Wn>RC!nCoeC+o_m{EVRI*X1_
+    VKw_Hj'nHoQ[ZkXeBm+Z><OE?5=r<|?<zmmzRVvC~1GpCkv55zeET@mB[l%HpYQy#$E;JHTY\}j>
+    Jrn!wjXBwD$GO'l$KXxl^U'+>>XkH1IA#UVTi*BA!A[CWT~sa}1w[la+{>em-=;#?oR3x2K<\\5Z
+    V=2k,_1>'I[kk_m=Q>x3'm[_xZzo}K$UA_QUw51=K.X127}$uH,u{@>[>_rwW\^C^E@O={7DHVYY
+    Wmeae]<,jvn1IxVD_CwVZ,=W+,7n$2D\!z+I,#2X~];OoXa+2>2AnB@wT<W$H$p;[li$UsOX'+Y8
+    [_}v#G}wqD='1>p$Bw^;x7[}+4U1==Fl<m-@BAGp_v^l*1^e7zDpaUrjZ5j,pRI]~>'I+aR8'_D3
+    qvx1UgX=[aVJBH$5XY,BY_7}ov+oD{xRvvmYI_l6jUx]YRXro}~2=oKmG3DvHTU'F]+Ga7-~3^{j
+    C.txR#Qz2D{j{=w1}^'}aba<\xD+rEh{}?llH1UlmmkR?'3=Z+nRK-<3wB1zB@^=@xzo,ZrO]-+}
+    Yx~{{<w+_n<kv$>UTCH#aEz2p!wmE@KQ2r~er~JkYuD[Z;@#'{\Vz;v=fuQ5zxaKjs~\3xB*Kv*X
+    'Ep=X#s@IelXKa>z_g-1=Bi_O~;l>as\o~v2I1V#WB*IH;+B@+RY{Oo}[s'152_;KKF.7Di-iV@~
+    *REr+wzHIsuXATTG_^$jm];R~ea-Dx$Oc#zk+u7T^R7#\lAGoB#m}=!Z=LTxCGdTlQWK1r>]VmZo
+    I-,+-uBSuI~DVOEa1!@]w<B~,v+]rXJ$llZ2\@@*$1j#w'oV&aY*U-AvG?w1x>O@_IC?QeK}VDo?
+    ^ej#e@'+*7z;JvTzV0}n3>G[pBT$@z,o!GZvKR>DA+Uhr,Z\KIaHks]RI2Xo^=p#B?\{f5Cjk<s*
+    V:_}U'D]XJpmVkxa-CZt:Z'ZonH+Y5s^'zjDH;<!~}W{';X-rVJo2V'$pYa;X'G,^aI]~xi^-Z$~
+    IQV<=jBn\IXj!u[#*Y5u#?$YB~Aa3rkEr5XKG*;3K#U7RRaGz1W1!He5'oz<\1{<sWx7w}=WkD7Q
+    20lu,a^P{=<IHoD5ffhuv?XX,pQuCp-7WB+pTeX\Q2
+`endprotected
+
+  //--------------------------------------------------------------------------
+  // OVL SVA Assertions are included here
+  //--------------------------------------------------------------------------
+
+`include "qvl_pci_express_phy_monitor_assertions.inc"
+
+
+`ifdef ZI_INLINED_PSL
+`include "0in_ac_inline_for_mod_zi_cw_pci_express_phy_monitor.inc"
+`endif
+`ifdef ZI_INLINED_CHX
+`include "zi_cw_pci_express_phy_monitor.zi_chx.inc"
+`else
+`ifdef ZI_INLINED_CHX_zi_cw_pci_express_phy_monitor
+`include "zi_cw_pci_express_phy_monitor.zi_chx.inc"
+`endif
+`endif
+
+`qvlendmodule // End of qvl_pci_express_phy_monitor 

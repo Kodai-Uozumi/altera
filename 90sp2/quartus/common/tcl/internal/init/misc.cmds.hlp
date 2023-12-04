@@ -1,0 +1,1042 @@
+<<<<versions>>>>
+1.0
+<<<</versions>>>>
+<<<<1.0>>>>
+<load_package>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: load_package [-h | -help] [-long_help] [-version <version number>] <package name>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -version <version number>: Option to specify the Quartus II Tcl package version to load
+        <package name>: Name of Quartus II Tcl package to load
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::misc 1.0
+
+------------
+Description:
+------------
+
+Loads the specified Quartus(R) II Tcl package with the specified
+version number. If you do not specify the "-version" option, the
+latest version is loaded by default.
+
+The Quartus II Tcl package names have the "::quartus::" prefix, such
+as "::quartus::project". For convenience, you can omit the
+"::quartus::" prefix when you use the <package name> argument.
+
+This command is similar to the "package require" command.  The
+advanatage of using "load_package" is that you can alternate freely
+between different versions of the same package.
+
+For example, if you loaded version 2.0, and now want to load version
+1.0, you can type:
+
+"load_package -version 1.0 <package name>". 
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Load version 1.0 of the ::quartus::project package
+load_package project -version 1.0
+
+# Load version 2.0 of the ::quartus::project package
+load_package project -version 2.0
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Tcl package "<string>" does not exist. Specify an available Quartus II Tcl package. Type "help" for a list of available Quartus II Tcl packages.
+TCL_ERROR	1   	ERROR: Tcl package "<string>" version "<string>" does not exist. Specify an available Quartus II Tcl package. Type "help" for a list of available Quartus II Tcl packages.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</load_package>
+
+<init_tk>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: init_tk [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::misc 1.0
+
+------------
+Description:
+------------
+
+
+Initializes a Tk window. If you are using Tk functionality in Tcl, you
+must run this command first before running any Tcl scripts.
+
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Initialize the Tk library
+init_tk
+
+# Create a top level and add a title
+toplevel .top
+wm title .top "Hello World" 
+
+# Add widgets
+button .top.hello -text Hello -command {puts stdout "Hello, World!"}
+pack .top.hello -padx 20 -pady 10
+
+# Without "tkwait", the script finishes at this point and the
+# window is destroyed. The "tkwait" command prevents the
+# script from finishing until the you close the window.
+tkwait window .top
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</init_tk>
+
+<qexec>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: qexec [-h | -help] [-long_help] <command>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        <command>: Command
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::misc 1.0
+
+------------
+Description:
+------------
+
+Runs the specified command.
+
+Usage for this command is as follows:
+    qexec "<command>"
+
+The Quartus(R) II Tcl command "qexec" is the equivalent of the Tcl
+command "exec".  
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+qexec ls
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</qexec>
+
+<qexit>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: qexit [-h | -help] [-long_help] [-error] [-success]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -error: Option to exit with an equivalent Quartus II error code
+        -success: Option to exit with an equivalent Quartus II success code
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::misc 1.0
+
+------------
+Description:
+------------
+
+Exits the Quartus(R) II software.
+
+The Quartus II Tcl command "qexit" is equivalent to the Tcl command
+"exit".
+
+When used with a particular option, this command exits the Quartus II
+software with the corresponding Quartus II exit code. For example,
+typing "qexit -success" is equivalent to typing "exit 0". When the
+"-success" option is specified, the corresponding Quartus II exit code
+is "0".
+
+If no option is specified, the default exit code is the same as for
+the "-success" option.  
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+1) To exit the Quartus II software with an equivalent 
+   Quartus II success code, type:
+
+   qexit -success
+
+2) To exit the Quartus II software with an equivalent 
+   Quartus II error code, type:
+
+   qexit -error
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</qexit>
+
+<load>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: load [-h | -help] [-long_help] <load_args>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        <load_args>: Arguments to load
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::misc 1.0
+
+------------
+Description:
+------------
+
+Loads machine code and initializes new commands.
+
+This command works exactly like Tcl's native "load" command.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+Refer to documentation for Tcl's native "load" command 
+at the Tcl/Tk web site at www.tcl.tk.
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't load library: <string>. The operating system reports the following error: <string>
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</load>
+
+<post_message>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: post_message [-h | -help] [-long_help] [-type <info|extra_info|warning|critical_warning|error>] [<string>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -type <info|extra_info|warning|critical_warning|error>: Type of message to display
+        <string>: Message to be displayed
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::misc 1.0
+
+------------
+Description:
+------------
+
+Displays the message of the specified type.
+
+The message type can be "info", "extra_info", "warning",
+"critical_warning", or "error". If you do not use the "-type" option,
+the default message type is "info".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Display an error message
+post_message -type error "Can't open file test.tcl"
+
+# Display an info message
+post_message "Generated output file: test.out"
+# OR
+post_message -type info "Generated output file: test.out"
+
+# Display a warning message
+post_message -type warning "Defaulting fmax to 155.55mhz"
+
+# Display a extra info message
+post_message -type extra_info "Input file test.in had 100 lines"
+
+# Display a critical warning message
+post_message -type critical_warning "Invalid fmax was specified - defaulting to 155.55mhz"
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Error(s) found while processing handle: <string>. Make sure you specified a valid Quartus II message handle for the -<string> option and passed the correct number of arguments to the -<string> option. Also check that you passed the correct message type to the -<string> option.
+TCL_ERROR	1   	ERROR: Illegal message type: <string>. Specify "info", "extra_info", "warning", "critical_warning", or "error".
+TCL_ERROR	1   	ERROR: Missing required positional argument: <string>. Specify the <string> argument.
+TCL_ERROR	1   	ERROR: You specified <string> arguments to the -args option. However, you can pass a maximum of <string> arguments.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</post_message>
+
+<get_collection_size>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_collection_size [-h | -help] [-long_help] [<collection>]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        <collection>: Collection
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::misc 1.0
+
+------------
+Description:
+------------
+
+Returns the size of a collection.
+
+Unlike a Tcl list, a collection is a container specific to the
+Quartus(R) II software, whose elements can be accessed by using the
+"foreach_in_collection" command.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+## Displays the number of global assignments
+project_open chiptrip
+set num_global_asgns [get_collection_size [get_all_global_assignments -name {*}]]
+puts $num_global_asgns
+project_close
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Collection does not exist with name: <string>. Specify the collection name returned by a Tcl command that supports "foreach_in_collection".
+TCL_ERROR	1   	ERROR: Nested calls to "foreach_in_collection" with the same collection name "<string>" are not allowed. Specify a different collection name for the other collection.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_collection_size>
+
+<escape_brackets>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: escape_brackets [-h | -help] [-long_help] <str>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        <str>: String to escape
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::misc 1.0
+
+------------
+Description:
+------------
+
+Escapes square brackets in bus name patterns for use in string
+matching. Also escapes the escape character; for example, the string
+"\" is escaped into "\\".
+
+Note that natural bus naming is supported by default. This means that
+bus names, not bus name patterns, are automatically detected and do
+not need to be escaped by using this command.  Bus names have the
+following format:
+
+<bus name>[<bus index>] or <bus name>[*]
+
+The <bus name> portion is a string of alphanumeric characters.  The
+<bus index> portion is an integer greater than or equal to zero or it
+can be the character "*" used for string matching.  Notice that the
+<bus index> is enclosed by the square brackets "[" and "]". For
+example, "a[0]" and "a[*]" are supported bus names.
+
+All other uses of square brackets must be escaped if you do not intend
+to use the brackets as part of a string pattern in a string match. For
+example, the bus name pattern "a\[0-2\]" must be escaped using this
+"escape_brackets" command since the "0-2" does not satisfy the <bus
+index> requirement to be a bus name.
+
+Many Quartus II Tcl commands allow string matching in option
+arguments. A common error is using bus name patterns in these
+arguments, such as:
+
+address\[0-2\]
+
+Square brackets for bus name patterns must already be preceded by an
+escape character (\[ or \]) to prevent Tcl from interpreting them as
+sub-commands. String matching, however, also uses square brackets to
+match any character between the brackets.  The previous example, when
+used as a string match pattern, searches for the string patterns
+address0, address1, and address2. It does not search for address[0],
+address[1], and address[2].
+
+Therefore, for arguments that support string matching, square brackets
+must be escaped twice (\\\[ or \\\]) so that the strings are
+interpreted as bus name patterns. For example, to search for
+address[0], address[0], and address[2], type the following string
+match pattern:
+
+address\\\[\[0-2\]\\\]
+
+or, equivalently,
+
+"address[escape_brackets \[]\[0-2\][escape_brackets \]]"
+
+Quartus II Tcl commands do not convert bus name patterns
+automatically, since they cannot determine if the string is intended
+as a bus name pattern or a regular string match pattern. Therefore,
+"escape_brackets" is provided for your convenience.
+
+You may choose to disable natural bus naming in order to string match
+patterns such as "in\[024\]". In this example, you are string matching
+the names "in0", "in2", and "in4".
+
+To disable natural bus naming, type
+"disable_natural_bus_naming".
+
+Note that if you disable natural bus naming, then square brackets must
+be escaped twice (\\\[ or \\\]) so that the strings are interpreted as
+bus names during a string match, such as:
+
+set bus_name "address\[0\]"
+string match [escape_brackets $bus_name] $bus_name
+
+The "escape_brackets" command escapes "address\[0\]" into
+"address\\\[0\\\]".
+
+To enable natural bus naming again, type
+"enable_natural_bus_naming".
+
+For more information about natural bus naming, type
+"enable_natural_bus_naming -h".  
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Get all location assignments for bus address[]
+set address_names address[*]		
+set address_locations [get_all_instance_assignments -to $address_names] -name LOCATION
+
+# Get location assignment for bus address[0]
+set address_names address[0]		
+set address_locations [get_all_instance_assignments -to $address_names] -name LOCATION
+
+# Get location assignments for bus address[0],
+# address[1], and address[2]
+set address_names address[0-2]		
+set address_locations [get_all_instance_assignments -to [escape_brackets $address_names]] -name LOCATION
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</escape_brackets>
+
+<enable_natural_bus_naming>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: enable_natural_bus_naming [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::misc 1.0
+
+------------
+Description:
+------------
+
+Enables natural bus naming so that square brackets for bus names do
+not have to be escaped to prevent Tcl from interpreting them as
+sub-commands.
+
+Bus names have the following format:
+
+<bus name>[<bus index>] or <bus name>[*]
+
+The <bus name> portion is a string of alphanumeric characters.  The
+<bus index> portion is an integer greater than or equal to zero or it
+can be the character "*" used for string matching.  Notice that the
+<bus index> is enclosed by the square brackets "[" and "]". For
+example, "a[0]" and "a[*]" are supported bus names.
+
+Many Quartus II Tcl commands allow bus names in their arguments, such
+as:
+
+set_location_assignment -to address[10] Pin_M20
+
+If natural bus naming is enabled, you can just use address[10] instead
+of having to excape the square brackets into address\[10\].
+
+There are also Quartus II Tcl commands that take Tcl string match
+patterns in their arguments, such as:
+
+get_all_instance_assignments -name location -to address[10]
+
+Since Tcl string matching take string patterns containing special
+characters from the set "*?\[]" as values, address[10] would be
+interpreted incorrectly. By enabling natural bus naming, these Tcl
+commands will automatically detect address[10] as a bus name so that
+you don't have to doubly escape the brackets into address\\\[10\\\].
+
+To disable natural bus naming, type
+"disable_natural_bus_naming".
+
+For more information on the effects of disabling natural bus naming,
+type "disable_natural_bus_naming -h".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Enables natural bus naming
+enable_natural_bus_naming
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</enable_natural_bus_naming>
+
+<disable_natural_bus_naming>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: disable_natural_bus_naming [-h | -help] [-long_help]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::misc 1.0
+
+------------
+Description:
+------------
+
+Disables natural bus naming.
+
+You may choose to disable natural bus naming to string match patterns
+such as "in\[024\]". In this example, you are string matching the
+names "in0", "in2", and "in4".
+
+Note that if you disable natural bus naming, then square brackets must
+be escaped twice (\\\[ or \\\]) so that the strings are interpreted as
+bus names during a string match, such as:
+
+set bus_name "address\[0\]" string match [escape_brackets $bus_name]
+$bus_name
+
+The "escape_brackets" command escapes "address\[0\]" into
+"address\\\[0\\\]".
+
+To enable natural bus naming again, type "enable_natural_bus_naming".
+
+For more information about natural bus naming, type
+"enable_natural_bus_naming -h".
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Disables natural bus naming
+disable_natural_bus_naming
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</disable_natural_bus_naming>
+
+<get_environment_info>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: get_environment_info [-h | -help] [-long_help] [-num_logical_processors] [-num_physical_processors] [-operating_system]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -num_logical_processors: Option to return the number of available logical processors (cores including hyper-threading)
+        -num_physical_processors: Option to return the number of available physical processors (sockets)
+        -operating_system: Option to return the operating system name
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::misc 1.0
+
+------------
+Description:
+------------
+
+        Returns information about the system environment depending on the
+options specified.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+# Get the number of physical processors available on my computer.
+get_environment_info -num_physical_processors
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: At least one option is required. Specify at least one option.
+TCL_ERROR	1   	ERROR: Multiple options used. Choose only one option for this command.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</get_environment_info>
+
+<foreach_in_collection>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: foreach_in_collection [-h | -help] [-long_help] <variable_name> <collection> <body>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        <variable_name>: Variable name
+        <collection>: Collection
+        <body>: Body
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::misc 1.0
+
+------------
+Description:
+------------
+
+Accesses each element of a collection.
+
+Some Tcl commands return a collection. The following table shows
+examples of commands that return a collection:
+
+
+Tcl package                 Tcl commands (returning a collection)
+--------------------------  ----------------------------------------
+::quartus::project          get_all_quartus_defaults
+                            get_all_global_assignments
+                            get_all_instance_assignments
+                            get_all_parameters
+                            get_names
+                            assignment_group (only for the "-get_members"
+                                              and "-get_exceptions" options)
+
+::quartus::chip_editor      get_nodes
+                            get_iports
+                            get_oports
+
+::quartus::advanced_timing  get_timing_nodes
+                            get_timing_edges
+
+
+The command is used in the following format:
+
+foreach_in_collection <variable name> <collection> {
+
+      # This is the body of "foreach_in_collection"
+      ...
+}
+
+Unlike a Tcl list, a collection is a container specific to the Quartus
+II software, whose elements can be accessed by using the
+"foreach_in_collection" command.  
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+## Get a collection of global assignments
+set collection_of_global_assignments [get_all_global_assignments -name *]
+## Display the collection string representation
+puts $collection_of_global_assignments
+## Iterate through the collection and display
+## the information for each global assignment
+foreach_in_collection global $collection_of_global_assignments {
+
+	set sect_id [lindex $global 0]
+	set name [lindex $global 1]
+	set value [lindex $global 2]
+	
+	## Now, display the content of the global assignment
+	puts "Section ID ($sect_id)"
+	puts "Assignment Name ($name)"
+	puts "Assignment Value ($value)"
+}
+
+## Get a collection of instance assignments
+set collection_of_instance_assignments [get_all_instance_assignments -name *]	
+## Display the collection string representation
+puts $collection_of_instance_assignments
+## Iterate through the collection and display
+## the information for each instance assignment
+foreach_in_collection instance $collection_of_instance_assignments {
+
+	set sect_id [lindex $instance 0]
+	set src [lindex $instance 1]
+	set dest [lindex $instance 2]
+	set name [lindex $instance 3]
+	set value [lindex $instance 4]
+
+	## Now, display the content of the instance assignment
+	puts "Section ID ($sect_id)"
+	puts "Source ($src)"
+	puts "Destination ($dest)"
+	puts "Assignment Name ($name)"
+	puts "Assignment Value ($value)"
+}
+
+## Get a collection of parameters
+set collection_of_parameters [get_all_parameters -name *]
+## Display the collection string representation
+puts $collection_of_parameters
+## Iterate through the collection and display
+## the information for each parameter
+foreach_in_collection parameter $collection_of_parameters {
+
+	set dest [lindex $parameter 0]
+	set name [lindex $parameter 1]
+	set value [lindex $parameter 2]
+
+	## Now, display the content of the parameter
+	puts "Destination ($dest)"
+	puts "Parameter Name ($name)"
+	puts "Parameter Value ($value)"
+}
+
+## Get a collection of all node name ids from a successful 
+## compilation
+set collection_of_name_ids [get_names -filter *]
+## Display the collection string representation
+puts $collection_of_name_ids
+## Iterate through the collection and display
+## the information for each name id
+foreach_in_collection name_id $collection_of_name_ids {
+
+	set parent_name_id [get_name_info -info parent_name_id $name_id]
+	set base_name [get_name_info -info base_name $name_id]
+	set entity_name [get_name_info -info entity_name $name_id]
+	set instance_name [get_name_info -info instance_name $name_id]
+	set full_path [get_name_info -info full_path $name_id]
+	set short_full_path [get_name_info -info short_full_path $name_id]
+	set node_type [get_name_info -info node_type $name_id]
+	set creator [get_name_info -info creator $name_id]
+	set signaltapii [get_name_info -info signaltapii $name_id]
+	set file_location [get_name_info -info file_location $name_id]
+	
+	## Now, display information about the name
+	puts "Parent Name Id ($parent_name_id)"
+	puts "Base Name ($base_name)"
+	puts "Entity Name ($entity_name)"
+	puts "Instance Name ($instance_name)"
+	puts "Full Path ($full_path)"
+	puts "Short Full Path ($short_full_path)"
+	puts "Node Type ($node_type)"
+	puts "Creator ($creator)"
+	puts "Signaltapii ($signaltapii)"
+	puts "File location ($file_location)"
+}
+
+# Display the members of a particular assignment group named "tg1"
+foreach_in_collection member [assignment_group "tg1" -get_members] {
+
+	# Print the name of the member
+	puts $member
+}
+
+# Display the exception to a particular assignment group named "tg1"
+foreach_in_collection exception [assignment_group "tg1" -get_exceptions] {
+
+	# Print the name of the exception
+	puts $exception
+}
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</foreach_in_collection>
+
+<stopwatch>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: stopwatch [-h | -help] [-long_help] [-lap_time] [-number_format] [-reset] [-start]
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -lap_time: Option to get the lap time
+        -number_format: Option to show the lap time in seconds without appending the "s", i.e. seconds, character
+        -reset: Option to reset the stopwatch
+        -start: Option to start the stopwatch
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::misc 1.0
+
+------------
+Description:
+------------
+
+Provides a stopwatch interface.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+	# Begin the stopwatch
+stopwatch -start
+exec sleep 1
+	# Get the lap time
+puts [stopwatch -lap_time]
+exec sleep 1
+	# Get the lap time
+puts [stopwatch -lap_time]
+	# Reset the stopwatch
+stopwatch -reset
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</stopwatch>
+
+<checksum>
+<<<usage_only_section>>>
+---------------------------------------------------------------------------
+
+Usage: checksum [-h | -help] [-long_help] [-algorithm <crc32|adler32>] <input_file>
+
+        -h | -help: Short help
+        -long_help: Long help with examples and possible return values
+
+        -algorithm <crc32|adler32>: Option to specify the checksum algorithm. Uses the CRC-32 algorithm by default.
+        <input_file>: Option to specify the input file
+<<</usage_only_section>>>
+
+------------------------
+Tcl Package and Version:
+------------------------
+
+Belongs to ::quartus::misc 1.0
+
+------------
+Description:
+------------
+
+Returns the checksum value in hexadecimal format based on the
+specified algorithm which defaults to crc32.
+<<<long_help_section>>>
+
+--------------
+Example Usage:
+--------------
+
+set file "one_wire.sof"
+	# Use CRC-32
+puts "$file -> [checksum $file]"
+puts "$file -> [checksum $file -algorithm crc32]"
+	# Use ADLER-32
+puts "$file -> [checksum $file -algorithm adler32]"
+
+-------------
+Return Value:
+-------------
+
+Code Name	Code	String Return
+---------	----	-------------
+TCL_OK   	0   	INFO: Operation successful
+TCL_ERROR	1   	ERROR: Can't read file: <string>. Make sure the file exists and is not a directory, and you have permission to read the file.
+<<</long_help_section>>>
+<<<usage_only_section>>>
+
+---------------------------------------------------------------------------
+<<</usage_only_section>>>
+</checksum>
+
+<<<</1.0>>>>

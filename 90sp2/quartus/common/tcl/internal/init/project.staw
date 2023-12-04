@@ -1,0 +1,223 @@
+is_project_open
+project_close [-dont_export_assignments]
+ -dont_export_assignments: Do not export assignments to file
+project_exists <project_name>
+ <project_name>: Project name
+project_archive [-all_revisions] [-include_libraries] [-include_outputs] [-overwrite] [-use_file_set <file_set>] [-version_compatible_database] <archive_name>
+ -all_revisions: Option to archive all revisions
+ -include_libraries: Option to include related system libraries
+ -include_outputs: Option to include output files in archive
+ -overwrite: Option to overwrite any currently existing archive file
+ -use_file_set <file_set>: Option to create the archive using the specified file set
+ -version_compatible_database: Option to include version-compatible database if supported
+ <archive_name>: Archive file name
+project_restore [-destination <directory>] [-overwrite] [-update_included_file_info] <archive_file>
+ -destination <directory>: Directory where restored files are placed
+ -overwrite: Option to overwrite files in destination directory
+ -update_included_file_info: Option to update included file information
+ <archive_file>: Archive file name
+project_new [-family <family>] [-overwrite] [-part <part>] [-revision <revision_name>] <project_name>
+ -family <family>: Family name
+ -overwrite: Option to overwrite existing project and revision
+ -part <part>: Part name
+ -revision <revision_name>: Revision name
+ <project_name>: Project name
+set_current_revision [-force] <revision_name>
+ -force: Option to open the revision and overwrite the compilation database if the database version is incompatible.
+ <revision_name>: Revision name
+get_current_revision [<project_name>]
+ <project_name>: Project name
+create_revision [-based_on <revision_name>] [-copy_results] [-set_current] <revision_name>
+ -based_on <revision_name>: Revision name on which new revision bases its settings
+ -copy_results: Option to copy results from "based_on" revision
+ -set_current: Option to set new revision as current revision
+ <revision_name>: Revision name
+delete_revision <revision_name>
+ <revision_name>: Revision name
+revision_exists [-project <project_name>] <revision_name>
+ -project <project_name>: Project name
+ <revision_name>: Revision name
+get_project_revisions [<project_name>]
+ <project_name>: Project name
+get_names -filter <wildcard> [-node_type <all|comb|reg|pin|input|output|bidir|hierarchy|mem|bus|qsf>] [-observable_type <all|pre_synthesis|post_synthesis|post_fitter|post_asm|stp_pre_synthesis>]
+ -filter <wildcard>: Option to specify the node's full path name and/or wildcard character(s)
+ -node_type <all|comb|reg|pin|input|output|bidir|hierarchy|mem|bus|qsf>: Option to filter based on the specified node type.
+ -observable_type <all|pre_synthesis|post_synthesis|post_fitter|post_asm|stp_pre_synthesis>: Option to filter based on the specified observable type
+get_name_info [-info <parent_name_id|base_name|entity_name|instance_name|full_path|short_full_path|node_type|creator|signaltapii|file_location>] [-observable_type <all|pre_synthesis|post_synthesis|post_fitter|post_asm|stp_pre_synthesis>] <name_id>
+ -info <parent_name_id|base_name|entity_name|instance_name|full_path|short_full_path|node_type|creator|signaltapii|file_location>: Option to specify the type of information to display.
+ -observable_type <all|pre_synthesis|post_synthesis|post_fitter|post_asm|stp_pre_synthesis>: Option to specify the observable type of the name ID
+ <name_id>: Option to specify the node name ID
+get_top_level_entity
+get_all_assignment_names [-family <family>] [-module <all|map|fit|tan|asm|eda|drc|generic>] [-type <all|global|instance>]
+ -family <family>: Option to filter based on the specified device family. Defaults to all families.
+ -module <all|map|fit|tan|asm|eda|drc|generic>: Option to filter based on the specified flow module. Defaults to all.
+ -type <all|global|instance>: Option to filter based on the specified assignment type. Defaults to all.
+set_user_option -name <name> [<value>]
+ -name <name>: User option name
+ <value>: User option value
+get_user_option -name <name>
+ -name <name>: User option name
+get_all_user_option_names [-name <name>]
+ -name <name>: User option name (string pattern is matched using Tcl string matching)
+resolve_file_path <file_name>
+ <file_name>: Option to specify the file name
+test_assignment_trait -name <name> -trait <trait_name>
+ -name <name>: Assignment name
+ -trait <trait_name>: Trait name
+get_assignment_info [-entity] [-from] [-get_tcl_command] [-name] [-section_id] [-tag] [-to] [-value] <asgn_id>
+ -entity: Option to get the assignment entity
+ -from: Option to get the assignment source
+ -get_tcl_command: Option to get the tcl command that sets the assignment
+ -name: Option to get the assignment name
+ -section_id: Option to get the assignment section id
+ -tag: Option to get the assignment tag
+ -to: Option to get the assignment destination
+ -value: Option to get the assignment value
+ <asgn_id>: Assignment id
+get_all_assignments [-entity <entity_name>] [-from <source>] -name <name> [-section_id <section id>] [-tag <data>] [-to <destination>] -type <global|instance|parameter|default>
+ -entity <entity_name>: Entity name
+ -from <source>: Source name (string pattern is matched using Tcl string matching)
+ -name <name>: Assignment name (string pattern is matched using Tcl string matching)
+ -section_id <section id>: Section id
+ -tag <data>: Option to tag data to this assignment
+ -to <destination>: Destination name (string pattern is matched using Tcl string matching)
+ -type <global|instance|parameter|default>: Option to specify the type of assignments to return
+get_location_assignment [-tag <data>] -to <destination>
+ -tag <data>: Option to tag data to this assignment
+ -to <destination>: Destination of assignment
+set_location_assignment [-comment <comment>] [-disable] [-remove] [-tag <data>] -to <destination> [<value>]
+ -comment <comment>: Comment
+ -disable: Option to disable assignment
+ -remove: Option to remove assignment
+ -tag <data>: Option to tag data to this assignment
+ -to <destination>: Destination of assignment
+ <value>: Assignment value
+remove_all_instance_assignments [-entity <entity_name>] [-from <source>] -name <name> [-section_id <section id>] [-tag <data>] [-to <destination>]
+ -entity <entity_name>: Entity to which assignment belongs
+ -from <source>: Source of the assignment (string pattern is matched using Tcl string matching)
+ -name <name>: Assignment name (string pattern is matched using Tcl string matching)
+ -section_id <section id>: Section id
+ -tag <data>: Option to tag data to this assignment
+ -to <destination>: Destination of the assignment (string pattern is matched using Tcl string matching)
+get_all_instance_assignments [-entity <entity_name>] [-from <source>] -name <name> [-section_id <section id>] [-tag <data>] [-to <destination>]
+ -entity <entity_name>: Entity to which assignment belongs
+ -from <source>: Source of assignment (string pattern is matched using Tcl string matching)
+ -name <name>: Assignment name (string pattern is matched using Tcl string matching)
+ -section_id <section id>: Section id
+ -tag <data>: Option to tag data to this assignment
+ -to <destination>: Destination of assignment (string pattern is matched using Tcl string matching)
+get_instance_assignment [-entity <entity_name>] [-from <source>] [-front] -name <name> [-section_id <section id>] [-tag <data>] [-to <destination>]
+ -entity <entity_name>: Entity to which assignment belongs
+ -from <source>: Source of assignment
+ -front: Option to return the first assignment if there is more than one assignment found
+ -name <name>: Assignment name
+ -section_id <section id>: Section id
+ -tag <data>: Option to tag data to this assignment
+ -to <destination>: Destination of assignment
+set_instance_assignment [-comment <comment>] [-disable] [-entity <entity_name>] [-fall] [-from <source>] -name <name> [-remove] [-rise] [-section_id <section id>] [-tag <data>] [-to <destination>] [<value>]
+ -comment <comment>: Comment
+ -disable: Option to disable assignment
+ -entity <entity_name>: Entity to which to add assignment
+ -fall: Option applies to falling edge
+ -from <source>: Source of assignment
+ -name <name>: Assignment name
+ -remove: Option to remove assignment
+ -rise: Option applies to rising edge
+ -section_id <section id>: Section id
+ -tag <data>: Option to tag data to this assignment
+ -to <destination>: Destination of assignment
+ <value>: Assignment value
+remove_all_global_assignments [-entity <entity_name>] -name <name> [-section_id <section id>] [-tag <data>]
+ -entity <entity_name>: Entity to which assignment belongs
+ -name <name>: Assignment name (string pattern is matched using Tcl string matching)
+ -section_id <section id>: Section id
+ -tag <data>: Option to tag data to this assignment
+get_all_global_assignments [-entity <entity_name>] -name <name> [-section_id <section id>] [-tag <data>]
+ -entity <entity_name>: Entity to which assignment belongs
+ -name <name>: Assignment name (string pattern is matched using Tcl string matching)
+ -section_id <section id>: Section id
+ -tag <data>: Option to tag data to this assignment
+get_global_assignment [-entity <entity_name>] [-front] -name <name> [-section_id <section id>] [-tag <data>]
+ -entity <entity_name>: Entity to which assignment belongs
+ -front: Option to return the first assignment if there is more than one assignment found
+ -name <name>: Assignment name
+ -section_id <section id>: Section id
+ -tag <data>: Option to tag data to this assignment
+set_global_assignment [-comment <comment>] [-disable] [-entity <entity_name>] -name <name> [-remove] [-section_id <section id>] [-tag <data>] [<value>]
+ -comment <comment>: Comment
+ -disable: Option to disable assignment
+ -entity <entity_name>: Entity to which to add assignment
+ -name <name>: Assignment name
+ -remove: Option to remove assignment
+ -section_id <section id>: Section id
+ -tag <data>: Option to tag data to this assignment
+ <value>: Assignment value
+assignment_group [-add_exception <name>] [-add_member <name>] [-comment <comment>] [-disable] [-get_exceptions] [-get_members] [-overwrite] [-remove] [-remove_exception <name>] [-remove_member <name>] [-tag <data>] <group_name>
+ -add_exception <name>: Tcl list of exception names to add
+ -add_member <name>: Tcl list of member names to add
+ -comment <comment>: Comment
+ -disable: Option to disable assignment
+ -get_exceptions: Option to get collection of assignment group exceptions
+ -get_members: Option to get collection of assignment group members
+ -overwrite: Option to overwrite existing assignment group with the same group name
+ -remove: Option to remove assignment group
+ -remove_exception <name>: Tcl list of exception names to remove
+ -remove_member <name>: Tcl list of member names to remove
+ -tag <data>: Option to tag data to this assignment
+ <group_name>: Assignment group name
+set_parameter [-comment <comment>] [-disable] [-entity <entity_name>] -name <name> [-remove] [-tag <data>] [-to <destination>] [<value>]
+ -comment <comment>: Comment
+ -disable: Option to disable parameter
+ -entity <entity_name>: Entity to which to add parameter
+ -name <name>: Parameter name
+ -remove: Option to remove parameter
+ -tag <data>: Option to tag data to this assignment
+ -to <destination>: Destination of parameter
+ <value>: Parameter value
+get_parameter [-entity <entity_name>] -name <name> [-tag <data>] [-to <destination>]
+ -entity <entity_name>: Entity to which parameter belongs
+ -name <name>: Parameter name
+ -tag <data>: Option to tag data to this assignment
+ -to <destination>: Destination of parameter
+get_all_parameters [-entity <entity_name>] -name <name> [-tag <data>] [-to <destination>]
+ -entity <entity_name>: Entity to which parameter belongs
+ -name <name>: Parameter name (string pattern is matched using Tcl string matching)
+ -tag <data>: Option to tag data to this assignment
+ -to <destination>: Destination of the parameter (string pattern is matched using Tcl string matching)
+remove_all_parameters [-entity <entity_name>] -name <name> [-tag <data>] [-to <destination>]
+ -entity <entity_name>: Entity to which parameter belongs
+ -name <name>: Parameter name (string pattern is matched using Tcl string matching)
+ -tag <data>: Option to tag data to this assignment
+ -to <destination>: Destination of the parameter (string pattern is matched using Tcl string matching)
+get_all_quartus_defaults [-name <name>] [-section_id <section id>]
+ -name <name>: Assignment name (string pattern is matched using Tcl string matching)
+ -section_id <section id>: Section id
+get_assignment_name_info <name>
+ <name>: Assignment name
+set_power_file_assignment [-remove] [-saf_file <saf_file>] [-section_id <section_id>] [-to <to>] [-vcd_end_time <vcd_end_time>] [-vcd_file <vcd_file>] [-vcd_start_time <vcd_start_time>]
+ -remove: Option to remove assignment
+ -saf_file <saf_file>: SAF file name
+ -section_id <section_id>: Section id
+ -to <to>: Entity to which to apply power input file
+ -vcd_end_time <vcd_end_time>: End time for VCD file parsing
+ -vcd_file <vcd_file>: VCD file name
+ -vcd_start_time <vcd_start_time>: Start time for VCD file parsing
+set_io_assignment [-comment <comment>] [-disable] [-io_standard <io standard>] -name <name> [-remove] [-tag <data>] [<value>]
+ -comment <comment>: Comment
+ -disable: Option to disable assignment
+ -io_standard <io standard>: Option to specify the io standard
+ -name <name>: Assignment name
+ -remove: Option to remove assignment
+ -tag <data>: Option to tag data to this assignment
+ <value>: Assignment value
+export_assignments [-reorganize]
+ -reorganize: Option to reorganize the Quartus II Settings File (.qsf)
+get_project_directory
+execute_assignment_batch <tcl commands>
+ <tcl commands>: Tcl list of Tcl commands
+project_open [-current_revision] [-force] [-revision <revision_name>] <project_name>
+ -current_revision: Option to open the current revision automatically
+ -force: Option to open the project and overwrite the compilation database if the database version is incompatible.
+ -revision <revision_name>: Revision name
+ <project_name>: Project name
+EOF

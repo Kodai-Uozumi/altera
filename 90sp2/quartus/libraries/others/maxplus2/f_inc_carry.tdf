@@ -1,0 +1,19 @@
+INCLUDE "inc_f.inc";
+SUBDESIGN f_inc_carry 
+(
+     IN1,CI :   INPUT = GND;
+     INC    : OUTPUT;
+     CO    : OUTPUT;
+)
+VARIABLE
+     	ufinc:inc_f with ( IGNORE_SOFT_BUFFERS = "OFF" );
+		csum: CARRY_SUM;
+begin
+
+	ufinc.in1 = IN1;
+	ufinc.ci = CI;
+	csum.sin = ufinc.inc;	
+	INC = csum.sout;
+	csum.cin = CI#IN1;
+	CO = csum.cout;
+end;

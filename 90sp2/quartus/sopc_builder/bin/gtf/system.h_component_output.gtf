@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<!-- system.h_component_output.gtf
+         This "subroutine" generates the standard system.h text for a
+         component.  It expects the following variables to have been exported:
+                MODULE
+                MODULE_NAME
+                MODULE_CLASS
+                MODULE_SLAVE_NAME_UPPER
+                MMU_PRESENT
+                BASE_ADDRESS
+                ADDRESS_SPAN
+                HAS_IRQ
+                IRQ
+-->
+
+<generate_set>
+
+     <text>
+
+/*
+ * %MODULE_NAME% configuration
+ *
+ */
+
+#define %MODULE_SLAVE_NAME_UPPER%_NAME "/dev/%MODULE%"
+#define %MODULE_SLAVE_NAME_UPPER%_TYPE "%MODULE_CLASS%"
+    </text>
+
+    <if condition="ne( %BASE_ADDRESS%, N/A )">
+        <set_variable variable="ADDRESS" to="%BASE_ADDRESS%"/>
+        <export variable="MMU_PRESENT"/>
+        <export variable="ADDRESS"/>
+        <set_variable variable="ADDRESS_DESCRIPTION" to="%MODULE_NAME%"/>
+        <export variable="ADDRESS_DESCRIPTION"/>
+        <call gtf="%GTF_DIR%/MMU_ADDRESS.gtf"/>
+        <text>
+#define %MODULE_SLAVE_NAME_UPPER%_BASE %ADDRESS%
+#define %MODULE_SLAVE_NAME_UPPER%_SPAN %ADDRESS_SPAN%
+        </text>
+    </if>
+
+    <if condition="eq( %HAS_IRQ%, 1 )">
+        <text>
+#define %MODULE_SLAVE_NAME_UPPER%_IRQ %IRQ%
+        </text>
+    </if>
+
+    <!-- everything from WIZARD_SCRIPT_ARGUMENTS -->
+    <set_variable variable="WIZARD_SCRIPT_ARGUMENTS_LIST"
+                  ptf_path="SYSTEM/MODULE %MODULE%/WIZARD_SCRIPT_ARGUMENTS"
+                  index="*"/>
+    <for_each variable="WSARG" list="%WIZARD_SCRIPT_ARGUMENTS_LIST%">
+        <set_variable variable="WSARG_NAME" to="uppercase( list_get( %WSARG%, 0 ) )"/>
+        <set_variable variable="WSARG_VALUE" to="quote_c_style( list_get( %WSARG%, 1 ) )"/>
+        <text>
+#define %MODULE_SLAVE_NAME_UPPER%_%WSARG_NAME% %WSARG_VALUE%
+        </text>
+    </for_each>
+
+</generate_set>

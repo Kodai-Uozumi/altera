@@ -1,0 +1,19 @@
+
+SUBDESIGN f_cs_lt 
+(
+	IN1,IN2,CI : INPUT = GND;
+	CO         : OUTPUT;
+)
+VARIABLE
+
+	csum : CARRY_SUM;
+
+begin
+
+	csum.cin = !IN1&IN2#CI&!(IN1$IN2);
+	csum.sin = GND;
+	CO = csum.cout;
+
+end;
+
+

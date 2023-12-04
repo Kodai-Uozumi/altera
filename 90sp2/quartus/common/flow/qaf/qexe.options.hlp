@@ -1,0 +1,168 @@
+<ARGFILE_ID>
+Option to specify a file containing additional 
+command-line arguments. The arguments are processed 
+as if they were specified in place of this option. 
+Therefore, arguments after this option may conflict 
+or override options specified in the argument file.
+</ARGFILE_ID>
+
+<LOWER_PRIORITY_MODE>
+Option to lower the priority of the current process. This 
+option is useful if you use a single-processor computer, 
+allowing you to use other applications more easily while 
+the Quartus(R) II software is running in the background.
+</LOWER_PRIORITY_MODE>
+
+<64BIT>
+Option to enable the 64-bit version of the executable.
+
+This option is only applicable for the Linux platform.
+Executables that do not support this option give an error.
+
+Using 64-bit versions of Quartus II executables allows you to
+access more than 4 GB of memory per process and facilitating
+designs that require large amounts of memory to compile.
+
+However, compiling designs with 64-bit versions of Quartus II
+executables can require 50-100% more memory than the same
+design compiled with 32-bit versions. For example, if your
+design requires more than 3 GB of memory with the 32-bit
+version, you should have at least 6 GB of memory installed for
+a 64-bit compilation.
+</64BIT>
+
+<ARGS_TOPIC>
+Quartus(R) II command-line arguments support short options and 
+long options in addition to file or non-option arguments. 
+An argument is an option if it begins with a hyphen ("-") or 
+two hyphens ("--"). Arguments can be specified in any order. 
+
+Short options begin with a single hyphen ("-"), and the 
+option names are single characters. Short options that 
+require an argument must specify that argument directly 
+after the option name. Whitespace between the option and 
+its argument is optional. If a short option does not take 
+an argument, multiple short options may be specified with 
+a single hyphen. For example, "-abc" and "-a -b -c" are 
+equivalent. The last option in such a series may take an 
+argument.
+
+Long options begin with two hyphens ("--"), and the option 
+name is one or more words joined by an underscore ("_"). 
+Long options requiring arguments must specify the argument 
+directly after the option name, separated by whitespace or 
+an equal sign ("="). Long options with optional arguments 
+cannot use whitespace between the option name and its 
+argument.
+
+Long option names can be abbreviated as long as the 
+abbreviation does not conflict with another long option 
+name. For example, the "--enable_wysiwyg_resynthesis" 
+option for quartus_map can be abbreviated as "--enable_wys". 
+It cannot be abbreviated as "-enable", since it conflicts 
+with the "--enable_register_retiming" option.
+	
+Some options can be specified multiple times while others 
+cannot, and not every combination of options is available. 
+For restrictions, see the help for any option 
+("--help=<option>").
+</ARGS_TOPIC>
+
+<MAKEFILES_TOPIC>
+The Quartus(R) II software supports makefile scripts that use 
+the Quartus II executables, which allow you to integrate 
+your scripts with a wide variety of scripting languages. 
+The following is an excerpt from a standard makefile script.
+
+###################################################################
+# Project Configuration: 
+# 
+# Specify the name of the design (project), the Quartus II Settings
+# File (.qsf), and the list of source files used.
+###################################################################
+
+PROJECT = chiptrip
+SOURCE_FILES = auto_max.v chiptrip.v speed_ch.v tick_cnt.v time_cnt.v
+ASSIGNMENT_FILES = chiptrip.qpf chiptrip.qsf 
+
+###################################################################
+# Main Targets
+#
+# all: build everything
+# clean: remove output files and database
+###################################################################
+
+all: smart.log $(PROJECT).asm.rpt $(PROJECT).tan.rpt 
+
+clean:
+	rm -rf *.rpt *.chg smart.log *.htm *.eqn *.pin *.sof *.pof db
+
+map: smart.log $(PROJECT).map.rpt
+fit: smart.log $(PROJECT).fit.rpt
+asm: smart.log $(PROJECT).asm.rpt
+tan: smart.log $(PROJECT).tan.rpt
+smart: smart.log
+
+###################################################################
+# Executable Configuration
+###################################################################
+
+MAP_ARGS = --family=Stratix
+FIT_ARGS = --part=EP1S20F484C6
+ASM_ARGS =
+TAN_ARGS =
+
+###################################################################
+# Target implementations
+###################################################################
+
+STAMP = echo done >
+
+$(PROJECT).map.rpt: map.chg $(SOURCE_FILES) 
+	quartus_map $(MAP_ARGS) $(PROJECT)
+	$(STAMP) fit.chg
+
+$(PROJECT).fit.rpt: fit.chg $(PROJECT).map.rpt
+	quartus_fit $(FIT_ARGS) $(PROJECT)
+	$(STAMP) asm.chg
+	$(STAMP) tan.chg
+
+$(PROJECT).asm.rpt: asm.chg $(PROJECT).fit.rpt
+	quartus_asm $(ASM_ARGS) $(PROJECT)
+
+$(PROJECT).tan.rpt: tan.chg $(PROJECT).fit.rpt
+	quartus_tan $(TAN_ARGS) $(PROJECT) 
+
+smart.log: $(ASSIGNMENT_FILES)
+	quartus_sh --determine_smart_action $(PROJECT) > smart.log
+
+###################################################################
+# Project initialization
+###################################################################
+
+$(ASSIGNMENT_FILES):
+	quartus_sh --prepare $(PROJECT)
+
+map.chg:
+	$(STAMP) map.chg
+fit.chg:
+	$(STAMP) fit.chg
+tan.chg:
+	$(STAMP) tan.chg
+asm.chg:
+	$(STAMP) asm.chg
+
+</MAKEFILES_TOPIC>
+
+<RETURN_CODES>
+Quartus(R) II command-line executables exit with
+the one of the following return codes.
+
+Return Code   Description
+-----------   ------------------------------
+0             Execution was successful
+2             Execution failed due to an internal error
+3             Execution failed due to user error(s)
+4             Execution was stopped by the user
+</RETURN_CODES>
+
